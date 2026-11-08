@@ -90,6 +90,28 @@ function E.Name(id)
     return L["Verzauberung %d"]:format(id)
 end
 
+-- The icon of an enchantment (the planner's enchant square, F-149): its recipe's spell icon or its
+-- item's icon from the client, recipes first; nil when the client has none.
+function E.Icon(id)
+    local d = data()
+    local list = d and d.src[id] or {}
+    for _, kind in ipairs({ "r", "i" }) do
+        for _, s in ipairs(list) do
+            if s.kind == kind then
+                local f
+                if kind == "r" then
+                    f = (C_Spell and C_Spell.GetSpellTexture) or _G.GetSpellTexture
+                else
+                    f = C_Item and C_Item.GetItemIconByID
+                end
+                local tex = type(f) == "function" and ns.Plain(f(s.id)) or nil
+                if tex then return tex end
+            end
+        end
+    end
+    return nil
+end
+
 -- The scoring stats of an enchantment ({ AGI = 3, ... }); weapon damage becomes damage per second
 -- with the weapon's speed.
 function E.Stats(id, speed)

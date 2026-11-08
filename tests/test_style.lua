@@ -483,8 +483,8 @@ assert(navAll() == "overview softres awards raidlog stats", navAll())
 assert(MF.navHead.name:GetText() == "Raid" and MF.navHead.icon:IsShown() and MF.navHead.name.font == "GameFontNormalLarge")
 local tabsOf = {}
 for _, g in ipairs({ "gear", "dungeons", "prof", "talents", "guild", "amisia" }) do NS.ShowTab(g); tabsOf[#tabsOf + 1] = navAll() end
--- (Dungeons: its level ranges as marks under the pages, D-74)
-assert(table.concat(tabsOf, " | "):gsub(" L%d+", "") == "gear gear goals | dungeons raidjournal quests map | professions | talents talents"
+-- (Dungeons: its level ranges as marks under the pages, D-74; the planner its set categories, D-77)
+assert(table.concat(tabsOf, " | "):gsub(" L%d+", "") == "planner gear gear goals raid dungeon pvp craft world rep | dungeons raidjournal quests map | professions | talents talents"
     .. " | members calendar bank duels | settings gear bis dungeons prof raid guild amisia about feedback", table.concat(tabsOf, " | "))
 NS.Set("ui.view", "officer")
 NS.ShowPage("overview")

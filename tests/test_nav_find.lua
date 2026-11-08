@@ -37,7 +37,8 @@ assert(has(texts(group(NS.Search("roster"), "pages")), "Mitglieder"), texts(grou
 assert(has(texts(group(NS.Search("skillung"), "pages")), "Talente"))
 -- a name hit comes before a keyword hit
 local pages = group(NS.Search("ausrüstung"), "pages").hits
-assert(pages[1].text == "Ausrüstung", pages[1].text)
+-- (the planner's name holds the word too, D-77: both names before any keyword hit)
+assert(pages[1].text == "Ausrüstungsplaner" and pages[2].text == "Ausrüstung", pages[1].text .. " " .. tostring(pages[2] and pages[2].text))
 -- keywords keep the view: the officers' page Rolls is not found by a raider
 NS.Set("ui.view", "raider")
 assert(not has(texts(group(NS.Search("würfeln"), "pages")), "Rolls"), "no officer page for a raider")

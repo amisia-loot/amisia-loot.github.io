@@ -33,6 +33,8 @@ local SECTIONS = {
 }
 local INV = {}
 for _, sl in ipairs(Gear.SLOTS) do INV[sl.key] = sl.inv end
+-- the shirt and the tabard: only on the planner's doll (T.PLANNER.DOLL), what is worn, no targets
+INV.SHIRT, INV.TABARD = 4, 19
 
 local win, built
 
@@ -144,23 +146,25 @@ end
 -- The doll: slot buttons, the model, the switch
 ---------------------------------------------------------------------------
 
-local function slotButton(parent, key)
+-- A slot of the doll d in the sizes of profile P: a click chooses it (d.onChoose; the shirt and the
+-- tabard have no targets and are not chosen), right click the gear page's menu of its target.
+local function slotButton(parent, key, P, d)
     local b = CreateFrame("Button", nil, parent)
-    b:SetSize(G.SLOT, G.SLOT)
+    b:SetSize(P.SLOT, P.SLOT)
     b.key = key
     b.bg = W.Flat(b, 0, 0, 0, 0.6)
     b.art = b:CreateTexture(nil, "BORDER")
     b.art:SetAllPoints()
     b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetPoint("TOPLEFT", G.SLOT_INSET, -G.SLOT_INSET)
-    b.icon:SetPoint("BOTTOMRIGHT", -G.SLOT_INSET, G.SLOT_INSET)
+    b.icon:SetPoint("TOPLEFT", P.SLOT_INSET, -P.SLOT_INSET)
+    b.icon:SetPoint("BOTTOMRIGHT", -P.SLOT_INSET, P.SLOT_INSET)
     b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    b.edges = W.Border(b, 0.3, 0.3, 0.3, 1, G.SLOT_EDGE)
+    b.edges = W.Border(b, 0.3, 0.3, 0.3, 1, P.SLOT_EDGE)
     b.hl = b:CreateTexture(nil, "HIGHLIGHT")
     b.hl:SetAllPoints()
     b.hl:SetColorTexture(1, 1, 1, 0.15)
     b.dot = b:CreateTexture(nil, "OVERLAY")
-    b.dot:SetSize(G.DOT, G.DOT)
+    b.dot:SetSize(P.DOT, P.DOT)
     b.dot:SetPoint("BOTTOMRIGHT", 1, -1)
     b.dot:SetTexture(DOT)
     b.dot:Hide()
@@ -172,7 +176,7 @@ local function slotButton(parent, key)
             return
         end
         if item and item.id and K.modifiedClick(item.id) then return end
-        choose(self.key)
+        if ns.BIS_SLOT_NAME[self.key] and d.onChoose then d.onChoose(self.key) end
     end)
     b:SetScript("OnEnter", function(self) tooltipFor(self, self.item, self.key) end)
     b:SetScript("OnLeave", K.hideTip)
@@ -239,11 +243,13 @@ local function rotate(self)
     local x = cursorX()
     if not x or not self.dragX then return end
     local scale = self.GetEffectiveScale and self:GetEffectiveScale() or 1
-    self.rot = (self.dragRot or 0) + (x - self.dragX) / (scale ~= 0 and scale or 1) * G.ROTATE
+    self.rot = (self.dragRot or 0) + (x - self.dragX) / (scale ~= 0 and scale or 1) * self.P.ROTATE
     call(self, "SetRotation", self.rot)
 end
 
-local function wireModel(m)
+-- drag turns, the wheel zooms (Ctrl + wheel: ctrlWheel, the window's scale), a right click resets
+local function wireModel(m, P, ctrlWheel)
+    m.P = P
     m:EnableMouse(true)
     if m.EnableMouseWheel then m:EnableMouseWheel(true) end
     m:SetScript("OnMouseDown", function(self, button)
@@ -259,48 +265,63 @@ local function wireModel(m)
         self:SetScript("OnUpdate", nil)
     end)
     m:SetScript("OnMouseWheel", function(self, delta)
-        if IsControlKeyDown and IsControlKeyDown() then return wheel(self, delta) end
-        self.zoom = math.max(0, math.min(G.ZOOM_MAX, (self.zoom or 0) + (tonumber(delta) or 0) * G.ZOOM_STEP))
+        if ctrlWheel and IsControlKeyDown and IsControlKeyDown() then return ctrlWheel(self, delta) end
+        self.zoom = math.max(0, math.min(P.ZOOM_MAX, (self.zoom or 0) + (tonumber(delta) or 0) * P.ZOOM_STEP))
         call(self, "SetPortraitZoom", self.zoom)
     end)
     resetView(m)
 end
 
-local function buildDoll(parent)
+-- The one builder of the doll (the window "Ausrüstungsziele" with T.GOALS, the page
+-- "Ausrüstungsplaner" with T.PLANNER.DOLL): the slot columns P.LEFT and P.RIGHT beside the model,
+-- P.BOTTOM_ROW under it, the model on an inset between them; the caller places it. opts.onChoose(key):
+-- a slot's click; opts.switch: the switch Ziele / Angelegt / Katalog and the model's hint under the
+-- weapons (the window); opts.wheel: Ctrl + mouse wheel over the model; opts.decorate(button, side):
+-- dresses each slot ("left", "right", "bottom": the planner's enchant squares).
+local function buildDoll(parent, P, opts)
+    opts = opts or {}
     local d = CreateFrame("Frame", nil, parent)
-    d:SetPoint("TOPLEFT", G.DOLL_X, -G.COL_Y)
-    d:SetSize(G.DOLL_W, G.MODEL_H + G.WEAPON_GAP + G.SLOT + G.SWITCH_GAP + T.CHIP_H + G.HINT_H)
-    d.slots = {}
-    local pitch = G.SLOT + G.SLOT_GAP
+    d.P, d.onChoose = P, opts.onChoose
+    local h = P.MODEL_H + P.WEAPON_GAP + P.SLOT
+    if opts.switch then h = h + P.SWITCH_GAP + T.CHIP_H + P.HINT_H end
+    d:SetSize(P.DOLL_W, h)
+    d.slots, d.extras = {}, {}
+    local pitch = P.SLOT + P.SLOT_GAP
     local left, right, bottom = {}, {}, {}
-    for _, key in ipairs(G.LEFT) do left[#left + 1] = slotButton(d, key) end
-    for _, key in ipairs(G.RIGHT) do right[#right + 1] = slotButton(d, key) end
-    for _, key in ipairs(G.BOTTOM_ROW) do bottom[#bottom + 1] = slotButton(d, key) end
-    -- the left column centred on the right one (6 slots beside 8)
-    W.Column(d, left, G.SLOT_GAP, 0, -math.floor((#right - #left) * pitch / 2))
-    W.Column(d, right, G.SLOT_GAP, G.DOLL_W - G.SLOT, 0)
-    local rowW = #bottom * G.SLOT + (#bottom - 1) * G.SLOT_GAP
-    W.Row(d, bottom, G.SLOT_GAP, math.floor((G.DOLL_W - rowW) / 2), -(G.MODEL_H + G.WEAPON_GAP))
-    for _, list in ipairs({ left, right, bottom }) do
-        for _, b in ipairs(list) do d.slots[b.key] = b end
+    for _, key in ipairs(P.LEFT) do left[#left + 1] = slotButton(d, key, P, d) end
+    for _, key in ipairs(P.RIGHT) do right[#right + 1] = slotButton(d, key, P, d) end
+    for _, key in ipairs(P.BOTTOM_ROW) do bottom[#bottom + 1] = slotButton(d, key, P, d) end
+    -- the left column centred on the right one (6 slots beside 8 in the window)
+    W.Column(d, left, P.SLOT_GAP, 0, -math.floor((#right - #left) * pitch / 2))
+    W.Column(d, right, P.SLOT_GAP, P.DOLL_W - P.SLOT, 0)
+    local gap = P.BOTTOM_GAP or P.SLOT_GAP
+    local rowW = #bottom * P.SLOT + (#bottom - 1) * gap + (P.BOTTOM_EXTRA or 0)
+    W.Row(d, bottom, gap, math.floor((P.DOLL_W - rowW) / 2), -(P.MODEL_H + P.WEAPON_GAP))
+    for _, part in ipairs({ { "left", left }, { "right", right }, { "bottom", bottom } }) do
+        for _, b in ipairs(part[2]) do
+            d.slots[b.key] = b
+            if not ns.BIS_SLOT_NAME[b.key] then d.extras[#d.extras + 1] = b.key end
+            if opts.decorate then opts.decorate(b, part[1]) end
+        end
     end
     -- the model between the columns, on an inset
-    local mx = G.SLOT + G.MODEL_GAP
+    local mx = P.SLOT + P.MODEL_GAP
     d.inset = W.Inset(d)
     d.inset:SetPoint("TOPLEFT", mx, 0)
-    d.inset:SetSize(G.DOLL_W - 2 * mx, G.MODEL_H)
-    d.inset.fill(0, 0, 0, 0.35)
+    d.inset:SetSize(P.DOLL_W - 2 * mx, P.MODEL_H)
+    d.inset.fill(0, 0, 0, P.MODEL_SHADE or 0.35)
     d.model = makeModel(d.inset)
     if d.model then
         d.model:SetPoint("TOPLEFT", 2, -2)
         d.model:SetPoint("BOTTOMRIGHT", -2, 2)
-        wireModel(d.model)
+        wireModel(d.model, P, opts.wheel)
     end
-    d.noModel = W.Text(d.inset, T.FONT.hint, G.DOLL_W - 2 * mx - 16, true)
+    d.noModel = W.Text(d.inset, T.FONT.hint, P.DOLL_W - 2 * mx - 16, true)
     d.noModel:SetPoint("CENTER")
     d.noModel:SetJustifyH("CENTER")
     d.noModel:SetText(L["Modell nicht verfügbar"])
     if d.model then d.noModel:Hide() end
+    if not opts.switch then return d end
     -- the switch Ziele / Angelegt and what the mouse does with the model
     d.goals = W.Tab(d, L["Ziele"], function() winState().mode = "goals"; refresh() end)
     d.worn = W.Tab(d, L["Angelegt"], function() winState().mode = "worn"; refresh() end)
@@ -308,11 +329,11 @@ local function buildDoll(parent)
     d.catalog = W.Tab(d, L["Katalog"], function() winState().mode = "catalog"; refresh() end)
     W.Tooltip(d.catalog, L["Katalog"], L["Item-Sets nach Herkunft und die Suche über alle Items. Klick auf ein Item: am Modell anprobieren."])
     local w1, w2, w3 = W.FitChip(d.goals), W.FitChip(d.worn), W.FitChip(d.catalog)
-    local sy = -(G.MODEL_H + G.WEAPON_GAP + G.SLOT + G.SWITCH_GAP)
-    W.Row(d, { d.goals, d.worn, d.catalog }, T.TAB_GAP, math.floor((G.DOLL_W - w1 - w2 - w3 - 2 * T.TAB_GAP) / 2), sy)
-    d.hint = W.Text(d, T.FONT.hint, G.DOLL_W, true)
+    local sy = -(P.MODEL_H + P.WEAPON_GAP + P.SLOT + P.SWITCH_GAP)
+    W.Row(d, { d.goals, d.worn, d.catalog }, T.TAB_GAP, math.floor((P.DOLL_W - w1 - w2 - w3 - 2 * T.TAB_GAP) / 2), sy)
+    d.hint = W.Text(d, T.FONT.hint, P.DOLL_W, true)
     d.hint:SetPoint("TOPLEFT", 0, sy - T.CHIP_H - 2)
-    d.hint:SetHeight(G.HINT_H)
+    d.hint:SetHeight(P.HINT_H)
     d.hint:SetJustifyH("CENTER")
     d.hint:SetJustifyV("TOP")
     d.hint:SetText(d.model and L["Ziehen dreht · Mausrad zoomt · Rechtsklick: zurück"] or "")
@@ -340,6 +361,14 @@ local function dress(d, res, m, tries)
     local model = d.model
     if not model then return end
     local links, key = {}, { m }
+    -- the shirt and the tabard (the planner's doll): what is worn
+    for _, k in ipairs(d.extras or {}) do
+        local link = wornLink(k)
+        if link then
+            links[#links + 1] = { link }
+            key[#key + 1] = link
+        end
+    end
     for _, sl in ipairs(TRY_ORDER) do
         local item = shownItem(res, sl.key, m)
         if item then
@@ -361,6 +390,23 @@ local function dress(d, res, m, tries)
         local link = K.linkOf(id)
         if link then tryOn(model, link) end
     end
+end
+
+-- Fills the doll's slots for the mode (goals or worn): the chosen one gold, the state dot (green
+-- worn, yellow in bag or bank); d.doneEdge: a slot whose target is worn gets a green frame (the
+-- planner). Returns the progress (ns.BisProgress).
+local function fillDoll(d, res, m, chosen)
+    local p = ns.BisProgress(res)
+    for key, b in pairs(d.slots) do
+        local st = p.slot[key]
+        local hasTarget = res[key] and res[key][1]
+        fillSlot(b, shownItem(res, key, m), key == chosen, hasTarget and (st == "done" or st == "bag") and G.STATE_COLOR[st] or nil)
+        if d.doneEdge and hasTarget and st == "done" and key ~= chosen then
+            local c = G.STATE_COLOR.done
+            W.SetBorderColor(b.edges, c[1], c[2], c[3], 1)
+        end
+    end
+    return p
 end
 
 ---------------------------------------------------------------------------
@@ -1415,14 +1461,9 @@ refresh = function()
     f.plan:SetText(planText(o, res))
     K.fillStyle(f.style)
     f.headRight()
-    local p = ns.BisProgress(res)
     local d = f.doll
-    for key, b in pairs(d.slots) do
-        -- the dot: green worn, yellow in bag or bank, none still to get
-        local st = p.slot[key]
-        local hasTarget = res[key] and res[key][1]
-        fillSlot(b, shownItem(res, key, m), key == chosen, hasTarget and (st == "done" or st == "bag") and G.STATE_COLOR[st] or nil)
-    end
+    -- the dot: green worn, yellow in bag or bank, none still to get
+    local p = fillDoll(d, res, m, chosen)
     d.goals:SetOn(m == "goals" and not catalog)
     d.worn:SetOn(m == "worn")
     d.catalog:SetOn(catalog)
@@ -1489,7 +1530,8 @@ local function build()
         onVisibility = function() if ns.UpdateSideTabs then ns.UpdateSideTabs() end end,
         onDragStop = savePlace })
     buildHead(win)
-    win.doll = buildDoll(win)
+    win.doll = buildDoll(win, G, { switch = true, wheel = wheel, onChoose = choose })
+    win.doll:SetPoint("TOPLEFT", G.DOLL_X, -G.COL_Y)
     win.list = buildList(win)
     buildProgress(win)
     buildSide(win)
@@ -1559,3 +1601,12 @@ ns.OnEvent("GET_ITEM_INFO_RECEIVED", function(_, success)
         if win and win:IsShown() then refresh() end
     end)
 end)
+
+-- What the page "Ausrüstungsplaner" (Pages/Planner.lua, loaded after this file) draws with: the one
+-- doll builder (its own size profile T.PLANNER.DOLL), filling and dressing it, the item icons and
+-- quality, the own pick's star, the gain texts and the catalog's set tooltip.
+ns.GoalsKit = {
+    buildDoll = buildDoll, fillDoll = fillDoll, dress = dress, wornLink = wornLink,
+    iconOf = iconOf, qualityOf = qualityOf, ownMark = function() return ownMark() end,
+    pctText = pctText, gainText = gainText, setTip = setTip, QUESTION = QUESTION,
+}

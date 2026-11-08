@@ -54,8 +54,12 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ### F-149 Ausrüstungsplaner: Modell mit Plätzen, Vorschläge je Platz, Sets in der Leiste
 - Version: -
 - Status: geplant
-- Prüfung: Wenn du den Reiter Ausrüstung öffnest, dann siehst du links dein Modell mit allen Plätzen und rechts die Vorschläge für den gewählten Platz mit Zuwachs, Quelle und Stern.
-- Notiz: Spec docs/specs/2026-11-08-hub-reiter.md; D-77.
+- Prüfung: Wenn du den Reiter Ausrüstung öffnest, dann siehst du zuerst den Ausrüstungsplaner: links dein Modell auf dunklem Grund mit acht Plätzen links (mit Hemd und Wappenrock), acht rechts und den Waffen darunter, oben dein Name, deine Stufe und die Spezialisierung zum Wählen.
+- Prüfung: Wenn du einen Platz anklickst, dann zeigt die Liste rechts seine Vorschläge mit Symbol, Name in Qualitätsfarbe, "Stufe N · Quelle", Zuwachs in Prozent, Quellsymbol und grauem Stern; "Alle" oder andere Stufen zeigen die Items dieses Bereichs, "Alle Items suchen ..." findet Items nach Namen.
+- Prüfung: Wenn du eine Zeile anklickst, dann wird sie deine Wahl für den Platz und steht am Modell; ein zweiter Klick hebt sie auf, "Zurücksetzen" fragt erst und nimmt dann alle deine Wahlen weg; der Stern wird beim Klick gold und das Item steht unter "Wunschliste".
+- Prüfung: Wenn du neben einem Platz das kleine Quadrat ansiehst, dann zeigt es die Verzauberung deines angelegten Items oder ein "+"; ein Klick listet die passenden Verzauberungen.
+- Prüfung: Wenn du links unter den Seiten auf "Dungeon-Sets" (oder Raid-, PvP-, Handwerks-, Welt-Sets, Ruf) klickst, dann stehen rechts die Sets dieser Art; ein Klick öffnet ein Set, der Reiter "Vorschläge" führt zurück.
+- Notiz: Spec docs/specs/2026-11-08-hub-reiter.md; D-77. Im Spiel prüfen: der Hintergrund der Anprobe deiner Rasse und das Warnzeichen.
 
 ### F-148 Dungeons & Raids als Tabelle mit Stufenbereichen
 - Version: 2.63.0

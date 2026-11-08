@@ -204,6 +204,7 @@ T.NAV_ICONS = {
     raids = { file = TRACK .. "None" },
     export = { file = "Interface\\Buttons\\UI-GuildButton-PublicNote-Up" },
     -- Charakter
+    planner = { file = "Interface\\PaperDoll\\UI-PaperDoll-Slot-MainHand" },
     gear = { file = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Chest" },
     talents = { file = TRACK .. "Class" },
     professions = { file = TRACK .. "Profession" },
@@ -626,18 +627,81 @@ T.GOALS = {
         TRINKET1 = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Trinket", TRINKET2 = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Trinket",
         MAINHAND = "Interface\\PaperDoll\\UI-PaperDoll-Slot-MainHand", OFFHAND = "Interface\\PaperDoll\\UI-PaperDoll-Slot-SecondaryHand",
         RANGED = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Ranged",
+        -- the shirt and the tabard: only on the planner's doll
+        SHIRT = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Shirt", TABARD = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Tabard",
     },
     -- the client's slot names for GetInventorySlotInfo
     SLOT_NAME = { HEAD = "HEADSLOT", NECK = "NECKSLOT", SHOULDER = "SHOULDERSLOT", BACK = "BACKSLOT", CHEST = "CHESTSLOT",
         WRIST = "WRISTSLOT", HANDS = "HANDSSLOT", WAIST = "WAISTSLOT", LEGS = "LEGSSLOT", FEET = "FEETSLOT",
         FINGER1 = "FINGER0SLOT", FINGER2 = "FINGER1SLOT", TRINKET1 = "TRINKET0SLOT", TRINKET2 = "TRINKET1SLOT",
-        MAINHAND = "MAINHANDSLOT", OFFHAND = "SECONDARYHANDSLOT", RANGED = "RANGEDSLOT" },
+        MAINHAND = "MAINHANDSLOT", OFFHAND = "SECONDARYHANDSLOT", RANGED = "RANGEDSLOT", SHIRT = "SHIRTSLOT", TABARD = "TABARDSLOT" },
     -- the doll's slots as on the character frame
     LEFT = { "HEAD", "NECK", "SHOULDER", "BACK", "CHEST", "WRIST" },
     RIGHT = { "HANDS", "WAIST", "LEGS", "FEET", "FINGER1", "FINGER2", "TRINKET1", "TRINKET2" },
     BOTTOM_ROW = { "MAINHAND", "OFFHAND", "RANGED" },
 }
 
+-- the page "Ausrüstungsplaner" (UI/Pages/Planner.lua, F-149, D-77): left a dark panel LEFT_W wide
+-- over the page's height (the dressing room's background of the own race, darkened by SHADE): at its
+-- top in the head row "Name Stufe N ·" and the spec picker (SPEC_W), centred; the doll (DOLL, the
+-- goals window's builder) DOLL_Y under the page's top, PAD from the panel's edges, each slot with its
+-- enchant square (ENCH, ENCH_GAP beside it, towards the model; the weapons' right of them);
+-- "Zurücksetzen" PAD from the panel's lower right corner. Right of it, GAP apart, the head row's tabs
+-- Vorschläge | Wunschliste, the warning and the search box (filling), under them the slot's name with
+-- the level boxes "[lo] - [hi]" (LEVEL_W) and Meine Stufe | Alle, then the list down to the page's bottom
+-- (ROW_H rows: the icon ROW_ICON in its quality's frame, the name over "Stufe N · source" from TEXT_X,
+-- at the right end the gain GAIN_W, the source's symbol and the wish star, SRC and STAR square, END
+-- apart). 284 + 8 + 310 = 602; the doll 30 + 307 + 8 + 34 = 379 of 478.
+T.PLANNER = {
+    LEFT_W = 284, GAP = 8, PAD = 8, DOLL_Y = 30,
+    SHADE = { 0, 0, 0, 0.5 },             -- over the race's background
+    GROUND = { 0.03, 0.045, 0.03, 0.95 },  -- the panel's ground without the background (and under it)
+    -- the client's dressing room background (FrameXML DressUpFrame: 4 parts, 256 + 62 wide, 255 + 128
+    -- high) of the own race: PATH .. race token .. 1 to 4; RACE when the client names none
+    BG = { PATH = "Interface\\DressUpFrame\\DressUpBackground-", RACE = "NightElf", W = { 256, 62 }, H = { 255, 128 },
+        COORDS = { { 0, 1, 0, 255 / 256 }, { 0, 62 / 64, 0, 255 / 256 }, { 0, 1, 0, 1 }, { 0, 62 / 64, 0, 1 } } },
+    SPEC_W = 140, WHO_GAP = 6,
+    -- the doll (UI/GoalsWindow.lua buildDoll): 8 slots left and right as on the character frame (the
+    -- shirt and the tabard only show what is worn), the model between, the weapons under it
+    DOLL = {
+        DOLL_W = 268, SLOT = 34, SLOT_GAP = 5, SLOT_EDGE = 2, SLOT_INSET = 2, DOT = 9,
+        MODEL_GAP = 20,       -- the enchant square and 4 px between a slot column and the model
+        MODEL_H = 307,        -- 8 slots and their gaps
+        MODEL_SHADE = 0.25,   -- the inset's ground under the model
+        WEAPON_GAP = 8,
+        BOTTOM_GAP = 20,      -- between two weapons: the enchant square of the left one and 4 px
+        BOTTOM_EXTRA = 16,    -- the last weapon's square: the row is centred with it
+        ROTATE = 0.012, ZOOM_STEP = 0.1, ZOOM_MAX = 0.8,
+        LEFT = { "HEAD", "NECK", "SHOULDER", "BACK", "CHEST", "SHIRT", "TABARD", "WRIST" },
+        RIGHT = { "HANDS", "WAIST", "LEGS", "FEET", "FINGER1", "FINGER2", "TRINKET1", "TRINKET2" },
+        BOTTOM_ROW = { "MAINHAND", "OFFHAND", "RANGED" },
+    },
+    ENCH = 14, ENCH_GAP = 2,
+    ENCH_ROWS = 8,        -- the enchantments in a square's menu
+    RESET_W = 110,
+    LEVEL_W = 30,         -- "[1] - [33]": the two level boxes
+    ROW_H = 44, ROW_ICON = 34, ROW_EDGE = 1, ICON_X = 4, TEXT_X = 44, NAME_Y = -7, SUB_Y = -25,
+    GAIN_W = 48, SRC = 16, STAR = 16, END = 4,
+    MIN_ROWS = 4,
+    RANK_N = 40,          -- the suggestions of a slot at most (the slot's ranking)
+    STAR_OFF = { 0.42, 0.42, 0.42 },       -- the star of an item not on the wish list
+    STAR_ATLAS = "auctionhouse-icon-favorite", STAR_FILE = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_1",
+    WARN = { file = "Interface\\DialogFrame\\UI-Dialog-Icon-AlertNew" }, WARN_SIZE = 18,
+    -- the symbol of a source's kind (the gear data's letters): the client's marks
+    SRC_ICONS = {
+        X = { atlas = "Raid" }, D = { atlas = "Dungeon" }, Q = { file = "Interface\\GossipFrame\\AvailableQuestIcon" },
+        C = { file = "Interface\\Minimap\\Tracking\\Profession" }, V = { file = "Interface\\GossipFrame\\VendorGossipIcon" },
+        A = { file = "Interface\\Minimap\\Tracking\\Auctioneer" }, P = { file = "Interface\\GossipFrame\\BattleMasterGossipIcon" },
+        R = { file = "Interface\\GossipFrame\\TabardGossipIcon" }, W = { file = "Interface\\Minimap\\Tracking\\None" },
+    },
+    -- the side bar's marks: the catalog's categories (Gear/Catalog.lua) with the client's marks
+    MARKS = { "raid", "dungeon", "pvp", "craft", "world", "rep" },
+    MARK_ICONS = {
+        raid = { atlas = "Raid" }, dungeon = { atlas = "Dungeon" }, pvp = { file = "Interface\\GossipFrame\\BattleMasterGossipIcon" },
+        craft = { file = "Interface\\Minimap\\Tracking\\Profession" }, world = { file = "Interface\\Minimap\\Tracking\\FlightMaster" },
+        rep = { file = "Interface\\GossipFrame\\TabardGossipIcon" },
+    },
+}
 -- the setup assistant (UI/Setup.lua, "Amisia einrichten"): one window, one step at a time. Its
 -- content keeps T.WINDOW_PAD from the left and right edge; the step line and the step's title at
 -- the top, the step's rows in the middle, a status line and the red buttons at the bottom.

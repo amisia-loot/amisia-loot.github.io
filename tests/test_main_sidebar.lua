@@ -71,7 +71,7 @@ F.tabs.dungeons:Click()
 assert(NS.CurrentPage() == "quests", "the tab remembers its page: " .. NS.CurrentPage())
 -- Ausrüstung and Talente: the side windows right under their pages
 NS.ShowPage("gear")
-assert(navAll() == "gear gear goals", navAll())
+assert(navAll() == "planner gear gear goals", navAll())
 NS.ShowTab("talents")
 assert(NS.CurrentPage() == "talents" and navAll() == "talents talents", navAll())
 local win = row("win", "talents")
