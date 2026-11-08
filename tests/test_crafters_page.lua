@@ -65,6 +65,6 @@ STUB.tick(1)
 f.list.rows[3]:Click()
 assert(has(d.who:GetText(), NS.Theme.GREEN .. "Bob Hammer (120)|r"), d.who:GetText())
 assert(d.ask:IsShown())
--- the camp view has no crafters and no ask
+-- the camp view: no guild filter, nobody of the guild knows the campfire
 NS.Dispatch("berufe lager")
-assert(not f.detail.ask:IsEnabled() and not f.guild:IsShown() and not d:IsShown())
+assert(d:IsShown() and not f.guild:IsShown() and not d.ask:IsShown(), "the camp object in the boxes, nobody to ask")

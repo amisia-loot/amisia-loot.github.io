@@ -32,6 +32,6 @@ assert(has(f.rd.reag.note:GetText(), "Reagenzien: noch unbekannt") and not has(b
 assert(f.rd.iconFrame.icon.texture == NS.Prof.ICON_UNKNOWN, "no icon from the client: the question mark")
 NS.ShowProfessions("lager")
 f.list.rows[3]:Click()
-assert(has(f.detail.body.fs:GetText(), "Beschreibung lädt"), f.detail.body.fs:GetText())
+assert(has(f.rd.info:GetText(), "Beschreibung lädt"), f.rd.info:GetText())
 NS.ShowProfessions("gunst")
 assert(#f.list.items == 1 and not has(f.counts:GetText(), "Händlergunst:"), f.counts:GetText())
