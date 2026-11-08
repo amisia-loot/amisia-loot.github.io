@@ -5,6 +5,11 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(ui): the logo in the window's head without the black disc (F-147)
+
+  The Amisia logo at the top left of the main window no longer sits on a black disc: only a thin gold
+  ring surrounds it, with the head's background behind it.
+
 ## [v2.70.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.70.0) (2026-11-09)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.69.0...v2.70.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

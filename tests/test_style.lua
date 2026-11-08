@@ -396,8 +396,9 @@ assert(MF.strata == "FULLSCREEN")
 assert(MF.ground and MF.ground.color[1] == HB.BG[1] and MF.ground.points.TOPLEFT.y == -M.FRAME_TOP, "the hub's dark ground inside the frame")
 assert(MF:GetTitleText():GetText() == "Amisia" and MF.CloseButton:IsShown() and MF.NineSlice, "the frame's title, border and red X")
 local ML = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF, 806, 667)
--- the head: the logo round on a black disc in a gold ring, the name, its line, the client's picture
+-- the head: the logo round in a thin gold ring without a black disc, the name, its line, the client's picture
 local head = MF.head
+assert(head.ring and head.ring.texture == NS.Theme.DBOSS.RING, "a hollow ring, no filled disc behind the logo")
 assert(head._h == M.HEAD_H - 1 and head.logo._w == M.LOGO and head.logo.texture == "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia")
 assert(head.name:GetText() == "Amisia" and head.name.font == M.NAME_FONT and head.sub:GetText() == "LOOT · RAID · GEAR")
 assert(head.banner and head.banner.texture == HB.BANNER.file and head.banner.points.TOPLEFT.x == M.BANNER_X, "the client's picture")
