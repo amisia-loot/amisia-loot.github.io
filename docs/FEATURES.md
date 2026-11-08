@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-153 Berufe: Favoriten und Herstellliste
-- Version: -
-- Status: geplant
+- Version: 2.66.0
+- Status: gebaut
 - Prüfung: Wenn du im Rezept oben rechts auf den Stern klickst und dann den Reiter "Favoriten" öffnest, dann steht das Rezept dort (auch aus anderen Berufen); ein zweiter Klick auf den Stern nimmt es wieder heraus.
 - Prüfung: Wenn du im Rezept die Anzahl wählst und "+ Liste" klickst, dann zeigt der Reiter "Herstellliste" das Rezept mit der Anzahl und daneben alle Reagenzien mit hast/brauchst und dem nächsten Händler; "Entfernen" und "Liste leeren" nehmen sie wieder heraus.
 - Notiz: D-82. Je Charakter gespeichert; Herstellen selbst geht nur im Berufsfenster des Spiels.
@@ -55,7 +55,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: D-79. Ohne Spec: eine kleine Anzeige ohne Daten und Nachrichten (docs/specs/README).
 
 ### F-151 Berufe mit Übersicht und Berufsliste in der Leiste
-- Version: 2.65.0
+- Version: 2.66.0
 - Status: gebaut
 - Prüfung: Wenn du im Reiter Berufe links auf "Übersicht" klickst (oder `/amisia berufe übersicht` eingibst), dann zeigt die Seite "Deine Berufe" mit Rang und bekannten Rezepten, "Alle Berufe" mit ihrer Rezeptzahl und "Weiteres" mit Lager und Händlergunst als Kacheln.
 - Prüfung: Wenn du links unter "Übersicht" schaust, dann stehen dort die Berufe mit ihrem Symbol, darunter Lager und Händlergunst mit deiner Gunst als Zahl; die gezeigte Ansicht ist hervorgehoben.
@@ -74,7 +74,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-08-hub-reiter.md; D-76.
 
 ### F-149 Ausrüstungsplaner: Modell mit Plätzen, Vorschläge je Platz, Sets in der Leiste
-- Version: 2.65.0
+- Version: 2.66.0
 - Status: gebaut
 - Prüfung: Wenn du den Reiter Ausrüstung öffnest, dann siehst du zuerst den Ausrüstungsplaner: links dein Modell auf dem Bild der Anprobe (beim breiteren Fenster breiter) mit acht Plätzen links (mit Hemd und Wappenrock), acht rechts und den Waffen darunter, oben dein Name, deine Stufe und die Spezialisierung zum Wählen.
 - Prüfung: Wenn du einen Platz anklickst, dann zeigt die Liste rechts seine Vorschläge mit Symbol, Name in Qualitätsfarbe (Questbelohnung mit gelbem "!"), "Stufe 25 · Dungeon - Boss", "Stufe 32 · Schneiderei 150" oder "Quest: Titel", Zuwachs in Prozent ("neu" ohne angelegtes Item), Quellsymbol (Beruf: sein Symbol) und grauem Stern; "Quellen" schaltet Quellen ab; "Alle" oder andere Stufen zeigen die Items dieses Bereichs, "Alle Items suchen ..." findet Items nach Namen.
@@ -92,7 +92,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-08-hub-reiter.md, Schritt 2; D-74. Ersetzt die Kacheln von F-143.
 
 ### F-147 Hub: Bildkopf, Reiter oben, Leiste je Reiter, Fußzeile
-- Version: 2.63.0
+- Version: 2.66.0
 - Status: gebaut
 - Prüfung: Wenn du /amisia öffnest, dann stehen oben das Logo, "Amisia" und ein Streifen eines Ladebilds, rechts Suchfeld, Feedback, Minimieren und X, darunter die Reiter Ausrüstung, Dungeons & Raids, Berufe, Talente, Raid, Gilde und das Zahnrad.
 - Prüfung: Wenn du einen Reiter klickst, dann zeigt die linke Leiste oben dessen Symbol und Namen und nur seine Seiten, und seine zuletzt gewählte Seite öffnet sich.
