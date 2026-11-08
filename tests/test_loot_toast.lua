@@ -1,7 +1,9 @@
 -- The loot toast (F-152, D-79): the own loot line ("You receive loot: ...") and a pushed item (a quest
--- reward: "You receive item: ...") show "+Name xN" with the item's icon in its quality's colour; another
--- player's loot, a lower quality than the setting and the switched off toast show nothing; the lines
--- stack, rise, fade and go after SHOW seconds; at most MAX at once.
+-- reward: "You receive item: ...") show "+Name xN" with the item's icon in its quality's colour (also
+-- for Forever's named colour form |cnIQ2:); another player's loot, a lower quality than the setting
+-- and the switched off toast show nothing; money the purse gains shows "+1g 2s 3c" with the coins in
+-- their colours; the font size follows the setting; the lines stack, rise, fade and go after SHOW
+-- seconds; at most MAX at once.
 local LT = NS.Theme.LOOTTOAST
 STUB.item(4711, "Rute von Helcular", 2)
 local link = "|cff1eff00|Hitem:4711::::::::30:::::::|h[Rute von Helcular]|h|r"
@@ -11,7 +13,9 @@ assert(NS.Get("ui.lootToast") == true, "on by default")
 -- looted: one line
 STUB.fire("CHAT_MSG_LOOT", LOOT_ITEM_SELF:format(link))
 local shown = NS.LootToastLines()
-assert(#shown == 1 and shown[1].id == 4711 and shown[1].text == "|cff1eff00+Rute von Helcular|r", tostring(shown[1] and shown[1].text))
+local green = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[2] and ITEM_QUALITY_COLORS[2].hex or "|cff1eff00"
+assert(#shown == 1 and shown[1].id == 4711 and shown[1].text == green .. "+Rute von Helcular|r", tostring(shown[1] and shown[1].text))
+assert(shown[1].frame.size == LT.SIZE and shown[1].frame.icon._w == LT.SIZE + LT.ICON_PAD, "the default size")
 assert(AmisiaLootToast and AmisiaLootToast:IsShown() and AmisiaLootToast.strata == "HIGH", "the holder over the world")
 assert(shown[1].frame.icon.texture ~= nil, "with its icon")
 -- a quest's reward, three of them: the second line under the first
@@ -39,9 +43,46 @@ NS.Reset("ui.lootToast")
 -- at most MAX at once, the oldest goes
 for _ = 1, LT.MAX + 2 do STUB.fire("CHAT_MSG_LOOT", LOOT_ITEM_SELF:format(link)) end
 assert(#NS.LootToastLines() == LT.MAX, "at most " .. LT.MAX)
--- the settings' example
-STUB.tick(LT.SHOW + 0.1)
-AmisiaLootToast.scripts.OnUpdate(AmisiaLootToast, 0.1)
+local function clear()
+    STUB.tick(LT.SHOW + 0.1)
+    AmisiaLootToast.scripts.OnUpdate(AmisiaLootToast, 0.1)
+    assert(#NS.LootToastLines() == 0)
+end
+clear()
+-- Forever's link with the named colour (|cnIQ2:) and an item the client has no quality for: the link's colour
+STUB.item(4712, "Grüner Ring", nil); STUB.items[4712].quality = nil
+STUB.fire("CHAT_MSG_LOOT", LOOT_ITEM_SELF:format("|cnIQ2:|Hitem:4712::::::::30:::::::|h[Grüner Ring]|h|r"))
+assert(NS.LootToastLines()[1].text == "|cnIQ2:+Grüner Ring|r", tostring(NS.LootToastLines()[1].text))
+clear()
+-- money: the purse grows by 1g 2s 3c; the first look after the login only remembers
+local purse = 5000
+_G.GetMoney = function() return purse end
+STUB.fire("PLAYER_ENTERING_WORLD")
+purse = purse + 10203
+STUB.fire("PLAYER_MONEY")
+local m = NS.LootToastLines()
+assert(#m == 1 and m[1].text:find("|cffffd7001|r", 1, true) and m[1].text:find("|cffc7c7cf2|r", 1, true)
+    and m[1].text:find("|cffeda55f3|r", 1, true) and m[1].text:find("UI-GoldIcon", 1, true), tostring(m[1] and m[1].text))
+-- spending shows nothing; money off: nothing
+purse = purse - 500
+STUB.fire("PLAYER_MONEY")
+NS.Set("ui.lootToastMoney", false)
+purse = purse + 99
+STUB.fire("PLAYER_MONEY")
+assert(#NS.LootToastLines() == 1, "no line for spending or with money off")
+NS.Reset("ui.lootToastMoney")
+clear()
+-- the font size: new lines and those shown take it
+STUB.fire("CHAT_MSG_LOOT", LOOT_ITEM_SELF:format(link))
+NS.Set("ui.lootToastSize", 24)
+local big = NS.LootToastLines()[1].frame
+assert(big.size == 24 and big.icon._w == 24 + LT.ICON_PAD and big._h == 24 + LT.LINE_PAD, "the size follows the setting")
+NS.Set("ui.lootToastSize", 99)
+assert(NS.LootToastLines()[1].frame.size <= LT.SIZE_MAX, "never past the most")
+NS.Reset("ui.lootToastSize")
+clear()
+-- the settings' example: an item and money
 NS.SettingItem("ui.lootToastTest").run()
-assert(#NS.LootToastLines() == 1 and NS.LootToastLines()[1].text:find(NS.L["Leinenstoff"] .. " x3", 1, true))
+local ex = NS.LootToastLines()
+assert(#ex == 2 and ex[1].text:find(NS.L["Leinenstoff"] .. " x3", 1, true) and ex[2].text:find("UI-GoldIcon", 1, true))
 print("loot toast ok")

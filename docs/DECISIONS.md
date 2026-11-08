@@ -1913,3 +1913,8 @@ gemeinsamen Bauer), `tests/test_main_sidebar.lua`, `tests/test_style.lua` (Reite
 **Folge:** Nichts wird gesendet oder gespeichert. Gold zeigt die Anzeige nicht.
 
 **Durchgesetzt durch:** `tests/test_loot_toast.lua` (eigener Loot, Questbelohnung mit Anzahl, fremder Loot, Qualität, aus, höchstens 6, Ablauf, Beispiel).
+
+**Nachtrag 2026-11-08 (Nutzer: "die Items und Gold, was ich bekomme, in der Qualitätsfarbe und die Schriftgröße einstellen"):**
+- Die Farbe eines Items ist die Farbe seiner Qualität aus dem Client (`ITEM_QUALITY_COLORS`). Kennt der Client die Qualität nicht, gilt die Farbe des Links, auch in Forevers benannter Form `|cnIQ2:`. Diese Form las 2.64.0 nicht, darum standen die Namen weiß.
+- Gold: Wächst die Geldbörse (`PLAYER_MONEY` gegen den letzten Stand, der erste Stand nach dem Einloggen wird nur gemerkt), steht "+1g 2s 3c" da. Die Zahlen stehen in der Farbe ihres Metalls, dazu die Münzsymbole des Clients. Abschaltbar mit `ui.lootToastMoney` (an). Ausgeben zeigt nichts.
+- Schriftgröße: `ui.lootToastSize` (10 bis 32, Standard 16). Symbol und Zeilenhöhe wachsen mit, auch für gerade gezeigte Zeilen.

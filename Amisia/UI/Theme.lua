@@ -381,11 +381,13 @@ T.DJOURNAL = {
 }
 
 -- The loot toast (F-152, D-79): its lines W wide in a holder H high, CENTER of the screen moved by X, Y
--- (left of and above the character), each LINE_H high, SPACE apart: the item's icon ICON square, the
--- text GAP right of it in FONT; shown SHOW seconds, in over FADE_IN, out over the last FADE_OUT, risen
--- RISE px by then; at most MAX at once.
+-- (left of and above the character); the text in FONT at the set size (ui.lootToastSize, SIZE by
+-- default, SIZE_MIN to SIZE_MAX), the icon that size + ICON_PAD square, GAP right of it the text, a
+-- line that size + LINE_PAD high, SPACE apart; shown SHOW seconds, in over FADE_IN, out over the last
+-- FADE_OUT, risen RISE px by then; at most MAX at once.
 T.LOOTTOAST = {
-    W = 320, H = 200, X = -120, Y = 110, LINE_H = 22, SPACE = 2, ICON = 20, GAP = 4, FONT = "GameFontNormalLarge",
+    W = 360, H = 240, X = -120, Y = 110, SPACE = 2, GAP = 4, FONT = "GameFontNormalLarge",
+    SIZE = 16, SIZE_MIN = 10, SIZE_MAX = 32, LINE_PAD = 6, ICON_PAD = 4,
     SHOW = 3, FADE_IN = 0.2, FADE_OUT = 0.8, RISE = 30, MAX = 6,
 }
 

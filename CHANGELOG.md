@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(ui): the "+Item" display shows money too, in the items' quality colours, with its own font size (F-152)
+
+  Item names now always take their quality colour (in 2.64.0 they stayed white on Forever). Money you
+  get shows as "+1g 2s 3c" with the coins in gold, silver and copper. Settings, Interface: "Show money
+  you get" and "Display font size" (10 to 32).
+
 - feat(prof): professions overview first, four cards a row and the nearest trainers (F-151)
 
   The Professions tab now opens on the overview the first time in a session, even when a profession
