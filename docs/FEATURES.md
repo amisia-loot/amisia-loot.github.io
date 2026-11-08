@@ -52,37 +52,36 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-08-hub-reiter.md, Schritt 3; wartet auf ein Foto des Reiters Armory.
 
 ### F-148 Dungeons & Raids als Tabelle mit Stufenbereichen
-- Version: -
-- Status: geplant
+- Version: 2.63.0
+- Status: gebaut
 - Prüfung: Wenn du "Dungeons" öffnest, dann siehst du eine Tabelle mit Dungeon, Stufe, Gebiet, Zone, Schlüssel, Quests und Aktionen, gruppiert nach Stufenbereichen; ein Klick auf einen Spaltenkopf sortiert.
 - Prüfung: Wenn du links auf einen Stufenbereich klickst, dann springt die Tabelle dorthin.
 - Prüfung: Wenn du auf das Kartensymbol einer Zeile klickst, dann wird ein Wegpunkt zum Eingang gesetzt; das Wappen zeigt Allianz, Horde oder umkämpft.
 - Notiz: Spec docs/specs/2026-11-08-hub-reiter.md, Schritt 2; D-74. Ersetzt die Kacheln von F-143.
 
 ### F-147 Hub: Bildkopf, Reiter oben, Leiste je Reiter, Fußzeile
-- Version: -
-- Status: geplant
+- Version: 2.63.0
+- Status: gebaut
 - Prüfung: Wenn du /amisia öffnest, dann stehen oben das Logo, "Amisia" und ein Streifen eines Ladebilds, rechts Suchfeld, Feedback, Minimieren und X, darunter die Reiter Ausrüstung, Dungeons & Raids, Berufe, Talente, Raid, Gilde und das Zahnrad.
 - Prüfung: Wenn du einen Reiter klickst, dann zeigt die linke Leiste oben dessen Symbol und Namen und nur seine Seiten, und seine zuletzt gewählte Seite öffnet sich.
 - Prüfung: Wenn du unten links auf den Aufnahmezustand klickst, dann öffnet sich das Menü mit Aufnahme und Ansicht; rechts unten stehen Ansicht und Version.
 - Notiz: Spec docs/specs/2026-11-08-hub-reiter.md, Schritt 1; D-73. Ersetzt die Leiste mit allen Gruppen von F-145.
 
 ### F-146 Dungeon- und Raid-Journal nach dem Vorbild: Filter, Reiter, Lauf, Karte
-- Version: -
-- Status: geplant
+- Version: 2.63.0
+- Status: gebaut
 - Prüfung: Wenn du eine Instanz betrittst, dann öffnet die Seite Dungeons bzw. Raids deren Detailseite, und ein Boss-Kill setzt den Haken und zählt "x/y Bosse" hoch.
-- Prüfung: Wenn du auf der Startseite suchst oder Passend/Quests wählst, dann bleiben nur passende Kacheln.
+- Prüfung: Wenn du auf der Startseite suchst oder Passend/Quests wählst, dann bleiben nur passende Zeilen.
 - Prüfung: Wenn ein Teil aus deiner Wunschliste fällt, dann kommt eine Meldung mit Ton.
 - Prüfung: Wenn der Client eine Karte für die Instanz hat, dann zeigt der Reiter Karte sie mit Ebenen und Zoom.
 - Notiz: Spec docs/specs/2026-11-07-hauptfenster-journal.md, Schritte 3 bis 5.
 
 ### F-145 Hauptfenster nach dem Vorbild: Kopf mit Logo, Symbolzeilen, Breite, Minimieren
-- Version: -
-- Status: geplant
-- Prüfung: Wenn das Fenster offen ist, dann zeigt die Seitenleiste oben Logo und Version und jede Gruppe als goldene Überschrift mit ihren Seiten als Zeilen mit Symbol.
+- Version: 2.63.0
+- Status: gebaut
 - Prüfung: Wenn du am Griff unten rechts ziehst, dann ändern sich Breite und Höhe; nach einem /reload bleibt die Größe, und Listenseiten nutzen die Breite.
 - Prüfung: Wenn du auf Minimieren klickst, dann bleibt nur eine kleine Leiste; ein Klick darauf öffnet das Fenster an derselben Stelle wieder.
-- Notiz: Spec docs/specs/2026-11-07-hauptfenster-journal.md, Schritte 1 und 2.
+- Notiz: Spec docs/specs/2026-11-07-hauptfenster-journal.md, Schritte 1 und 2. Die Leiste mit allen Gruppen (Schritt 1) ersetzt F-147 schon in derselben Version.
 
 ### F-144 Aufklappbare Bosszeilen mit Beutesymbolen
 - Version: 2.62.0
@@ -101,6 +100,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du einen Dungeon über die Suche oder seinen Eingang auf der Weltkarte öffnest, dann landest du direkt auf seiner Detailseite; ein Raid ebenso auf der Seite Raids, deren Kacheln Größe, Passung und deine Raid-ID zeigen.
 - Prüfung: Wenn du das Fenster am Griff höher ziehst, dann zeigt die Startseite mehr Reihen Kacheln.
 - Notiz: Schritt 3 von 4 der UI-Überholung (Nutzer 2026-11-07: "mach die nächsten schritte"); D-69. Ohne Spec: nur Aussehen und Ablauf der zwei Seiten (docs/specs/README). Die Ansicht (Start oder Detail) merkt sich Amisia nur bis zum /reload.
+- Notiz: Die Kacheln ersetzt in 2.63.0 die Tabelle von F-148 (D-74); die Detailseite bleibt.
 
 ### F-142 Seitenkopf: Name, eine Zeile und goldene Linie über jeder Seite
 - Version: 2.62.0
