@@ -51,35 +51,64 @@ assert(nextE and nextE.key == "thanes")
 assert(D.next:GetText() == "Nächster Dungeon: Hall of Thanes · Level 13-18", D.next:GetText())
 assert(D.why:GetText() == nextE.why, D.why:GetText())
 
--- the start view (F-143): one card per dungeon, the recommended one chosen and tagged at first
-assert(D.grid:IsShown() and not D.art:IsShown() and not D.detail:IsShown() and not D.back:IsShown(), "the cards first")
+-- the start view (F-148): one row per dungeon, the recommended one chosen and tagged at first
+assert(D.table:IsShown() and D.table.head:IsShown() and not D.art:IsShown() and not D.detail:IsShown() and not D.back:IsShown(), "the table first")
 local function cardsOf()
     local out = {}
-    for _, c in ipairs(D.grid:Cards()) do out[c.item.key] = c end
+    for _, c in ipairs(D.table:Rows()) do out[c.item.key] = c end
     return out
 end
 local rows = cardsOf()
 local r = rows.thanes
-assert(r and plain(r.name:GetText()) == "Hall of Thanes" and plain(r.line1:GetText()) == "13-18 · passt", "the thanes card")
-assert(r.chosen and r.tag:IsShown() and not r.dim, "chosen and recommended")
+assert(r and plain(r.name:GetText()) == "Hall of Thanes" and plain(r.cells.level:GetText()) == "13-18", "the thanes row")
+assert(r.cells.level:GetText():find("|cffffff00", 1, true), "fitting: yellow")
+assert(r.artFrame.edges[1].color[4] == 0.95 and has(r.sub:GetText(), "Empfohlen") and r.name.textColor[1] > 0.6, "chosen and recommended")
 local runText = ("%+d"):format(math.floor(nextE.perRun + 0.5))
-assert(plain(r.line2:GetText()) == ("3 Upgrades · %s je Lauf · Wert %d"):format(runText, math.floor(nextE.value + 0.5)), r.line2:GetText())
+assert(has(plain(r.sub:GetText()), ("3 Upgrades · %s je Lauf · Wert %d"):format(runText, math.floor(nextE.value + 0.5))), r.sub:GetText())
 assert(nextE.once > 0, "the quests count into the value")
 r:GetScript("OnEnter")(r)
 r:GetScript("OnLeave")(r)
-assert(rows.deadmines and plain(rows.deadmines.line1:GetText()) == "~16-18 · passt" and not rows.deadmines.chosen
-    and not rows.deadmines.tag:IsShown(), "the client's level, the high end from the items")
+assert(rows.deadmines and plain(rows.deadmines.cells.level:GetText()) == "~16-18" and rows.deadmines.artFrame.edges[1].color[4] < 0.9
+    and not has(rows.deadmines.sub:GetText(), "Empfohlen"), "the client's level, the high end from the items")
 -- a dungeon above the level (Blackfathom Deeps at the client's level 22, no items in this data set),
--- further down the grid: scrolled to, dim, no values
-local bfd = D.grid:CardOf("bfd")
-assert(bfd and plain(bfd.line1:GetText()) == "~22 · zu hoch" and bfd.line2:GetText() == "" and bfd.dim
-    and bfd.tex.desaturated == true and bfd.name.textColor[1] < 0.6, "not computed, dim")
-D.grid.offset = 0
-D.grid:Redraw()
+-- further down the table: scrolled to, dim, no values, red
+local bfd = D.table:RowOf("bfd")
+assert(bfd and plain(bfd.cells.level:GetText()) == "~22" and bfd.cells.level:GetText():find("|cffff2020", 1, true)
+    and not has(bfd.sub:GetText(), "Upgrades") and bfd.art.desaturated == true and bfd.name.textColor[1] < 0.6, "not computed, dim")
+-- the level ranges as group rows, foldable; the side bar lists them (D-74)
+local groups = {}
+for _, g in ipairs(D.table.groups) do groups[#groups + 1] = g.label .. "=" .. g.count end
+assert(#groups >= 2 and groups[1]:match("^Stufe 10 %- 19="), table.concat(groups, ","))
+local marks = {}
+for _, e in ipairs(AmisiaFrame.nav.items) do if e.kind == "jump" then marks[#marks + 1] = e.label end end
+assert(#marks == #groups and marks[1] == D.table.groups[1].label, "the side bar's marks: " .. table.concat(marks, ","))
+D.table.offset = 0
+D.table:Redraw()
+local g1 = D.table.rows[1]
+assert(g1.item.group and g1.groupName:IsShown() and not g1.name:IsShown() and g1.sign.texture == "Interface\\Buttons\\UI-MinusButton-Up", "a group row")
+local before = #D.table.items
+g1:Click()
+assert(#D.table.items < before and D.table.rows[1].sign.texture == "Interface\\Buttons\\UI-PlusButton-Up", "folded")
+D.table.rows[1]:Click()
+assert(#D.table.items == before, "unfolded")
+-- a mark of the side bar shows its range at the top
+local last = D.table.groups[#D.table.groups].key
+for _, e in ipairs(AmisiaFrame.navOrder) do
+    if e.entry.kind == "jump" and e.entry.key == last then e.button:Click() end
+end
+assert(D.table.items[D.table.offset + 1].group == last or D.table.offset == #D.table.items - D.table.rowCount, "jumped")
+-- a click on a column head sorts inside the ranges; again: the other way
+D.table.heads.name:Click()
+assert(AmisiaDB.settings.bis.dcol == "name" and not AmisiaDB.settings.bis.dcolDesc and D.table.heads.name.label:GetText():find("Arrow-Up", 1, true))
+D.table.heads.name:Click()
+assert(AmisiaDB.settings.bis.dcolDesc == true and D.table.heads.name.label:GetText():find("Arrow-Down", 1, true))
+AmisiaDB.settings.bis.dcol, AmisiaDB.settings.bis.dcolDesc = nil, nil
+D.table.offset = 0
+NS.Refresh()
 rows = cardsOf()
--- a click on a card opens its detail view
+-- a click on a row opens its detail view
 rows.thanes:Click()
-assert(D.detail:IsShown() and D.art:IsShown() and D.back:IsShown() and not D.grid:IsShown() and not D.sorts.level:IsShown(), "the detail")
+assert(D.detail:IsShown() and D.art:IsShown() and D.back:IsShown() and not D.table:IsShown() and not D.sorts.level:IsShown(), "the detail")
 
 -- the chosen dungeon: header, bosses with their items, quests
 assert(D.header.ButtonText:GetText() == "Bosse", D.header.ButtonText:GetText())
@@ -121,11 +150,12 @@ assert(not D.way:IsEnabled(), "no entrance known")
 STUB.maps[1436] = { name = "Westfall", mapType = 3 }
 NS.Map._reset()
 D.back:Click()
-assert(D.grid:IsShown() and not D.detail:IsShown(), "back to the cards")
+assert(D.table:IsShown() and not D.detail:IsShown(), "back to the table")
 rows = cardsOf()
 rows.deadmines:Click()
 rows = cardsOf()
-assert(AmisiaDB.settings.bis.dungeon == "deadmines" and rows.deadmines.chosen and not rows.thanes.chosen)
+assert(AmisiaDB.settings.bis.dungeon == "deadmines" and rows.deadmines.artFrame.edges[1].color[4] == 0.95
+    and rows.thanes.artFrame.edges[1].color[4] < 0.9)
 assert(D.header.ButtonText:GetText() == "Bosse" and D.way:IsEnabled())
 D.way:Click()
 assert(STUB.waypoint.point and STUB.waypoint.point.uiMapID == 1436, "the waypoint to the entrance")
@@ -165,18 +195,18 @@ for _, view in ipairs({ "officer", "raider" }) do
     for _, row in ipairs(D.detail.rows) do
         if row.item and row.item.kind ~= "quest" then Lay.fits(row.rate) end
     end
-    -- the start view: the order tabs, the recommendation, the cards
+    -- the start view: the order tabs, the recommendation, the column heads, the table
     D.back:Click()
     Lay.row(view .. " head", D.spec, D.sorts.level, D.sorts.value, D.sorts.chain)
-    local gr = D.grid.rows[1]
-    Lay.row(view .. " card row", gr.cards[1], gr.cards[2], gr.cards[3])
-    Lay.row(view .. " grid", D.grid, D.grid.bar)
-    Lay.inside(view .. " grid bar", D.grid.bar)
-    Lay.column(view .. " body", D.spec, D.next, D.why, D.grid)
-    local _, right = Lay.span(gr.cards[3])
-    assert(right <= 590, "three cards in the list's width: " .. right)
+    Lay.row(view .. " table", D.table, D.table.bar)
+    Lay.inside(view .. " table bar", D.table.bar)
+    Lay.column(view .. " body", D.spec, D.next, D.why, D.table.head, D.table)
     Lay.fits(D.next); Lay.fits(D.why)
-    for _, c in ipairs(D.grid:Cards()) do Lay.fits(c.line1); Lay.fits(c.line2) end
+    for _, c in ipairs(D.table:Rows()) do
+        Lay.row(view .. " cells", c.art, c.cells.level, c.cells.zone, c.cells.keys, c.cells.quests)
+        local _, right = Lay.span(c.cells.act)
+        assert(right <= 590, "the action in the list's width: " .. right)
+    end
     rows = cardsOf()
     rows.thanes:Click()
 end
@@ -190,7 +220,7 @@ assert(f.src.Q:IsShown() and not D:IsShown() and f.goals:IsShown())
 local facts = NS.DUNGEON_FACTS
 NS.DUNGEON_FACTS = nil
 NS.ShowGear("dungeons")
-assert(D.next:GetText() == "Keine Dungeon-Daten." and #D.grid.entries == 0 and #D.detail.items == 0 and not D.way:IsEnabled())
-assert(D.grid:IsShown() and not D.detail:IsShown(), "no dungeon: the (empty) start")
+assert(D.next:GetText() == "Keine Dungeon-Daten." and #D.table.entries == 0 and #D.detail.items == 0 and not D.way:IsEnabled())
+assert(D.table:IsShown() and not D.detail:IsShown(), "no dungeon: the (empty) start")
 NS.DUNGEON_FACTS = facts
 NS.ShowGear("goals")

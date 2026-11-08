@@ -129,11 +129,11 @@ NS.DungeonQuestWaypoint = function(qid, open, what) said = { qid, open, what } r
 A.rows[2]:Click()
 NS.DungeonQuestWaypoint = keepWay
 assert(said and said[1] == 1 and said[2] == true and said[3] == "accept", "the step's waypoint")
--- the card shows the key, grey while it is missing (when the client knows its icon)
+-- the row shows the key in its column, grey while it is missing (when the client knows its icon)
 if C_Item.GetItemIconByID and C_Item.GetItemIconByID(7146) then
     B.back:Click()
-    local card = B.grid:CardOf("thanes")
-    assert(card.badge:IsShown() and card.badge.text:GetText():find(":110:110:110|t", 1, true), tostring(card.badge.text:GetText()))
+    local card = B.table:RowOf("thanes")
+    assert(card.cells.keys:GetText():find(":110:110:110|t", 1, true), tostring(card.cells.keys:GetText()))
     NS.ShowDungeon("thanes")
 end
 -- the key in the bags: green

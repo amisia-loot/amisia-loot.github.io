@@ -54,7 +54,7 @@ assert(D.detail.offset == #D.detail.items - D.detail.rowCount and D.detail.offse
 local rows = setmetatable({}, { __index = function(_, key)
     return { Click = function()
         if D.back:IsShown() then D.back:Click() end
-        D.grid:CardOf(key):Click()
+        D.table:RowOf(key):Click()
     end }
 end })
 rows.lordaeron:Click()

@@ -1,8 +1,8 @@
--- Dungeons page (group Welt): the dungeon planner in two views (F-143). The start: the spec of the
--- gear page in the head row with the order of the cards (by level, the ranking, the chain); the next
--- dungeon with its reason; every dungeon as a card (image, name, level and fit, upgrades, gain per run
--- and value; the recommended one tagged). A click on a card opens the detail: a link back to the
--- cards, the chosen one's image with its boss model, its bosses and upgrades or its quests (one row
+-- Dungeons page (tab Dungeons & Raids): the dungeon planner in two views (F-143). The start: the spec
+-- of the gear page in the head row with the order of the rows (by level, the ranking, the chain); the
+-- next dungeon with its reason; every dungeon as a row of a table by level range (F-148, D-74:
+-- picture, name, level, territory, zone, keys, quests, waypoint). A click on a row opens the detail: a
+-- link back to the table, the chosen one's image with its boss model, its bosses and upgrades or its quests (one row
 -- each: state, level, the quest path's progress "Weg 2/4", start, XP); the waypoints to its entrance
 -- and quest givers and "Alle Questgeber auf der Karte". A click on a quest opens its quest path
 -- (F-135) in place of the list, image and quests: the steps from the first pre-quest to the quest,
@@ -10,7 +10,7 @@
 -- highlighted ("Nächsten Schritt auf der Karte"). The values come from Gear/Dungeons.lua; item texts,
 -- marks, tooltips, clicks, menus and the cache are the gear page's (ns.GearPageKit). The state stays
 -- in settings.bis (dungeon, dsort, dpart); the view and the open quest path only in memory (the first
--- open of a session shows the cards, a /reload starts there again).
+-- open of a session shows the table, a /reload starts there again).
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -1643,197 +1643,365 @@ local function fillRun(B, plan)
 end
 
 ---------------------------------------------------------------------------
--- The start view (F-143, D-69): every dungeon (or raid) as a card, three per row
+-- The start view (F-148, D-74): every dungeon (or raid) as a row of a table, by level range
 ---------------------------------------------------------------------------
 
-local C = T.DCARD
+local DT = T.DTABLE
 local CARD_TEXT = {
     tag = L["Empfohlen"],
     here = L["Hier bist du"],
     values = L["%d Upgrades · %s je Lauf · Wert %d"],
     soon = "|cffffd100",
+    group = L["Stufe %d - %d"],
+    count = L["%d Dungeons"], countRaid = L["%d Raids"], one = L["1 Dungeon"], oneRaid = L["1 Raid"],
+    name = "Dungeon", level = L["Stufe"], side = L["Gebiet"], zone = "Zone", keys = L["Schlüssel"],
+    quests = "Quests", act = L["Aktionen"], size = L["Größe"],
+    way = L["Wegpunkt zum Eingang"], wayTip = L["Setzt das Kartenziel auf den nächsten Eingang."],
 }
 
--- A card of the grid: the image at its top, darkened towards its bottom, the name on its lower
--- left; two lines under it; the tag "Empfohlen" (or "Hier bist du") at the top right, the badge with
--- the run's kills and the open quests at the top left (D-72); a thin gold frame; the hover glow.
--- ctx.pick(e) runs on a click, ctx.tip(card) on the mouse (it reads card.item).
-local function buildGridCard(row, ctx)
-    local c = CreateFrame("Button", nil, row)
-    c:SetSize(C.W, C.H)
-    c.ground = c:CreateTexture(nil, "BACKGROUND", nil, -1)
-    c.ground:SetAllPoints()
-    c.ground:SetColorTexture(C.GROUND[1], C.GROUND[2], C.GROUND[3], C.GROUND[4])
-    -- the image 1 px inside the frame, so its edges stay visible
-    c.tex = c:CreateTexture(nil, "BACKGROUND")
-    c.tex:SetPoint("TOPLEFT", 1, -1)
-    c.tex:SetPoint("TOPRIGHT", -1, -1)
-    c.tex:SetHeight(C.ART_H)
-    c.shade = c:CreateTexture(nil, "BORDER", nil, -1)
-    c.shade:SetAllPoints(c.tex)
-    c.shade:SetColorTexture(0, 0, 0, 1)
-    if c.shade.SetGradient and CreateColor then
-        c.shade:SetGradient("VERTICAL", CreateColor(0, 0, 0, C.SHADE_BOTTOM), CreateColor(0, 0, 0, C.SHADE_TOP))
-    else
-        c.shade:SetAlpha(C.SHADE_ALPHA)
-    end
-    c.edges = W.Border(c, W.GOLD[1], W.GOLD[2], W.GOLD[3], C.EDGE)
-    c.name = W.Text(c, T.FONT.title, C.TEXT_W)
-    c.name:SetPoint("BOTTOMLEFT", c.tex, "BOTTOMLEFT", C.NAME_X - 1, C.NAME_Y)
-    c.line1 = W.Text(c, T.FONT.text, C.TEXT_W)
-    c.line1:SetPoint("TOPLEFT", C.TEXT_X, C.LINE1_Y)
-    c.line2 = W.Text(c, T.FONT.hint, C.TEXT_W)
-    c.line2:SetPoint("TOPLEFT", C.TEXT_X, C.LINE2_Y)
-    c.tag = CreateFrame("Frame", nil, c)
-    c.tag:SetHeight(C.TAG_H)
-    c.tag:SetPoint("TOPRIGHT", C.TAG_X, C.TAG_Y)
-    c.tag.bg = W.Flat(c.tag, C.TAG_BG[1], C.TAG_BG[2], C.TAG_BG[3], C.TAG_BG[4])
-    c.tag.text = W.Text(c.tag, T.FONT.text)
-    c.tag.text:SetPoint("CENTER")
-    c.tag.text:SetText(CARD_TEXT.tag)
-    c.tag.text:SetTextColor(C.TAG_COLOR[1], C.TAG_COLOR[2], C.TAG_COLOR[3])
-    c.tag:SetWidth(c.tag.text:GetStringWidth() + 2 * C.TAG_PAD)
-    c.tag:Hide()
-    c.badge = CreateFrame("Frame", nil, c)
-    c.badge:SetHeight(C.TAG_H)
-    c.badge:SetPoint("TOPLEFT", -C.TAG_X, C.TAG_Y)
-    c.badge.bg = W.Flat(c.badge, C.TAG_BG[1], C.TAG_BG[2], C.TAG_BG[3], C.TAG_BG[4])
-    c.badge.text = W.Text(c.badge, T.FONT.text)
-    c.badge.text:SetPoint("CENTER")
-    c.badge:Hide()
-    c.glow = c:CreateTexture(nil, "HIGHLIGHT")
-    c.glow:SetAllPoints()
-    c.glow:SetColorTexture(1, 1, 1, C.GLOW)
-    c:SetScript("OnClick", function(self) if self.item then ctx.pick(self.item) end end)
-    c:SetScript("OnEnter", function(self) ctx.tip(self) end)
-    c:SetScript("OnLeave", hideTip)
-    return c
+-- The territory of the zones (uiMapID) the factions hold; every other zone is contested. The client
+-- tells only the zone one stands in (C_PvP), so the starting zones and capitals are listed here.
+local ZONE_SIDE = {
+    [1429] = "A", [1426] = "A", [1438] = "A", [1436] = "A", [1432] = "A", [1439] = "A",
+    [1453] = "A", [1455] = "A", [1457] = "A",
+    [1411] = "H", [1412] = "H", [1420] = "H", [1413] = "H", [1421] = "H",
+    [1454] = "H", [1456] = "H", [1458] = "H",
+}
+-- the crests of the client's target frame (the faction's part of the 64 px texture) and the crossed
+-- swords of its world state frame for a contested zone
+local SIDE_ART = {
+    A = { file = "Interface\\TargetingFrame\\UI-PVP-Alliance", coords = { 0, 0.62, 0, 0.62 } },
+    H = { file = "Interface\\TargetingFrame\\UI-PVP-Horde", coords = { 0, 0.62, 0, 0.62 } },
+    C = { file = "Interface\\WorldStateFrame\\CombatSwords", coords = { 0, 0.5, 0, 0.5 } },
+}
+local MAP_ART = "Interface\\WorldMap\\UI-World-Icon"
+-- the sorted column's arrow after its name
+local SORT_UP, SORT_DOWN = " |TInterface\\Buttons\\Arrow-Up-Up:10:10:0:-2|t", " |TInterface\\Buttons\\Arrow-Down-Up:10:10:0:2|t"
+local function hasFile(path) return not (GetFileIDFromPath and GetFileIDFromPath(path) == nil) end
+
+-- The zone of an instance's entrance (uiMapID and name) as the map data knows it; kept per key once known.
+local zoneOf = {}
+local function instanceZone(key)
+    local z = zoneOf[key]
+    if z then return z.map, z.name end
+    local point = ns.DungeonEntrance and ns.DungeonEntrance(key)
+    if not point or not point.map then return nil, nil end
+    z = { map = point.map, name = ns.Gear.ZoneName(point.map) or "" }
+    zoneOf[key] = z
+    return z.map, z.name
+end
+-- "A", "H" or "C" (contested); nil without a known entrance.
+local function instanceSide(key)
+    local map = instanceZone(key)
+    if not map then return nil end
+    return ZONE_SIDE[map] or "C"
 end
 
--- Fills card c with entry e: the image (none without art), ctx.texts(c, e) the name and the lines
--- (it answers whether the card is dim: a desaturated image, a grey name), the frame brighter on the
--- chosen one, the tag on the recommended one.
-local function fillGridCard(c, e, ctx)
+-- The level text in the quest log's colours: red too high, orange soon, yellow fitting, green easy,
+-- grey not yet open.
+local FIT_COLOR = { high = "|cffff2020", soon = "|cffff8040", fit = "|cffffff00", easy = "|cff40c040", later = GREY, unknown = GREY }
+local function levelText(e)
+    local range = ns.Dungeons.RangeText(e)
+    if range == "" then return GREY .. "-|r" end
+    return (FIT_COLOR[e.fit] or GREY) .. range .. "|r"
+end
+
+-- The key icons of an instance (up to two, grey while the character lacks one), or "".
+local function keyIcons(key)
+    local keys = JP.Keys(key)
+    local parts = {}
+    for i = 1, math.min(2, keys and #keys or 0) do
+        local k = keys[i]
+        local icon = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(k.item)
+        if icon then
+            parts[#parts + 1] = JP.HasItem(k.item) and ("|T%s:%d:%d|t"):format(icon, DT.KEY, DT.KEY)
+                or ("|T%s:%d:%d:0:0:64:64:4:60:4:60:110:110:110|t"):format(icon, DT.KEY, DT.KEY)
+        end
+    end
+    return table.concat(parts, " ")
+end
+
+-- The column defs of a table (ctx.cols: { key, label, kind = "text"|"side"|"keys"|"act" }) placed at
+-- width w: each at its x and width from the right end, the name between the picture and them.
+local function placeCols(cols, w)
+    local x = w
+    for i = #cols, 1, -1 do
+        local c = cols[i]
+        c.w = DT.WIDTH[c.key] or 50
+        x = x - c.w
+        c.x = x
+        x = x - DT.GAP
+    end
+    return math.max(40, x - DT.NAME_X)
+end
+
+-- A row of the table: an instance (its picture, name and line, the columns' cells) or a level
+-- range's group row (sign, name, count). ctx.pick(e) on a click, ctx.tip(row) on the mouse.
+local function buildTableRow(r, ctx)
+    r.art = r:CreateTexture(nil, "ARTWORK")
+    r.art:SetSize(DT.ART_W, DT.ART_H)
+    r.art:SetPoint("LEFT", DT.ART_X, 0)
+    r.artFrame = CreateFrame("Frame", nil, r)
+    r.artFrame:SetAllPoints(r.art)
+    r.artFrame.edges = W.Border(r.artFrame, W.GOLD[1], W.GOLD[2], W.GOLD[3], DT.EDGE)
+    r.name = W.Text(r, T.FONT.title)
+    r.name:SetPoint("LEFT", DT.NAME_X, DT.NAME_Y)
+    r.sub = W.Text(r, T.FONT.hint)
+    r.sub:SetPoint("LEFT", DT.NAME_X, DT.SUB_Y)
+    r.cells = {}
+    for _, c in ipairs(ctx.cols) do
+        local cell
+        if c.kind == "side" then
+            cell = r:CreateTexture(nil, "ARTWORK")
+            cell:SetSize(DT.SIDE, DT.SIDE)
+        elseif c.kind == "act" then
+            cell = W.IconButton(r, DT.ACT, hasFile(MAP_ART) and { file = MAP_ART } or {}, function(self)
+                if self:GetParent().item then ctx.action(self:GetParent().item) end
+            end, "»")
+            W.Tooltip(cell, CARD_TEXT.way, CARD_TEXT.wayTip)
+        else
+            cell = W.Text(r, c.kind == "keys" and T.FONT.text or T.FONT.body)
+            cell:SetJustifyH(c.justify or "CENTER")
+        end
+        r.cells[c.key] = cell
+    end
+    -- the group row's parts
+    r.groupBg = W.Flat(r, DT.GROUP_BG[1], DT.GROUP_BG[2], DT.GROUP_BG[3], DT.GROUP_BG[4], "BACKGROUND")
+    r.groupEdges = W.Border(r, W.GOLD[1], W.GOLD[2], W.GOLD[3], DT.EDGE)
+    r.sign = r:CreateTexture(nil, "ARTWORK")
+    r.sign:SetSize(DT.SIGN, DT.SIGN)
+    r.sign:SetPoint("LEFT", DT.SIGN_X, 0)
+    r.groupName = W.Text(r, T.FONT.title)
+    r.groupName:SetPoint("LEFT", DT.GROUP_X, 0)
+    r.groupCount = W.Text(r, T.FONT.text)
+    r.groupCount:SetPoint("RIGHT", -DT.GAP - 4, 0)
+    r.groupCount:SetJustifyH("RIGHT")
+    function r:Place(cols, nameW)
+        self.name:SetWidth(nameW)
+        self.sub:SetWidth(nameW)
+        for _, c in ipairs(cols) do
+            local cell = self.cells[c.key]
+            cell:ClearAllPoints()
+            if c.kind == "side" or c.kind == "act" then
+                cell:SetPoint("CENTER", self, "LEFT", c.x + c.w / 2, 0)
+            else
+                cell:SetWidth(c.w)
+                cell:SetPoint("LEFT", c.x, 0)
+            end
+        end
+    end
+    r:SetScript("OnClick", function(self)
+        local it = self.item
+        if not it then return end
+        if it.group then ctx.toggle(it.group) else ctx.pick(it) end
+    end)
+    r:SetScript("OnEnter", function(self) if self.item and not self.item.group then ctx.tip(self) end end)
+    r:SetScript("OnLeave", hideTip)
+end
+
+local function setSide(tex, side)
+    local art = side and SIDE_ART[side]
+    if art and hasFile(art.file) then
+        tex:SetTexture(art.file)
+        tex:SetTexCoord(unpack(art.coords))
+        tex:Show()
+    else
+        tex:Hide()
+    end
+end
+
+-- Fills row r with item it: a group row, or an instance with ctx.cell(e, key) the text of a text cell
+-- and ctx.texts(e) its name, its line and whether it is dim (a desaturated picture, a grey name).
+local function fillTableRow(r, it, ctx)
+    local group = it.group ~= nil
+    for _, f in ipairs({ r.groupBg, r.sign, r.groupName, r.groupCount }) do f:SetShown(group) end
+    for _, e in ipairs(r.groupEdges) do e:SetShown(group) end
+    r.bg:SetShown(not group)
+    r.art:SetShown(false)
+    r.artFrame:SetShown(not group)
+    for _, f in ipairs({ r.name, r.sub }) do f:SetShown(not group) end
+    for _, cell in pairs(r.cells) do cell:SetShown(not group) end
+    if group then
+        r.sign:SetTexture(it.open and "Interface\\Buttons\\UI-MinusButton-Up" or "Interface\\Buttons\\UI-PlusButton-Up")
+        r.groupName:SetText(it.label)
+        r.groupCount:SetText(it.countText)
+        return
+    end
+    local e = it
     local Dn = ns.Dungeons
     local fid, kind = Dn.Art(e.key)
     if fid then
-        c.tex:SetTexture(fid)
-        c.tex:SetTexCoord(Dn.ArtCoords(kind, C.W - 2, C.ART_H))
-        c.tex:Show()
-        c.shade:Show()
-    else
-        c.tex:Hide()
-        c.shade:Hide()
+        r.art:SetTexture(fid)
+        r.art:SetTexCoord(Dn.ArtCoords(kind, DT.ART_W, DT.ART_H))
+        r.art:Show()
     end
-    local dim = ctx.texts(c, e) and true or false
-    c.dim = dim
-    c.tex:SetDesaturated(dim)
-    if dim then c.name:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3]) else c.name:SetTextColor(W.GOLD[1], W.GOLD[2], W.GOLD[3]) end
-    c.chosen = ctx.chosen == e.key
-    -- the instance the character stands in: the full gold frame and "Hier bist du" (D-72)
-    c.here = ctx.here ~= nil and ctx.here == e.key
-    W.SetBorderColor(c.edges, W.GOLD[1], W.GOLD[2], W.GOLD[3], c.here and 1 or c.chosen and C.CHOSEN or C.EDGE)
-    if c.here then
-        c.tag.text:SetText(CARD_TEXT.here)
-        c.tag.text:SetTextColor(W.GOLD[1], W.GOLD[2], W.GOLD[3])
-    else
-        c.tag.text:SetText(CARD_TEXT.tag)
-        c.tag.text:SetTextColor(C.TAG_COLOR[1], C.TAG_COLOR[2], C.TAG_COLOR[3])
-    end
-    c.tag:SetWidth(c.tag.text:GetStringWidth() + 2 * C.TAG_PAD)
-    c.tag:SetShown(c.here or ctx.recommended == e.key)
-    -- the badge: the run's kills and the open quests (ctx.badge answers its text, or nil)
-    local badge = ctx.badge and ctx.badge(e)
-    if badge and badge ~= "" then
-        c.badge.text:SetText(badge)
-        c.badge:SetWidth(c.badge.text:GetStringWidth() + 2 * C.TAG_PAD)
-        c.badge:Show()
-    else
-        c.badge:Hide()
+    local name, sub, dim = ctx.texts(e)
+    r.name:SetText(name)
+    r.sub:SetText(sub or "")
+    r.art:SetDesaturated(dim and true or false)
+    if dim then r.name:SetTextColor(0.56, 0.53, 0.64) else r.name:SetTextColor(W.GOLD[1], W.GOLD[2], W.GOLD[3]) end
+    -- the instance the character stands in and the chosen one: the brighter frame (D-72)
+    local here = ctx.here ~= nil and ctx.here == e.key
+    local a = here and 1 or ctx.chosen == e.key and 0.95 or DT.EDGE
+    W.SetBorderColor(r.artFrame.edges, W.GOLD[1], W.GOLD[2], W.GOLD[3], a)
+    for _, c in ipairs(ctx.cols) do
+        local cell = r.cells[c.key]
+        if c.kind == "side" then
+            setSide(cell, instanceSide(e.key))
+        elseif c.kind == "act" then
+            cell:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
+        elseif c.kind == "keys" then
+            local t = keyIcons(e.key)
+            cell:SetText(t ~= "" and t or (GREY .. "-|r"))
+        else
+            cell:SetText(ctx.cell(e, c.key) or "")
+        end
     end
 end
 
--- How many cards a row of the grid holds: C.COLS at the page's own width, more as the window is
--- dragged wider (D-71), at most C.MAX_COLS.
-local function gridCols()
-    local room = (T.PAGE_W_NOW or T.PAGE_W) - T.SCROLL_ROOM + C.GAP
-    return math.max(C.COLS, math.min(C.MAX_COLS, math.floor(room / (C.W + C.GAP))))
-end
-
--- The grid on page B from top down to the page's bottom (it follows the window's height, W.FillTo,
--- and its width, W.FollowWidth): a W.List whose rows hold up to gridCols() cards (the row's own
--- shade and hover hidden; C.MAX_COLS built per row). ctx: texts,
--- tip, pick (see buildGridCard, fillGridCard). grid:SetEntries(list, chosen, recommended) shows them,
--- grid:CardOf(key) scrolls that card into view and returns it, grid:Cards() the cards shown.
-local function buildGrid(B, top, ctx)
-    local grid = B:List(C.MIN_ROWS, C.H + C.GAP, function(r)
-        r.bg:Hide()
-        r.hover:SetAlpha(0)
-        r.hover:Hide()
-        r:EnableMouse(false)
-        r.cards = {}
-        for i = 1, C.MAX_COLS do
-            local c = buildGridCard(r, ctx)
-            c:SetPoint("TOPLEFT", (i - 1) * (C.W + C.GAP), 0)
-            r.cards[i] = c
+-- The table on page B from top down to the page's bottom (it follows the window's height, W.FillTo,
+-- and its width, W.FollowWidth): the sortable column heads, then a W.List of the group rows and the
+-- instances. ctx: cols, texts, cell, tip, pick, action, group(e) -> key, label, order; sortField (the
+-- settings.bis key of the column, its direction in sortField .. "Desc"), sorts[key](e) -> value,
+-- grouped() whether the rows go by group (else flat in the given order).
+-- tbl:SetEntries(list, chosen, recommended) shows them, tbl:RowOf(key) scrolls that instance into
+-- view and returns its row, tbl:JumpTo(group) shows that group at the top, tbl.groups the groups
+-- shown ({ key, label, count }), tbl:Rows() the instance rows shown.
+local function buildTable(B, top, ctx)
+    ctx.shut = ctx.shut or {}
+    local tbl
+    local heads = { { "name", 0, 100, ctx.nameLabel or CARD_TEXT.name } }
+    for _, c in ipairs(ctx.cols) do heads[#heads + 1] = { c.key, 0, 50, c.label, justify = c.kind ~= "keys" and "CENTER" or nil } end
+    local function sortBy(key)
+        if not ctx.sorts[key] then return end
+        local st = state()
+        if ctx.onSort then ctx.onSort() end
+        if st[ctx.sortField] == key then
+            st[ctx.sortField .. "Desc"] = not st[ctx.sortField .. "Desc"] or nil
+        else
+            st[ctx.sortField], st[ctx.sortField .. "Desc"] = key, nil
         end
-    end, function(r, chunk)
-        for i, c in ipairs(r.cards) do
-            local e = chunk[i]
-            c.item = e
-            if e then
-                fillGridCard(c, e, ctx)
-                c:Show()
-            else
-                c:Hide()
-            end
+        ns.Refresh()
+    end
+    local headFrame, headCells = B:Columns(heads, { top = top, sort = sortBy })
+    tbl = B:List(DT.MIN_ROWS, DT.ROW_H, function(r) buildTableRow(r, ctx) end, function(r, it)
+        fillTableRow(r, it, ctx)
+        r:Place(ctx.cols, tbl.nameW)
+    end, { fill = true })
+    tbl.head, tbl.heads, tbl.ctx = headFrame, headCells, ctx
+    tbl.entries, tbl.groups = {}, {}
+    -- the columns at the list's width now
+    local function layout()
+        local w = (T.PAGE_W_NOW or T.PAGE_W) - T.SCROLL_ROOM
+        tbl.nameW = placeCols(ctx.cols, w)
+        local h = headCells.name
+        h:SetWidth(DT.NAME_X + tbl.nameW)
+        if h.label then h.label:SetWidth(DT.NAME_X + tbl.nameW) end
+        for _, c in ipairs(ctx.cols) do
+            local b = headCells[c.key]
+            b:ClearAllPoints()
+            b:SetPoint("LEFT", c.x, 0)
+            b:SetWidth(c.w)
+            if b.label then b.label:SetWidth(c.w) end
         end
-    end, { top = top, fill = true })
-    grid.ctx = ctx
-    grid.entries = {}
-    grid.cols = gridCols()
-    function grid:SetEntries(list, chosen, recommended)
+        for i = 1, #tbl.rows do tbl.rows[i]:Place(ctx.cols, tbl.nameW) end
+    end
+    layout()
+    W.FollowWidth(tbl, function() layout() end)
+    -- the sorted column's head white with its arrow (none while the rows keep another order)
+    local function markHeads(key, desc)
+        for k, b in pairs(headCells) do
+            local label = k == "name" and (ctx.nameLabel or CARD_TEXT.name) or nil
+            for _, c in ipairs(heads) do if c[1] == k then label = c[4] end end
+            b.label:SetText(label .. (k == key and (desc and SORT_DOWN or SORT_UP) or ""))
+        end
+        W.MarkSortHead(headCells, key)
+    end
+    function ctx.toggle(g)
+        ctx.shut[g] = not ctx.shut[g] or nil
+        tbl:SetEntries(tbl.entries, ctx.chosen, ctx.recommended)
+    end
+    function tbl:SetEntries(list, chosen, recommended)
         ctx.chosen, ctx.recommended = chosen, recommended
         self.entries = list or {}
-        self.cols = gridCols()
-        local chunks = {}
-        for i, e in ipairs(self.entries) do
-            local k = math.floor((i - 1) / self.cols) + 1
-            chunks[k] = chunks[k] or {}
-            chunks[k][#chunks[k] + 1] = e
+        local st = state()
+        local key = ctx.grouped() and st[ctx.sortField] or nil
+        if key and not ctx.sorts[key] then key = nil end
+        local desc = st[ctx.sortField .. "Desc"] and true or false
+        markHeads(key, desc)
+        local items, groups = {}, {}
+        if not ctx.grouped() then
+            for _, e in ipairs(self.entries) do items[#items + 1] = e end
+        else
+            local byKey, order = {}, {}
+            for i, e in ipairs(self.entries) do
+                local gk, label, rank = ctx.group(e)
+                local g = byKey[gk]
+                if not g then
+                    g = { key = gk, label = label, rank = rank or 0, list = {} }
+                    byKey[gk] = g
+                    order[#order + 1] = g
+                end
+                g.list[#g.list + 1] = { e = e, i = i }
+            end
+            table.sort(order, function(a, b) return a.rank < b.rank end)
+            local f = key and ctx.sorts[key]
+            for _, g in ipairs(order) do
+                if f then
+                    table.sort(g.list, function(a, b)
+                        local x, y = f(a.e), f(b.e)
+                        if x ~= y then
+                            if desc then return x > y end
+                            return x < y
+                        end
+                        return a.i < b.i
+                    end)
+                end
+                local n = #g.list
+                local open = not ctx.shut[g.key]
+                items[#items + 1] = { group = g.key, label = g.label, open = open, count = n,
+                    countText = ctx.countText(n) }
+                groups[#groups + 1] = { key = g.key, label = g.label, count = n }
+                if open then for _, x in ipairs(g.list) do items[#items + 1] = x.e end end
+            end
         end
-        self:SetItems(chunks)
+        self.groups = groups
+        self:SetItems(items)
     end
-    function grid:CardOf(key)
-        for i, e in ipairs(self.entries) do
-            if e.key == key then
-                local row = math.floor((i - 1) / self.cols) + 1
-                if row <= self.offset or row > self.offset + self.rowCount then
-                    self.offset = row - 1
+    function tbl:RowOf(key)
+        for i, it in ipairs(self.items) do
+            if not it.group and it.key == key then
+                if i <= self.offset or i > self.offset + self.rowCount then
+                    self.offset = math.max(0, math.min(i - 1, #self.items - self.rowCount))
                     self:SetItems(self.items)
                 end
-                local r = self.rows[row - self.offset]
-                return r and r.cards[(i - 1) % self.cols + 1]
+                return self.rows[i - self.offset]
             end
         end
         return nil
     end
-    -- a new width of the window: the same cards, as many per row as fit now
-    W.FollowWidth(grid, function()
-        if gridCols() ~= grid.cols then grid:SetEntries(grid.entries, ctx.chosen, ctx.recommended) end
-    end)
-    function grid:Cards()
+    function tbl:JumpTo(g)
+        if ctx.shut[g] then
+            ctx.shut[g] = nil
+            self:SetEntries(self.entries, ctx.chosen, ctx.recommended)
+        end
+        for i, it in ipairs(self.items) do
+            if it.group == g then
+                self.offset = math.max(0, math.min(i - 1, #self.items - self.rowCount))
+                self:SetItems(self.items)
+                return true
+            end
+        end
+        return false
+    end
+    function tbl:Rows()
         local out = {}
         for i, r in ipairs(self.rows) do
-            if i <= self.rowCount and r.item then
-                for _, c in ipairs(r.cards) do
-                    if c.item then out[#out + 1] = c end
-                end
-            end
+            if i <= self.rowCount and r.item and not r.item.group then out[#out + 1] = r end
         end
         return out
     end
-    return grid
+    return tbl
 end
 
 ---------------------------------------------------------------------------
@@ -1842,11 +2010,11 @@ end
 local FTEXT = {
     search = L["Instanz, Boss, Beute, Quest"],
     all = L["Alle"], fit = L["Passend"], quests = "Quests",
-    allTip = L["Alle Kacheln."], fitTip = L["Nur, was zu deinem Level passt."],
+    allTip = L["Alle Instanzen."], fitTip = L["Nur, was zu deinem Level passt."],
     questsTip = L["Nur Dungeons mit offenen, angenommenen oder abgabebereiten Quests."],
     here = L["Wo bin ich"], hereTip = L["Öffnet die Instanz, in der du gerade stehst."],
     nowhere = L["Du bist gerade in keiner Instanz, die Amisia kennt."],
-    emptyTitle = L["Nichts gefunden"], empty = L["Keine Kachel passt zu Suche und Auswahl."],
+    emptyTitle = L["Nichts gefunden"], empty = L["Keine Instanz passt zu Suche und Auswahl."],
 }
 local SKULL_MARK = "|T" .. SKULL .. ":12:12|t"
 local QMARK = "|TInterface\\GossipFrame\\AvailableQuestIcon:12:12|t"
@@ -1861,8 +2029,8 @@ local function openQuests(dkey)
     return n
 end
 
--- A card's badge: the run's kills ("1/4" after the skull), the open quests (withQuests) and the keys.
-local function runBadge(e, withQuests)
+-- The run's kills ("1/4" after the skull), the open quests (withQuests) and, unless noKeys, the keys.
+local function runBadge(e, withQuests, noKeys)
     local parts = {}
     local _, n, m = ns.Runs.Of(e.key)
     if n then parts[#parts + 1] = ("%s %d/%d"):format(SKULL_MARK, n, m) end
@@ -1871,7 +2039,7 @@ local function runBadge(e, withQuests)
         if q > 0 then parts[#parts + 1] = ("%s %d"):format(QMARK, q) end
     end
     -- up to two keys (D-72): their icons, grey while the character lacks them
-    local keys = JP.Keys(e.key)
+    local keys = not noKeys and JP.Keys(e.key)
     for i = 1, math.min(2, keys and #keys or 0) do
         local k = keys[i]
         local icon = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(k.item)
@@ -1986,23 +2154,27 @@ local function newHere(B, isRaid)
     return here
 end
 
--- A dungeon's card: its place in the order ("1. "), level range and fit, upgrades, gain per run and
--- value; dim when too high, too easy or later (as the table's rows were).
-local function dungeonCardTexts(c, e)
-    local Dn = ns.Dungeons
+-- A dungeon's row (F-148): its name with its place in the order ("1. "), the line under it (the run,
+-- "Hier bist du", "Empfohlen", the upgrades and gain per run); dim when too high, too easy or later.
+local function dungeonTexts(e, ctx)
     local raid = e.kind == "raid" and (" (Raid%s)"):format(e.size and (" " .. e.size) or "") or ""
-    c.name:SetText((e.rank and (e.rank .. ". ") or "") .. e.name .. raid)
-    local range = Dn.RangeText(e)
-    local fitC = e.fit == "fit" and GREEN or e.fit == "soon" and CARD_TEXT.soon or GREY
-    local fit = fitC .. Dn.FitText(e) .. "|r"
-    c.line1:SetText(range ~= "" and (range .. " · " .. fit) or fit)
+    local name = (e.rank and (e.rank .. ". ") or "") .. e.name .. raid
+    local parts = {}
+    if ctx.here == e.key then parts[#parts + 1] = GREEN .. CARD_TEXT.here .. "|r" end
+    local badge = runBadge(e, false, true)
+    if badge ~= "" then parts[#parts + 1] = badge end
+    if ctx.recommended == e.key then parts[#parts + 1] = GREEN .. CARD_TEXT.tag .. "|r" end
     if e.computed then
-        c.line2:SetText(CARD_TEXT.values:format(e.upgrades, e.perRun > 0 and signed(e.perRun) or "0",
-            math.floor((e.chainValue or e.value) + 0.5)))
-    else
-        c.line2:SetText("")
+        parts[#parts + 1] = CARD_TEXT.values:format(e.upgrades, e.perRun > 0 and signed(e.perRun) or "0",
+            math.floor((e.chainValue or e.value) + 0.5))
     end
-    return e.fit == "high" or e.fit == "easy" or e.fit == "later"
+    return name, table.concat(parts, " · "), e.fit == "high" or e.fit == "easy" or e.fit == "later"
+end
+
+-- The level range of a dungeon in tens ("Stufe 20 - 29"), for the table's groups and the side bar.
+local function levelGroup(e)
+    local lo = math.floor((e.min or 0) / 10) * 10
+    return "L" .. lo, CARD_TEXT.group:format(math.max(1, lo), lo + 9), lo
 end
 
 -- The view of the page: "start" (the cards) until a card is clicked or a dungeon is asked for, then
@@ -2047,7 +2219,7 @@ local function create(parent)
         view = "start"
         ns.Refresh()
     end)
-    W.Tooltip(B.back, L["Alle Dungeons"], L["Zurück zu den Kacheln aller Dungeons."])
+    W.Tooltip(B.back, L["Alle Dungeons"], L["Zurück zur Liste aller Dungeons."])
     B.spec = K.specPicker(B)
     B.next = W.Text(B, T.FONT.title)
     B.why = B:Line(4)
@@ -2074,14 +2246,48 @@ local function create(parent)
     buildFilter(B, 2, { quests = true, here = function(key) ns.ShowDungeon(key) end })
     B:Place(3, { { B.next, fill = true } })
     B:Footer({ { "hint", lines = 2, help = true } })
-    -- the start: the cards under the recommendation, down to the page's bottom; a click chooses
-    -- the dungeon and opens its detail view
-    B.grid = buildGrid(B, B.top, { texts = dungeonCardTexts, tip = dungeonTip, pick = function(e)
-        state().dungeon = e.key
-        view = "detail"
-        ns.Refresh()
-    end, badge = function(e) return runBadge(e, true) end })
-    B.emptyGrid = B:Empty(nil, B.grid)
+    -- the start: the table under the recommendation, down to the page's bottom (F-148); a click
+    -- chooses the dungeon and opens its detail view
+    local sideRank = { A = 1, C = 2, H = 3 }
+    local tctx
+    tctx = { cols = {
+            { key = "level", label = CARD_TEXT.level },
+            { key = "side", label = CARD_TEXT.side, kind = "side" },
+            { key = "zone", label = CARD_TEXT.zone, justify = "LEFT" },
+            { key = "keys", label = CARD_TEXT.keys, kind = "keys" },
+            { key = "quests", label = CARD_TEXT.quests },
+            { key = "act", label = CARD_TEXT.act, kind = "act" } },
+        texts = function(e) return dungeonTexts(e, tctx) end,
+        cell = function(e, key)
+            if key == "level" then return levelText(e) end
+            if key == "zone" then return select(2, instanceZone(e.key)) or (GREY .. "-|r") end
+            if key == "quests" then
+                local n = openQuests(e.key)
+                return n > 0 and tostring(n) or (GREY .. "-|r")
+            end
+        end,
+        tip = dungeonTip,
+        pick = function(e)
+            state().dungeon = e.key
+            view = "detail"
+            ns.Refresh()
+        end,
+        action = function(e) say(ns.DungeonWaypoint(e.key)) end,
+        group = levelGroup,
+        countText = function(n) return n == 1 and CARD_TEXT.one or CARD_TEXT.count:format(n) end,
+        grouped = function() return (state().dsort or "level") == "level" end,
+        -- a click on a column head sorts by it inside the level ranges
+        onSort = function() state().dsort = "level" end,
+        sortField = "dcol",
+        sorts = {
+            name = function(e) return e.name end,
+            level = function(e) return (e.min or 0) * 100 + (e.max or 0) end,
+            side = function(e) return sideRank[instanceSide(e.key) or "C"] end,
+            zone = function(e) return select(2, instanceZone(e.key)) or "~" end,
+            quests = function(e) return openQuests(e.key) end,
+        } }
+    B.table = buildTable(B, B.top, tctx)
+    B.emptyGrid = B:Empty(nil, B.table)
     -- the detail: the image right under the head row, the bosses' or quests' header under it, then
     -- their list down to the page's bottom
     local G = T.LAYOUT
@@ -2157,7 +2363,7 @@ local function create(parent)
         ns.Refresh()
     end
     -- the parts of the start and of the detail view; the quest journal covers them all (planParts)
-    B.startParts = { B.next, B.why, B.grid }
+    B.startParts = { B.next, B.why, B.table, B.table.head }
     for _, f in ipairs(B.filterParts) do B.startParts[#B.startParts + 1] = f end
     B.detailParts = { B.back, B.art, B.header, B.way, B.detail }
     for _, k in ipairs(B.partKeys) do B.detailParts[#B.detailParts + 1] = B.parts[k] end
@@ -2215,14 +2421,14 @@ local function refresh(B)
     end
     local e = chosenDungeon(list, nextE)
     B.chosen = e and e.key or nil
-    B.grid.ctx.here = ns.Runs.Here()
+    B.table.ctx.here = ns.Runs.Here()
     local filtered = applyFilter(B, shown, true)
-    B.grid:SetEntries(filtered, B.chosen, nextE and nextE.key or nil)
+    B.table:SetEntries(filtered, B.chosen, nextE and nextE.key or nil)
     if e and not e.computed then e = ns.DungeonInfo(e.key) or e end
     B.entry = e
     local detail = view == "detail" and e ~= nil
-    -- back on the start: the chosen card in view
-    if not detail and B.wasDetail and B.chosen then B.grid:CardOf(B.chosen) end
+    -- back on the start: the chosen row in view
+    if not detail and B.wasDetail and B.chosen then B.table:RowOf(B.chosen) end
     B.wasDetail = detail
     if detail then fillArt(B, e) else B.art:Hide() end
     local part = JP.PartOf(B, e)
@@ -2360,7 +2566,7 @@ local function refresh(B)
         hint = hint .. " " .. DTEXT.foldHint .. " " .. DTEXT.itemHint
     end
     if not detail then
-        hint = L["Klick auf eine Kachel: Bild, Bosse, Beute und Quests des Dungeons. Grün markiert: der empfohlene."] .. " " ..
+        hint = L["Klick auf eine Zeile: Bild, Bosse, Beute und Quests des Dungeons. Klick auf einen Spaltenkopf: sortieren, auf einen Stufenbereich: auf- und zuklappen."] .. " " ..
             L["Je Lauf: Zuwachs der Upgrades mal Dropchance, ohne Mitbewerber in der Gruppe. Wert: offene Dungeon-Quests plus zwei Läufe."]
     end
     B.hint:SetText(hint)
@@ -2414,11 +2620,14 @@ ns.Listen("RUN", function() if ns.RefreshSoon then ns.RefreshSoon() end end)
 
 -- the journal parts the page Raids shares (UI/Pages/RaidJournal.lua)
 ns.DungeonJournalKit = { buildArt = buildArt, fillArt = fillArt, buildDetail = buildDetail,
-    buildGrid = buildGrid, wishItems = wishItems, WISH_HINT = WISH_HINT, MAP_HINT = MAP_HINT, ACCESS_HINT = ACCESS_HINT,
+    buildTable = buildTable, levelText = levelText, instanceZone = instanceZone, instanceSide = instanceSide, wishItems = wishItems, WISH_HINT = WISH_HINT, MAP_HINT = MAP_HINT, ACCESS_HINT = ACCESS_HINT,
     buildFilter = buildFilter, holdHere = holdHere, applyFilter = applyFilter, runBadge = runBadge, newHere = newHere, ART_H = ART_H, itemHint = DTEXT.itemHint, foldHint = DTEXT.foldHint, signed = signed,
     -- the bosses' fold (F-144)
     showBosses = showBosses, foldLink = foldLink, foldState = foldState, placeParts = placeParts }
 
 ns.RegisterPanel{ key = "dungeons", label = "Dungeons", sub = L["Was dir jeder Dungeon bringt: Bosse, Beute und Quests."], icon = ICON, order = 51, group = "dungeons",
     available = function() return ns.Gear.Available() end,
-    create = create, refresh = refresh }
+    create = create, refresh = refresh,
+    -- the level ranges of the table in the side bar while the start shows (D-74)
+    jumps = function(B) return B.table and B.table:IsShown() and B.table.groups or {} end,
+    jump = function(B, key) if B.table then B.table:JumpTo(key) end end }

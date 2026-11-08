@@ -316,6 +316,16 @@ local function navEntries(byGroup)
             end
         end
     end
+    -- the open page's marks under its tab's pages (D-74: the level ranges of Dungeons), the gold line
+    -- over the first; a click shows that part of the page
+    local p = current and ns.Panel(current)
+    local frame = current and built[current]
+    if p and p.jumps and frame then
+        local ok, marks = pcall(p.jumps, frame)
+        for i, m in ipairs(ok and type(marks) == "table" and marks or {}) do
+            out[#out + 1] = { kind = "jump", key = m.key, label = m.label, count = m.count, first = i == 1, page = p, frame = frame }
+        end
+    end
     return out
 end
 
@@ -725,7 +735,7 @@ function ns.UpdateSideTabs()
 end
 
 -- Where a row's name starts, by what it shows.
-local LABEL_X = { page = M.NAV_SUB_X, win = M.NAV_SUB_X, group = M.NAV_SUB2_X, section = M.NAV_SUB3_X }
+local LABEL_X = { page = M.NAV_SUB_X, win = M.NAV_SUB_X, group = M.NAV_SUB2_X, section = M.NAV_SUB3_X, jump = M.NAV_LABEL_X }
 
 -- A symbol of the client (def: { atlas } or { file }, T.NAV_ICONS, T.TAB_ICONS) on tex, shown; none
 -- (hidden, false) without def or when the client lacks the atlas or (where it can tell,
@@ -749,7 +759,9 @@ local function setSymbol(tex, key) setArt(tex, key and T.NAV_ICONS[key]) end
 local function navClick(self)
     local e = self.item
     if not e then return end
-    if e.kind == "win" then
+    if e.kind == "jump" then
+        if e.page.jump then e.page.jump(e.frame, e.key) end
+    elseif e.kind == "win" then
         e.def.toggle()
         ns.UpdateSideTabs()
     elseif e.kind == "section" then
@@ -813,15 +825,24 @@ local function buildNav(b)
     b.label:SetPoint("LEFT", M.NAV_SUB_X, 0)
     if b.label.SetShadowOffset then b.label:SetShadowOffset(1, -1) end
     b.font = T.FONT.title
+    -- a mark's count at the right, the gold line over the first mark
+    b.count = W.Text(b, T.FONT.hint)
+    b.count:SetPoint("RIGHT", -M.FOLD_R, 0)
+    b.count:SetJustifyH("RIGHT")
+    b.count:Hide()
+    b.rule = W.GoldRule(b, M.RULE_ALPHA)
+    b.rule:SetPoint("TOPLEFT", M.NAV_LABEL_X, 0)
+    b.rule:SetPoint("TOPRIGHT", -M.NAV_LABEL_X, 0)
+    b.rule:Hide()
     -- the indent, the font and the sign of what the row shows
     function b:SetKind(kind)
         self.kind = kind
         local x = LABEL_X[kind] or M.NAV_SUB_X
-        local signed = kind == "win"
+        local signed = kind == "win" or kind == "jump"
         self.label:ClearAllPoints()
         self.label:SetPoint("LEFT", x, 0)
         self.label:SetWidth(w - x - 6 - (signed and (M.FOLD + M.FOLD_R) or 0))
-        self.font = kind == "section" and T.FONT.text or T.FONT.title
+        self.font = (kind == "section" and T.FONT.text) or (kind == "jump" and T.FONT.body) or T.FONT.title
         self.label:SetFontObject(self.font)
     end
     function b:SetSelected(on)
@@ -865,6 +886,9 @@ local function fillNav(b, e)
     else
         b.sign:Hide()
     end
+    b.count:SetShown(e.kind == "jump")
+    b.count:SetText(e.kind == "jump" and tostring(e.count or "") or "")
+    b.rule:SetShown(e.kind == "jump" and e.first == true)
     b:SetSelected(e.on)
 end
 
@@ -1313,16 +1337,17 @@ function ns.Refresh()
     openTab = ns.PanelGroup(p)
     updateHeader()
     updatePageHead(p)
-    local byGroup = pagesByGroup()
-    updateTabs(byGroup)
-    updateNav(byGroup)
-    -- the hits again for the new data, at the same scroll place
-    if #query >= M.SEARCH_MIN then showResults() else updateSearchHint() end
     local frame = built[current]
     if p.refresh and frame then
         local ok, err = pcall(p.refresh, frame)
         if not ok then reportError(err) end
     end
+    -- the side bar after the page: its marks come from what the page shows now (D-74)
+    local byGroup = pagesByGroup()
+    updateTabs(byGroup)
+    updateNav(byGroup)
+    -- the hits again for the new data, at the same scroll place
+    if #query >= M.SEARCH_MIN then showResults() else updateSearchHint() end
     updateHelp()
 end
 

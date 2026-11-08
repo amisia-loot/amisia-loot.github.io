@@ -90,43 +90,43 @@ STUB.fire("PLAYER_ENTERING_WORLD")
 STUB.fire("ENCOUNTER_END", 3001, "Faldrim Anvilmar", 1, 5, 1)
 NS.ShowPage("dungeons")
 local B = NS.PageFrame("dungeons")
-assert(B and B.chosen == "thanes" and B.art:IsShown() and not B.grid:IsShown(), "the dungeon the character stands in")
+assert(B and B.chosen == "thanes" and B.art:IsShown() and not B.table:IsShown(), "the dungeon the character stands in")
 B.back:Click()
-assert(B.grid:IsShown(), "back to the cards: it stays there")
+assert(B.table:IsShown(), "back to the cards: it stays there")
 NS.Refresh()
-assert(B.grid:IsShown(), "no second jump while still inside")
--- the cards: the thanes "Hier bist du" with the full frame, the run's badge
-local card = B.grid:CardOf("thanes")
-assert(card and card.here and card.tag:IsShown() and card.tag.text:GetText() == "Hier bist du", "here")
-assert(card.edges[1].color[4] == 1, "the full gold frame")
-assert(card.badge:IsShown() and card.badge.text:GetText():find("1/4", 1, true), tostring(card.badge.text:GetText()))
--- another card has no run badge (quests only)
-local other = B.grid:CardOf("rfc")
-assert(not other.here and not (other.badge.text:GetText() or ""):find("/", 1, true))
+assert(B.table:IsShown(), "no second jump while still inside")
+-- the rows: the thanes "Hier bist du" with the full frame round its picture, the run's kills
+local card = B.table:RowOf("thanes")
+assert(card and card.sub:GetText():find("Hier bist du", 1, true), "here: " .. tostring(card and card.sub:GetText()))
+assert(card.artFrame.edges[1].color[4] == 1, "the full gold frame")
+assert(card.sub:GetText():find("1/4", 1, true), tostring(card.sub:GetText()))
+-- another row has no run (its quests in their column)
+local other = B.table:RowOf("rfc")
+assert(not other.sub:GetText():find("Hier bist du", 1, true) and not other.sub:GetText():find("/", 1, true))
 -- the filter row: on the start only, between the head row and the recommendation
 assert(B.search:IsShown() and B.filterTabs.all:IsShown() and B.filterTabs.fit and B.filterTabs.quests and B.hereLink:IsShown())
 assert(B.filterTabs.all.on and B.filter.mode == "all")
-local all = #B.grid.entries
+local all = #B.table.entries
 -- the search: from two characters; a boss's name finds its dungeon
 B.search:SetText("f")
 B.search.scripts.OnTextChanged(B.search, true)
-assert(#B.grid.entries == all, "one character filters nothing")
+assert(#B.table.entries == all, "one character filters nothing")
 B.search:SetText("faldrim")
 B.search.scripts.OnTextChanged(B.search, true)
-assert(#B.grid.entries == 1 and B.grid.entries[1].key == "thanes", "a boss finds its dungeon: " .. #B.grid.entries)
+assert(#B.table.entries == 1 and B.table.entries[1].key == "thanes", "a boss finds its dungeon: " .. #B.table.entries)
 B.search:SetText("zzzz")
 B.search.scripts.OnTextChanged(B.search, true)
-assert(#B.grid.entries == 0 and B.emptyGrid:IsShown(), "nothing found: the empty state")
+assert(#B.table.entries == 0 and B.emptyGrid:IsShown(), "nothing found: the empty state")
 B.search:SetText("")
 B.search.scripts.OnTextChanged(B.search, true)
-assert(#B.grid.entries == all and not B.emptyGrid:IsShown())
+assert(#B.table.entries == all and not B.emptyGrid:IsShown())
 -- "Passend": only the fitting ones
 B.filterTabs.fit:Click()
-for _, e in ipairs(B.grid.entries) do assert(e.fit == "fit", e.key .. " " .. tostring(e.fit)) end
+for _, e in ipairs(B.table.entries) do assert(e.fit == "fit", e.key .. " " .. tostring(e.fit)) end
 assert(B.filterTabs.fit.on and not B.filterTabs.all.on)
 -- "Quests": only dungeons with open quests
 B.filterTabs.quests:Click()
-for _, e in ipairs(B.grid.entries) do
+for _, e in ipairs(B.table.entries) do
     local open = 0
     for _, q in ipairs((NS.DungeonQuests(e.key))) do
         local st = NS.Dungeons.QuestState(q)

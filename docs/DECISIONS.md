@@ -1633,7 +1633,9 @@ eigene Vorgabe, Höhe des Fensters (`W.FitLists`) und Neuzeichnen behalten ihn, 
 oben, soweit sie kürzer wird. Grund: der Entwurf der Überholung (aufklappbare Zeilen wie in einem anderen Addon, im
 Look des Clients); eine Bossliste mit allen Items war auf großen Dungeons und Raids eine lange Rolle.
 **Durchgesetzt durch:** `tests/test_style.lua` (Lage von Kopf, Linie, "i" und Zahnrad, Seite 602 x 478),
-`tests/test_mainframe.lua`, `tests/test_settings_pages.lua`, `tests/test_dungeon_cards.lua` (Schritt 3),
+
+**Nachtrag 2026-11-08:** Die Kacheln der Startseiten von Dungeons und Raids ersetzt D-74 (eine Tabelle mit Stufenbereichen).
+`tests/test_mainframe.lua`, `tests/test_settings_pages.lua`, `tests/test_dungeon_table.lua` (Schritt 3),
 `tests/test_boss_fold.lua` (Schritt 4).
 
 ## D-70 Hauptfenster nach dem Hub eines anderen Addons: Kopf mit Logo, Überschriften, Symbolzeilen
@@ -1690,7 +1692,7 @@ stehen im Kopf des Fensters, die Gruppen sind Reiter oben, die Leiste zeigt nur 
 - Eine neue Seite legt sich weiter auf 602 aus, ankert aber, was rechts sitzt, an den rechten Rand (Scaffold-Bänder tun das von selbst).
 - Wer die Breite für mehr nutzen will (Spalten, Kacheln), meldet sich mit `W.FollowWidth` an und liest `T.PAGE_W_NOW`.
 
-**Durchgesetzt durch:** `tests/test_main_size.lua` (Ziehen, Grenzen, Merken, Zurücksetzen, Bänder, Leiste), `tests/test_dungeon_cards.lua` (Kacheln je Breite), die Layoutregeln in der Ansicht `wide` (`tools/ui_layout.py`).
+**Durchgesetzt durch:** `tests/test_main_size.lua` (Ziehen, Grenzen, Merken, Zurücksetzen, Bänder, Leiste), `tests/test_dungeon_table.lua` (Kacheln je Breite), die Layoutregeln in der Ansicht `wide` (`tools/ui_layout.py`).
 
 ## D-72 Journal für Dungeons und Raids: Filter, Lauf, Reiter, Instanzkarte, Zugang
 
@@ -1727,6 +1729,8 @@ stehen im Kopf des Fensters, die Gruppen sind Reiter oben, die Leiste zeigt nur 
 
 **Durchgesetzt durch:** `tests/test_journal_start.lua` (Lauf, Abzeichen, Filter, Öffnen), `tests/test_journal_parts.lua` (Reiter, Lauf, Wunschliste, Karte, Zugang), die Layoutregeln.
 
+**Nachtrag 2026-11-08:** Das Abzeichen der Kacheln (Kills, Quests, Schlüssel) steht seit D-74 in der Zeile der Tabelle: die Kills in der grauen Zeile, Quests und Schlüssel in ihren Spalten.
+
 ## D-73 Hub mit Reitern oben, Bildkopf und Fußzeile
 
 **Datum:** 2026-11-08
@@ -1752,3 +1756,27 @@ stehen im Kopf des Fensters, die Gruppen sind Reiter oben, die Leiste zeigt nur 
 - Dungeons & Raids als Tabelle (F-148), Ausrüstung (F-149) und Talente (F-150) sind eigene Schritte der Spec.
 
 **Durchgesetzt durch:** `tests/test_main_sidebar.lua` (Kopf, Reiter, Leiste, Umzug, Knöpfe), `tests/test_style.lua` (Maße, Reiter in der Reihe und im Fenster, Leiste, Fußzeile, nur Marken des Clients), `tests/test_main_size.lua`, die Layoutregel `nav` (`tools/ui_layout.py`).
+
+## D-74 Dungeons und Raids als Tabelle mit Stufenbereichen, Sprungmarken in der Leiste
+
+**Datum:** 2026-11-08
+**Entscheidung:** Schritt 2 der Spec `docs/specs/2026-11-08-hub-reiter.md` (F-148). Die Kacheln von F-143 entfallen.
+- **Tabelle:** Unter Kopf-, Filter- und Empfehlungszeile stehen sortierbare Spaltenköpfe und eine Liste (`T.DTABLE`, Zeilen 38 hoch).
+  - Dungeons: Dungeon, Stufe, Gebiet, Zone, Schlüssel, Quests, Aktionen.
+  - Raids: Raid, Größe, Stufe, Zone, Schlüssel, Aktionen.
+- **Zeile:** das Bild der Instanz aus dem Client mit dünnem Goldrand (heller für die gewählte, voll für die, in der man steht), der Name in Gold und darunter grau: "Hier bist du", die Kills des Laufs, "Empfohlen", die eigene Raid-ID, Upgrades, Zuwachs und Wert. Zu hohe, zu leichte und spätere Instanzen sind blass.
+- **Stufe** in den Farben des Questlogs (rot zu hoch, orange bald, gelb passt, grün leicht, grau später).
+- **Gebiet:** das Wappen von Allianz oder Horde, wenn der Eingang in einer ihrer Zonen liegt (eine Liste von Hand: Startgebiete und Hauptstädte), sonst die gekreuzten Schwerter. Der Client nennt das Gebiet nur für die Zone, in der man steht.
+- **Zone:** die Zone des Eingangs aus den Kartendaten. **Aktionen:** der Kartenknopf setzt den Wegpunkt zum Eingang.
+- **Gruppen:** In der Reihenfolge Level sind die Dungeons nach Stufenbereichen von zehn gruppiert ("Stufe 20 - 29", aufklappbar, nur im Speicher), die Raids nach Größe ("Raids für 20"). Wert und Kette bleiben flache Ranglisten.
+- **Sortieren:** Ein Klick auf einen Spaltenkopf sortiert innerhalb der Gruppen und stellt die Reihenfolge auf Level, ein zweiter dreht sie um. Gemerkt in `settings.bis.dcol`/`dcolDesc` (Raids `rcol`/`rcolDesc`).
+- **Sprungmarken:** Eine Seite kann der Leiste Marken geben (`jumps`, `jump` in `ns.RegisterPanel`). Sie stehen unter den Seiten des Reiters mit der goldenen Linie darüber und ihrer Zahl rechts. Dungeons und Raids geben ihre Gruppen, solange die Tabelle zu sehen ist; ein Klick zeigt die Gruppe oben. Die Leiste wird darum nach der Seite neu gezeichnet.
+
+**Grund:** Nutzer 2026-11-08: Dungeons und Raids "genau wie" im Foto des Vorbilds; Spec freigegeben, "Schritt 2 bauen".
+
+**Folge:**
+- Das Wappen braucht den Eingang in den Kartendaten; ohne ihn bleiben Gebiet und Zone leer ("-").
+- Ob Forever die Bilder `UI-PVP-Alliance`/`-Horde`, `CombatSwords` und `UI-World-Icon` hat, ist im Spiel zu prüfen; ohne sie bleibt die Zelle leer bzw. der Knopf zeigt "»".
+
+**Durchgesetzt durch:** `tests/test_dungeon_table.lua` (Spalten, Gruppen, Zeilen, Breite, Höhe, Raids), `tests/test_dungeons_page.lua` (Farben, Aufklappen, Sprungmarken, Sortieren), `tests/test_raid_journal.lua` (Größen), die Layoutregeln.
+

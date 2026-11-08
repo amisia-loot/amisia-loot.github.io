@@ -200,8 +200,8 @@ NS.MapClearTarget()
 local function plain(t) return (tostring(t or ""):gsub("|T.-|t", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
 NS.ShowPage("dungeons")
 local B = NS.PageFrame("dungeons")
--- the start view's cards in their order (F-143)
-local function card(i) return B.grid:Cards()[i] end
+-- the start view's rows in their order (F-148)
+local function card(i) return B.table:Rows()[i] end
 B.sorts.value:Click()
 assert(B.sorts.value.on and not B.sorts.level.on and AmisiaDB.settings.bis.dsort == "value")
 assert(plain(card(1).name:GetText()) == "1. Hall of Thanes" and plain(card(2).name:GetText()) == "2. Ruins of Lordaeron",
@@ -209,7 +209,7 @@ assert(plain(card(1).name:GetText()) == "1. Hall of Thanes" and plain(card(2).na
 B.sorts.chain:Click()
 assert(B.next:GetText() == "Kette: 1. Hall of Thanes · 2. The Deadmines", B.next:GetText())
 assert(plain(card(2).name:GetText()) == "2. The Deadmines", plain(card(2).name:GetText()))
-assert(plain(card(2).line2:GetText()):match("Wert (%d+)$") == tostring(math.floor(chain[2].value + 0.5)), "the chain's value")
+assert(plain(card(2).sub:GetText()):match("Wert (%d+)$") == tostring(math.floor(chain[2].value + 0.5)), "the chain's value")
 -- the rest without a place, by level (Ragefire Chasm at the client's level 13)
 assert(plain(card(3).name:GetText()) == "Ragefire Chasm" and plain(card(4).name:GetText()) == "Ruins of Lordaeron",
     "the rest without a place")
@@ -226,7 +226,7 @@ assert(has(qrow.name:GetText(), "AvailableQuestIcon") and has(qrow.name:GetText(
 assert(plain(qrow.way:GetText()) == "Weg 0/3", plain(qrow.way:GetText()))
 WorldMapFrame:Hide()
 qrow:Click()
-assert(B.pathView:IsShown() and not B.detail:IsShown() and not B.grid:IsShown() and not B.back:IsShown(), "a click on a quest opens its quest path")
+assert(B.pathView:IsShown() and not B.detail:IsShown() and not B.table:IsShown() and not B.back:IsShown(), "a click on a quest opens its quest path")
 assert(NS.MapTarget() == nil and not WorldMapFrame:IsShown(), "the click itself opens no map")
 -- "Nächsten Schritt auf der Karte": the giver of the first open step (the root quest)
 B.pathView.map:Click()
@@ -235,7 +235,7 @@ assert(WorldMapFrame:IsShown() and WorldMapFrame:GetMapID() == 1436, "the world 
 WorldMapFrame:Hide()
 NS.MapClearTarget()
 B.pathView.back:Click()
-assert(not B.pathView:IsShown() and B.detail:IsShown() and not B.grid:IsShown() and B.back:IsShown(), "back to the quests of the detail view")
+assert(not B.pathView:IsShown() and B.detail:IsShown() and not B.table:IsShown() and B.back:IsShown(), "back to the quests of the detail view")
 local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(B, 602, 478)
 Lay.row("parts", B.parts.bosses, B.parts.map, B.parts.quests, B.parts.wish, B.way)
 B.back:Click()

@@ -43,7 +43,7 @@ NS.ShowGear("goals")
 NS.Dispatch("journal")
 assert(NS.CurrentPage() == "dungeons", "/amisia journal: " .. tostring(NS.CurrentPage()))
 local D = NS.PageFrame("dungeons")
-assert(D and D:IsShown() and D.grid and D.grid:IsShown() and D.detail and D.art, "the planner on the page, its cards first")
+assert(D and D:IsShown() and D.table and D.table:IsShown() and D.detail and D.art, "the planner on the page, its cards first")
 -- and the old entry point
 NS.ShowGear("goals")
 NS.ShowGear("dungeons")

@@ -1,12 +1,13 @@
--- Raids page (group Welt, right after the page Dungeons; F-122): two views as on the page Dungeons
--- (F-143). The start: every raid at any level as a card with its size, when it opens, its value for
--- the own character and the own raid ID (the recommended one tagged); a click opens the detail: a
--- link back to the cards, the chosen one's image with its boss model, its bosses with their loot, the
--- waypoint to its entrance. The values come from Gear/Dungeons.lua (ns.RaidList, ns.RaidNext); the
--- cards, the image and the boss list are the page Dungeons' (ns.DungeonJournalKit), the item texts
--- and the spec picker the gear page's (ns.GearPageKit). The chosen raid stays in settings.bis.raid,
--- the view only in memory (the first open of a session shows the cards). Key "raidjournal": the
--- officers' page "raids" (the recorded raids, group Raid) has the key "raids".
+-- Raids page (tab Dungeons & Raids, right after the page Dungeons; F-122): two views as on the page
+-- Dungeons (F-143). The start: every raid at any level as a row of the table by size (F-148, D-74:
+-- picture, name, size, when it opens, zone, keys, waypoint; the line under the name with its value for
+-- the own character and the own raid ID); a click opens the detail: a link back to the table, the
+-- chosen one's image with its boss model, its bosses with their loot, the waypoint to its entrance. The
+-- values come from Gear/Dungeons.lua (ns.RaidList, ns.RaidNext); the table, the image and the boss list
+-- are the page Dungeons' (ns.DungeonJournalKit), the item texts and the spec picker the gear page's
+-- (ns.GearPageKit). The chosen raid stays in settings.bis.raid, the view only in memory (the first open
+-- of a session shows the table). Key "raidjournal": the officers' page "raids" (the recorded raids, tab
+-- Raid) has the key "raids".
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -37,24 +38,31 @@ local function ownID(e)
     return nil
 end
 
--- A raid's card: size, fit and the own raid ID; upgrades, gain per run and value; dim unless it fits
--- now (as the table's rows were).
+-- A raid's row (F-148): its name, the line under it (the run, "Hier bist du", "Empfohlen", the own
+-- raid ID, upgrades, gain per run and value); dim unless it fits now.
 local GREEN, GREY, ORANGE = "|cff4fd06a", T.GREY, T.ORANGE
 local VALUES = L["%d Upgrades · %s je Lauf · Wert %d"]
-local function raidCardTexts(c, e)
-    c.name:SetText(e.name)
+local RTEXT = { here = L["Hier bist du"], tag = L["Empfohlen"], size = L["Größe"], level = L["Stufe"], zone = "Zone",
+    keys = L["Schlüssel"], act = L["Aktionen"], group = L["Raids für %d"], groupAny = "Raids",
+    count = L["%d Raids"], one = L["1 Raid"] }
+local function raidTexts(e, ctx)
     local parts = {}
-    if e.size then parts[#parts + 1] = "Raid " .. e.size end
-    parts[#parts + 1] = (e.fit == "fit" and GREEN or GREY) .. fitText(e) .. "|r"
+    if ctx.here == e.key then parts[#parts + 1] = GREEN .. RTEXT.here .. "|r" end
+    local badge = J.runBadge(e, false, true)
+    if badge ~= "" then parts[#parts + 1] = badge end
+    if ctx.recommended == e.key then parts[#parts + 1] = GREEN .. RTEXT.tag .. "|r" end
     local x = ownID(e)
     if x then parts[#parts + 1] = ORANGE .. L["ID bis %s"]:format(ns.Cal and ns.Cal.When(x.r) or date("%H:%M", x.r)) .. "|r" end
-    c.line1:SetText(table.concat(parts, " · "))
     if e.computed then
-        c.line2:SetText(VALUES:format(e.upgrades, e.perRun > 0 and signed(e.perRun) or "0", math.floor(e.value + 0.5)))
-    else
-        c.line2:SetText("")
+        parts[#parts + 1] = VALUES:format(e.upgrades, e.perRun > 0 and signed(e.perRun) or "0", math.floor(e.value + 0.5))
     end
-    return e.fit ~= "fit"
+    return e.name, table.concat(parts, " · "), e.fit ~= "fit"
+end
+
+-- The raids by size ("Raids für 20"), the smaller first.
+local function sizeGroup(e)
+    if not e.size then return "S0", RTEXT.groupAny, 999 end
+    return "S" .. e.size, RTEXT.group:format(e.size), e.size
 end
 
 local function raidTip(self)
@@ -94,7 +102,7 @@ local function create(parent)
         view = "start"
         ns.Refresh()
     end)
-    W.Tooltip(B.back, L["Alle Raids"], L["Zurück zu den Kacheln aller Raids."])
+    W.Tooltip(B.back, L["Alle Raids"], L["Zurück zur Liste aller Raids."])
     B.spec = K.specPicker(B)
     B.next = W.Text(B, T.FONT.title)
     B.why = B:Line(4)
@@ -102,13 +110,40 @@ local function create(parent)
     J.buildFilter(B, 2, { here = function(key) ns.ShowDungeon(key) end })
     B:Place(3, { { B.next, fill = true } })
     B:Footer({ { "hint", lines = 2, help = true } })
-    -- the start: the cards down to the page's bottom; a click chooses the raid and opens its detail
-    B.grid = J.buildGrid(B, B.top, { texts = raidCardTexts, tip = raidTip, pick = function(e)
-        state().raid = e.key
-        view = "detail"
-        ns.Refresh()
-    end, badge = function(e) return J.runBadge(e, false) end })
-    B.emptyGrid = B:Empty(nil, B.grid)
+    -- the start: the table down to the page's bottom (F-148); a click chooses the raid and opens its
+    -- detail
+    local tctx
+    tctx = { nameLabel = "Raid", cols = {
+            { key = "size", label = RTEXT.size },
+            { key = "level", label = RTEXT.level },
+            { key = "zone", label = RTEXT.zone, justify = "LEFT" },
+            { key = "keys", label = RTEXT.keys, kind = "keys" },
+            { key = "act", label = RTEXT.act, kind = "act" } },
+        texts = function(e) return raidTexts(e, tctx) end,
+        cell = function(e, key)
+            if key == "size" then return e.size and tostring(e.size) or (GREY .. "-|r") end
+            if key == "level" then return (e.fit == "fit" and "|cffffff00" or GREY) .. fitText(e) .. "|r" end
+            if key == "zone" then return select(2, J.instanceZone(e.key)) or (GREY .. "-|r") end
+        end,
+        tip = raidTip,
+        pick = function(e)
+            state().raid = e.key
+            view = "detail"
+            ns.Refresh()
+        end,
+        action = function(e) say(ns.DungeonWaypoint(e.key)) end,
+        group = sizeGroup,
+        countText = function(n) return n == 1 and RTEXT.one or RTEXT.count:format(n) end,
+        grouped = function() return true end,
+        sortField = "rcol",
+        sorts = {
+            name = function(e) return e.name end,
+            size = function(e) return e.size or 0 end,
+            level = function(e) return (e.min or 0) * 100 + (e.max or 0) end,
+            zone = function(e) return select(2, J.instanceZone(e.key)) or "~" end,
+        } }
+    B.table = J.buildTable(B, B.top, tctx)
+    B.emptyGrid = B:Empty(nil, B.table)
     -- the detail: the image right under the head row, the bosses' header under it, then their list
     local G = T.LAYOUT
     local artTop = -(G.ROW_H + G.GAP)
@@ -137,7 +172,7 @@ local function create(parent)
     B.detail:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, headerTop - T.HEADER_H - G.GAP)
     JP.BuildMap(B, headerTop - T.HEADER_H - G.GAP)
     JP.BuildAccess(B, headerTop - T.HEADER_H - G.GAP)
-    B.startParts = { B.next, B.why, B.grid }
+    B.startParts = { B.next, B.why, B.table, B.table.head }
     for _, f in ipairs(B.filterParts) do B.startParts[#B.startParts + 1] = f end
     B.detailParts = { B.back, B.header, B.way }
     for _, k in ipairs(B.partKeys) do B.detailParts[#B.detailParts + 1] = B.parts[k] end
@@ -171,13 +206,13 @@ local function refresh(B)
     end
     e = e or nextE or list[1]
     B.chosen = e and e.key or nil
-    B.grid.ctx.here = ns.Runs.Here()
+    B.table.ctx.here = ns.Runs.Here()
     local filtered = J.applyFilter(B, list, false)
-    B.grid:SetEntries(filtered, B.chosen, nextE and nextE.key or nil)
+    B.table:SetEntries(filtered, B.chosen, nextE and nextE.key or nil)
     B.entry = e
     local detail = view == "detail" and e ~= nil
-    -- back on the start: the chosen card in view
-    if not detail and B.wasDetail and B.chosen then B.grid:CardOf(B.chosen) end
+    -- back on the start: the chosen row in view
+    if not detail and B.wasDetail and B.chosen then B.table:RowOf(B.chosen) end
     B.wasDetail = detail
     for _, f in ipairs(B.startParts) do f:SetShown(not detail) end
     for _, f in ipairs(B.partViews) do f:Hide() end
@@ -224,7 +259,7 @@ local function refresh(B)
     B:PlaceParts()
     local hint = L["Je Lauf: Zuwachs der Upgrades mal Dropchance. Beute und Chance aus den Drop-Aufzeichnungen der Gilde."]
     if not detail then
-        B.hint:SetText(L["Klick auf eine Kachel: Bild, Bosse und Beute des Raids. Grün markiert: der empfohlene."] .. " " .. hint)
+        B.hint:SetText(L["Klick auf eine Zeile: Bild, Bosse und Beute des Raids. Klick auf einen Spaltenkopf: sortieren."] .. " " .. hint)
         return
     end
     if part == "wish" then
@@ -261,7 +296,10 @@ end
 
 ns.RegisterPanel{ key = "raidjournal", label = "Raids", sub = L["Bosse und Beute der Raids, mit deinen Upgrades."], icon = ICON, order = 52, group = "dungeons",
     available = function() return ns.Gear.Available() end,
-    create = create, refresh = refresh }
+    create = create, refresh = refresh,
+    -- the raid sizes of the table in the side bar while the start shows (D-74)
+    jumps = function(B) return B.table and B.table:IsShown() and B.table.groups or {} end,
+    jump = function(B, key) if B.table then B.table:JumpTo(key) end end }
 
 -- the own raid IDs were read again: the cards' ID
 ns.Listen("RAIDIDS", function()

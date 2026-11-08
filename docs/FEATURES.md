@@ -56,7 +56,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Status: geplant
 - Prüfung: Wenn du "Dungeons" öffnest, dann siehst du eine Tabelle mit Dungeon, Stufe, Gebiet, Zone, Schlüssel, Quests und Aktionen, gruppiert nach Stufenbereichen; ein Klick auf einen Spaltenkopf sortiert.
 - Prüfung: Wenn du links auf einen Stufenbereich klickst, dann springt die Tabelle dorthin.
-- Notiz: Spec docs/specs/2026-11-08-hub-reiter.md, Schritt 2.
+- Prüfung: Wenn du auf das Kartensymbol einer Zeile klickst, dann wird ein Wegpunkt zum Eingang gesetzt; das Wappen zeigt Allianz, Horde oder umkämpft.
+- Notiz: Spec docs/specs/2026-11-08-hub-reiter.md, Schritt 2; D-74. Ersetzt die Kacheln von F-143.
 
 ### F-147 Hub: Bildkopf, Reiter oben, Leiste je Reiter, Fußzeile
 - Version: -

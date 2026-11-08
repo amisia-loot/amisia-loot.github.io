@@ -379,19 +379,17 @@ T.DJOURNAL = {
     PLAN_W = 96,               -- "Lauf planen" in the planner's image, left of "Alle auf Karte"
 }
 
--- the start views of the pages Dungeons and Raids (F-143, D-69): a grid of cards, COLS per list row
--- (W x H, GAP between them: 3 x 192 + 2 x 7 = 590, the list's width). A card: the image at its top
--- (ART_H, darkened towards its bottom from SHADE_TOP to SHADE_BOTTOM; SHADE_ALPHA without gradients)
--- with the name on its lower left (NAME_X, NAME_Y above the image's bottom), under it two lines
--- (LINE1_Y, LINE2_Y below the card's top); the tag "Empfohlen" at the top right (TAG_*); a thin gold
--- frame (EDGE, CHOSEN for the chosen one), the hover glow GLOW; a dim card's name in DIM.
-T.DCARD = {
-    W = 192, H = 84, GAP = 7, COLS = 3, MIN_ROWS = 2,
-    MAX_COLS = 6,              -- the window dragged wide (D-71): up to six per row
-    ART_H = 44, NAME_X = 6, NAME_Y = 4, TEXT_X = 6, TEXT_W = 180, LINE1_Y = -49, LINE2_Y = -66,
-    SHADE_TOP = 0.05, SHADE_BOTTOM = 0.85, SHADE_ALPHA = 0.45, GROUND = { 0, 0, 0, 0.35 },
-    TAG_X = -4, TAG_Y = -4, TAG_H = 14, TAG_PAD = 4, TAG_BG = { 0, 0, 0, 0.7 }, TAG_COLOR = { 0.31, 0.82, 0.42 },
-    EDGE = 0.35, CHOSEN = 0.95, GLOW = 0.06, DIM = { 0.56, 0.53, 0.64 },
+-- The start of Dungeons and Raids as a table (F-148, D-74): rows ROW_H high (the list's 1 px between),
+-- the instance's picture ART_W x ART_H at ART_X with a thin gold frame, its name (gold) and a grey line
+-- under it from NAME_X; the columns right of the name WIDTH wide each, GAP apart, the last at the
+-- list's right end; the name takes the rest. A level range's group row: the quest log's plus or minus
+-- (SIGN square at SIGN_X), its name from GROUP_X, the count at the right. The territory's crest SIDE
+-- square, a key's icon KEY square, the action's button ACT square. MIN_ROWS rows at least.
+T.DTABLE = {
+    ROW_H = 38, ART_X = 2, ART_W = 84, ART_H = 32, NAME_X = 92, NAME_Y = 8, SUB_Y = -9, GAP = 6, MIN_ROWS = 4,
+    SIGN = 14, SIGN_X = 6, GROUP_X = 26, SIDE = 22, KEY = 16, ACT = 22,
+    WIDTH = { level = 50, side = 42, zone = 100, keys = 50, quests = 46, act = 44, size = 50 },
+    GROUP_BG = { 0.18, 0.13, 0.07, 0.9 }, EDGE = 0.45, HERE = { 0.31, 0.82, 0.42 },
 }
 
 -- The journal's detail parts (D-72, Pages/Dungeons.lua and RaidJournal.lua): the run in the header's

@@ -63,7 +63,7 @@ local P = NS.PageFrame("raidjournal")
 assert(P.parts.access:IsShown(), "Zugang in the detail")
 P.back:Click()
 for k, tab in pairs(P.parts) do assert(not tab:IsShown(), "no tab on the start: " .. k) end
-assert(P.grid:IsShown())
+assert(P.table:IsShown())
 ony.keys = nil
 
 -- a key's steps: a later one is locked while an earlier one is open

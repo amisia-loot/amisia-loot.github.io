@@ -147,3 +147,10 @@ Nichts. Nur Oberfläche, nichts wird gesendet.
   - Die Fußzeile trägt links den Aufnahmezustand mit seinem Menü, rechts Ansicht und Version.
   - Die Talente sind ein eigener Reiter, auch wenn er nur die Seite und den Talentrechner hat.
   - Die Mindestbreite bleibt 806: die sieben Reiter passen hinein.
+- 2026-11-08, Nutzer: "Schritt 2 bauen". Beim Bauen (D-74):
+  - Die Kopfzeile behält die Reihenfolgen Level/Wert/Kette; nur in Level gibt es die Stufenbereiche, ein Klick auf einen
+    Spaltenkopf stellt auf Level.
+  - "Neu" für Forever-Instanzen und das Warnzeichen entfallen: unsere Daten kennen beides nicht.
+  - Das Gebiet kommt aus einer Liste der Zonen von Allianz und Horde, weil der Client es nur für die eigene Zone nennt.
+  - Die Raids sind nach Größe gruppiert; die Leiste nennt dort die Größen.
+

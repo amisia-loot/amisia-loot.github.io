@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(world): dungeons and raids as a table grouped by level range (F-148)
+
+  The start of the Dungeons and Raids pages is now a table instead of tiles: each instance with its
+  picture, name, level in the quest log's colours, the territory's crest, zone, keys, open quests and
+  a map button for the waypoint to the entrance. Click a column head to sort, a level range to fold
+  it. The side bar lists the level ranges (raids: their sizes) with their counts; a click jumps there.
+
 - feat(ui): the main window is a hub with tabs along the top (F-147)
 
   The window has a new dark frame with a thin gold edge. Its head shows the Amisia logo and name over a
