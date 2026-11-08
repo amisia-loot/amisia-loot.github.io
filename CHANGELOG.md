@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.67.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.67.0) (2026-11-08)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.66.0...v2.67.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(map): flight masters, zeppelins and ships are off on the world map by default (F-105)
 
   Amisia no longer puts flight master, zeppelin and ship icons on the world map; the dungeon and raid
