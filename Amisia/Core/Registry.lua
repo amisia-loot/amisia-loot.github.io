@@ -531,9 +531,9 @@ ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, group = "
       onChange = function(v) if ns.ApplyTalentScale then ns.ApplyTalentScale(v) end end },
     -- the loot toast (F-152, D-79): "+Item" in the middle of the screen when the character gets one
     { key = "ui.lootToast", type = "toggle", label = L["Erhaltene Items anzeigen"], default = true,
-      tip = L["Zeigt kurz \"+Item\" mit Symbol in der Mitte des Bildschirms, wenn du etwas lootest oder als Questbelohnung bekommst."] },
+      tip = L["Zeigt kurz \"+Item\" mit Symbol in der Mitte des Bildschirms, wenn du etwas lootest oder als Questbelohnung bekommst; Käufe, Handel und Post nicht."] },
     { key = "ui.lootToastMoney", type = "toggle", label = L["Erhaltenes Gold anzeigen"], default = true,
-      tip = L["Zeigt auch Gold, Silber und Kupfer, das du bekommst (Beute, Quests, Verkauf, Post), mit den Münzen in ihrer Farbe."] },
+      tip = L["Zeigt auch Gold, Silber und Kupfer, das du lootest oder für Quests bekommst, mit den Münzen in ihrer Farbe."] },
     { key = "ui.lootToastSize", type = "slider", label = L["Schriftgröße der Anzeige"], default = 16, min = 10, max = 32, step = 1,
       tip = L["Die Größe von Text und Symbol der Anzeige erhaltener Items und Gold."],
       onChange = function() if ns.ApplyLootToastSize then ns.ApplyLootToastSize() end end },

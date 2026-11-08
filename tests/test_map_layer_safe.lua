@@ -82,6 +82,7 @@ NS.MAP = { game = "forever", built = "t-safe", G = {}, P = { ["I:43"] = "1413:47
     F = { { 1413, 5150, 3030, "H", "Devrak" } }, T = {} }
 Map._reset()
 Map._resetPlaces()
+NS.Set("map.flights", true)   -- off by default since D-83
 STUB.fire("PLAYER_LOGIN")
 WorldMapFrame:Show()
 WorldMapFrame:SetMapID(1413)

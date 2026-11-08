@@ -51,8 +51,9 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Status: gebaut
 - Prüfung: Wenn du etwas lootest oder eine Quest mit Belohnung abgibst, dann steht kurz "+Name" mit dem Symbol des Items in seiner Qualitätsfarbe links über der Bildschirmmitte und blendet aus.
 - Prüfung: Wenn du unter Einstellungen, Oberfläche "Erhaltene Items anzeigen" ausschaltest, dann erscheint nichts mehr; "Ab Qualität" blendet schlechtere Items aus; "Anzeige ausprobieren" zeigt ein Beispiel.
-- Prüfung: Wenn du Gold bekommst (Beute, Quest, Verkauf), dann steht kurz "+1g 2s 3c" mit Münzen in Gold-, Silber- und Kupferfarbe da; unter Einstellungen, Oberfläche schaltet "Erhaltenes Gold anzeigen" das ab und "Schriftgröße der Anzeige" macht Text und Symbol größer oder kleiner.
+- Prüfung: Wenn du Gold lootest oder für eine Quest bekommst, dann steht kurz "+1g 2s 3c" mit Münzen in Gold-, Silber- und Kupferfarbe da; unter Einstellungen, Oberfläche schaltet "Erhaltenes Gold anzeigen" das ab und "Schriftgröße der Anzeige" macht Text und Symbol größer oder kleiner.
 - Notiz: D-79. Ohne Spec: eine kleine Anzeige ohne Daten und Nachrichten (docs/specs/README).
+- Prüfung: Wenn du beim Händler etwas kaufst oder verkaufst, Post abholst oder handelst, dann erscheint nichts.
 
 ### F-151 Berufe mit Übersicht und Berufsliste in der Leiste
 - Version: 2.66.0
@@ -1029,6 +1030,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du `/amisia selbsttest` eingibst, dann stehen dort Zeilen zu C_TaxiMap und C_EncounterJournal und zu den Symbolen Dungeon/Raid; nach dem Betreten eines Dungeons ohne bekannten Eingang (z. B. Hall of Thanes) hat er nach dem nächsten Daten-Build einen Pin.
 - Notiz: Spec `docs/specs/2026-10-16-karte-orte.md`; DECISIONS D-50 (gemerkte Eingänge), D-04 (seit 2026-11-04 Anleger und fehlende Flugmeister von Hand, eigene Symbole). Namen der Dungeons wie auf der Seite Dungeons (auf deutschen Clients teils englisch). Symbole: Flügelstiefel, Schiff in Fraktionsfarbe, Zeppelin (Media/Icons/place_*.tga), in 2.39.5/2.39.6 neu gezeichnet (glatter Rand, weicher Schatten).
 - Notiz: seit 2.55.0 auf eigener Pin-Ebene statt als Datenlieferant der Weltkarte (Taint-Fehler, DECISIONS D-64).
+- Notiz: Seit 2.67.0 sind Flugmeister, Zeppeline und Schiffe standardmäßig aus (D-83); die Eingänge bleiben.
 
 ### F-046 Dungeon-Planer: Rangliste, Kette, Quests
 - Version: 2.4.0

@@ -1,10 +1,12 @@
 -- The loot toast (F-152, D-79): what the character gets shows for a moment near the middle of the
 -- screen, rises a little and fades out:
--- - an item (the own loot line of the chat: looted, or pushed into the bags by a quest reward, a
---   vendor, a trade window's close) as "+[icon] Name x3" in the colour of its quality (the quality's
---   colour of the client; Forever's links carry the named form |cnIQ2:, which is read too);
--- - money (PLAYER_MONEY: the purse grew, by loot, a quest, a sale, the mail) as "+1g 20s 5c" with the
---   coins' icons, the gold in gold, the silver in silver, the copper in copper.
+-- - an item the character loots (a mob, a chest: "You receive loot") or gets from a quest ("You receive
+--   item" while no vendor, trade, mail, bank or auction window is open: those are purchases and
+--   handovers, not rewards) as "+[icon] Name x3" in the colour of its quality (the quality's colour of
+--   the client; Forever's links carry the named form |cnIQ2:, which is read too);
+-- - money the character loots (CHAT_MSG_MONEY: "You loot 2 Silver, 51 Copper", also a group's share)
+--   or gets for a quest (QUEST_TURNED_IN's reward) as "+1g 20s 5c" with the coins' icons, the gold in
+--   gold, the silver in silver, the copper in copper. Sales, the mail and trades show nothing.
 -- Several stack under each other (at most T.LOOTTOAST.MAX at once). Switched in the settings
 -- (Oberfläche: ui.lootToast, ui.lootToastMoney, ui.lootToastQuality the lowest quality shown,
 -- ui.lootToastSize the font size). A secret chat line (Forever's encounter lockdown) shows nothing.
@@ -174,25 +176,68 @@ function ns.LootToastLines()
     return out
 end
 
--- The own loot line of the chat: looted or pushed (a quest's reward). A secret line is skipped.
+-- The windows in which a pushed item is no reward (a purchase, a trade, the mail, the bank, the auction
+-- house): open while their show event came and their close event not yet.
+local busy = {}
+for show_, close in pairs({ MERCHANT_SHOW = "MERCHANT_CLOSED", TRADE_SHOW = "TRADE_CLOSED", MAIL_SHOW = "MAIL_CLOSED",
+                           BANKFRAME_OPENED = "BANKFRAME_CLOSED", AUCTION_HOUSE_SHOW = "AUCTION_HOUSE_CLOSED",
+                           GUILDBANKFRAME_OPENED = "GUILDBANKFRAME_CLOSED" }) do
+    local opened = show_
+    ns.OnEvent(opened, function() busy[opened] = true end)
+    ns.OnEvent(close, function() busy[opened] = nil end)
+end
+local function windowOpen() return next(busy) ~= nil end
+
+-- "You receive loot: ..." (looted) against "You receive item: ..." (pushed).
+local looted
+local function isLooted(text)
+    if not looted then
+        looted = {}
+        for _, key in ipairs({ "LOOT_ITEM_SELF_MULTIPLE", "LOOT_ITEM_SELF" }) do
+            local m = ns.BuildMatcher(_G[key])
+            if m then looted[#looted + 1] = m end
+        end
+    end
+    for _, m in ipairs(looted) do if m(text) then return true end end
+    return false
+end
+
+-- The own loot line of the chat: looted, or pushed outside the windows above (a quest's reward). A
+-- secret line is skipped.
 ns.OnEvent("CHAT_MSG_LOOT", function(text)
     text = ns.Plain(text)
     if type(text) ~= "string" or not ns.Get("ui.lootToast") then return end
     local who, id, count, link = ns.ParseLootLink(text)
     if not who or not ns.SameName(who, ns.UnitFullName("player")) then return end
+    if not isLooted(text) and windowOpen() then return end
     ns.LootToast(id, count, link)
 end)
 
--- The purse: what it gained since the last look (the first look after the login only remembers).
-local purse
-local function money() return GetMoney and tonumber(GetMoney()) or nil end
-ns.OnEvent("PLAYER_ENTERING_WORLD", function() purse = money() end)
-ns.OnEvent("PLAYER_MONEY", function()
-    local m = money()
-    if not m then return end
-    if purse and m > purse then ns.LootToastMoney(m - purse) end
-    purse = m
+-- The copper of a money line ("2 Silber, 51 Kupfer"; the client's GOLD_AMOUNT, SILVER_AMOUNT and
+-- COPPER_AMOUNT words), or nil.
+local function copperOf(text)
+    local total, found = 0, false
+    for _, part in ipairs({ { "GOLD_AMOUNT", 10000 }, { "SILVER_AMOUNT", 100 }, { "COPPER_AMOUNT", 1 } }) do
+        local fmt = _G[part[1]]
+        if type(fmt) == "string" then
+            local pat = fmt:gsub("([%(%)%.%+%-%*%?%[%]%^%$])", "%%%1"):gsub("%%d", "(%%d+)")
+            local n = tonumber(text:match(pat))
+            if n then total, found = total + n * part[2], true end
+        end
+    end
+    return found and total or nil
+end
+ns.LootToastCopperOf = copperOf
+
+-- Looted money (also a group's share of it); a secret line is skipped.
+ns.OnEvent("CHAT_MSG_MONEY", function(text)
+    text = ns.Plain(text)
+    if type(text) ~= "string" then return end
+    local c = copperOf(text)
+    if c then ns.LootToastMoney(c) end
 end)
+-- A quest's money.
+ns.OnEvent("QUEST_TURNED_IN", function(_, _, money) ns.LootToastMoney(money) end)
 
 -- The size setting: the lines shown now take it at once.
 function ns.ApplyLootToastSize()

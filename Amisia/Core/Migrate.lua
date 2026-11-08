@@ -61,6 +61,13 @@ ns.MIGRATIONS = {
         s.goalWindow = nil
         if type(s.ui) == "table" then s.ui.goalScale = nil end
     end,
+    -- 4 (2.67.0): flight masters, zeppelins and ships leave the world map by default (D-83): a stored
+    -- choice goes, so the new default holds; the player can switch them on again
+    function(db)
+        local m = type(db.settings) == "table" and db.settings.map
+        if type(m) ~= "table" then return end
+        m.flights, m.transports = nil, nil
+    end,
 }
 
 local newer   -- the schema of a file a newer Amisia saved, for the one chat line

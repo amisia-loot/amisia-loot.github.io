@@ -1937,6 +1937,10 @@ Quellen, Spielstil; der Tooltip sagt warum) statt "Quellen", das Suchfeld nimmt 
 - Gold: Wächst die Geldbörse (`PLAYER_MONEY` gegen den letzten Stand, der erste Stand nach dem Einloggen wird nur gemerkt), steht "+1g 2s 3c" da. Die Zahlen stehen in der Farbe ihres Metalls, dazu die Münzsymbole des Clients. Abschaltbar mit `ui.lootToastMoney` (an). Ausgeben zeigt nichts.
 - Schriftgröße: `ui.lootToastSize` (10 bis 32, Standard 16). Symbol und Zeilenhöhe wachsen mit, auch für gerade gezeigte Zeilen.
 
+**Nachtrag 2026-11-08 (Nutzer: "nur wenn ich es von Quests oder Mobs bekomme oder loote"):** Die Anzeige zeigt nur noch Beute und Questbelohnungen:
+- Items: "Du erhaltet Beute" immer; "Ihr erhaltet Gegenstand" (in die Taschen gelegt, so kommen Questbelohnungen) nur, solange kein Händler-, Handels-, Post-, Bank-, Gildenbank- oder Auktionshausfenster offen ist. Dort sind es Käufe und Übergaben.
+- Gold: nur die Loot-Zeile `CHAT_MSG_MONEY` (auch der Anteil der Gruppe), gelesen mit den Wörtern des Clients (`GOLD_AMOUNT`, `SILVER_AMOUNT`, `COPPER_AMOUNT`), und das Gold einer Quest (`QUEST_TURNED_IN`). Verkauf, Post und Handel zeigen nichts. Das Wachsen der Geldbörse (`PLAYER_MONEY`) zählt nicht mehr.
+
 ## D-80 Kein Extrafenster für Ausrüstung: die Ziele im Ausrüstungsplaner
 
 **Datum:** 2026-11-08
@@ -2015,3 +2019,15 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 - Ob `Interface\COMMON\Indicator-Yellow`/`-Green` in Forever da sind, ist im Spiel zu prüfen; ohne bleiben die Punkte leer.
 
 **Durchgesetzt durch:** `tests/test_professions_page.lua` (Reiter, Kopf, Trichter, Zeilen, Detail, Stern, Favoriten, Herstellliste), `tests/test_crafters_page.lua` (Gildenkasten, Offline zeigen, grüner Punkt), `tests/prof_filters_body.lua`, die Layoutregeln (Zustände `professions-fav`, `professions-queue`).
+
+## D-83 Flugmeister, Zeppeline und Schiffe nicht mehr auf der Weltkarte
+
+**Datum:** 2026-11-08
+**Entscheidung:** Die Pins der Flugmeister (`map.flights`) und der Zeppeline und Schiffe (`map.transports`, F-105) sind standardmäßig aus. Schritt 4 von `Core/Migrate.lua` nimmt eine gespeicherte Wahl einmal weg, damit der neue Standard auch für bestehende Charaktere gilt. Die Eingänge der Dungeons und Raids bleiben an. Wer die anderen Pins will, schaltet sie unter Einstellungen, Karte und Wegpunkt wieder ein.
+
+**Grund:** Nutzer 2026-11-08: "mach die Zeppeline, Schiffe und Flugpunkt-Icons weg".
+
+**Folge:** Die Daten (Flugmeister, Anleger) und die Bilder `place_*.tga` bleiben im Addon, damit das Einschalten weiter geht.
+
+**Durchgesetzt durch:** `tests/test_map_places.lua` (Standard aus, Schritt 4), `tests/test_map_layer_safe.lua`.
+

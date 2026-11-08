@@ -50,6 +50,16 @@ NS.MAP = { game = "forever", built = "t-places", G = {}, P = {
 Map._reset()
 Map._resetPlaces()
 
+-- flight masters, zeppelins and ships are off by default (D-83); on for the checks below
+assert(NS.Get("map.flights") == false and NS.Get("map.transports") == false, "off by default")
+local stored = { flights = true, transports = true }
+local keepMap = AmisiaDB.settings.map
+AmisiaDB.settings.map = stored
+NS.MIGRATIONS[4](AmisiaDB)
+assert(stored.flights == nil and stored.transports == nil, "a stored choice goes once (step 4)")
+AmisiaDB.settings.map = keepMap
+NS.Set("map.flights", true)
+NS.Set("map.transports", true)
 local P = Map.Places()
 local byKey = {}
 for _, e in ipairs(P.entrances) do byKey[e.key] = e end
