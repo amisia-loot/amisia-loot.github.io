@@ -40,7 +40,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-152 Anzeige erhaltener Items beim Looten und bei Questbelohnungen
-- Version: 2.64.0
+- Version: 2.65.0
 - Status: gebaut
 - Prüfung: Wenn du etwas lootest oder eine Quest mit Belohnung abgibst, dann steht kurz "+Name" mit dem Symbol des Items in seiner Qualitätsfarbe links über der Bildschirmmitte und blendet aus.
 - Prüfung: Wenn du unter Einstellungen, Oberfläche "Erhaltene Items anzeigen" ausschaltest, dann erscheint nichts mehr; "Ab Qualität" blendet schlechtere Items aus; "Anzeige ausprobieren" zeigt ein Beispiel.
@@ -48,7 +48,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: D-79. Ohne Spec: eine kleine Anzeige ohne Daten und Nachrichten (docs/specs/README).
 
 ### F-151 Berufe mit Übersicht und Berufsliste in der Leiste
-- Version: 2.64.0
+- Version: 2.65.0
 - Status: gebaut
 - Prüfung: Wenn du im Reiter Berufe links auf "Übersicht" klickst (oder `/amisia berufe übersicht` eingibst), dann zeigt die Seite "Deine Berufe" mit Rang und bekannten Rezepten, "Alle Berufe" mit ihrer Rezeptzahl und "Weiteres" mit Lager und Händlergunst als Kacheln.
 - Prüfung: Wenn du links unter "Übersicht" schaust, dann stehen dort die Berufe mit ihrem Symbol, darunter Lager und Händlergunst mit deiner Gunst als Zahl; die gezeigte Ansicht ist hervorgehoben.
@@ -67,7 +67,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-08-hub-reiter.md; D-76.
 
 ### F-149 Ausrüstungsplaner: Modell mit Plätzen, Vorschläge je Platz, Sets in der Leiste
-- Version: 2.64.0
+- Version: 2.65.0
 - Status: gebaut
 - Prüfung: Wenn du den Reiter Ausrüstung öffnest, dann siehst du zuerst den Ausrüstungsplaner: links dein Modell auf dem Bild der Anprobe (beim breiteren Fenster breiter) mit acht Plätzen links (mit Hemd und Wappenrock), acht rechts und den Waffen darunter, oben dein Name, deine Stufe und die Spezialisierung zum Wählen.
 - Prüfung: Wenn du einen Platz anklickst, dann zeigt die Liste rechts seine Vorschläge mit Symbol, Name in Qualitätsfarbe (Questbelohnung mit gelbem "!"), "Stufe 25 · Dungeon - Boss", "Stufe 32 · Schneiderei 150" oder "Quest: Titel", Zuwachs in Prozent ("neu" ohne angelegtes Item), Quellsymbol (Beruf: sein Symbol) und grauem Stern; "Quellen" schaltet Quellen ab; "Alle" oder andere Stufen zeigen die Items dieses Bereichs, "Alle Items suchen ..." findet Items nach Namen.
