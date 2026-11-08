@@ -522,6 +522,21 @@ T.TALENT = {
     -- the rank text per state: grey, white, green, gold
     RANK_COLOR = { locked = { 0.5, 0.5, 0.5 }, free = { 1, 1, 1 }, partial = { 0.25, 1, 0.25 }, maxed = { 1, 0.82, 0 } },
     LINE_COLOR = { met = { 1, 0.82, 0, 0.9 }, unmet = { 0.3, 0.28, 0.25, 0.9 } },
+    -- a tree (D-76): a thin gold-brown frame, a dark ground and over it its part of the client's class
+    -- art (talent-background-<class>, cut to the tree's shape) at BG_ALPHA
+    TREE_EDGE = { 0.55, 0.42, 0.2, 1 },
+    TREE_GROUND = { 0.03, 0.03, 0.04, 0.9 },
+    BG_ALPHA = 0.6,
+    -- the line over the trees: "Stufe: 60 · Verfügbar: 51 · Verteilt: 0 · Übrig: 51", the four parts
+    -- spread over the width, the names gold, the numbers white (red when the plan wants more)
+    STAT_FONT = "GameFontNormal",
+    -- the side bar's action marks of the page (D-75, D-76): client marks only, no spell or item icons
+    MARKS = {
+        live = { file = "Interface\\GossipFrame\\TrainerGossipIcon" },
+        reset = { file = "Interface\\GossipFrame\\UnlearnGossipIcon" },
+        import = { file = "Interface\\Buttons\\UI-GuildButton-OfficerNote-Up" },
+        export = { file = "Interface\\Buttons\\UI-GuildButton-PublicNote-Up" },
+    },
     -- the page in the main window: 3 x 198 + 2 x 4 = the page width (602). 34 px icons 12 px apart
     -- leave 12 px to the tree's edges, 9 past the glow and the plate (2.19.0: 36 px, 14 apart, 2 px:
     -- the outer buttons touched the borders in the game)
@@ -542,6 +557,7 @@ T.TALENT = {
         ARROW = 10,           -- the arrow head at the line's end, in the gap before the talent
         MARGIN = 8,           -- at least this from a tree's edge to the outside of its outer buttons
         LIVE_W = 262,         -- the line "Im Spiel: ..." under the trees (the message takes the rest)
+        HINT_W = 160,         -- "Linksklick + · Rechtsklick -" at the bottom row's right end
     },
     -- the window "Talentrechner": 3 x 270 + 2 x 6 = 822 wide, T.WINDOW_PAD on both sides; 44 px
     -- icons 16 px apart, 19 px to the tree's edges (16 past the glow and the plate)

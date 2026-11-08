@@ -1,15 +1,21 @@
 -- The page "Talente" and the window "Talentrechner" (AmisiaTalentFrame): WoW Forever's talent
--- trees of every class in the look of the game's classic three-tree talent window: three dark
--- panels side by side, each with its name and points centred at the top (right-click there or its
--- red X on hover resets the tree), a 4 x 7 grid of square icons with a thin square frame and a rank
--- plate, straight gold lines for the prerequisites. Left click +1, right click -1, shift for all
--- ranks; the tooltip names what a talent still needs. Level and the Talented perk set the free
--- points; each class keeps two plans as share codes, "Primär" and "Sekundär" (the chip in the bottom
--- row switches). The own class can load its talents from the game. The rules live in Talents.lua, the sizes and colours in ns.Theme.TALENT.
+-- trees of every class in the look of the game's classic three-tree talent window: three panels
+-- side by side in a thin gold-brown frame, each on its part of the client's class art, its name and
+-- points centred at the top (right-click there or its red X on hover resets the tree), a 4 x 7 grid
+-- of square icons with a thin square frame and a rank plate, straight gold lines for the
+-- prerequisites; over them the line "Stufe · Verfügbar · Verteilt · Übrig". Left click +1, right
+-- click -1, shift for all ranks; the tooltip names what a talent still needs. Level and the Talented
+-- perk set the free points; each class keeps two plans as share codes, "Primär" and "Sekundär". The
+-- own class can load its talents from the game. The rules live in Talents.lua, the sizes and colours
+-- in ns.Theme.TALENT.
+-- D-76: on the page the classes (with their crests), the two plans and the actions (Eigene laden,
+-- Plan leeren, Build importieren, Build exportieren) are marks of the side bar (jumps/jump);
+-- the window has no side bar and keeps its own controls (class picker, plan tabs, buttons).
 -- One builder (buildView) draws the view for a parent in a size profile: TALENT.PAGE on the page in
--- the main window, TALENT.BIG in the window. Both views show the one plan (S below): a click in
--- one changes the other on its refresh. The window is moved and scaled on its own (settings
--- talentWindow and ui.talentScale, Ctrl + mouse wheel over it).
+-- the main window (it grows with the window, T.PAGE_W_NOW and T.PAGE_H), TALENT.BIG in the window.
+-- Both views show the one plan (S below): a click in one changes the other on its refresh. The
+-- window is moved and scaled on its own (settings talentWindow and ui.talentScale, Ctrl + mouse
+-- wheel over it).
 local ADDON, ns = ...
 local W, T, Theme = ns.W, ns.Talents, ns.Theme
 local L = ns.L
@@ -18,12 +24,13 @@ local TT = Theme.TALENT
 local LAY = Theme.LAYOUT
 
 local ICON = "Interface\\Icons\\INV_Misc_Book_09"
--- the trees start under the head row (ROW_H + GAP of ns.Theme.LAYOUT)
-local TREE_TOP = LAY.ROW_H + LAY.GAP
+-- the page area at the main window's own size: the page grows by what the window adds (D-71)
+local PAGE_H0 = Theme.PAGE_H
 local GOLD = TT.FRAME_COLOR.maxed
 local RED = { 1, 0.1, 0.1 }
 local TURN = { down = 0, right = math.pi / 2, left = -math.pi / 2, up = math.pi }
 local HINT = L["Linksklick: +1 · Rechtsklick: -1 · Shift: alle Ränge"]
+local SHORT_HINT = L["Linksklick + · Rechtsklick -"]
 
 -- what both views show: the plan of the shown class, the talents in the game (own class)
 local S = { plan = nil, live = nil }
@@ -100,6 +107,29 @@ local function chooseSlot(slot)
     T.SetSlot(slot)
     if cls and T.Class(cls) then S.plan = openPlan(cls) else S.plan = nil end
     say((L["Plan %s"]):format(SLOTS[slot][2]))
+    refreshAll()
+end
+
+-- The talents in the game as the plan (the own class).
+local function loadLive()
+    local plan, info = T.Live()
+    if not plan then
+        say(info, true)
+        return
+    end
+    S.plan = plan
+    T.State().class = plan.class
+    save()
+    say((L["Talente aus dem Spiel geladen (%d Punkte)."]):format(T.Spent(plan)))
+    refreshAll()
+end
+
+-- Every point out of the shown plan.
+local function resetPlan()
+    if not S.plan then return end
+    T.Reset(S.plan)
+    save()
+    say("")
     refreshAll()
 end
 
@@ -313,14 +343,7 @@ local function buildClass(v, cls)
             v.buttons[n[F.NODE]] = b
         end
     end
-    -- the client's class background, once behind all three trees (it shows the whole talent window)
-    local bg = "talent-background-" .. cls:lower()
-    if hasAtlas(bg) and v.bg:SetAtlas(bg) then
-        v.bg:SetAlpha(0.5)
-    else
-        v.bg:SetColorTexture(0.05, 0.04, 0.06, 0.85)
-        v.bg.atlas = nil
-    end
+    v.bgClass = nil
     for id, b in pairs(v.buttons) do
         local n = b.node
         if type(n[F.PRE]) == "table" then
@@ -348,9 +371,16 @@ end
 -- "N Punkte" small under it). The head takes the mouse: a right click resets the tree, hovering
 -- shows its red X.
 local function makeTree(f, P, t)
-    local tree = W.Inset(f)
+    local tree = CreateFrame("Frame", nil, f)
     tree:SetSize(P.TREE_W, P.TREE_H)
-    tree:SetPoint("TOPLEFT", f, "TOPLEFT", (t - 1) * (P.TREE_W + P.TREE_GAP), -TREE_TOP)
+    local g = TT.TREE_GROUND
+    tree.ground = W.Flat(tree, g[1], g[2], g[3], g[4])
+    -- the tree's part of the client's class art (paintArt), over the dark ground
+    tree.bg = tree:CreateTexture(nil, "BACKGROUND", nil, 1)
+    tree.bg:SetPoint("TOPLEFT", 1, -1)
+    tree.bg:SetPoint("BOTTOMRIGHT", -1, 1)
+    local e = TT.TREE_EDGE
+    tree.edges = W.Border(tree, e[1], e[2], e[3], e[4])
     local head = CreateFrame("Frame", nil, tree)
     tree.head = head
     head:SetPoint("TOPLEFT", 0, 0)
@@ -359,6 +389,7 @@ local function makeTree(f, P, t)
     head:EnableMouse(true)
     -- the name keeps the X's room free on both sides, so it stays centred
     local nameW = P.TREE_W - 2 * (TT.RESET + TT.RESET_X + 2)
+    tree.nameRoom = 2 * (TT.RESET + TT.RESET_X + 2)
     tree.name = W.Text(head, P.NAME_FONT, nameW)
     tree.name:SetJustifyH("CENTER")
     tree.name:SetPoint("TOP", head, "TOP", 0, -P.NAME_Y)
@@ -393,6 +424,11 @@ end
 -- A code typed or pasted into the box of view v.
 local function onCode(v, text)
     if not v or (S.plan and text == T.Encode(S.plan)) then return end
+    -- an empty box (the import mark emptied it, nothing pasted): the plan's code again, no error
+    if not (type(text) == "string" and text:find("%S")) then
+        if S.plan then v.code:SetText(T.Encode(S.plan)) end
+        return
+    end
     local plan, err = T.Decode(text)
     if not plan then
         say(err, true)
@@ -413,22 +449,125 @@ end
 -- The width of a view in profile P: three trees and the two gaps between them.
 local function viewWidth(P) return 3 * P.TREE_W + 2 * P.TREE_GAP end
 
+-- The tree's part of the client's class art: the third of talent-background-<class> under tree t,
+-- cut to the tree's shape (as wide as the tree's height allows, centred in the third); without the
+-- atlas only the dark ground.
+local function paintArt(f, cls)
+    local name = "talent-background-" .. cls:lower()
+    local info = hasAtlas(name) and C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name)
+    for t, tree in ipairs(f.trees) do
+        local bg = tree.bg
+        if hasAtlas(name) and bg:SetAtlas(name) then
+            bg:SetAlpha(TT.BG_ALPHA)
+            if info and (info.width or 0) > 0 and (info.height or 0) > 0 and f.treeH > 0 then
+                local aw, ah = info.width, info.height
+                local third = aw / 3
+                local x0, x1, y0, y1
+                local want = ah * f.treeW / f.treeH
+                if want <= third then
+                    local c = (t - 0.5) * third
+                    x0, x1, y0, y1 = c - want / 2, c + want / 2, 0, ah
+                else
+                    local hh = third * f.treeH / f.treeW
+                    x0, x1, y0, y1 = (t - 1) * third, t * third, (ah - hh) / 2, (ah + hh) / 2
+                end
+                local l, r = info.leftTexCoord or 0, info.rightTexCoord or 1
+                local tp, bt = info.topTexCoord or 0, info.bottomTexCoord or 1
+                bg:SetTexCoord(l + (r - l) * x0 / aw, l + (r - l) * x1 / aw, tp + (bt - tp) * y0 / ah, tp + (bt - tp) * y1 / ah)
+            end
+            bg:Show()
+        else
+            bg.atlas = nil
+            bg:Hide()
+        end
+    end
+    f.bgClass = cls
+end
+
+-- A talent's button at its row and column of the grid.
+local function placeButton(f, b)
+    local G, n = f.layoutInfo, b.node
+    b:ClearAllPoints()
+    b:SetPoint("TOPLEFT", f.trees[n[F.TREE]], "TOPLEFT", G.left + n[F.COL] * G.pitch, -(G.top + n[F.ROW] * G.pitch))
+end
+
+-- The view's size: the window's view keeps its profile's; the page takes the width and the height
+-- the main window gives (T.PAGE_W_NOW, T.PAGE_H; never less than the profile's). The trees share the
+-- width and grow down by the extra height; the grid stays centred in each tree. Places the trees, the
+-- line over them, the line under them and the buttons again when the size changed.
+local function layoutView(f)
+    local P = f.P
+    local VW, extraH = viewWidth(P), 0
+    if f.grows then
+        VW = math.max(VW, math.floor(Theme.PAGE_W_NOW or Theme.PAGE_W))
+        extraH = math.max(0, math.floor((Theme.PAGE_H or PAGE_H0) - PAGE_H0))
+    end
+    if f.laidW == VW and f.laidH == extraH then return end
+    f.laidW, f.laidH = VW, extraH
+    local tw = math.floor((VW - 2 * P.TREE_GAP) / 3)
+    local th = P.TREE_H + extraH
+    f.treeW, f.treeH = tw, th
+    for t, tree in ipairs(f.trees) do
+        tree:SetSize(tw, th)
+        tree:ClearAllPoints()
+        tree:SetPoint("TOPLEFT", f, "TOPLEFT", (t - 1) * (tw + P.TREE_GAP), -f.treeTop)
+        tree.name:SetWidth(tw - tree.nameRoom)
+        tree.pts:SetWidth(tw - tree.nameRoom)
+    end
+    -- the grid of 4 columns centred in the tree: the button is the icon with its frame around it
+    local G = f.layoutInfo
+    G.left = math.floor((tw - (3 * G.pitch + G.button)) / 2)
+    for _, b in pairs(f.buttons) do placeButton(f, b) end
+    -- the four parts of the line over the trees, each a quarter of the width, centred
+    local band = f.statBand
+    for i, fs in ipairs(f.stats) do
+        fs:ClearAllPoints()
+        fs:SetWidth(math.floor(VW / 4))
+        fs:SetPoint("LEFT", band, "LEFT", math.floor((i - 1) * VW / 4), 0)
+    end
+    -- under the trees: the last message at the left, the talents in the game at the right
+    local lineY = -(f.treeTop + th + LAY.GAP)
+    f.msg:ClearAllPoints()
+    f.msg:SetWidth(VW - P.LIVE_W - 2 * LAY.TEXT_X - 8)
+    f.msg:SetPoint("TOPLEFT", LAY.TEXT_X, lineY)
+    f.liveText:ClearAllPoints()
+    f.liveText:SetPoint("TOPLEFT", VW - LAY.TEXT_X - P.LIVE_W, lineY)
+    if f.bgClass then paintArt(f, f.bgClass) end
+end
+
 -- The one builder of the talent view: a W.Page on parent in the sizes of profile P (TALENT.PAGE or
--- TALENT.BIG). opts.bigButton: the red button that opens the window (on the page); opts.hint: the
--- click hint as the footer (in the window).
+-- TALENT.BIG). opts.controls (the window): the class picker and the plan tabs in the head row,
+-- "Eigene laden" and "Alles zurücksetzen" in the bottom row, the click hint as the footer; without
+-- (the page) those are the side bar's marks (D-76), the page grows with the main window and the
+-- short click hint stands at the bottom row's right end.
 local function buildView(parent, P, opts)
     opts = opts or {}
     local VW = viewWidth(P)
-    local f = W.Page(parent, { width = VW })
+    local f = W.Page(parent, opts.controls and { width = VW } or nil)
     f.P = P
+    f.grows = not opts.controls
     f.buttons, f.arrows = {}, {}
-    -- the grid of 4 columns centred in the tree: the button is the icon with its frame around it
     local btn = P.ICON + 2 * TT.FRAME
-    f.layoutInfo = { left = math.floor((P.TREE_W - (3 * P.PITCH + btn)) / 2), top = P.GRID_TOP, pitch = P.PITCH, button = btn }
-    -- the head row: class, level and Talented, the points at the right; the trees under it
-    f:Bands({ "row" })
+    f.layoutInfo = { left = 0, top = P.GRID_TOP, pitch = P.PITCH, button = btn }
 
-    f.class = W.Picker(f, 130, function(v) chooseClass(v) end)
+    -- the window's head row: class, steppers, plan tabs; the line "Stufe · Verfügbar · Verteilt ·
+    -- Übrig" under it (on the page it is the first band)
+    if opts.controls then
+        f:Bands({ "row", "line" })
+        f.statBand = f.bands[2]
+    else
+        f:Bands({ "row" })
+        f.statBand = f.bands[1]
+    end
+    f.treeTop = -f.top
+    f.stats = {}
+    for i = 1, 4 do
+        local fs = W.Text(f, TT.STAT_FONT, math.floor(VW / 4))
+        fs:SetJustifyH("CENTER")
+        f.stats[i] = fs
+    end
+    f.statLevel, f.statFree, f.statSpent, f.statLeft = f.stats[1], f.stats[2], f.stats[3], f.stats[4]
+
     f.levelLabel = W.Text(f, Theme.FONT.text, 34)
     f.levelLabel:SetText(L["Stufe"])
     f.level = W.Stepper(f, 76, function(v)
@@ -446,77 +585,66 @@ local function buildView(parent, P, opts)
     f.talented:EnableMouse(true)
     W.Tooltip(f.talented, L["Talentiert (Vermächtnis)"],
         L["Jeder Rang gibt die Talentpunkte eine Stufe früher (ab Stufe 9 bis 5); mehr als 51 Punkte gibt es nie."])
-    f.total = W.Text(f, Theme.FONT.body, 206)
-    f.total:SetJustifyH("RIGHT")
-    -- the class, then each stepper with its label in front
-    f:Place(1, { f.class, { f.levelLabel, gap = 10 }, { f.level, gap = 2 }, { f.talentedLabel, gap = 10 }, { f.talented, gap = 2 } },
-        { f.total })
 
-    f.bg = f:CreateTexture(nil, "BACKGROUND")
-    f.bg:SetPoint("TOPLEFT", f, "TOPLEFT", 3, -(TREE_TOP + 3))
-    f.bg:SetPoint("BOTTOMRIGHT", f, "TOPLEFT", VW - 3, -(TREE_TOP + P.TREE_H - 3))
     f.trees = {}
     for t = 1, 3 do f.trees[t] = makeTree(f, P, t) end
-
-    -- under the trees: the last message at the left, the talents in the game at the right
-    local lineY = -(TREE_TOP + P.TREE_H + LAY.GAP)
     f.msg = W.Text(f, Theme.FONT.text, VW - P.LIVE_W - 2 * LAY.TEXT_X - 8)
-    f.msg:SetPoint("TOPLEFT", LAY.TEXT_X, lineY)
     f.liveText = W.Text(f, Theme.FONT.text, P.LIVE_W)
     f.liveText:SetJustifyH("RIGHT")
-    f.liveText:SetPoint("TOPRIGHT", -LAY.TEXT_X, lineY)
 
-    f.live = W.Button(f, L["Eigene laden"], 104, function()
-        local plan, info = T.Live()
-        if not plan then
-            say(info, true)
-            return
-        end
-        S.plan = plan
-        T.State().class = plan.class
-        save()
-        say((L["Talente aus dem Spiel geladen (%d Punkte)."]):format(T.Spent(plan)))
-        refreshAll()
-    end)
-    W.Tooltip(f.live, L["Eigene Talente laden"], L["Übernimmt die Talente, die dein Charakter gerade hat."])
-    f.resetAll = W.Link(f, L["Alles zurücksetzen"], function()
-        if not S.plan then return end
-        T.Reset(S.plan)
-        save()
-        say("")
-        refreshAll()
-    end)
-    W.FitChip(f.live, 104)
-    W.FitChip(f.resetAll)
-    -- the plan slot: Primär | Sekundär as two text tabs (D-67), a click switches
-    f.slots = {}
-    for i, s in ipairs(SLOTS) do
-        f.slots[i] = W.Tab(f, s[2], function() chooseSlot(s[1]) end)
-        W.Tooltip(f.slots[i], L["Zwei Pläne je Klasse"],
-            L["Jede Klasse hat zwei gespeicherte Pläne, Primär und Sekundär. Ein Klick wechselt; der gezeigte Plan wird vorher gespeichert."])
-    end
     f.codeLabel = W.Text(f, Theme.FONT.text, 34)
     f.codeLabel:SetText("Code")
     f.code = W.LineEdit(f, 200, function(text) onCode(f, text) end)
-    local right
-    if opts.bigButton then
-        -- the window with the bigger trees (the side tab and /amisia talente gross open it too)
-        f.bigBtn = W.Link(f, L["Talentrechner"], function() ns.ToggleTalentFrame() end)
-        W.FitChip(f.bigBtn)
-        W.Tooltip(f.bigBtn, L["Talentrechner"],
-            L["Öffnet die Talente in einem eigenen, größeren Fenster (auch /amisia talente gross). Strg + Mausrad über dem Fenster ändert seine Größe."])
-        right = { f.bigBtn }
-    end
-    if opts.hint then
-        f:Footer({ { "hint", help = true } })
-        f.hint:SetText(HINT)
-    end
-    -- the bottom row: load, reset, the share code taking the rest (and the window's button)
-    f:BottomRow({ f.live, f.resetAll, f.slots[1], f.slots[2], { f.codeLabel, gap = 10 }, { f.code, gap = 4, fill = true } }, right)
     -- a click into the box marks the code, ready to copy
     f.code:HookScript("OnEditFocusGained", function(self) self:HighlightText() end)
     W.Tooltip(f.code, L["Build-Code"], L["Zum Teilen kopieren (Strg+C). Einen Code oder einen Build-Link von talentsforever.com oder wowforevertalents.com einfügen und Enter drücken übernimmt ihn."])
+    local steppers = { { f.levelLabel }, { f.level, gap = 2 }, { f.talentedLabel, gap = 10 }, { f.talented, gap = 2 } }
+
+    if opts.controls then
+        f.class = W.Picker(f, 130, function(v) chooseClass(v) end)
+        -- the plan slot: Primär | Sekundär as two text tabs (D-67), a click switches
+        f.slots = {}
+        for i, s in ipairs(SLOTS) do
+            f.slots[i] = W.Tab(f, s[2], function() chooseSlot(s[1]) end)
+            W.Tooltip(f.slots[i], L["Zwei Pläne je Klasse"],
+                L["Jede Klasse hat zwei gespeicherte Pläne, Primär und Sekundär. Ein Klick wechselt; der gezeigte Plan wird vorher gespeichert."])
+        end
+        steppers[1].gap = 10
+        table.insert(steppers, 1, f.class)
+        f:Place(1, steppers, { f.slots[1], f.slots[2] })
+        f.live = W.Button(f, L["Eigene laden"], 104, loadLive)
+        W.Tooltip(f.live, L["Eigene Talente laden"], L["Übernimmt die Talente, die dein Charakter gerade hat."])
+        f.resetAll = W.Link(f, L["Alles zurücksetzen"], resetPlan)
+        W.FitChip(f.live, 104)
+        W.FitChip(f.resetAll)
+        f:Footer({ { "hint", help = true } })
+        f.hint:SetText(HINT)
+        f:BottomRow({ f.live, f.resetAll, { f.codeLabel, gap = 10 }, { f.code, gap = 4, fill = true } })
+    else
+        f.hint = W.Text(f, Theme.FONT.hint, P.HINT_W)
+        f.hint:SetJustifyH("RIGHT")
+        f.hint:SetText(SHORT_HINT)
+        steppers[#steppers + 1] = { f.codeLabel, gap = 10 }
+        steppers[#steppers + 1] = { f.code, gap = 4, fill = true }
+        f:BottomRow(steppers, { f.hint })
+        W.FollowWidth(f, function() layoutView(f) end)
+    end
+    layoutView(f)
     return f
+end
+
+-- The line over the trees: the level (red with the level the plan needs when it gives too few
+-- points), the points the level gives, the points spent and what is left (red when too many).
+local function statLine(f, s, spent, pts, need)
+    local W1, R = "|cffffffff", "|cffff4040"
+    local level = s.level or 60
+    local lv = W1 .. level .. "|r"
+    if spent > pts and need then lv = R .. level .. "|r " .. (L["(ab %d)"]):format(need) end
+    local c = spent > pts and R or W1
+    f.statLevel:SetText(L["Stufe:"] .. " " .. lv)
+    f.statFree:SetText(L["Verfügbar:"] .. " " .. W1 .. pts .. "|r")
+    f.statSpent:SetText(L["Verteilt:"] .. " " .. c .. spent .. "|r")
+    f.statLeft:SetText(L["Übrig:"] .. " " .. c .. (pts - spent) .. "|r")
 end
 
 refreshView = function(f)
@@ -527,22 +655,25 @@ refreshView = function(f)
     if not cls then return end
     if not S.plan or S.plan.class ~= cls then S.plan = openPlan(cls) end
     s.class = cls
+    layoutView(f)
     if f.builtClass ~= cls then buildClass(f, cls) end
+    if f.bgClass ~= cls then paintArt(f, cls) end
 
-    local values = {}
-    for _, c in ipairs(T.Classes()) do values[#values + 1] = { value = c, text = T.ClassName(c) } end
-    f.class:SetValues(values)
-    f.class:SetValue(cls)
+    if f.class then
+        local values = {}
+        for _, c in ipairs(T.Classes()) do values[#values + 1] = { value = c, text = T.ClassName(c) } end
+        f.class:SetValues(values)
+        f.class:SetValue(cls)
+    end
     f.level:SetValue(s.level or 60)
     f.talented:SetValue(s.talented or 0)
-    for i, tab in ipairs(f.slots) do tab:SetOn(SLOTS[i][1] == T.Slot()) end
+    if f.slots then
+        for i, tab in ipairs(f.slots) do tab:SetOn(SLOTS[i][1] == T.Slot()) end
+    end
 
     local plan, pts = S.plan, points()
     local spent = T.Spent(plan)
-    local need = T.LevelFor(spent, s.talented or 0)
-    local over = spent > pts
-    f.total:SetText((L["%s%d / %d|r Punkte%s"]):format(over and "|cffff4040" or "|cffffffff", spent, pts,
-        spent > 0 and need and L[" · ab Stufe %d"]:format(need) or ""))
+    statLine(f, s, spent, pts, T.LevelFor(spent, s.talented or 0))
 
     for t = 1, 3 do
         local tree = f.trees[t]
@@ -583,18 +714,91 @@ refreshView = function(f)
     else
         f.liveText:SetText(own and ("|cff8f86a3" .. tostring(info or "") .. "|r") or "")
     end
-    f.live:SetEnabled(live ~= nil)
+    if f.live then f.live:SetEnabled(live ~= nil) end
     if not f.code:HasFocus() then f.code:SetText(T.Encode(plan)) end
 end
 
 local function create(parent)
-    page = buildView(parent, TT.PAGE, { bigButton = true })
+    page = buildView(parent, TT.PAGE)
     return page
+end
+
+---------------------------------------------------------------------------
+-- The page's marks in the side bar (D-75, D-76): the classes with their crests (the shown one
+-- chosen), the two plans, the actions
+---------------------------------------------------------------------------
+local function crest(cls)
+    local CI = Theme.CLASS_ICON
+    local tc = type(_G.CLASS_ICON_TCOORDS) == "table" and _G.CLASS_ICON_TCOORDS[cls] or CI.COORDS[cls]
+    if type(tc) ~= "table" then return nil end
+    return { file = CI.TEXTURE, coords = { tc[1], tc[2], tc[3], tc[4] } }
+end
+
+-- The import mark: the box emptied and focused for a code or a build link (Enter takes it).
+local function importBox(v)
+    v.code:SetText("")
+    v.code:SetFocus()
+    say(L["Code oder Build-Link einfügen und Enter drücken."])
+end
+
+-- The export mark: the box with the plan's code, focused and marked for Ctrl+C (the game gives an
+-- addon no clipboard).
+local function exportBox(v)
+    if not S.plan then return end
+    v.code:SetText(T.Encode(S.plan))
+    v.code:SetFocus()
+    v.code:HighlightText()
+    say(L["Der Code ist markiert: Strg+C kopiert ihn."])
+end
+
+local function marks()
+    local out = {}
+    local shown = S.plan and S.plan.class or T.State().class
+    for _, c in ipairs(T.Classes()) do
+        out[#out + 1] = { key = "class:" .. c, label = T.ClassName(c), icon = crest(c), on = c == shown }
+    end
+    local tip = L["Jede Klasse hat zwei gespeicherte Pläne, Primär und Sekundär. Ein Klick wechselt; der gezeigte Plan wird vorher gespeichert."]
+    for i, s in ipairs(SLOTS) do
+        out[#out + 1] = { key = "slot:" .. s[1], label = (L["Plan %d: %s"]):format(i, s[2]), on = s[1] == T.Slot(),
+            rule = i == 1, tip = tip }
+    end
+    local M = TT.MARKS
+    local acts = {}
+    if shown and shown == playerClass() then
+        acts[#acts + 1] = { key = "live", label = L["Eigene laden"], icon = M.live, tip = L["Übernimmt die Talente, die dein Charakter gerade hat."] }
+    end
+    acts[#acts + 1] = { key = "reset", label = L["Plan leeren"], icon = M.reset, tip = L["Nimmt alle Punkte aus dem gezeigten Plan."] }
+    acts[#acts + 1] = { key = "import", label = L["Build importieren"], icon = M.import,
+        tip = L["Einen Code oder einen Build-Link von talentsforever.com oder wowforevertalents.com ins Feld Code einfügen und Enter drücken."] }
+    acts[#acts + 1] = { key = "export", label = L["Build exportieren"], icon = M.export,
+        tip = L["Markiert den Code des Plans im Feld Code: Strg+C kopiert ihn zum Teilen."] }
+    acts[1].rule = true
+    for _, a in ipairs(acts) do out[#out + 1] = a end
+    return out
+end
+
+local function jump(v, key)
+    local cls = key:match("^class:(.+)$")
+    local slot = tonumber(key:match("^slot:(%d)$") or "")
+    if cls then
+        chooseClass(cls)
+    elseif slot then
+        chooseSlot(slot)
+    elseif key == "live" then
+        loadLive()
+    elseif key == "reset" then
+        resetPlan()
+    elseif key == "import" then
+        importBox(v)
+    elseif key == "export" then
+        exportBox(v)
+    end
 end
 
 ns.RegisterPanel{ key = "talents", label = L["Talente"], sub = L["Talente planen und mit deinen vergleichen."], icon = ICON, order = 53, group = "talents",
     available = function() return T.Available() end,
-    create = create, refresh = refreshView }
+    create = create, refresh = refreshView,
+    jumps = function() return T.Available() and marks() or {} end, jump = jump }
 
 ---------------------------------------------------------------------------
 -- The window "Talentrechner": the view in the BIG profile, moved and scaled on its own
@@ -636,8 +840,9 @@ end
 local function buildWindow()
     local P, WT = TT.BIG, TT.WINDOW
     local VW = viewWidth(P)
-    -- head row, trees, the message line, the bottom row, the hint (the gaps of ns.Theme.LAYOUT)
-    local VH = TREE_TOP + P.TREE_H + LAY.GAP + LAY.LINE_H + LAY.GAP + LAY.ROW_H + LAY.GAP + LAY.LINE_H
+    -- head row, the line of points, trees, the message line, the bottom row, the hint (the gaps of
+    -- ns.Theme.LAYOUT)
+    local VH = LAY.ROW_H + LAY.GAP + LAY.LINE_H + LAY.GAP + P.TREE_H + LAY.GAP + LAY.LINE_H + LAY.GAP + LAY.ROW_H + LAY.GAP + LAY.LINE_H
     -- the main window's strata (FULLSCREEN): it stays open with the world map as the main window does
     win = W.Window("AmisiaTalentFrame", VW + 2 * Theme.WINDOW_PAD, WT.TOP + VH + WT.BOTTOM, { title = L["Talentrechner"],
         strata = "FULLSCREEN", background = "Profession-Background-Overview",
@@ -650,7 +855,7 @@ local function buildWindow()
     local body = CreateFrame("Frame", nil, win)
     body:SetPoint("TOPLEFT", Theme.WINDOW_PAD, -WT.TOP)
     body:SetSize(VW, VH)
-    big = buildView(body, P, { hint = true })
+    big = buildView(body, P, { controls = true })
     big:SetAllPoints(body)
     win.body, win.view = body, big
     win:EnableMouseWheel(true)

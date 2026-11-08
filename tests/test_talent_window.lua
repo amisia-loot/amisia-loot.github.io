@@ -1,6 +1,7 @@
 -- The window "Talentrechner" (AmisiaTalentFrame, Pages/Talents.lua): one builder makes the page's
--- view and the window's (profiles TALENT.PAGE and TALENT.BIG), both show the one plan; the window's
--- red button on the page, its row in the side bar (D-68), /amisia talente gross; its scale (setting ui.talentScale,
+-- view and the window's (profiles TALENT.PAGE and TALENT.BIG), both show the one plan; the window
+-- keeps its own controls (class picker, plan tabs, buttons; the page has them in the side bar, D-76),
+-- its row in the side bar (D-68), /amisia talente gross; its scale (setting ui.talentScale,
 -- Ctrl + mouse wheel, bounds), its position (saved, reset with "Fensterposition zurücksetzen"),
 -- Escape; the margins of the outer buttons in both profiles.
 local T = NS.Talents
@@ -53,16 +54,19 @@ assert(3 * TT.PAGE.TREE_W + 2 * TT.PAGE.TREE_GAP == NS.Theme.PAGE_W, "the page's
 assert(TT.BIG.ICON >= 44 and TT.BIG.TREE_W >= 270 and TT.BIG.ICON > TT.PAGE.ICON, "bigger icons in the window")
 
 ---------------------------------------------------------------------------
--- the page has the red button; it opens and closes the window
+-- the side bar's row opens the window (the page has no button of its own, D-76)
 ---------------------------------------------------------------------------
 NS.ShowTalents()
 local page = NS.PageFrame("talents")
-assert(page and page:IsShown() and page.bigBtn and page.bigBtn.vis ~= false, "the button on the page")
-assert(page.bigBtn:GetText() == "Talentrechner", tostring(page.bigBtn:GetText()))
-assert(page.bigBtn.layoutBand == page.bottomRow, "in the bottom row")
-assert(page.bigBtn.points.RIGHT and page.bigBtn.points.RIGHT.x == 0, "at its right end")
+assert(page and page:IsShown() and page.bigBtn == nil, "no button on the page")
 assert(_G.AmisiaTalentFrame == nil, "nothing built before it is opened")
-page.bigBtn:Click()
+local MF = AmisiaFrame
+local function winRow()
+    for i, e in ipairs(MF.navOrder) do
+        if e.entry.kind == "win" and e.entry.key == "talents" then return e, i end
+    end
+end
+winRow().button:Click()
 local win = assert(_G.AmisiaTalentFrame, "the window")
 assert(win:IsShown())
 local big = win.view
@@ -74,10 +78,21 @@ local VW = 3 * TT.BIG.TREE_W + 2 * TT.BIG.TREE_GAP
 assert(win:GetWidth() == VW + 2 * NS.Theme.WINDOW_PAD, "three big trees and the side padding: " .. win:GetWidth())
 assert(win.body.points.TOPLEFT.x == NS.Theme.WINDOW_PAD and -win.body.points.TOPLEFT.y >= NS.Theme.TITLE_H, "under the title bar")
 -- the same parts in the window, bigger
-for _, k in ipairs({ "class", "level", "talented", "total", "live", "resetAll", "code", "msg", "liveText" }) do
+for _, k in ipairs({ "class", "slots", "level", "talented", "stats", "live", "resetAll", "code", "msg", "liveText" }) do
     assert(big[k], "the window has " .. k)
 end
-assert(big.bigBtn == nil and big.hint and has(big.hint:GetText(), "Linksklick"), "no button to itself; the click hint as footer")
+assert(big.bigBtn == nil and big.hint and has(big.hint:GetText(), "Shift"), "no button to itself; the long click hint as footer")
+-- the window's head row: class, level, Talented, the plan tabs at the right; the line of points under it
+assert(big.class.layoutBand == big.bands[1] and big.slots[2].layoutBand == big.bands[1] and big.slots[2].points.RIGHT, "the head row")
+assert(big.statLevel.points.LEFT.rel == big.bands[2] and big.treeTop == 2 * NS.Theme.LAYOUT.GAP + NS.Theme.LAYOUT.ROW_H + NS.Theme.LAYOUT.LINE_H,
+    "the line under it, the trees under the line")
+assert(big.trees[1].bg:GetAtlas() == "talent-background-mage", "the class art in the window too")
+local LayW = dofile(ADDON_DIR .. "/../tests/layout.lua")(big, VW, win.body._h)
+LayW.row("head", big.class, big.levelLabel, big.level, big.talentedLabel, big.talented, big.slots[1], big.slots[2])
+LayW.row("line", big.statLevel, big.statFree, big.statSpent, big.statLeft)
+LayW.row("trees", big.trees[1], big.trees[2], big.trees[3])
+LayW.column("parts", big.class, big.statLevel, big.trees[1], big.msg, big.live)
+LayW.row("foot", big.live, big.resetAll, big.codeLabel, big.code)
 assert(#big.trees == 3 and big.trees[1]._w == TT.BIG.TREE_W and big.trees[1]._h == TT.BIG.TREE_H)
 local bb, pb = big.buttons[101], page.buttons[101]
 assert(bb and pb and bb ~= pb, "a button per view")
@@ -93,12 +108,6 @@ for view, P in pairs({ [page] = TT.PAGE, [big] = TT.BIG }) do
     end
 end
 -- its row in the main window's side bar (group Charakter, D-68) is on while the window shows
-local MF = AmisiaFrame
-local function winRow()
-    for i, e in ipairs(MF.navOrder) do
-        if e.entry.kind == "win" and e.entry.key == "talents" then return e, i end
-    end
-end
 local row, at = winRow()
 assert(row and row.button:IsShown() and row.entry.on == true, "the row shows and is on")
 assert(row.entry.label == "Talentrechner" and row.button.label:GetText() == "Talentrechner" and row.button.sign:IsShown(),
@@ -126,15 +135,21 @@ assert(page.buttons[101].rank:GetText() == "1/2" and page.trees[1].pts:GetText()
 assert(T.Rank(NS.TalentsPlan(), 101) == 1 and AmisiaDB.talents.plans.MAGE ~= nil, "one plan, saved")
 page.buttons[201]:GetScript("OnClick")(page.buttons[201], "LeftButton")
 assert(big.buttons[201].rank:GetText() == "1/5" and big.trees[2].pts:GetText() == "1 Punkt", "the window follows the page")
-assert(big.code:GetText() == page.code:GetText() and has(big.total:GetText(), "2 / 51"), big.total:GetText())
+assert(big.code:GetText() == page.code:GetText() and has(big.statSpent:GetText(), "2") and big.statSpent:GetText() == page.statSpent:GetText(),
+    big.statSpent:GetText())
 -- a refusal shows in both
 page.buttons[103]:GetScript("OnClick")(page.buttons[103], "LeftButton")
 assert(page.msg:GetText() ~= "" and big.msg:GetText() == page.msg:GetText(), "the message in both")
 -- the class in one, the class in the other
 big.class.onPick("WARRIOR")
-assert(page.class:GetValue() == "WARRIOR" and page.buttons[401] and big.buttons[401], "the warrior in both")
-page.class.onPick("MAGE")
+assert(NS.TalentsPlan().class == "WARRIOR" and page.buttons[401] and big.buttons[401], "the warrior in both")
+NS.Panel("talents").jump(page, "class:MAGE")
 assert(big.class:GetValue() == "MAGE" and big.buttons[101].rank:GetText() == "1/2", "back to the mage's plan in both")
+-- the plan tabs of the window and the side bar's plan marks: one slot
+big.slots[2]:Click()
+assert(T.Slot() == 2 and big.slots[2].on and page.buttons[101].rank:GetText() == "0/2", "the window's tab switches the page too")
+big.slots[1]:Click()
+assert(T.Slot() == 1 and big.buttons[101].rank:GetText() == "1/2")
 -- the reset of a tree in the window
 big.trees[1].reset:Click()
 assert(page.buttons[101].rank:GetText() == "0/2" and T.Spent(NS.TalentsPlan(), 1) == 0)
