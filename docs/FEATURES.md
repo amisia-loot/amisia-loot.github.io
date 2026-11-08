@@ -39,6 +39,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-152 Anzeige erhaltener Items beim Looten und bei Questbelohnungen
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du etwas lootest oder eine Quest mit Belohnung abgibst, dann steht kurz "+Name" mit dem Symbol des Items in seiner Qualitätsfarbe links über der Bildschirmmitte und blendet aus.
+- Prüfung: Wenn du unter Einstellungen, Oberfläche "Erhaltene Items anzeigen" ausschaltest, dann erscheint nichts mehr; "Ab Qualität" blendet schlechtere Items aus; "Anzeige ausprobieren" zeigt ein Beispiel.
+- Notiz: D-79. Ohne Spec: eine kleine Anzeige ohne Daten und Nachrichten (docs/specs/README).
+
 ### F-151 Berufe mit Übersicht und Berufsliste in der Leiste
 - Version: -
 - Status: geplant

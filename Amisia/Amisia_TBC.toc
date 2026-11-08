@@ -89,6 +89,7 @@ UI\Pages\Settings.lua
 UI\Pages\About.lua
 UI\Pages\Feedback.lua
 UI\Setup.lua
+UI\LootToast.lua
 UI\Signup.lua
 UI\RaidCalendar.lua
 UI\Pages\Calendar.lua

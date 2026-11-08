@@ -379,6 +379,15 @@ T.DJOURNAL = {
     PLAN_W = 96,               -- "Lauf planen" in the planner's image, left of "Alle auf Karte"
 }
 
+-- The loot toast (F-152, D-79): its lines W wide in a holder H high, CENTER of the screen moved by X, Y
+-- (left of and above the character), each LINE_H high, SPACE apart: the item's icon ICON square, the
+-- text GAP right of it in FONT; shown SHOW seconds, in over FADE_IN, out over the last FADE_OUT, risen
+-- RISE px by then; at most MAX at once.
+T.LOOTTOAST = {
+    W = 320, H = 200, X = -120, Y = 110, LINE_H = 22, SPACE = 2, ICON = 20, GAP = 4, FONT = "GameFontNormalLarge",
+    SHOW = 3, FADE_IN = 0.2, FADE_OUT = 0.8, RISE = 30, MAX = 6,
+}
+
 -- The start of Dungeons and Raids as a table (F-148, D-74): rows ROW_H high (the list's 1 px between),
 -- the instance's picture ART_W x ART_H at ART_X with a thin gold frame, its name (gold) and a grey line
 -- under it from NAME_X; the columns right of the name WIDTH wide each, GAP apart, the last at the

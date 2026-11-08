@@ -275,6 +275,9 @@ local function parseLoot(text)
     return nil
 end
 
+-- Returns name, itemID, count and the item link for a loot chat line, or nil (the loot toast, D-79).
+function ns.ParseLootLink(text) return parseLoot(text) end
+
 -- Returns name, itemID, count for a loot chat line, or nil.
 function ns.ParseLoot(text)
     local who, id, count = parseLoot(text)

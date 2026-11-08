@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(ui): show the items you get as "+Item" near the middle of the screen (F-152)
+
+  When you loot something or get an item as a quest reward, Amisia briefly shows "+Name" with the
+  item's icon in its quality colour; it rises and fades out. Switch it under Settings, Interface
+  ("Show items you get"), choose the lowest quality shown, and try it with "Try the display".
+
 ## [v2.63.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.63.0) (2026-11-08)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.62.1...v2.63.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

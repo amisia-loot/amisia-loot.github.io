@@ -1796,3 +1796,18 @@ Symbole von Marken dürfen die eigenen Symbole des Spiels für Klassen (Klassenw
 
 **Durchgesetzt durch:** `tests/test_main_sidebar.lua` (Marken mit Symbol, Auswahl, Blöcken, Klick).
 
+## D-79 Anzeige erhaltener Items ("+Item")
+
+**Datum:** 2026-11-08
+**Entscheidung:** Was der Charakter bekommt, zeigt Amisia kurz in der Mitte des Bildschirms (F-152, `UI/LootToast.lua`):
+- **Quelle:** die eigene Loot-Zeile des Chats (`CHAT_MSG_LOOT`: gelootet oder in die Taschen gelegt, also auch Questbelohnungen und Käufe). Fremder Loot zählt nicht. Eine geheime Zeile (Kampfsperre in Bossbegegnungen) zeigt nichts.
+- **Anzeige:** "+Name xN" mit dem Symbol des Items in der Farbe seiner Qualität, links über der Bildschirmmitte. Sie steigt 30 px und blendet in 3 s aus. Höchstens 6 Zeilen stehen untereinander, die älteste geht zuerst. Sie fängt keine Maus.
+- **Einstellungen** unter Oberfläche: `ui.lootToast` (an, Standard), `ui.lootToastQuality` (ab welcher Qualität, Standard alle) und der Knopf "Anzeige ausprobieren".
+- Auf allen Clients (Forever, TBC, Era).
+
+**Grund:** Nutzer 2026-11-08 mit einem Bildschirmfoto eines "+Item"-Texts neben dem Charakter: "eine Option an/aus, wo ich sehe, was ich bekommen hab, wenn ich loote oder Quests abgebe".
+
+**Folge:** Nichts wird gesendet oder gespeichert. Gold zeigt die Anzeige nicht.
+
+**Durchgesetzt durch:** `tests/test_loot_toast.lua` (eigener Loot, Questbelohnung mit Anzahl, fremder Loot, Qualität, aus, höchstens 6, Ablauf, Beispiel).
+
