@@ -1,10 +1,10 @@
--- Progress and filters of the window "Ausrüstungsziele" (F-113): ns.BisProgress (worn, in bag or
+-- Progress and filters of the goals (F-113; since 2.65.0 the tab Ziele of the page Ausrüstungsplaner, D-80): ns.BisProgress (worn, in bag or
 -- bank, still to get, no target; a worn item the target does not beat counts as got; the shield
--- hand beside a worn two-hander), "N/17 Ziele hast du", the bar of 17 parts, the section heads
--- "Rüstung 2 von 9 hast du", the filters Alle / Zu holen / In der Tasche / Ohne Verzauberung (the
+-- hand beside a worn two-hander), "N/17 Ziele", the bar of 17 parts, the section heads
+-- "Rüstung 2 von 9 hast du", the filters Alle / Zu holen / Tasche / Ohne Verz. (the
 -- raid check's test: link, else the tooltip line type 15) with their counts; the filter is kept.
 local Gear = NS.Gear
-local G = NS.Theme.GOALS
+local G = NS.Theme.PLANNER
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function plain(t) return (tostring(t or ""):gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
 
@@ -67,52 +67,53 @@ C_TooltipInfo.GetInventoryItem = function(_, slot)
     if slot == 16 then lines[#lines + 1] = { type = 15, leftText = "Verzaubert: +15 Stärke" } end
     return { lines = lines }
 end
-local win = assert(NS.ShowGoalsFrame())
-local P = win.progress
-assert(P.text:GetText() == "4/17 Ziele hast du", P.text:GetText())
+NS.ShowPlanner("goals")
+local f = NS.PageFrame("planner")
+local P = f.prog
+assert(P.text:GetText() == "4/17 Ziele", P.text:GetText())
 assert(#P.parts == 17, "17 parts")
 local function color(t) return t.color and table.concat({ t.color[1], t.color[2], t.color[3] }, ",") end
 local function want(st) local c = G.STATE_COLOR[st] return table.concat({ c[1], c[2], c[3] }, ",") end
 assert(color(P.parts[1]) == want("done") and color(P.parts[5]) == want("bag") and color(P.parts[10]) == want("todo")
     and color(P.parts[2]) == want("none"), "green, yellow, grey, dark")
 -- the heads count every slot of the section
-local rows = win.list.items
-assert(rows[1].header and has(plain(rows[1].count), "2 von 9 hast du"), "head and hands got: " .. plain(rows[1].count))
+local rows = f.list.items
+assert(rows[1].header and rows[1].have == 2 and rows[1].total == 9, "head and hands got")
+assert(has(plain(f.list.rows[1].sub:GetText()), "2 von 9 hast du"), plain(f.list.rows[1].sub:GetText()))
 -- the dots on the doll: green worn, yellow in the bags, none to get
-local d = win.doll
+local d = f.doll
 assert(d.slots.HEAD.dot:IsShown() and d.slots.HEAD.dot.vertexColor and d.slots.HEAD.dot.vertexColor[1] == G.STATE_COLOR.done[1], "green dot")
 assert(d.slots.CHEST.dot.vertexColor and d.slots.CHEST.dot.vertexColor[1] == G.STATE_COLOR.bag[1] and d.slots.CHEST.dot:IsShown(), "yellow dot")
 assert(not d.slots.FEET.dot:IsShown(), "no dot: still to get")
--- the chips with their counts
-local chips = P.chips
-assert(chips.all.on and chips.all.label:GetText() == "Alle", "Alle first")
-assert(chips.todo.label:GetText() == "Zu holen 1" and chips.bag.label:GetText() == "In der Tasche 1", chips.todo.label:GetText())
+-- the filters with their counts
+assert(f.fall.on and f.fall.label:GetText() == "Alle", "Alle first")
+assert(f.ftodo.label:GetText() == "Zu holen 1" and f.fbag.label:GetText() == "Tasche 1", f.ftodo.label:GetText())
 -- unenchanted: of the raid check's slots the hands (the link and the tooltip say nothing); the
 -- two-hander by its tooltip line; the head by its link
-assert(chips.ench.label:GetText() == "Ohne Verzauberung 1", chips.ench.label:GetText())
+assert(f.fench.label:GetText() == "Ohne Verz. 1", f.fench.label:GetText())
 local function keys()
     local out = {}
-    for _, e in ipairs(win.list.items) do if not e.header then out[#out + 1] = e.key end end
+    for _, e in ipairs(f.list.items) do if e.goal then out[#out + 1] = e.key end end
     return table.concat(out, ",")
 end
-chips.todo:Click()
+f.ftodo:Click()
 assert(keys() == "FEET", "Zu holen: " .. keys())
-assert(NS.GoalsFrameState().filter == "todo", "kept")
-assert(win.list.items[1].header.key == "armor" and #win.list.items == 2, "an empty section is left out")
-chips.bag:Click()
-assert(keys() == "CHEST", "In der Tasche: " .. keys())
-chips.ench:Click()
-assert(keys() == "HANDS", "Ohne Verzauberung: " .. keys())
+assert(AmisiaDB.settings.bis.planFilter == "todo", "kept")
+assert(f.list.items[1].header.key == "armor" and #f.list.items == 2, "an empty section is left out")
+f.fbag:Click()
+assert(keys() == "CHEST", "Tasche: " .. keys())
+f.fench:Click()
+assert(keys() == "HANDS", "Ohne Verz.: " .. keys())
 -- the doll shows every slot whatever the filter
 local n = 0
-for _, b in pairs(d.slots) do if b.item or b.art then n = n + 1 end end
+for k, b in pairs(d.slots) do if NS.BIS_SLOT_NAME[k] and (b.item or b.art) then n = n + 1 end end
 assert(n == 17, "the doll shows them all")
-chips.all:Click()
+f.fall:Click()
 assert(select(2, keys():gsub(",", ",")) == 16, "all 17 again")
--- the window state survives the settings check
-AmisiaDB.settings.goalWindow.filter, AmisiaDB.settings.goalWindow.mode = "bag", "worn"
+-- the state survives the settings check; an unknown filter shows all
+AmisiaDB.settings.bis.planFilter = "bag"
 NS.ApplySettings(AmisiaDB)
-assert(AmisiaDB.settings.goalWindow.filter == "bag" and AmisiaDB.settings.goalWindow.mode == "worn", "kept through a load")
-AmisiaDB.settings.goalWindow.filter = "nonsense"
-NS.GoalsRefresh()
-assert(chips.all.on, "an unknown filter shows all")
+assert(AmisiaDB.settings.bis.planFilter == "bag", "kept through a load")
+AmisiaDB.settings.bis.planFilter = "nonsense"
+NS.Refresh()
+assert(f.fall.on, "an unknown filter shows all")

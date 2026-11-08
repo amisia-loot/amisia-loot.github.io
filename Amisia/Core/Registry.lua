@@ -529,9 +529,6 @@ ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, group = "
     { key = "ui.talentScale", forever = true, type = "slider", label = L["Größe des Talentfensters (%)"], default = 100, min = 70, max = 150, step = 5,
       tip = L["Das große Talentfenster (Talentrechner). Strg + Mausrad über dem Fenster ändert die Größe auch."],
       onChange = function(v) if ns.ApplyTalentScale then ns.ApplyTalentScale(v) end end },
-    { key = "ui.goalScale", forever = true, type = "slider", label = L["Größe des Zielefensters (%)"], default = 100, min = 70, max = 150, step = 5,
-      tip = L["Das Fenster Ausrüstungsziele. Strg + Mausrad über dem Fenster ändert die Größe auch."],
-      onChange = function(v) if ns.ApplyGoalScale then ns.ApplyGoalScale(v) end end },
     -- the loot toast (F-152, D-79): "+Item" in the middle of the screen when the character gets one
     { key = "ui.lootToast", type = "toggle", label = L["Erhaltene Items anzeigen"], default = true,
       tip = L["Zeigt kurz \"+Item\" mit Symbol in der Mitte des Bildschirms, wenn du etwas lootest oder als Questbelohnung bekommst."] },
@@ -547,7 +544,7 @@ ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, group = "
       run = function() if ns.LootToastPreview then ns.LootToastPreview() end end,
       tip = L["Zeigt ein Beispiel, so wie es beim Looten erscheint."] },
     { key = "ui.resetPosition", type = "button", label = L["Fensterposition zurücksetzen"],
-      run = function() if ns.ResetPositions then ns.ResetPositions() end end, tip = L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner, Ausrüstungsziele und Raid-Kalender an ihren Standardplatz zurück."] },
+      run = function() if ns.ResetPositions then ns.ResetPositions() end end, tip = L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner und Raid-Kalender an ihren Standardplatz zurück."] },
     { key = "ui.view", type = "choice", label = L["Ansicht"], default = "auto",
       values = { { "auto", L["Automatisch"] }, { "officer", L["Offizier"] }, { "raider", "Raider" } },
       tip = L["Automatisch: wer Offiziersnotizen bearbeiten darf, sieht den Offiziersbereich."] },

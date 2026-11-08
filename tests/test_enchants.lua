@@ -95,16 +95,19 @@ local card = NS.ShowSlotCard("CHEST")
 assert(card and card.ench:IsShown() and has(plain(card.ench.text:GetText()), "besser:"), "the card's line")
 card:Hide()
 
-local st = NS.GoalsFrameState()
-st.slot = "CHEST"
-NS.ShowGoalsFrame()
-local side = _G.AmisiaGoalsFrame.side
-assert(side.enchHead:IsShown() and plain(side.enchHead:GetText()) == "Verzauberung: Intellect +2", plain(side.enchHead:GetText()))
-assert(#side.ench.items == 3 and not side.enchEmpty:IsShown(), "three rows")
+-- the planner's square beside the chest (D-80): the enchantment on it as its icon, the menu with
+-- what brings more; nothing on it: "+"; a ring: no square
+NS.ShowPlanner("suggest", nil, "CHEST")
+local doll = NS.PageFrame("planner").doll
+local q = doll.slots.CHEST.ench
+assert(q:IsShown() and q.icon:IsShown() and not q.plus:IsShown() and q.data.current.id == 24, "the one on it")
+q:Click()
+local menu = {}
+for _, b in ipairs(AmisiaMenu.buttons) do if b:IsShown() then menu[#menu + 1] = plain(b.label:GetText()) end end
+AmisiaMenu:Hide()
+assert(#menu == 3 and has(menu[1], "Strength +5"), table.concat(menu, "|"))
 STUB.worn[5] = STUB.items[403].link
 STUB.fire("PLAYER_EQUIPMENT_CHANGED")
-NS.ShowGoalsFrame()
-assert(plain(side.enchHead:GetText()) == "Verzauberung: Keine", "nothing on it: Keine")
-st.slot = "FINGER1"
-NS.ShowGoalsFrame()
-assert(not side.enchHead:IsShown() and not side.ench:IsShown(), "no section for a ring")
+NS.Refresh()
+assert(q:IsShown() and q.plus:IsShown() and not q.icon:IsShown(), "nothing on it: +")
+assert(not doll.slots.FINGER1.ench:IsShown(), "no square for a ring")

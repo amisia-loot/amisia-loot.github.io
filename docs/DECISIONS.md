@@ -1247,6 +1247,11 @@ Spezialisierung, keine neue Migration nach D-48 nötig). Ein Teilen von Listen (
 eigenen Nachtrag zur Spec.
 **Durchgesetzt durch:** `tests/test_goals_picks.lua`.
 
+**Nachtrag 2026-11-08 (D-80):** Das Fenster "Ausrüstungsziele" gibt es nicht mehr. Die eigene Wahl trifft man auf der Seite
+Ausrüstungsplaner: ein Klick auf eine Zeile der Vorschläge, eines Sets oder der Suche; "Deine Wahl" steht als erste Zeile
+der Vorschläge mit rotem X, "Überholt ... Übernehmen" und "Passt nicht zum Waffenplan"; das Feld "Item-Link oder ID" ist
+das Suchfeld (ein Link oder eine Zahl wird die Wahl des gewählten Platzes, sonst sagt Amisia warum nicht).
+
 ## D-56 Spielstil filtert Quellen der eigenen Ziele, nie die Wertung; Rechtsklick auf Slots nur nach dem Spiel
 
 **Datum:** 2026-10-24
@@ -1278,7 +1283,7 @@ stimmt kein Cache. Elitequests ohne Questlog-Eintrag erkennt "Solo machbar" erst
 **Datum:** 2026-10-25
 **Entscheidung:** Spec `docs/specs/2026-10-25-raid-auf-tbc-und-era.md` (F-126). Eine `Amisia.toc` mit
 `## Interface: 16001, 20506, 11509`. Nur auf Forever laden (`[AllowLoadGameType camelot]`): `Data/*`, `Collect/*`,
-`Gear/*`, `Core/Duels.lua`, `Raid/Handover.lua` (Handel-Helfer), `UI/GoalsWindow.lua`,
+`Gear/*`, `Core/Duels.lua`, `Raid/Handover.lua` (Handel-Helfer), `UI/GearDoll.lua` (bis 2.64.0 `UI/GoalsWindow.lua`),
 `UI/SlotCard.lua`, `UI/DuelInfo.lua` und die Seiten Ausrüstung, Dungeons, Raids (Ausrüstung), Karte, Berufe, Quests,
 Talente, Magierrollen, Duelle, Werkzeuge und Export. Alles andere ist der Raid-Teil und lädt auf allen drei Clients;
 er greift auf die Forever-Teile nur zur Laufzeit und nur geprüft zu (`if ns.Gear and ...`). Der Schalter heißt
@@ -1867,7 +1872,7 @@ eine neue erste Seite "Ausrüstungsplaner" (`UI/Pages/Planner.lua`, Schlüssel `
   `UI-Dialog-Icon-AlertNew` hat, ist im Spiel zu prüfen; ohne sie bleibt die Fläche dunkel, das Zeichen fehlt.
 
 **Durchgesetzt durch:** `tests/test_gear_planner.lua` (Modell, Plätze, Quadrate, Liste, Wahl, Stern, Wunschliste,
-Suche, Stufenbereich, Set-Marken, Zurücksetzen, Warnzeichen), `tests/test_goals_window.lua` (das Fenster mit dem
+Suche, Stufenbereich, Set-Marken, Zurücksetzen, Warnzeichen), bis D-80 der Test des Fensters (das Fenster mit dem
 gemeinsamen Bauer), `tests/test_main_sidebar.lua`, `tests/test_style.lua` (Reiter Ausrüstung), die Layoutregeln.
 
 **Nachtrag 2026-11-08** (Nutzer schickt das Foto noch einmal: "mach ausrüstung wie hier"):
@@ -1877,6 +1882,11 @@ gemeinsamen Bauer), `tests/test_main_sidebar.lua`, `tests/test_style.lua` (Reite
 - **Kopf rechts:** dazu "Quellen" (statt des Trichters, den der Client nicht hat): ein Menü mit den Quellen-Schaltern der Seite Ausrüstung (dieselben gespeicherten Schalter, ein Klick gilt für alle Ziele). In der zweiten Zeile steht "Stufe" wieder vor den Feldern.
 - Die Reiter "Vorschläge | Wunschliste" bleiben Textreiter: rote Chips gingen über das Budget eines roten Knopfes je Ansicht (D-67).
 - Durchgesetzt durch `tests/test_gear_planner.lua` (Teilung bei 602 und breiter, 40-px-Plätze, Quadrat über der Waffe, Zeilentexte, Berufssymbol, "!", "neu", Menü "Quellen").
+
+**Nachtrag 2026-11-08 (D-80):** Die Seite nimmt das Fenster "Ausrüstungsziele" auf: Reiter "Vorschläge | Ziele |
+Wunschliste", "Deine Wahl" über den Vorschlägen, unter dem Modell "Ziele | Angelegt" und die Wertung, "Optionen" (Waffenplan,
+Quellen, Spielstil; der Tooltip sagt warum) statt "Quellen", das Suchfeld nimmt auch Item-Link oder ID. Dafür: links 40 %
+(bei 602 also 240), Plätze 38 px. Das Modell baut `UI/GearDoll.lua` (vorher das Fenster).
 
 ## D-78 Berufe mit Übersicht und Berufsliste in der Leiste
 
@@ -1926,3 +1936,42 @@ gemeinsamen Bauer), `tests/test_main_sidebar.lua`, `tests/test_style.lua` (Reite
 - Die Farbe eines Items ist die Farbe seiner Qualität aus dem Client (`ITEM_QUALITY_COLORS`). Kennt der Client die Qualität nicht, gilt die Farbe des Links, auch in Forevers benannter Form `|cnIQ2:`. Diese Form las 2.64.0 nicht, darum standen die Namen weiß.
 - Gold: Wächst die Geldbörse (`PLAYER_MONEY` gegen den letzten Stand, der erste Stand nach dem Einloggen wird nur gemerkt), steht "+1g 2s 3c" da. Die Zahlen stehen in der Farbe ihres Metalls, dazu die Münzsymbole des Clients. Abschaltbar mit `ui.lootToastMoney` (an). Ausgeben zeigt nichts.
 - Schriftgröße: `ui.lootToastSize` (10 bis 32, Standard 16). Symbol und Zeilenhöhe wachsen mit, auch für gerade gezeigte Zeilen.
+
+## D-80 Kein Extrafenster für Ausrüstung: die Ziele im Ausrüstungsplaner
+
+**Datum:** 2026-11-08
+**Entscheidung:** Das Fenster "Ausrüstungsziele" (`AmisiaGoalsFrame`, `UI/GoalsWindow.lua`, F-110 bis F-113, F-123, F-129)
+entfällt; alles davon steht auf der Seite Ausrüstungsplaner (D-77) im Hauptfenster:
+- **Liste und Fortschritt:** Reiter "Ziele" neben "Vorschläge" und "Wunschliste": "N/17 Ziele" über dem Balken aus 17 Teilen,
+  die Filter Alle / Zu holen N / Tasche N / Ohne Verz. N (Tooltips mit den langen Namen), die Plätze nach Abschnitt (Rüstung,
+  Schmuck, Waffen, je "N von M hast du") mit Ziel, Platz und Quelle, Zuwachs, Quellsymbol und Stern; ein Klick zeigt die
+  Vorschläge des Platzes.
+- **Leiste eines Platzes:** "Deine Wahl" als erste Zeile der Vorschläge (Wahl mit Quelle, rotes X, "Überholt: ...
+  Übernehmen", "Passt nicht zum Waffenplan"); die Rangliste sind die Vorschläge; die Verzauberungen stehen im Menü des
+  Quadrats neben dem Platz mit ihrem Zuwachs; "Dungeon-Drops nahe deiner Stufe" entfallen als eigener Block (Dungeon-Items
+  tragen in den Vorschlägen das Dungeon-Symbol und "Dungeon - Boss"); das Feld "Item-Link oder ID" ist das Suchfeld (auch
+  Shift-Klick auf einen Link).
+- **Unter dem Modell:** "Ziele | Angelegt" (`settings.bis.planWorn`) und die Wertung "Wertung N · +N" über ihrem Balken; der
+  Tooltip nennt jetzt, "Bestes auf Stufe N" und die sechs größten Wertänderungen.
+- **Kopf:** Waffenplan, Spielstil und "Warum?" stecken in "Optionen" (Menü und Tooltip), weil die Breite neben den drei Reitern
+  und dem Suchfeld nicht reicht.
+- **Katalog:** die Set-Marken der Leiste und die Suche (D-77); das Anprobieren am Modell entfällt (Strg+Klick öffnet die
+  Anprobe des Spiels).
+- **Wege:** `/amisia bis gross`, der Knopf der Seite Ausrüstung (jetzt "Ausrüstungsplaner"), die Slot-Karte ("Im
+  Ausrüstungsplaner") öffnen die Seite; `ns.ShowGoalsFrame`, `ns.ToggleGoalsFrame` und das Fenster gibt es nicht mehr.
+- **Leiste des Reiters Ausrüstung:** ohne Fensterzeilen. Die Ausrüstungstabelle (`AmisiaGearFrame`) bleibt ein Fenster (sie in
+  eine Seite umzubauen wäre ein eigener Schritt: 820 × 640 mit eigener Spaltenansicht); sie öffnet über "Tabelle" auf der Seite
+  Ausrüstung und `/amisia gear`, ihre Zeile in der Leiste fällt weg.
+- **Gespeichert:** `settings.goalWindow` und `ui.goalScale` fallen weg (Schritt 3 von `Core/Migrate.lua`); neu
+  `settings.bis.planFilter` und `planWorn`.
+
+**Grund:** Nutzer 2026-11-08 nach dem Öffnen des Fensters, mit dem Foto des Reiters Armory: "ich will kein extra Fenster, will
+es so wie hier in dem 1 Fenster".
+
+**Folge:** Der Talentrechner (D-76) und die Raid-Fenster bleiben Fenster. `UI/GearDoll.lua` ersetzt `UI/GoalsWindow.lua`
+(nur Modell und Hilfen, kein Fenster); `T.GOALS` fällt weg, seine Farben und Slot-Bilder stehen in `T.PLANNER`.
+
+**Durchgesetzt durch:** `tests/test_gear_planner.lua` (Reiter Ziele, Filter, Deine Wahl, Link im Suchfeld, Optionen, Wertung,
+Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `tests/test_goals_progress.lua`,
+`tests/test_goals_summary.lua`, `tests/test_goals_catalog.lua`, `tests/test_gear_planner_nomodel.lua`, `tests/test_style.lua`,
+`tests/test_main_sidebar.lua`.

@@ -1,11 +1,8 @@
--- The catalog of the window "Ausrüstungsziele" (F-123): the third switch "Katalog" in the place of
--- the list and the slot panel; the item sets by where their pieces come from (raid, dungeon, PvP,
--- crafting, world) with counts, a set opened with its pieces, "Set anprobieren" and a click on an
--- item tried on the model, "Anprobe leeren"; the search over every item by name and level range,
--- the best for the own character first, "Meine Stufe" and "Alle"; the menu's "Als meine Wahl"; the
--- choice kept in settings.goalWindow, the search text not.
+-- The catalog (F-123; since 2.65.0 the set marks and the search of the page Ausrüstungsplaner, D-80):
+-- the item sets by where their pieces come from (raid, dungeon, PvP, crafting, world) with counts, a
+-- set opened with its pieces, a piece's click as the own pick; the level sets; the search over every
+-- item by name and level range, the best for the own character first.
 local Gear = NS.Gear
-local G = NS.Theme.GOALS
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function plain(t) return (tostring(t or ""):gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
 
@@ -75,115 +72,30 @@ local lp = Cat.Pieces(lv[6].id)
 assert(#lp == #lv[6].items and lp[1].slotKey and lp[1].gain, "the pieces with slot and gain")
 
 ---------------------------------------------------------------------------
--- the window: the switch, the categories, a set
+-- on the page Ausrüstungsplaner (D-80; until 2.64.0 the window's switch "Katalog"): a set category of
+-- the side bar shows its sets, a set its pieces, a piece's click is the own pick; the search
 ---------------------------------------------------------------------------
-local win = NS.ShowGoalsFrame()
-local d, C = win.doll, win.catalog
-assert(d.catalog and d.catalog.label:GetText() == "Katalog" and not C:IsShown())
-d.catalog:Click()
-assert(NS.GoalsFrameState().mode == "catalog" and C:IsShown() and not win.list:IsShown() and not win.side:IsShown()
-    and not win.progress:IsShown(), "the catalog in the place of the list and the panel")
-assert(d.catalog.on and not d.goals.on and not d.worn.on)
-assert(C.lo.current == 1 and C.hi.current == 60 and C.mine.on and C.all.on, "1 to the own level (60)")
-assert(C.cats.dungeon.count:GetText() == "1" and C.cats.pvp.count:GetText() == "0" and C.cats.raid.count:GetText() == "0")
-local items = C.list.items
-assert(#items == 1 and items[1].set and items[1].set.name == "Pestset" and not items[1].open, "dungeon sets first")
-local r = C.list.rows[1]
-assert(has(plain(r.name:GetText()), "Pestset") and plain(r.slot:GetText()) == "0/2" and r.level:GetText() == "58")
-assert(not C.tryAll:IsEnabled(), "no set open")
-r:Click()
-items = C.list.items
+NS.ShowPlanner("sets", "dungeon")
+local f = NS.PageFrame("planner")
+local items = f.list.items
+assert(#items == 1 and items[1].set and items[1].set.name == "Pestset", "the dungeon sets")
+f.list.rows[1]:Click()
+items = f.list.items
 assert(#items == 3 and items[1].open and items[2].id == 402 and items[3].id == 403, "the open set's pieces")
-assert(NS.GoalsFrameState().set == 1 and C.tryAll:IsEnabled())
-local r2 = C.list.rows[2]
-assert(has(plain(r2.name:GetText()), "Helm der Pest") and r2.slot:GetText() ~= "" and has(plain(r2.gain:GetText()), "+"))
--- the set's tooltip with its bonus
 local lines = {}
 local addLine = GameTooltip.AddLine
 GameTooltip.AddLine = function(self, text, ...) lines[#lines + 1] = text; return addLine(self, text, ...) end
-r:GetScript("OnEnter")(r)
+f.list.rows[1]:GetScript("OnEnter")(f.list.rows[1])
 GameTooltip.AddLine = addLine
 assert(has(table.concat(lines, "|"), "0 von 2 Teilen") and has(table.concat(lines, "|"), "(2) Stärke +10"), table.concat(lines, "|"))
-
--- try on: the set, then clear
-local m = d.model
-C.tryAll:Click()
-local tried = table.concat(m.tried, " ")
-assert(has(tried, "item:402") and has(tried, "item:403") and has(d.dressed, "+402"), "the set tried on: " .. tried)
-assert(C.clear:IsEnabled())
-C.clear:Click()
-assert(not has(d.dressed, "+402") and not C.clear:IsEnabled())
--- a click on a piece tries it on
-r2:Click()
-assert(has(d.dressed, "+402"))
-C.clear:Click()
-
--- the menu: as the own pick
-local entries
-local menu = NS.W.Menu
-NS.W.Menu = function(_, e) entries = e end
-r2:GetScript("OnClick")(r2, "RightButton")
-NS.W.Menu = menu
-assert(entries and entries[1][1] == "Als meine Wahl", "the own pick first")
-entries[1][2]()
-assert(NS.BisPick("HEAD") == 402, "the pick taken")
+f.list.rows[2]:Click()
+assert(NS.BisPick("HEAD") == 402, "a piece is the own pick")
 NS.BisSetPick("HEAD", nil)
-
--- another category; an empty one says so
-C.cats.craft:Click()
-assert(NS.GoalsFrameState().cat == "craft" and NS.GoalsFrameState().set == nil and C.list.items[1].set.name == "Teufelssaurier")
-C.cats.pvp:Click()
-assert(C.list.items[1].note and has(C.list.items[1].note, "Keine Sets"))
-
----------------------------------------------------------------------------
--- the search and the level range
----------------------------------------------------------------------------
-C.search:SetText("helm")
-C.search:GetScript("OnEnterPressed")(C.search)
-items = C.list.items
-assert(#items == 3 and items[1].id == 401 and has(C.hint:GetText(), "3 Treffer auf Stufe 1-60"), C.hint:GetText())
-assert(not C.cats.pvp.art or not C.cats.pvp.art.sel:IsShown(), "no category chosen while searching")
-C.lo.plus:Click()
-for _ = 1, 30 do C.lo.plus:Click() end
-assert(NS.GoalsFrameState().lo == 32 and #C.list.items == 2, "from level 32: " .. tostring(NS.GoalsFrameState().lo))
-assert(not C.all.on)
-C.all:Click()
-assert(NS.GoalsFrameState().lo == 1 and NS.GoalsFrameState().hi == 60 and #C.list.items == 3)
-C.search:SetText("gibtsnicht")
-C.search:GetScript("OnEnterPressed")(C.search)
-assert(C.list.items[1].note == "Kein Item gefunden.")
--- at level 20 "Meine Stufe" is 1-20
-STUB.level = 20
-STUB.fire("PLAYER_LEVEL_UP")
-C.mine:Click()
-assert(NS.GoalsFrameState().hi == 20 and C.mine.on and not C.all.on)
-STUB.level = 60
-STUB.fire("PLAYER_LEVEL_UP")
-
--- an empty box: the sets again
-C.search:SetText("")
-C.search:GetScript("OnEnterPressed")(C.search)
-assert(C.list.items[1].note or C.list.items[1].set, "the sets of the category")
--- the switch back: the list again
-d.goals:Click()
-assert(not C:IsShown() and win.list:IsShown() and win.side:IsShown())
--- a bad saved choice falls back
-local st = NS.GoalsFrameState()
-st.cat, st.lo, st.hi = "mounts", 50, 10
-d.catalog:Click()
-assert(st.cat == nil and st.lo == nil and C.lo.current == 1, "a bad choice: dungeon sets, 1 to the own level")
-assert(C.list.items[1].set and C.list.items[1].set.name == "Pestset")
-assert(C.hi.current == 60)
--- the level sets in the window: six ranges, one opened with its pieces and their slots, tried on
-assert(C.cats.level.count:GetText() == "6")
-C.cats.level:Click()
-items = C.list.items
-assert(#items == 6 and items[6].set.name == "Auf Stufe 60" and C.list.rows[6].level:GetText() == "60")
-C.list.rows[6]:Click()
-items = C.list.items
-assert(items[6].open and items[7].piece and items[7].slotKey, "the open level set's pieces")
-assert(plain(C.list.rows[7].slot:GetText()) ~= "", "each piece names its slot")
-C.tryAll:Click()
-assert(has(d.dressed, "+401"), "the level set tried on")
-C.clear:Click()
+NS.ShowPlanner("sets", "pvp")
+assert(f.list.items[1].note and has(f.list.items[1].note, "Keine Sets"))
+NS.ShowPlanner("search", "helm")
+items = f.list.items
+assert(#items == 3 and items[1].id == 401 and has(f.title:GetText(), "3 Treffer"), f.title:GetText())
+NS.ShowPlanner("search", "gibtsnicht")
+assert(f.list.items[1].note == "Kein Item gefunden.")
 print("test_goals_catalog ok")

@@ -6,7 +6,9 @@
 -- a click makes a row the own pick (again: lifts it), the star toggles the wish; the wish list tab; the
 -- search; the level range (boxes, Meine Stufe, Alle above the own level); the side bar's set marks
 -- with their counts, a mark shows that category's sets, a set opens its pieces, back to the
--- suggestions; Zurücksetzen asks first; the warning while an own pick is not used; 602 x 478.
+-- suggestions; Zurücksetzen asks first; the warning while an own pick is not used; 602 x 478. Since D-80
+-- also the goals window's parts: the tab Ziele, "Deine Wahl", a link or id in the search box, Optionen,
+-- Ziele | Angelegt, the score, every way to the window opening the page, no window rows, the migration.
 local Gear = NS.Gear
 local PL = NS.Theme.PLANNER
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
@@ -79,7 +81,8 @@ local function navKeys(kind)
     end
     return table.concat(out, " ")
 end
-assert(navKeys("page") .. " | " .. navKeys("win") == "planner gear | gear goals", navKeys())
+-- no side windows in the tab any more (D-80): the goals are the planner, the table opens from the page Ausrüstung
+assert(navKeys("page") .. " | " .. navKeys("win") == "planner gear | ", navKeys())
 -- the marks: the set categories, Ruf in a block of its own, counts on the level range (1 to 58)
 assert(navKeys("jump") == "raid dungeon pvp craft world rep", navKeys("jump"))
 local function mark(key)
@@ -105,11 +108,11 @@ for _ in pairs(d.slots) do n = n + 1 end
 assert(n == 19, "19 slots: " .. n)
 assert(#P.LEFT == 8 and #P.RIGHT == 8 and P.LEFT[6] == "SHIRT" and P.LEFT[7] == "TABARD", "8 and 8 as on the character frame")
 assert(d.slots.HEAD.points.TOPLEFT.x == 0 and d.slots.HEAD.points.TOPLEFT.y == 0, "the left column from the top")
--- the panel: 42 % of the page (252 of 602), the doll as wide as the panel less its pads
+-- the panel: 40 % of the page (240 of 602), the doll as wide as the panel less its pads
 local LW = math.max(PL.LEFT_MIN, math.min(PL.LEFT_MAX, math.floor(NS.Theme.PAGE_W * PL.LEFT_RATIO)))
-assert(LW == 252 and f.panel:GetWidth() == LW and d.dollW == LW - 2 * PL.PAD, "the split at 602: " .. LW)
+assert(LW == 240 and f.panel:GetWidth() == LW and d.dollW == LW - 2 * PL.PAD, "the split at 602: " .. LW)
 assert(d.slots.HANDS.points.TOPLEFT.x == d.dollW - P.SLOT, "the right column")
-assert(d.slots.HEAD:GetWidth() == 40, "slots 40 px")
+assert(d.slots.HEAD:GetWidth() == P.SLOT and P.SLOT == 38, "slots 38 px")
 assert(d.slots.MAINHAND.points.TOPLEFT.y == -(P.MODEL_H + P.WEAPON_GAP), "the weapons under the model")
 assert(d.model and d.model.unit == "player" and d.model.undressed, "the model wears the targets")
 assert(d.parent == f.panel or d:GetParent() == f.panel, "the doll on the dark panel")
@@ -117,7 +120,7 @@ assert(d.points.TOPLEFT.x == PL.PAD and d.points.TOPLEFT.y == -PL.DOLL_Y)
 -- the chosen slot: the first with an upgrade (the head), gold; the target's icon in its quality's frame
 assert(d.slots.HEAD.item and d.slots.HEAD.item.id == 402, "the head's target: " .. tostring(d.slots.HEAD.item and d.slots.HEAD.item.id))
 local function edge(b) return b.edges[1].color end
-local GOLD, DONE = NS.Theme.GOLD, NS.Theme.GOALS.STATE_COLOR.done
+local GOLD, DONE = NS.Theme.GOLD, PL.STATE_COLOR.done
 assert(edge(d.slots.HEAD)[1] == GOLD[1] and edge(d.slots.HEAD)[2] == GOLD[2], "the chosen slot gold")
 assert(d.slots.CHEST.item.id == 403 and edge(d.slots.CHEST)[1] == DONE[1] and edge(d.slots.CHEST)[2] == DONE[2],
     "the worn target in a green frame")
@@ -161,12 +164,21 @@ assert(f.title:GetText() == "Kopf", "the chosen slot's name: " .. tostring(f.tit
 ---------------------------------------------------------------------------
 local function ids()
     local out = {}
-    for _, e in ipairs(f.list.items) do out[#out + 1] = tostring(e.id or (e.set and ("set" .. e.set.id)) or "note") end
+    for _, e in ipairs(f.list.items) do
+        out[#out + 1] = tostring(e.id or (e.set and ("set" .. e.set.id)) or (e.pickRow and "pick") or (e.header and e.header.key)
+            or (e.goal and e.key) or "note")
+    end
     return table.concat(out, ",")
 end
-assert(ids() == "402,406", "the head's ranking at 58: " .. ids())
+-- the shown row of an item
+local function rowOf(id)
+    for _, r in ipairs(f.list.rows) do if r:IsShown() and r.item and r.item.id == id then return r end end
+end
+-- Vorschläge: "Deine Wahl" first, then the ranking
+assert(ids() == "pick,402,406", "the head's ranking at 58: " .. ids())
+assert(has(plain(f.list.rows[1].name:GetText()), "Keine eigene Wahl") and not f.list.rows[1].del:IsShown(), "no own pick yet")
 assert(f.lo:GetText() == "1" and f.hi:GetText() == "58" and f.mine.on and not f.all.on, "Meine Stufe")
-local row = f.list.rows[1]
+local row = rowOf(402)
 assert(has(plain(row.name:GetText()), "Helm der Pest"), "the name")
 assert(has(row.name:GetText(), "ff0070dd"), "in its quality's colour")
 assert(has(plain(row.sub:GetText()), "Stufe 58") and (has(row.sub:GetText(), "Stratholme") or has(row.sub:GetText(), "Baron")),
@@ -183,23 +195,33 @@ assert(f.list.rowCount == math.floor((NS.Theme.PAGE_H - 52) / PL.ROW_H), "rows t
 ---------------------------------------------------------------------------
 -- a click: the own pick of the slot, shown on the doll; again: lifted
 ---------------------------------------------------------------------------
-local second = f.list.rows[2]
-assert(second.item.id == 406)
-second:Click()
+rowOf(406):Click()
 assert(NS.BisPick("HEAD") == 406, "the beginner's helm is the own pick")
 assert(d.slots.HEAD.item.id == 406, "and on the doll")
-assert(f.list.rows[2].sel:IsShown() and has(f.list.rows[2].name:GetText(), "auctionhouse-icon-favorite"), "marked with the star")
+assert(rowOf(406).sel:IsShown() and has(rowOf(406).name:GetText(), "auctionhouse-icon-favorite"), "marked with the star")
 assert(f.reset:IsEnabled(), "Zurücksetzen while a pick is there")
-f.list.rows[2]:Click()
+-- "Deine Wahl": the pick, overtaken by the better helm: Übernehmen; the red X lifts it
+local pr = f.list.rows[1]
+assert(has(plain(pr.name:GetText()), "Deine Wahl: Anfängerhelm") and pr.del:IsShown(), plain(pr.name:GetText()))
+if pr.take:IsShown() then
+    assert(has(plain(pr.sub:GetText()), "Überholt"), plain(pr.sub:GetText()))
+    pr.take:Click()
+    assert(NS.BisPick("HEAD") == 402, "Übernehmen takes the better one")
+    NS.BisSetPick("HEAD", 406)
+end
+f.list.rows[1].del:Click()
+assert(NS.BisPick("HEAD") == nil, "the red X lifts it")
+rowOf(406):Click()
+rowOf(406):Click()
 assert(NS.BisPick("HEAD") == nil and d.slots.HEAD.item.id == 402, "a second click lifts it")
 assert(not f.reset:IsEnabled(), "nothing to reset")
 
 ---------------------------------------------------------------------------
 -- the star: on the wish list and off again; the wish list tab
 ---------------------------------------------------------------------------
-f.list.rows[1].star:Click()
+rowOf(402).star:Click()
 assert(NS.BisChar().wish[402], "the star puts it on the wish list")
-assert(f.list.rows[1].star.on, "the star gold")
+assert(rowOf(402).star.on, "the star gold")
 f.tabWish:Click()
 assert(f.tabWish.on and not f.tabSuggest.on and ids() == "402", "the wish list: " .. ids())
 assert(has(f.title:GetText(), "Wunschliste (1)"), f.title:GetText())
@@ -208,13 +230,13 @@ f.list.rows[1].star:Click()
 assert(not NS.BisChar().wish[402] and ids() == "note", "off the list: " .. ids())
 assert(has(plain(f.list.rows[1].name:GetText()), "Noch keine Wünsche"), "the empty list says so")
 f.tabSuggest:Click()
-assert(ids() == "402,406")
+assert(ids() == "pick,402,406")
 
 ---------------------------------------------------------------------------
 -- a slot click: its suggestions
 ---------------------------------------------------------------------------
 d.slots.CHEST:Click()
-assert(AmisiaDB.settings.bis.planSlot == "CHEST" and f.title:GetText() == "Brust" and ids() == "403", ids())
+assert(AmisiaDB.settings.bis.planSlot == "CHEST" and f.title:GetText() == "Brust" and ids() == "pick,403", ids())
 assert(edge(d.slots.CHEST)[1] == GOLD[1], "the chosen slot gold, over the green")
 local rare = NS.Theme.QUALITY_RGB[3]
 assert(edge(d.slots.HEAD)[1] == rare[1] and edge(d.slots.HEAD)[3] == rare[3], "the head's target in its quality's frame (rare)")
@@ -225,12 +247,12 @@ d.slots.HEAD:Click()
 ---------------------------------------------------------------------------
 f.lo:SetText("20")
 f.lo:GetScript("OnEnterPressed")(f.lo)
-assert(AmisiaDB.settings.bis.planLo == 20 and ids() == "402", "from 20: " .. ids())
+assert(AmisiaDB.settings.bis.planLo == 20 and ids() == "pick,402", "from 20: " .. ids())
 f.all:Click()
-assert(f.all.on and f.hi:GetText() == "60" and ids() == "401,402,406", "every level: " .. ids())
-assert(f.list.rows[1].src.atlas == "Raid", "the raid's mark")
+assert(f.all.on and f.hi:GetText() == "60" and ids() == "pick,401,402,406", "every level: " .. ids())
+assert(rowOf(401).src.atlas == "Raid", "the raid's mark")
 f.mine:Click()
-assert(AmisiaDB.settings.bis.planLo == nil and ids() == "402,406", "back to 1 to the own level")
+assert(AmisiaDB.settings.bis.planLo == nil and ids() == "pick,402,406", "back to 1 to the own level")
 
 ---------------------------------------------------------------------------
 -- the search over every item
@@ -243,9 +265,24 @@ assert(has(f.title:GetText(), "2 Treffer") and not f.tabSuggest.on, f.title:GetT
 f.list.rows[1]:Click()
 assert(NS.BisPick(f.list.items[1].slotKey) == f.list.items[1].id, "the hit is the own pick of its slot")
 NS.BisSetPick(f.list.items[1].slotKey, nil)
+-- an item link or id: that item, a click makes it the own pick (the field "Item-Link oder ID")
+f.search:SetText(LINKS[406])
+f.search:GetScript("OnEnterPressed")(f.search)
+assert(ids() == "406" and f.title:GetText() == "Item-Link oder ID", ids())
+f.list.rows[1]:Click()
+assert(NS.BisPick("HEAD") == 406 and ids() == "pick,402,406", "taken; the box is free again: " .. ids())
+NS.BisSetPick("HEAD", nil)
+f.search:SetText(" 406 ")
+f.search:GetScript("OnEnterPressed")(f.search)
+assert(ids() == "406", "a number")
+-- a link Shift-clicked while the box has the focus goes into it
+f.search:SetFocus()
+f.takeLink(LINKS[402])
+assert(ids() == "402", "a shift-clicked link: " .. ids())
+f.search:ClearFocus()
 f.search:SetText("")
 f.search:GetScript("OnEnterPressed")(f.search)
-assert(ids() == "402,406", "the search cleared: " .. ids())
+assert(ids() == "pick,402,406", "the search cleared: " .. ids())
 
 ---------------------------------------------------------------------------
 -- a set mark: the sets of the category, a set's pieces, back
@@ -260,34 +297,98 @@ f.list.rows[3]:Click()
 assert(NS.BisPick("CHEST") == 403, "a piece is the own pick of its slot")
 NS.BisSetPick("CHEST", nil)
 f.tabSuggest:Click()
-assert(f.tabSuggest.on and not mark("dungeon").entry.on and ids() == "402,406", "the tab Vorschläge leads back")
+assert(f.tabSuggest.on and not mark("dungeon").entry.on and ids() == "pick,402,406", "the tab Vorschläge leads back")
 
 ---------------------------------------------------------------------------
 -- the lines of the photo: a drop "Stufe 58 · Stratholme - Baron", crafted "Lederverarbeitung 300" with
 -- the profession's icon, a quest reward with "!" and "Quest: <title>" without the level, nothing
 -- worn: "neu"
 ---------------------------------------------------------------------------
-assert(has(plain(f.list.rows[1].sub:GetText()), "Stufe 58 · Stratholme - Baron Totenschwur"), plain(f.list.rows[1].sub:GetText()))
+assert(has(plain(rowOf(402).sub:GetText()), "Stufe 58 · Stratholme - Baron Totenschwur"), plain(rowOf(402).sub:GetText()))
 d.slots.LEGS:Click()
-assert(ids() == "405", ids())
-assert(has(plain(f.list.rows[1].sub:GetText()), "Stufe 53 · Lederverarbeitung 300"), plain(f.list.rows[1].sub:GetText()))
-assert(f.list.rows[1].src.texture == NS.Prof.ICONS.leatherworking, "the profession's icon: " .. tostring(f.list.rows[1].src.texture))
-assert(plain(f.list.rows[1].gain:GetText()) == "neu", "nothing worn: " .. plain(f.list.rows[1].gain:GetText()))
+assert(ids() == "pick,405", ids())
+assert(has(plain(rowOf(405).sub:GetText()), "Stufe 53 · Lederverarbeitung 300"), plain(rowOf(405).sub:GetText()))
+assert(rowOf(405).src.texture == NS.Prof.ICONS.leatherworking, "the profession's icon: " .. tostring(rowOf(405).src.texture))
+assert(plain(rowOf(405).gain:GetText()) == "neu", "nothing worn: " .. plain(rowOf(405).gain:GetText()))
 d.slots.FEET:Click()
-assert(ids() == "408", ids())
-assert(has(f.list.rows[1].name:GetText(), "!") and plain(f.list.rows[1].sub:GetText()) == "Quest: Endlich frei", plain(f.list.rows[1].sub:GetText()))
--- the menu "Quellen": the gear page's source switches
-f.srcLink:Click()
+assert(ids() == "pick,408", ids())
+assert(has(rowOf(408).name:GetText(), "!") and plain(rowOf(408).sub:GetText()) == "Quest: Endlich frei", plain(rowOf(408).sub:GetText()))
+-- the menu "Optionen": the weapon plan, the gear page's source switches, the play style; its tooltip why
+local otip = tipOf(function() f.optLink.scripts.OnEnter(f.optLink) end)
+assert(has(otip, "Waffen:") and has(otip, "Warum diese Gewichte") and has(otip, "Spielstil"), otip)
+f.optLink:Click()
 local entries = {}
 for _, b in ipairs(AmisiaMenu.buttons) do if b:IsShown() then entries[#entries + 1] = plain(b.label:GetText()) end end
 assert(table.concat(entries, "|"):find("Quests", 1, true), table.concat(entries, "|"))
 for _, b in ipairs(AmisiaMenu.buttons) do if b:IsShown() and plain(b.label:GetText()):find("Quests") then b:Click() break end end
 assert(NS.BisOpts().sources.Q == false or not NS.BisOpts().sources.Q, "quests off")
-assert(ids() == "note", "no quest reward without quests: " .. ids())
-f.srcLink:Click()
+assert(ids() == "pick,note", "no quest reward without quests: " .. ids())
+f.optLink:Click()
 for _, b in ipairs(AmisiaMenu.buttons) do if b:IsShown() and plain(b.label:GetText()):find("Quests") then b:Click() break end end
-assert(NS.BisOpts().sources.Q and ids() == "408", "back on")
+assert(NS.BisOpts().sources.Q and ids() == "pick,408", "back on")
+-- the weapon plan from the menu
+f.optLink:Click()
+for _, b in ipairs(AmisiaMenu.buttons) do if b:IsShown() and plain(b.label:GetText()):find("Zweihand") then b:Click() break end end
+assert(NS.BisOpts().plan == "2H", "the weapon plan: " .. tostring(NS.BisOpts().plan))
+NS.BisSetPlan("auto")
 d.slots.HEAD:Click()
+
+---------------------------------------------------------------------------
+-- the tab Ziele (the goals window's list, D-80): "N/17 Ziele" over its bar, the filters, the slots
+-- by section; a click shows the slot's suggestions
+---------------------------------------------------------------------------
+f.tabGoals:Click()
+assert(f.tabGoals.on and AmisiaDB.settings.bis.planTab == "goals" and f.prog:IsShown() and not f.lo:IsShown(), "the tab Ziele")
+local p = NS.BisProgress()
+assert(f.prog.text:GetText() == ("%d/17 Ziele"):format(p.done), f.prog.text:GetText())
+assert(#f.prog.parts == 17, "17 parts")
+assert(ids():find("^armor,HEAD,") and ids():find(",jewel,") and ids():find(",weapon,"), ids())
+assert(has(plain(f.list.rows[1].sub:GetText()), "von 9 hast du"), plain(f.list.rows[1].sub:GetText()))
+local function goalRow(key)
+    for _, r in ipairs(f.list.rows) do if r:IsShown() and r.item and r.item.goal and r.item.key == key then return r end end
+end
+assert(has(plain(goalRow("HEAD").name:GetText()), "Helm der Pest") and has(plain(goalRow("HEAD").sub:GetText()), "Kopf"), "the head's target")
+assert(goalRow("HEAD").sel:IsShown(), "the chosen slot lit")
+-- the filters: Zu holen, Tasche, Ohne Verz.
+assert(has(plain(f.ftodo.label:GetText()), "Zu holen " .. p.todo), plain(f.ftodo.label:GetText()))
+f.ftodo:Click()
+assert(AmisiaDB.settings.bis.planFilter == "todo" and f.ftodo.on and not ids():find("CHEST"), "the worn chest is not to get: " .. ids())
+f.fall:Click()
+assert(AmisiaDB.settings.bis.planFilter == nil and ids():find("CHEST"))
+goalRow("CHEST"):Click()
+assert(f.tabSuggest.on and AmisiaDB.settings.bis.planSlot == "CHEST" and ids() == "pick,403", "a slot's click: its suggestions " .. ids())
+d.slots.HEAD:Click()
+
+---------------------------------------------------------------------------
+-- under the model: Ziele | Angelegt, the score with its tooltip
+---------------------------------------------------------------------------
+assert(f.showGoals.on and not f.showWorn.on and d.model.undressed, "the targets on the model")
+f.showWorn:Click()
+assert(AmisiaDB.settings.bis.planWorn and f.showWorn.on and not d.model.undressed and d.slots.HEAD.item.link == LINKS[410], "what is worn")
+f.showGoals:Click()
+assert(not AmisiaDB.settings.bis.planWorn and d.slots.HEAD.item.id == 402, "the targets again")
+assert(has(plain(f.score.text:GetText()), "Wertung "), plain(f.score.text:GetText()))
+local stip = tipOf(function() f.score.scripts.OnEnter(f.score) end)
+assert(has(stip, "jetzt ") and has(stip, "Bestes auf Stufe 58") and has(stip, "Wertänderungen"), stip)
+
+---------------------------------------------------------------------------
+-- every way to the goals window opens the planner
+---------------------------------------------------------------------------
+assert(NS.ShowGoalsFrame == nil and NS.ToggleGoalsFrame == nil and _G.AmisiaGoalsFrame == nil, "no goals window any more")
+NS.ShowPage("gear")
+NS.Dispatch("bis gross")
+assert(NS.CurrentPage() == "planner" and f.tabGoals.on, "/amisia bis gross")
+NS.ShowGear("goals")
+NS.PageFrame("gear").goals.big:Click()
+assert(NS.CurrentPage() == "planner" and f.tabGoals.on, "the gear page's button")
+assert(AmisiaDB.settings.goalWindow == nil and NS.SettingItem("ui.goalScale") == nil, "the window's settings are gone")
+-- an older file: the migration drops the window's place, choices and scale (step 3)
+AmisiaDB.settings.goalWindow = { point = "CENTER", mode = "worn" }
+AmisiaDB.settings.ui = AmisiaDB.settings.ui or {}
+AmisiaDB.settings.ui.goalScale = 120
+NS.MIGRATIONS[3](AmisiaDB)
+assert(AmisiaDB.settings.goalWindow == nil and AmisiaDB.settings.ui.goalScale == nil, "migrated quietly")
+f.tabSuggest:Click()
 
 ---------------------------------------------------------------------------
 -- Zurücksetzen asks first
@@ -319,17 +420,21 @@ assert(f.bands[1]:GetHeight() == NS.Theme.LAYOUT.ROW_H and f.headLeft:GetWidth()
 NS.Theme.PAGE_W_NOW = 1000
 NS.W.FitWidths()
 local wide = math.floor(1000 * PL.LEFT_RATIO)
+assert(wide > LW)
 assert(f.panel:GetWidth() == wide and d.dollW == wide - 2 * PL.PAD and d.slots.HANDS.points.TOPLEFT.x == d.dollW - P.SLOT, "wider")
 assert(f.list.points.TOPLEFT.x == wide + PL.GAP and f.list:GetWidth() == 1000 - wide - PL.GAP - NS.Theme.SCROLL_ROOM, "the list follows")
 NS.Theme.PAGE_W_NOW = NS.Theme.PAGE_W
 NS.W.FitWidths()
 assert(f.panel:GetWidth() == LW)
-assert(PL.DOLL_Y + P.MODEL_H + P.WEAPON_GAP + P.SLOT <= NS.Theme.PAGE_H - PL.PAD - NS.Theme.BUTTON_H, "the doll above Zurücksetzen")
+assert(PL.DOLL_Y + P.MODEL_H + P.WEAPON_GAP + P.SLOT + PL.SWITCH_GAP + NS.Theme.CHIP_H <= NS.Theme.PAGE_H - PL.PAD - NS.Theme.BUTTON_H,
+    "doll and switch above Zurücksetzen")
 -- NS.ShowPlanner opens a view
 NS.ShowPlanner("wish")
 assert(NS.CurrentPage() == "planner" and f.tabWish.on)
 NS.ShowPlanner("sets", "craft")
 assert(f.title:GetText() == "Handwerks-Sets" and ids() == "set2", ids())
 NS.ShowPlanner("suggest", nil, "CHEST")
-assert(f.title:GetText() == "Brust" and ids() == "403")
+assert(f.title:GetText() == "Brust" and ids() == "pick,403")
+NS.ShowPlanner("goals")
+assert(f.tabGoals.on)
 print("gear planner ok")

@@ -1,8 +1,8 @@
--- The score head of the window "Ausrüstungsziele" (F-111, D-11): ns.BisSummary sums the rows'
+-- The score of the own targets (F-111, D-11): ns.BisSummary sums the rows'
 -- scores with the targets and with what is worn (a two-hander once, the worn item where the target
 -- is no upgrade), the gain; "Bestes auf Stufe N" is the simulation's result with every source, no
--- exclusions and no own pick; the stat changes targets against worn, biggest first; the head in the
--- window (Wertung, jetzt, +N, the bar, six changes, the tooltips) follows an own pick.
+-- exclusions and no own pick; the stat changes targets against worn, biggest first; the score under
+-- the planner's doll (D-80; until 2.64.0 the window's head) follows an own pick.
 local Gear = NS.Gear
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function plain(t) return (tostring(t or ""):gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
@@ -84,27 +84,25 @@ NS.BisClearExcludes()
 assert(NS.BisSetPick("HEAD", nil))
 
 ---------------------------------------------------------------------------
--- the head in the window
+-- the score under the planner's doll (D-80): "Wertung 350 · +130" over its bar, the tooltip with
+-- now, the best and the changes; it follows an own pick
 ---------------------------------------------------------------------------
-local win = assert(NS.ShowGoalsFrame())
-local B = win.score
+NS.ShowPlanner("suggest", nil, "HEAD")
+local B = NS.PageFrame("planner").score
 s = NS.BisSummary()
-assert(B.score:GetText() == "Wertung " .. Gear.Num(s.score, 1), B.score:GetText())
-assert(plain(B.now:GetText()) == "jetzt " .. Gear.Num(s.now, 1), plain(B.now:GetText()))
-assert(plain(B.gain:GetText()) == "+" .. Gear.Num(s.gain, 1), plain(B.gain:GetText()))
-assert(B.best:GetText() == "Bestes auf Stufe 60: " .. Gear.Num(s.best, 1), B.best:GetText())
-assert(B.bar.fill._w and B.bar.fill._w > 0 and B.bar.fill._w <= NS.Theme.GOALS.DOLL_W, "the fill up to the score")
-assert(B.cells[1].label:GetText() == s.stats[1].label and has(plain(B.cells[1].value:GetText()), "+"), "the first change")
-assert(#B.cells == 6, "six at most")
--- the tooltips: what "Bestes" means, every change
-B.bar:GetScript("OnEnter")(B.bar)
-B.stats:GetScript("OnEnter")(B.stats)
--- a pick: the head follows
-win.side.slot = "HEAD"
-NS.GoalsFrameState().slot = "HEAD"
+assert(plain(B.text:GetText()) == "Wertung " .. Gear.Num(s.score, 0) .. " · +" .. Gear.Num(s.gain, 0), plain(B.text:GetText()))
+assert(B.bar.fill._w and B.bar.fill._w > 0 and B.bar.fill._w <= B:GetWidth(), "the fill up to the score")
+local lines = {}
+local addLine = GameTooltip.AddLine
+GameTooltip.AddLine = function(self, text, ...) lines[#lines + 1] = text; return addLine(self, text, ...) end
+B:GetScript("OnEnter")(B)
+GameTooltip.AddLine = addLine
+local tip = table.concat(lines, "|")
+assert(has(tip, "jetzt " .. Gear.Num(s.now, 1)) and has(tip, "Bestes auf Stufe 60: " .. Gear.Num(s.best, 1)) and has(tip, s.stats[1].text), tip)
+-- a pick: the score follows, the best does not
 assert(NS.BisSetPick("HEAD", 703))
-assert(B.score:GetText() == "Wertung " .. Gear.Num(NS.BisSummary().score, 1), "the head follows the pick")
-assert(B.best:GetText() == "Bestes auf Stufe 60: " .. Gear.Num(s.best, 1), "the best does not")
+assert(plain(B.text:GetText()):find("Wertung " .. Gear.Num(NS.BisSummary().score, 0), 1, true), "the score follows the pick")
+assert(NS.BisSummary().best == s.best, "the best does not")
 assert(NS.BisSetPick("HEAD", nil))
 
 ---------------------------------------------------------------------------
@@ -135,10 +133,10 @@ NS.BisTargets(); NS.BisSummary()
 local bestCalls = 0
 local origBest = Gear.Best
 Gear.Best = function(...) bestCalls = bestCalls + 1; return origBest(...) end
-assert(NS.Set("ui.goalScale", 110))
+assert(NS.Set("ui.talentScale", 110))
 NS.BisTargets(); NS.BisSummary()
 assert(bestCalls == 0, "a scale change computes nothing: " .. bestCalls)
-NS.Reset("ui.goalScale")
+NS.Reset("ui.talentScale")
 assert(NS.BisSetPick("HEAD", 703))
 NS.BisTargets(); NS.BisSummary()
 assert(bestCalls == 0, "an own pick neither (Bestes ignores picks): " .. bestCalls)

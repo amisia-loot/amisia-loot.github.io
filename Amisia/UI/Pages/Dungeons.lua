@@ -400,7 +400,7 @@ end
 
 -- The strip of a folded boss's head row: at most BH.MAX_ICONS icons of its items in the rows' order,
 -- "+N" for the rest; hidden on other rows and on an unfolded boss.
-local QUALITY = T.GOALS.QUALITY
+local QUALITY = T.QUALITY_RGB
 local function fillStrip(r, e)
     local items = e.kind == "boss" and not e.open and e.items or nil
     local n = items and #items or 0
@@ -1187,7 +1187,7 @@ local function fillRewards(V, q, y)
     V.rewardLabel:SetPoint("TOPLEFT", 0, y)
     V.rewardLabel:Show()
     y = y - J.LABEL_H
-    local quality = T.GOALS.QUALITY
+    local quality = T.QUALITY_RGB
     -- two tiles per row while every name fits half the width, else one
     local widest = 0
     for i, it in ipairs(list) do

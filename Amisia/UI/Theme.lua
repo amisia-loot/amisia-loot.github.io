@@ -24,7 +24,7 @@ T.RED = "|cffe0574a"                        -- a shortfall below the minimum
 T.LABEL = "|cffe2b857"
 T.GOLD_TEXT = "|cffe3b857"
 -- the client's item quality colours (0 poor to 6 artifact): colour codes ("|c" .. T.QUALITY_HEX[q]) and
--- r, g, b (T.QUALITY_RGB, the slot frames of T.GOALS.QUALITY too)
+-- r, g, b (T.QUALITY_RGB, the slot frames of T.PLANNER.QUALITY too)
 T.QUALITY_HEX = { [0] = "ff9d9d9d", "ffffffff", "ff1eff00", "ff0070dd", "ffa335ee", "ffff8000", "ffe6cc80" }
 T.QUALITY_RGB = { [0] = { 0.62, 0.62, 0.62 }, { 1, 1, 1 }, { 0.12, 1, 0 }, { 0, 0.44, 0.87 }, { 0.64, 0.21, 0.93 },
     { 1, 0.5, 0 }, { 0.9, 0.8, 0.5 } }
@@ -225,8 +225,6 @@ T.NAV_ICONS = {
     about = { file = "Interface\\common\\help-i" },
     feedback = { file = TRACK .. "Mailbox" },
     -- the side windows (key "win:" .. their key)
-    ["win:gear"] = { file = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Head" },
-    ["win:goals"] = { atlas = "auctionhouse-icon-favorite" },
     ["win:talents"] = { file = TRACK .. "Class" },
     ["win:rolls"] = { file = "Interface\\Buttons\\UI-GroupLoot-Dice-Up" },
     ["win:softres"] = { file = GOSSIP .. "PetitionGossipIcon" },
@@ -590,105 +588,6 @@ T.TALENT = {
     WINDOW = { TOP = 32, BOTTOM = 12, SCALE_STEP = 5 },
 }
 
--- the window "Ausrüstungsziele" (UI/GoalsWindow.lua, AmisiaGoalsFrame, F-110 to F-113) in the
--- talent window's frame: the head row under the title bar; left the doll (the character model
--- between the slot columns as on the character frame, the weapons under it, the switch Ziele /
--- Angelegt, the score head), in the middle the progress, the filter chips and the list of slots by
--- section, right the chosen slot's panel (own pick, ranking, dungeon drops, the item field).
--- 18 + 300 + 10 + 380 + 10 + 210 + 18 = 946 wide; the doll's column with the score head sets the
--- height: 60 + 410 (model, weapons, switch, hint) + 4 + 20 + 4 + 10 + 14 + 4 + 84 (stats) + 12 = 622.
-T.GOALS = {
-    W = 946, H = 700,
-    TOP = 32,             -- the head row below the window's top, under the title bar
-    BOTTOM = 12,          -- what the columns leave free at the bottom
-    SCALE_STEP = 5,       -- Ctrl + mouse wheel: percent per notch (setting ui.goalScale)
-    COL_Y = 60,           -- the three columns below the window's top
-    -- the doll: 6 slots left (centred on the 8 right), the model between, the weapons under it
-    DOLL_X = 18, DOLL_W = 300,
-    SLOT = 36, SLOT_GAP = 4, SLOT_EDGE = 2, SLOT_INSET = 2,
-    DOT = 10,             -- the state dot at a slot's lower right corner
-    MODEL_GAP = 8,        -- between a slot column and the model
-    MODEL_H = 316,        -- 8 slots and their gaps
-    WEAPON_GAP = 8,       -- between the model and the weapon row
-    SWITCH_GAP = 6,       -- between the weapon row and the switch Ziele / Angelegt
-    HINT_H = 24,          -- the model's hint under the switch (two lines at most)
-    ROTATE = 0.012,       -- radians per pixel the mouse is dragged
-    ZOOM_STEP = 0.1, ZOOM_MAX = 0.8,
-    -- the list in the middle
-    LIST_X = 328, LIST_W = 380,
-    PROG_Y = 60,          -- "N/17 Ziele hast du" (T.FONT.title) and the bar of 17 parts beside it
-    PROG_TEXT_W = 148, BAR_W = 224, BAR_H = 10, BAR_PART_GAP = 2,
-    FILTER_Y = 84,        -- the filter chips
-    LIST_Y = 112,         -- the list (its rows ROW_H high, ROWS of them)
-    ROW_H = 20, ROWS = 21,
-    ICON = 16,
-    -- { key, x, width } on the list's 368 (LIST_W less T.SCROLL_ROOM): slot, icon, item, gain, map, source
-    COLS = { { "slot", 4, 56 }, { "icon", 62, 16 }, { "name", 82, 150 }, { "gain", 236, 38 }, { "map", 280, 16 }, { "src", 298, 68 } },
-    -- the catalog (F-123) in the place of the list and the slot panel: the search row on top (the
-    -- box, the level range "von - bis", "Meine Stufe", "Alle"), the categories left as the page
-    -- list's bars with "Set anprobieren" and "Anprobe leeren" under them, the list of sets or hits
-    -- right of them, its hint under it. 30 + 24 x 20 + 4 + 28 = 542 of the 552 under PROG_Y.
-    CAT_W = 600,          -- the whole catalog: LIST_X to the right end of the slot panel
-    CAT_SEARCH_W = 220, CAT_LEVEL_W = 64, CAT_RANGE_W = 10,
-    CAT_LIST_Y = 30,      -- the list and the categories under the search row
-    CAT_NAV_W = 150, CAT_NAV_H = 24, CAT_NAV_GAP = 4,
-    CAT_BTN_GAP = 10,     -- between the last category and "Set anprobieren"
-    CAT_LIST_X = 160, CAT_ROWS = 24, CAT_HINT_H = 28,
-    -- { key, x, width } on the list's 428 (440 less T.SCROLL_ROOM): icon, item or set, slot or N/M,
-    -- level, gain, map, source
-    CAT_COLS = { { "icon", 4, 16 }, { "name", 24, 176 }, { "slot", 204, 58 }, { "level", 264, 28 }, { "gain", 296, 40 },
-        { "map", 340, 16 }, { "src", 360, 64 } },
-    CAT_ICON = 16,
-    -- the slot panel on the right
-    SIDE_X = 718, SIDE_W = 210,
-    SIDE_ROW_H = 18, RANK_ROWS = 10,   -- the ranking's rows
-    ENCH_ROWS = 5,        -- the enchantments of the worn item (F-128), SIDE_ROW_H high
-    DROP_ROWS = 3, DROP_ROW_H = 30,     -- the dungeon drops: item over boss and dungeon
-    HEAD_H = 16,          -- a head in the panel (the slot, Deine Wahl, Rangliste, ...)
-    SECTION_GAP = 6,      -- before a section's head in the panel
-    PICK_H = 30,          -- the own pick: name over source (or the line without a pick)
-    TAKE_W = 76,          -- "Übernehmen" beside the hint "Überholt: ..."
-    RANK_GAIN_W = 44,     -- the gain at a ranking row's right end
-    FIELD_W = 132,        -- "Item-Link oder ID"; "Hinzufügen" takes the rest
-    MSG_H = 26,           -- what the field says (two lines)
-    -- the score head under the doll (part B): "Wertung 18,6" (T.FONT.big), "jetzt 17,2" and "+1,4"
-    -- beside it, the bar up to "Bestes auf Stufe N" with its line under it, the six biggest stat
-    -- changes one under the other (the German stat names do not fit two columns of 150 px), the label
-    -- left and the change right
-    SCORE_GAP = 4,        -- between the doll's hint and the score line, and between the parts
-    SCORE_H = 20, SCORE_W = 140, NOW_W = 86, GAIN_W = 62,
-    SCORE_BAR_H = 10, BEST_H = 14,
-    STAT_ROWS = 6, STAT_H = 14, STAT_W = 300, STAT_VALUE_W = 60,
-    MARK_W = 2,           -- the line in the bar for "jetzt"
-    DOWN_COLOR = { 0.88, 0.34, 0.29 },   -- a stat that falls (T.RED as a colour)
-    -- an item's quality colour on its slot's frame (the client's item quality colours)
-    QUALITY = T.QUALITY_RGB,
-    -- the state colours: worn green, in bag or bank yellow, still to get grey, no target dark
-    STATE_COLOR = { done = { 0.31, 0.82, 0.42 }, bag = { 1, 0.82, 0.2 }, todo = { 0.5, 0.48, 0.55 }, none = { 0.16, 0.14, 0.18 } },
-    -- the empty slot art of the character frame, when the client's GetInventorySlotInfo does not say
-    SLOT_ART = {
-        HEAD = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Head", NECK = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Neck",
-        SHOULDER = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Shoulder", BACK = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Chest",
-        CHEST = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Chest", WRIST = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Wrists",
-        HANDS = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Hands", WAIST = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Waist",
-        LEGS = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Legs", FEET = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Feet",
-        FINGER1 = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Finger", FINGER2 = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Finger",
-        TRINKET1 = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Trinket", TRINKET2 = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Trinket",
-        MAINHAND = "Interface\\PaperDoll\\UI-PaperDoll-Slot-MainHand", OFFHAND = "Interface\\PaperDoll\\UI-PaperDoll-Slot-SecondaryHand",
-        RANGED = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Ranged",
-        -- the shirt and the tabard: only on the planner's doll
-        SHIRT = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Shirt", TABARD = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Tabard",
-    },
-    -- the client's slot names for GetInventorySlotInfo
-    SLOT_NAME = { HEAD = "HEADSLOT", NECK = "NECKSLOT", SHOULDER = "SHOULDERSLOT", BACK = "BACKSLOT", CHEST = "CHESTSLOT",
-        WRIST = "WRISTSLOT", HANDS = "HANDSSLOT", WAIST = "WAISTSLOT", LEGS = "LEGSSLOT", FEET = "FEETSLOT",
-        FINGER1 = "FINGER0SLOT", FINGER2 = "FINGER1SLOT", TRINKET1 = "TRINKET0SLOT", TRINKET2 = "TRINKET1SLOT",
-        MAINHAND = "MAINHANDSLOT", OFFHAND = "SECONDARYHANDSLOT", RANGED = "RANGEDSLOT", SHIRT = "SHIRTSLOT", TABARD = "TABARDSLOT" },
-    -- the doll's slots as on the character frame
-    LEFT = { "HEAD", "NECK", "SHOULDER", "BACK", "CHEST", "WRIST" },
-    RIGHT = { "HANDS", "WAIST", "LEGS", "FEET", "FINGER1", "FINGER2", "TRINKET1", "TRINKET2" },
-    BOTTOM_ROW = { "MAINHAND", "OFFHAND", "RANGED" },
-}
 
 -- the page "Ausrüstungsplaner" (UI/Pages/Planner.lua, F-149, D-77): left a panel over the page's height
 -- (the dressing room's background of the own race, else of another race, darkened by SHADE), its
@@ -701,10 +600,10 @@ T.GOALS = {
 -- search box (filling); under them the slot's name, "Stufe [lo] - [hi]" (LEVEL_W boxes) and Meine
 -- Stufe | Alle; the list down to the page's bottom (ROW_H rows: the icon ROW_ICON in its quality's
 -- frame, the name over "Stufe N · source" from TEXT_X, at the right end the gain GAIN_W, the source's
--- symbol and the wish star, SRC and STAR square, END apart). At 602: 240 + 8 + 354; the doll 30 + 348
--- + 22 + 40 = 440 of 478, "Zurücksetzen" from 448.
+-- symbol and the wish star, SRC and STAR square, END apart). At 602: 240 + 8 + 354; the doll 30 + 332
+-- + 22 + 38 = 422 of 478, the switch Ziele | Angelegt 426 to 446, score and "Zurücksetzen" from 448.
 T.PLANNER = {
-    LEFT_RATIO = 0.42, LEFT_MIN = 240, LEFT_MAX = 520,
+    LEFT_RATIO = 0.4, LEFT_MIN = 240, LEFT_MAX = 520,
     GAP = 8, PAD = 8, DOLL_Y = 30,
     SHADE = { 0, 0, 0, 0.45 },            -- over the race's background
     GROUND = { 0.03, 0.045, 0.03, 0.95 },  -- the panel's ground without the background (and under it)
@@ -714,13 +613,13 @@ T.PLANNER = {
         "Troll", "Scourge" }, W = { 256, 62 }, H = { 255, 128 },
         COORDS = { { 0, 1, 0, 255 / 256 }, { 0, 62 / 64, 0, 255 / 256 }, { 0, 1, 0, 1 }, { 0, 62 / 64, 0, 1 } } },
     SPEC_W = 124, WHO_GAP = 6,
-    -- the doll (UI/GoalsWindow.lua buildDoll): 8 slots left and right as on the character frame (the
+    -- the doll (UI/GearDoll.lua buildDoll): 8 slots left and right as on the character frame (the
     -- shirt and the tabard only show what is worn), the model between, the weapons under it with their
     -- enchant squares above them; DOLL_W at the narrowest panel (SetDollWidth follows the panel)
     DOLL = {
-        DOLL_W = 224, SLOT = 40, SLOT_GAP = 4, SLOT_EDGE = 2, SLOT_INSET = 2, DOT = 10,
+        DOLL_W = 224, SLOT = 38, SLOT_GAP = 4, SLOT_EDGE = 2, SLOT_INSET = 2, DOT = 10,
         MODEL_GAP = 20,       -- the enchant square and 4 px between a slot column and the model
-        MODEL_H = 348,        -- 8 slots and their gaps
+        MODEL_H = 332,        -- 8 slots and their gaps
         MODEL_SHADE = 0.2,    -- the inset's ground under the model
         WEAPON_GAP = 22,      -- the weapons' enchant squares (ENCH + ENCH_GAP) and 6 px
         BOTTOM_GAP = 8,       -- between two weapons
@@ -729,6 +628,17 @@ T.PLANNER = {
         RIGHT = { "HANDS", "WAIST", "LEGS", "FEET", "FINGER1", "FINGER2", "TRINKET1", "TRINKET2" },
         BOTTOM_ROW = { "MAINHAND", "OFFHAND", "RANGED" },
     },
+    -- under the doll (D-80): the switch Ziele | Angelegt centred SWITCH_GAP under the weapons, at the
+    -- bottom left the score ("Wertung 350 · +130", SCORE_W at most) over its bar (SCORE_BAR_H, the
+    -- line at "jetzt" MARK_W), "Zurücksetzen" at the right
+    SWITCH_GAP = 4, SCORE_BAR_H = 3, MARK_W = 2,
+    SCORE_BAR = { 0.31, 0.82, 0.42, 0.9 }, SCORE_BAR_BG = { 0, 0, 0, 0.5 },
+    DOWN_COLOR = { 0.88, 0.34, 0.29 },   -- a stat that falls (T.RED as a colour)
+    -- the tab Ziele (D-80): "4/17 Ziele" over the bar of 17 parts (PROG_W wide, BAR_H high) in the
+    -- second row, the filters right of it
+    PROG_W = 78, BAR_H = 3, BAR_PART_GAP = 1,
+    -- the line "Deine Wahl" over the suggestions: the red X (T.RESET) and "Übernehmen" at its right end
+    TAKE_W = 76,
     ENCH = 14, ENCH_GAP = 2,
     ENCH_ROWS = 8,        -- the enchantments in a square's menu
     RESET_W = 110,
@@ -752,6 +662,30 @@ T.PLANNER = {
         R = { file = "Interface\\GossipFrame\\TabardGossipIcon" }, W = { file = "Interface\\Minimap\\Tracking\\None" },
     },
     ICON_COORDS = { 0.07, 0.93, 0.07, 0.93 },   -- a profession's icon without its frame
+    -- an item's quality colour on its slot's frame (the client's item quality colours)
+    QUALITY = T.QUALITY_RGB,
+    -- the state colours: worn green, in bag or bank yellow, still to get grey, no target dark
+    STATE_COLOR = { done = { 0.31, 0.82, 0.42 }, bag = { 1, 0.82, 0.2 }, todo = { 0.5, 0.48, 0.55 }, none = { 0.16, 0.14, 0.18 } },
+    -- the empty slot art of the character frame, when the client's GetInventorySlotInfo does not say
+    SLOT_ART = {
+        HEAD = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Head", NECK = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Neck",
+        SHOULDER = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Shoulder", BACK = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Chest",
+        CHEST = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Chest", WRIST = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Wrists",
+        HANDS = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Hands", WAIST = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Waist",
+        LEGS = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Legs", FEET = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Feet",
+        FINGER1 = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Finger", FINGER2 = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Finger",
+        TRINKET1 = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Trinket", TRINKET2 = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Trinket",
+        MAINHAND = "Interface\\PaperDoll\\UI-PaperDoll-Slot-MainHand", OFFHAND = "Interface\\PaperDoll\\UI-PaperDoll-Slot-SecondaryHand",
+        RANGED = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Ranged",
+        -- the shirt and the tabard: only on the planner's doll
+        SHIRT = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Shirt", TABARD = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Tabard",
+    },
+    -- the client's slot names for GetInventorySlotInfo
+    SLOT_NAME = { HEAD = "HEADSLOT", NECK = "NECKSLOT", SHOULDER = "SHOULDERSLOT", BACK = "BACKSLOT", CHEST = "CHESTSLOT",
+        WRIST = "WRISTSLOT", HANDS = "HANDSSLOT", WAIST = "WAISTSLOT", LEGS = "LEGSSLOT", FEET = "FEETSLOT",
+        FINGER1 = "FINGER0SLOT", FINGER2 = "FINGER1SLOT", TRINKET1 = "TRINKET0SLOT", TRINKET2 = "TRINKET1SLOT",
+        MAINHAND = "MAINHANDSLOT", OFFHAND = "SECONDARYHANDSLOT", RANGED = "RANGEDSLOT", SHIRT = "SHIRTSLOT", TABARD = "TABARDSLOT" },
+
     -- the side bar's marks: the catalog's categories (Gear/Catalog.lua) with the client's marks
     MARKS = { "raid", "dungeon", "pvp", "craft", "world", "rep" },
     MARK_ICONS = {

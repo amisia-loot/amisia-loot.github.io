@@ -87,7 +87,7 @@ assert(mr.sign:IsShown() and mr.sign.texture == PLUS, "folded: plus")
 assert(shownIcons(mr) == BH.MAX_ICONS and mr.more:IsShown() and plain(mr.more:GetText()) == "+2", plain(mr.more:GetText()))
 local mh = h["Magmatus"]
 assert(#mh.items == 8, "eight items of Magmatus")
-local Q = T.GOALS.QUALITY
+local Q = T.QUALITY_RGB
 for j = 1, BH.MAX_ICONS do
     local b = mr.strip[j]
     assert(b.row == mh.items[j], "icon " .. j .. " is the item of row " .. j)

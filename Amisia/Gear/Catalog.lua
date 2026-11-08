@@ -1,10 +1,10 @@
--- The catalog of the window "Ausrüstungsziele" (F-123, spec docs/specs/2026-10-17-ziele-katalog.md):
+-- The catalog (F-123, spec docs/specs/2026-10-17-ziele-katalog.md; the planner's set marks and search, D-80):
 -- the item sets of ns.BIS.SET by where their pieces come from (raid, dungeon, PvP vendor, crafting,
 -- the rest of the world), each with its level, how many pieces the own character has and what each
 -- piece brings; and the search over every item of the gear data by name and required level, the
 -- best for the own character first. Names come from the client: an item without one is asked for
--- (through Gear.Stats) and found once it arrives. Nothing is saved here; the window keeps its choice
--- in settings.goalWindow. The level sets are no item sets: per range of ten levels the best item of
+-- (through Gear.Stats) and found once it arrives. Nothing is saved here; the planner keeps its choice
+-- in memory (D-80). The level sets are no item sets: per range of ten levels the best item of
 -- every slot for the own spec at the range's top (the simulation's calculation, ns.BisFor).
 local ADDON, ns = ...
 local L = ns.L

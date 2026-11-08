@@ -161,7 +161,7 @@ for i = 1, count do
     end
 end
 end
-assert(table.concat(wins, " ") == "softres rolls gear goals talents", "every side window has its row: " .. table.concat(wins, " "))
+assert(table.concat(wins, " ") == "softres rolls talents", "every side window has its row: " .. table.concat(wins, " "))
 
 ---------------------------------------------------------------------------
 -- the quick menu: one entry per tab, then settings and the recording switch

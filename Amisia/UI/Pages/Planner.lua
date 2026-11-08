@@ -1,19 +1,23 @@
--- The page "Ausrüstungsplaner" (F-149, D-77, spec docs/specs/2026-11-08-hub-reiter.md), the first page
--- of the tab Ausrüstung. Left a dark panel on the dressing room's background of the own race: at its
--- top the own name, level and the gear page's spec picker; the doll of the window "Ausrüstungsziele"
--- (one builder, ns.GoalsKit, in the size profile T.PLANNER.DOLL): the model between two columns of
--- eight slots as on the character frame, the weapons under it, each slot the target (the own pick
--- first, D-55) in its quality's frame (green: worn) and beside it a small square with the enchantment
--- on the worn item or a "+" (Gear/Enchants.lua: a click lists what fits); at the bottom
--- "Zurücksetzen" (the own picks of the spec, after a question). Right the tabs Vorschläge |
--- Wunschliste, a warning while an own pick is not used, the search over every item; under them the
--- chosen slot's name, the level boxes "[lo] - [hi]" and Meine Stufe | Alle; the list: icon, name, "Stufe N ·
--- source", the gain, the source's symbol and the wish star. A click on a row makes it the own pick of
--- its slot (again: lifts it). The side bar's marks are the catalog's set categories (Gear/Catalog.lua):
--- one shows that category's sets in the list instead, a set opens to its pieces; the tab Vorschläge
--- leads back. State in
--- settings.bis (planSlot, planTab, planLo, planHi); the set category, the open set and the search
--- text only in memory. Nothing is sent.
+-- The page "Ausrüstungsplaner" (F-149, D-77, D-80, spec docs/specs/2026-11-08-hub-reiter.md), the first
+-- page of the tab Ausrüstung and the one place of the own targets (the window "Ausrüstungsziele" went
+-- into it, D-80). Left a panel on the dressing room's background of the own race: at its top the own
+-- name, level and the gear page's spec picker; the doll (UI/GearDoll.lua, ns.GoalsKit, T.PLANNER.DOLL):
+-- the model between two columns of eight slots as on the character frame, the weapons under it, each
+-- slot the target (the own pick first, D-55) or with "Angelegt" what is worn, in its quality's frame
+-- (green: worn), beside it a square with the enchantment on the worn item or "+" (a click lists what
+-- fits with its gain); under it the switch Ziele | Angelegt, the score ("Wertung 350 · +130" over its
+-- bar, the tooltip: now, the best at the level, the six biggest stat changes) and "Zurücksetzen".
+-- Right the tabs Vorschläge | Ziele | Wunschliste, a warning while an own pick is not used,
+-- "Optionen" (weapon plan, sources, play style; its tooltip: why these weights) and the search box
+-- (names, or an item link or id: that item as the own pick); under them the slot's name, "Stufe [lo]
+-- - [hi]", Meine Stufe | Alle (Ziele: "N/17 Ziele" over its bar and the filters); the list: icon,
+-- name, "Stufe N · source", the gain, the source's symbol and the wish star. Vorschläge starts with
+-- "Deine Wahl" (the own pick with its X, "Überholt ... Übernehmen", "Passt nicht zum Waffenplan");
+-- a click on a row makes it the own pick of its slot (again: lifts it). Ziele lists the slots by
+-- section; a click shows that slot's suggestions. The side bar's marks are the catalog's set
+-- categories (Gear/Catalog.lua): one shows that category's sets in the list instead. State in
+-- settings.bis (planSlot, planTab, planLo, planHi, planFilter, planWorn); the set category, the open
+-- set and the search text only in memory. Nothing is sent.
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -48,7 +52,15 @@ local function levelOf(id)
     return row and tonumber(row[4]) or 0
 end
 
-local TABS = { suggest = true, wish = true }
+local TABS = { suggest = true, goals = true, wish = true }
+local FILTERS = { "all", "todo", "bag", "ench" }
+local FILTER_OK = { all = true, todo = true, bag = true, ench = true }
+local function filter()
+    local v = state().planFilter
+    return FILTER_OK[v] and v or "all"
+end
+-- the doll: the targets, or what is worn ("Angelegt")
+local function dollMode() return state().planWorn and "worn" or "goals" end
 local function shownTab()
     local t = state().planTab
     return TABS[t] and t or "suggest"
@@ -154,10 +166,50 @@ local function noSuggestion(res, slot, lo, hi)
     return L["Für diesen Slot gibt es keine Option in den Daten."]
 end
 
+-- An item link or an item id typed or pasted into the search box, else nil.
+local function linkedItem(text)
+    if not text:find("%S") then return nil end
+    local id = ns.ItemID(text)
+    if not id then id = tonumber(text:match("^%s*(%d+)%s*$")) end
+    return id and id > 0 and id or nil
+end
+
+-- The line "Deine Wahl" over the suggestions (F-112): the own pick of the slot (also one kept but not
+-- used) with the hint under it: not with the weapon plan, the character cannot wear it, or overtaken
+-- by the ranking's best ("Übernehmen").
+local function pickRow(res, chosen)
+    local stored = ns.BisPick(chosen)
+    local e = { pickRow = true, slot = chosen, stored = stored }
+    if not stored then return e end
+    local unused = res.ownUnused and res.ownUnused[chosen]
+    if unused == "plan" then
+        e.hint = T.ORANGE .. L["Passt nicht zum Waffenplan"] .. "|r"
+    elseif unused then
+        e.hint = T.ORANGE .. L["Das kann dein Charakter nicht tragen."] .. "|r"
+    else
+        local over = ns.BisOvertaken(chosen)
+        if over then
+            e.hint = L["Überholt: %s ist %s besser"]:format(K.itemText(over.id),
+                over.pct and ("+%d %%"):format(over.pct) or ("+%d"):format(math.floor(over.gain + 0.5)))
+            e.take = over.id
+        end
+    end
+    local first = res[chosen] and res[chosen][1]
+    e.unknown = first and first.own and first.unknown or nil
+    return e
+end
+
 -- The rows the list shows now and the line over it.
 local function listRows(res, o, chosen, lo, hi)
     local rows, title = {}, nil
-    if query:find("%S") then
+    local linked = linkedItem(query)
+    if linked then
+        -- an item link or id: that item, a click makes it the own pick (the field "Item-Link oder ID")
+        local e = measured(linked, o)
+        e.linkRow = true
+        rows[1] = e
+        title = L["Item-Link oder ID"]
+    elseif query:find("%S") then
         local hits, n = Cat.Search(query, lo, hi, o)
         for _, e in ipairs(hits) do rows[#rows + 1] = e end
         if n == 0 then rows[1] = { note = L["Kein Item gefunden."] } end
@@ -183,13 +235,26 @@ local function listRows(res, o, chosen, lo, hi)
         end
         title = L["Wunschliste (%d)"]:format(#rows)
         if #rows == 0 then rows[1] = { note = L["Noch keine Wünsche: der Stern einer Zeile merkt ein Item."] } end
+    elseif shownTab() == "goals" then
+        local p = ns.BisProgress(res)
+        for _, e in ipairs(DK.goalItems(res, p, filter(), DK.unenchanted())) do
+            if e.header then
+                rows[#rows + 1] = e
+            else
+                e.goal, e.chosen = true, e.key == chosen
+                rows[#rows + 1] = e
+            end
+        end
+        if #rows == 0 then rows[1] = { note = L["Kein Platz mit diesem Filter."] } end
     else
+        rows[1] = pickRow(res, chosen)
         for _, e in ipairs(suggestions(res, o, chosen, lo, hi)) do rows[#rows + 1] = e end
         title = ns.BIS_SLOT_NAME[chosen] or chosen
-        if #rows == 0 then rows[1] = { note = noSuggestion(res, chosen, lo, hi) } end
+        if #rows == 1 then rows[2] = { note = noSuggestion(res, chosen, lo, hi) } end
     end
     for _, e in ipairs(rows) do
-        if e.id then e.pickSlot = pickSlot(e.slotKey, chosen) end
+        -- a link or id becomes the chosen slot's pick (refused with the reason when it does not fit)
+        if e.id then e.pickSlot = e.linkRow and chosen or pickSlot(e.slotKey, chosen) end
     end
     return rows, title
 end
@@ -287,8 +352,90 @@ local function hideItemParts(r)
     r.gain:SetText("")
 end
 
+local function setIcon(r, id, link)
+    r.frame:Show()
+    r.icon:SetTexture(DK.iconOf(id) or DK.QUESTION)
+    local q = DK.qualityOf(id, link)
+    local c = T.QUALITY_RGB[q or 1] or T.QUALITY_RGB[1]
+    W.SetBorderColor(r.edges, c[1], c[2], c[3], 1)
+end
+
+-- "Deine Wahl: <item>" with its source, or the line without a pick; the red X, "Übernehmen".
+local function fillPickRow(r, e, o)
+    hideItemParts(r)
+    if e.stored then
+        setIcon(r, e.stored)
+        r.name:SetText(DK.ownMark() .. L["Deine Wahl: %s"]:format(K.itemText(e.stored)))
+        local src = e.unknown and L["unbekannt"] or K.sourceText(e.stored, nil, nil)
+        r.sub:SetText(e.hint or (GREY .. (src ~= "" and src or L["unbekannt"]) .. "|r"))
+        r.del:Show()
+    else
+        r.name:SetText(GREY .. L["Keine eigene Wahl: Amisia nimmt das Beste."] .. "|r")
+        r.sub:SetText(GREY .. L["Klick auf eine Zeile: deine Wahl für diesen Platz."] .. "|r")
+    end
+    r.take.id = e.take
+    r.take:SetShown(e.take ~= nil)
+    r.sel:Show()
+end
+
+-- A slot of the goals list: its target (or the worn item where the slot has none), "Kopf · source".
+local function fillGoalRow(r, e, o)
+    local opt = e.opt
+    if not opt then
+        hideItemParts(r)
+        r.name:SetText(T.GOLD_TEXT .. e.name .. "|r")
+        r.sub:SetText(GREY .. K.noOptionText(e) .. "|r")
+        if e.chosen then r.sel:Show() end
+        return
+    end
+    setIcon(r, opt.id)
+    local mark = opt.own and DK.ownMark() or (opt.pick and (T.GOLD_TEXT .. "BiS|r ") or "")
+    r.name:SetText(mark .. K.itemText(opt.id))
+    local src = opt.owned and K.OWNED_TEXT[opt.owned] or (opt.unknown and L["unbekannt"]) or K.sourceText(opt.id, o, opt.pick)
+    r.sub:SetText(T.GOLD_TEXT .. e.name .. "|r" .. GREY .. (src ~= "" and (" · " .. src) or "") .. "|r")
+    r.gain:SetText(gainOf(opt))
+    local rec = firstSource(opt.id, o)
+    setArt(r.src, srcArt(rec))
+    setStar(r.star, wished(opt.id))
+    r.star:Show()
+    if e.chosen then r.sel:Show() end
+end
+
+-- The right end of the name and its line: before the gain (an item), before the X and "Übernehmen"
+-- ("Deine Wahl") or the row's end (a head, a note).
+local function textRight(r, right)
+    if r.textAt == right then return end
+    r.textAt = right
+    r.name:SetPoint("TOPRIGHT", -right, PL.NAME_Y)
+    r.sub:SetPoint("TOPRIGHT", -right, PL.SUB_Y)
+end
+
 local function fillRow(r, e)
     r.sel:Hide()
+    r.del:Hide()
+    r.take:Hide()
+    if e.pickRow then
+        local right = PL.END
+        if e.stored then right = right + T.RESET + PL.END end
+        if e.take then right = right + r.take:GetWidth() + PL.END end
+        textRight(r, right)
+    elseif e.header or e.note then
+        textRight(r, PL.END)
+    else
+        textRight(r, r.textR)
+    end
+    local o = r:GetParent().opts
+    if e.pickRow then return fillPickRow(r, e, o) end
+    if e.header then
+        hideItemParts(r)
+        r.name:SetText(T.GOLD_TEXT .. e.header.label .. "|r")
+        r.sub:SetText(GREY .. L["%d von %d hast du"]:format(e.have, e.total) .. "|r")
+        return
+    end
+    if e.goal then
+        hideItemParts(r)
+        return fillGoalRow(r, e, o)
+    end
     if e.note then
         hideItemParts(r)
         r.name:SetText(GREY .. e.note .. "|r")
@@ -304,12 +451,7 @@ local function fillRow(r, e)
         if e.open then r.sel:Show() end
         return
     end
-    local o = r:GetParent().opts
-    r.frame:Show()
-    r.icon:SetTexture(DK.iconOf(e.id) or DK.QUESTION)
-    local q = DK.qualityOf(e.id)
-    local c = T.QUALITY_RGB[q or 1] or T.QUALITY_RGB[1]
-    W.SetBorderColor(r.edges, c[1], c[2], c[3], 1)
+    setIcon(r, e.id)
     local own = e.pickSlot ~= nil and ns.BisPick(e.pickSlot) == e.id
     local rec = firstSource(e.id, o)
     local mark = rec and rec[1] == "Q" and (" " .. PL.QUEST_MARK) or ""
@@ -324,8 +466,16 @@ end
 
 local function rowTip(self)
     local e = self.item
-    if not e or e.note then return end
+    if not e or e.note or e.header then return end
     if e.set then return DK.setTip(self, e.set) end
+    if e.pickRow then
+        if e.stored then K.itemTooltip(self, e.stored) end
+        return
+    end
+    if e.goal then
+        if e.opt then K.itemTooltip(self, e.opt.id) end
+        return
+    end
     K.itemTooltip(self, e.id)
     local rec = firstSource(e.id, self:GetParent().opts)
     if rec then GameTooltip:AddLine(L["Quelle: %s"]:format(Gear.SourceText(rec, true) or ""), 0.85, 0.85, 0.85, true) end
@@ -338,7 +488,23 @@ end
 
 local function rowClick(self, button)
     local e = self.item
-    if not e or e.note then return end
+    if not e or e.note or e.header then return end
+    if e.pickRow then
+        if e.stored then K.modifiedClick(e.stored) end
+        return
+    end
+    if e.goal then
+        if button == "RightButton" then
+            if e.opt then W.Menu(self, K.menuEntries(e.opt, ns.BisOpts())) end
+            return
+        end
+        if e.opt and K.modifiedClick(e.opt.id) then return end
+        -- a slot of the goals list: its suggestions
+        local st = state()
+        st.planSlot, st.planTab = e.key, "suggest"
+        ns.Refresh()
+        return
+    end
     if e.set then
         openSet = (not e.open) and e.set.id or nil
         ns.Refresh()
@@ -357,6 +523,8 @@ local function rowClick(self, button)
     -- a click makes it the own pick of its slot, a second lifts it
     local ok, why = ns.BisSetPick(slot, (ns.BisPick(slot) ~= e.id) and e.id or nil)
     if not ok and why then ns.msg(why) end
+    -- a link or id taken: the box is free again
+    if ok and e.linkRow then query = "" ns.Refresh() end
 end
 
 local function buildRow(r)
@@ -376,6 +544,7 @@ local function buildRow(r)
     local gainX = srcX + PL.SRC + PL.END
     local textR = gainX + PL.GAIN_W + PL.END
     r.name = W.Text(r, T.FONT.body)
+    r.textR = textR
     r.name:SetPoint("TOPLEFT", PL.TEXT_X, PL.NAME_Y)
     r.name:SetPoint("TOPRIGHT", -textR, PL.NAME_Y)
     r.sub = W.Text(r, T.FONT.hint)
@@ -403,6 +572,21 @@ local function buildRow(r)
         GameTooltip:Show()
     end)
     r.star:SetScript("OnLeave", K.hideTip)
+    -- "Deine Wahl": the red X lifts the own pick, "Übernehmen" takes the overtaking item
+    r.del = W.ResetButton(r, T.RESET, function(self)
+        local e = self:GetParent().item
+        if e and e.pickRow then ns.BisSetPick(e.slot, nil) end
+    end)
+    r.del:SetPoint("RIGHT", -starX, 0)
+    W.Tooltip(r.del, L["Wahl entfernen"], L["Amisia nimmt wieder das Beste für diesen Slot."])
+    r.del:Hide()
+    r.take = W.Link(r, L["Übernehmen"], function(self)
+        local e = self:GetParent().item
+        if e and e.pickRow and self.id then ns.BisSetPick(e.slot, self.id) end
+    end)
+    W.FitChip(r.take)
+    r.take:SetPoint("RIGHT", -(starX + T.RESET + PL.END), 0)
+    r.take:Hide()
     r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     r:SetScript("OnClick", rowClick)
     r:SetScript("OnEnter", rowTip)
@@ -590,6 +774,66 @@ local function fillPanel(p)
     end
 end
 
+-- The score under the doll (F-111): "Wertung 350 · +130" over a bar up to "Bestes auf Stufe N"
+-- with a line at "jetzt"; the tooltip: now, the best, the six biggest stat changes.
+local function scoreTip(self)
+    local s = self.summary
+    if not s then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(L["Wertung %s"]:format(Gear.Num(s.score, 1)), 1, 0.82, 0)
+    GameTooltip:AddLine(L["jetzt %s"]:format(Gear.Num(s.now, 1)), 1, 1, 1)
+    GameTooltip:AddLine(L["Bestes auf Stufe %d: %s"]:format(s.level, Gear.Num(s.best, 1)), 1, 1, 1)
+    GameTooltip:AddLine(L["Wertänderungen: Ziele gegen Angelegt"], 1, 0.82, 0)
+    for i, d in ipairs(s.stats) do
+        if i > 6 then break end
+        local c = d.up and PL.STATE_COLOR.done or PL.DOWN_COLOR
+        GameTooltip:AddLine(d.text, c[1], c[2], c[3])
+    end
+    if #s.stats == 0 then GameTooltip:AddLine(L["Keine Änderung."], 0.6, 0.6, 0.6) end
+    if s.fx > 0 then GameTooltip:AddLine(L["Effekt nicht gewertet: %d Ziele"]:format(s.fx), 0.6, 0.6, 0.6, true) end
+    GameTooltip:Show()
+end
+
+local function buildScore(f)
+    local B = CreateFrame("Frame", nil, f.panel)
+    B:SetHeight(LAY.ROW_H)
+    B.text = W.Text(B, T.FONT.text)
+    B.text:SetPoint("TOPLEFT", 0, -2)
+    B.text:SetPoint("TOPRIGHT", 0, -2)
+    B.bar = CreateFrame("Frame", nil, B)
+    B.bar:SetHeight(PL.SCORE_BAR_H)
+    B.bar:SetPoint("BOTTOMLEFT", 0, 2)
+    B.bar:SetPoint("BOTTOMRIGHT", 0, 2)
+    B.bar.bg = W.Flat(B.bar, PL.SCORE_BAR_BG[1], PL.SCORE_BAR_BG[2], PL.SCORE_BAR_BG[3], PL.SCORE_BAR_BG[4])
+    B.bar.fill = B.bar:CreateTexture(nil, "ARTWORK")
+    B.bar.fill:SetPoint("TOPLEFT")
+    B.bar.fill:SetPoint("BOTTOMLEFT")
+    B.bar.fill:SetColorTexture(PL.SCORE_BAR[1], PL.SCORE_BAR[2], PL.SCORE_BAR[3], PL.SCORE_BAR[4])
+    B.bar.mark = B.bar:CreateTexture(nil, "OVERLAY")
+    B.bar.mark:SetSize(PL.MARK_W, PL.SCORE_BAR_H + 2)
+    B.bar.mark:SetColorTexture(1, 1, 1, 0.9)
+    B:EnableMouse(true)
+    B:SetScript("OnEnter", scoreTip)
+    B:SetScript("OnLeave", K.hideTip)
+    f.score = B
+end
+
+local function fillScore(f, res, o)
+    local B = f.score
+    local s = ns.BisSummary(res, o)
+    B.summary = s
+    local g = s.gain
+    B.text:SetText(L["Wertung %s"]:format(Gear.Num(s.score, 0)) .. " · " .. (g >= 0 and GREEN or T.RED) .. (g >= 0 and "+" or "-")
+        .. Gear.Num(math.abs(g), 0) .. "|r")
+    local w = B:GetWidth() or 1
+    local max = math.max(s.best, s.score, s.now, 1)
+    local fw = math.max(0, math.min(1, s.score / max)) * w
+    B.bar.fill:SetWidth(math.max(1, fw))
+    B.bar.fill:SetShown(fw >= 1)
+    B.bar.mark:ClearAllPoints()
+    B.bar.mark:SetPoint("CENTER", B.bar, "LEFT", math.max(0, math.min(1, s.now / max)) * w, 0)
+end
+
 local function resetPicks()
     local o = ns.BisOpts()
     local sp = Gear.SpecInfo(o.class, o.spec)
@@ -618,20 +862,42 @@ local function warnTip(self)
     GameTooltip:Show()
 end
 
--- The menu "Quellen": the gear page's source switches (ns.BisOpts().sources, saved), a click turns
--- one on or off for every target.
+-- The menu "Optionen": the weapon plan (ns.BisSetPlan), the gear page's source switches
+-- (ns.BisOpts().sources, saved; a click turns one on or off for every target) and the play style's
+-- menu (F-124).
 local SRC_LABEL = { X = "Raids", D = "Dungeons", Q = "Quests", C = L["Berufe"], V = L["Händler"], P = "PvP", W = L["Welt"], A = "AH" }
-local function srcMenu(self)
-    local src = ns.BisOpts().sources
+local function optionsMenu(self)
+    local o = ns.BisOpts()
     local out = {}
+    for _, k in ipairs(ns.BIS_PLAN_ORDER) do
+        out[#out + 1] = { ((o.plan or "auto") == k and CHECK or "") .. L["Waffen: %s"]:format(ns.BIS_PLANS[k]), function()
+            K.say(ns.BisSetPlan(k))
+        end }
+    end
     for _, k in ipairs(PL.SOURCES) do
-        out[#out + 1] = { (src[k] and CHECK or "") .. (SRC_LABEL[k] or k), function()
-            local s = ns.BisOpts().sources
-            s[k] = not s[k]
+        out[#out + 1] = { (o.sources[k] and CHECK or "") .. L["Quelle: %s"]:format(SRC_LABEL[k] or k), function()
+            local src = ns.BisOpts().sources
+            src[k] = not src[k]
             ns.Fire("BIS_CHANGED")
         end }
     end
+    local n = ns.PlayStyle.Count()
+    out[#out + 1] = { n > 0 and L["Spielstil (%d) ..."]:format(n) or L["Spielstil ..."], function() W.Menu(self, K.styleEntries(self)) end }
     W.Menu(self, out)
+end
+
+-- Its tooltip: the weapon plan as the targets show it, the play style, why these weights (ns.BisWhy).
+local function optionsTip(self)
+    local f = self:GetParent()
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(L["Optionen"], 1, 0.82, 0)
+    if f.planText then GameTooltip:AddLine(f.planText, 1, 1, 1) end
+    local names = ns.PlayStyle.Names()
+    GameTooltip:AddLine(L["Spielstil: %s"]:format(names or L["aus"]), 1, 1, 1, true)
+    GameTooltip:AddLine(L["Warum diese Gewichte"], 1, 0.82, 0)
+    for _, line in ipairs(ns.BisWhy()) do GameTooltip:AddLine(line, 0.85, 0.85, 0.85, true) end
+    GameTooltip:AddLine(L["Klick: Waffenplan, Quellen und Spielstil."], 0.6, 0.6, 0.6, true)
+    GameTooltip:Show()
 end
 
 local function fillHead(f, o, res)
@@ -650,19 +916,56 @@ local function fillHead(f, o, res)
     local searching = query:find("%S") ~= nil
     local tab = shownTab()
     f.tabSuggest:SetOn(tab == "suggest" and not setCat and not searching)
+    f.tabGoals:SetOn(tab == "goals" and not setCat and not searching)
     f.tabWish:SetOn(tab == "wish" and not setCat and not searching)
+    f.planText = DK.planText(o, res)
     f.warn.unused = res.ownUnused
     local warn = res.ownUnused ~= nil and next(res.ownUnused) ~= nil
     f.warn:SetShown(warn)
-    local row = { f.headLeft, { f.tabSuggest, gap = PL.GAP }, f.tabWish }
+    local row = { f.headLeft, { f.tabSuggest, gap = PL.GAP }, f.tabGoals, f.tabWish }
     if warn then row[#row + 1] = f.warn end
-    row[#row + 1] = f.srcLink
+    row[#row + 1] = f.optLink
     row[#row + 1] = { f.search, fill = true }
     f:Place(1, row)
     if not f.search:HasFocus() and (f.search:GetText() or "") ~= query then f.search:SetText(query) end
 end
 
-local function fillRange(f, lo, hi, title)
+local RANGE_PARTS = { "title", "lvl", "lo", "dash", "hi", "mine", "all" }
+local GOAL_PARTS = { "prog", "fall", "ftodo", "fbag", "fench" }
+local FILTER_LABEL = { all = L["Alle"], todo = L["Zu holen %d"], bag = L["Tasche %d"], ench = L["Ohne Verz. %d"] }
+
+local function showParts(f, list, on)
+    for _, k in ipairs(list) do f[k]:SetShown(on) end
+end
+
+-- The second row: the slot's name and the level range; on the tab Ziele "N/17 Ziele" over its bar
+-- and the filters Alle / Zu holen / Tasche / Ohne Verz.
+local function fillRange(f, lo, hi, title, res)
+    local goals = shownTab() == "goals" and not setCat and not query:find("%S")
+    showParts(f, RANGE_PARTS, not goals)
+    showParts(f, GOAL_PARTS, goals)
+    if goals then
+        local p = ns.BisProgress(res)
+        f.prog.text:SetText(L["%d/%d Ziele"]:format(p.done, p.total))
+        f.prog.bar.progress = p
+        for i, sl in ipairs(Gear.SLOTS) do
+            local c = PL.STATE_COLOR[p.slot[sl.key]] or PL.STATE_COLOR.none
+            f.prog.parts[i]:SetColorTexture(c[1], c[2], c[3], 1)
+        end
+        local ench = 0
+        for _ in pairs(DK.unenchanted()) do ench = ench + 1 end
+        local counts = { todo = p.todo, bag = p.bag, ench = ench }
+        local cur, row = filter(), {}
+        for _, key in ipairs(FILTERS) do
+            local chip = f["f" .. key]
+            chip.label:SetText(key == "all" and FILTER_LABEL.all or FILTER_LABEL[key]:format(counts[key] or 0))
+            W.FitChip(chip)
+            chip:SetOn(key == cur)
+            row[#row + 1] = chip
+        end
+        f:Place(2, { f.room, { f.prog, gap = PL.GAP } }, row)
+        return
+    end
     if not f.lo:HasFocus() then f.lo:SetText(tostring(lo)) end
     if not f.hi:HasFocus() then f.hi:SetText(tostring(hi)) end
     f.mine:SetOn(lo == 1 and hi == ownLevel())
@@ -707,6 +1010,12 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
             setCat, openSet, query = nil, nil, ""
             ns.Refresh()
         end)
+        f.tabGoals = W.Tab(f, L["Ziele"], function()
+            state().planTab = "goals"
+            setCat, openSet, query = nil, nil, ""
+            ns.Refresh()
+        end)
+        W.Tooltip(f.tabGoals, L["Ziele"], L["Alle Plätze mit deinem Ziel, wie viele du hast und was noch fehlt. Klick auf einen Platz: seine Vorschläge."])
         f.tabWish = W.Tab(f, L["Wunschliste"], function()
             state().planTab = "wish"
             setCat, openSet, query = nil, nil, ""
@@ -727,13 +1036,15 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
             end
         end)
         f.warn:Hide()
-        f.srcLink = W.Link(f, L["Quellen"], srcMenu)
-        W.FitChip(f.srcLink)
-        W.Tooltip(f.srcLink, L["Quellen"], L["Woher die Vorschläge kommen dürfen: dieselben Schalter wie auf der Seite Ausrüstung."])
+        f.optLink = W.Link(f, L["Optionen"], optionsMenu)
+        W.FitChip(f.optLink)
+        f.optLink:HookScript("OnEnter", optionsTip)
+        f.optLink:HookScript("OnLeave", K.hideTip)
         f.search = W.SearchBox(f, T.LINE_W, function(text)
             query = text or ""
             ns.Refresh()
-        end, L["Alle Items suchen ..."])
+        end, L["Item suchen ..."])
+        W.Tooltip(f.search, L["Item suchen ..."], L["Ein Name sucht alle Items; ein Item-Link (Shift-Klick) oder eine ID: ein Klick macht es zu deiner Wahl für den gewählten Platz."])
         -- typing searches after a short pause
         f.search:HookScript("OnTextChanged", function(self, user)
             if not user then return end
@@ -745,6 +1056,23 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
                 end
             end)
         end)
+        -- a link Shift-clicked while the box has the focus goes into it (the field "Item-Link oder ID")
+        local function takeLink(link)
+            if type(link) == "string" and f.search:HasFocus() then
+                f.search:SetText(link)
+                query = link
+                ns.Refresh()
+                return true
+            end
+        end
+        if type(hooksecurefunc) == "function" then
+            if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
+                hooksecurefunc(ChatFrameUtil, "InsertLink", takeLink)
+            elseif type(ChatEdit_InsertLink) == "function" then
+                hooksecurefunc("ChatEdit_InsertLink", takeLink)
+            end
+        end
+        f.takeLink = takeLink
         -- the second row: the slot's name (or the set category) and the level range
         f.room = CreateFrame("Frame", nil, f)
         f.room:SetSize(leftW(), 1)
@@ -761,7 +1089,44 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
         f.mine = W.Tab(f, L["Meine Stufe"], function() setRange(1, ownLevel()) end)
         W.Tooltip(f.mine, L["Meine Stufe"], L["Stufe 1 bis deine Stufe: alles, was du jetzt tragen kannst."])
         f.all = W.Tab(f, L["Alle"], function() setRange(1, Gear.Cap()) end)
-        for _, b in ipairs({ f.tabSuggest, f.tabWish, f.mine, f.all }) do W.FitChip(b) end
+        -- the tab Ziele: the progress over its bar of 17 parts, the filters
+        f.prog = CreateFrame("Frame", nil, f)
+        f.prog:SetSize(PL.PROG_W, LAY.ROW_H)
+        f.prog.text = W.Text(f.prog, T.FONT.title, PL.PROG_W)
+        f.prog.text:SetPoint("TOPLEFT", 0, -1)
+        f.prog.bar = CreateFrame("Frame", nil, f.prog)
+        f.prog.bar:SetSize(PL.PROG_W, PL.BAR_H)
+        f.prog.bar:SetPoint("BOTTOMLEFT", 0, 1)
+        f.prog.parts = {}
+        local n = #Gear.SLOTS
+        local pw = (PL.PROG_W - (n - 1) * PL.BAR_PART_GAP) / n
+        for i = 1, n do
+            local t = f.prog.bar:CreateTexture(nil, "ARTWORK")
+            t:SetSize(pw, PL.BAR_H)
+            t:SetPoint("TOPLEFT", (i - 1) * (pw + PL.BAR_PART_GAP), 0)
+            f.prog.parts[i] = t
+        end
+        f.prog:EnableMouse(true)
+        f.prog:SetScript("OnEnter", function(self)
+            local p = self.bar.progress
+            if not p then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(L["%d/%d Ziele hast du"]:format(p.done, p.total), 1, 0.82, 0)
+            GameTooltip:AddLine(L["%d angelegt, %d in Tasche oder Bank, %d zu holen, %d ohne Ziel"]:format(p.done, p.bag, p.todo, p.none),
+                1, 1, 1, true)
+            GameTooltip:Show()
+        end)
+        f.prog:SetScript("OnLeave", K.hideTip)
+        for _, key in ipairs(FILTERS) do
+            f["f" .. key] = W.Tab(f, FILTER_LABEL.all, function()
+                state().planFilter = key ~= "all" and key or nil
+                ns.Refresh()
+            end)
+        end
+        W.Tooltip(f.ftodo, L["Zu holen"], L["Plätze, deren Ziel du noch nicht hast."])
+        W.Tooltip(f.fbag, L["In der Tasche"], L["Plätze, deren Ziel in Tasche oder Bank liegt, aber nicht angelegt ist."])
+        W.Tooltip(f.fench, L["Ohne Verzauberung"], L["Angelegte Items in verzauberbaren Slots ohne Verzauberung (dieselbe Prüfung wie der Raid-Check). Nur ein Hinweis, keine Empfehlung."])
+        for _, b in ipairs({ f.tabSuggest, f.tabGoals, f.tabWish, f.mine, f.all }) do W.FitChip(b) end
         for _, fs in ipairs({ f.lvl, f.dash }) do fs:SetWidth(math.ceil((fs:GetStringWidth() or 0) + 2)) end
         -- the doll in the panel
         f.doll = DK.buildDoll(f.panel, PL.DOLL, { onChoose = choose, decorate = decorate })
@@ -771,6 +1136,15 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
         f.reset = W.Button(f.panel, L["Zurücksetzen"], PL.RESET_W, resetPicks)
         W.FitChip(f.reset, PL.RESET_W)
         f.reset:SetPoint("BOTTOMRIGHT", f.panel, "BOTTOMRIGHT", -PL.PAD, PL.PAD)
+        -- under the weapons the switch Ziele | Angelegt, at the bottom left the score
+        f.showGoals = W.Tab(f.panel, L["Ziele"], function() state().planWorn = nil; ns.Refresh() end)
+        f.showWorn = W.Tab(f.panel, L["Angelegt"], function() state().planWorn = true; ns.Refresh() end)
+        W.Tooltip(f.showGoals, L["Ziele"], L["Das Modell trägt deine Ziele."])
+        W.Tooltip(f.showWorn, L["Angelegt"], L["Das Modell trägt, was du angelegt hast."])
+        W.FitChip(f.showGoals)
+        W.FitChip(f.showWorn)
+        buildScore(f)
+        f.score:SetPoint("BOTTOMLEFT", f.panel, "BOTTOMLEFT", PL.PAD, PL.PAD)
         W.Tooltip(f.reset, L["Zurücksetzen"], L["Deine eigenen Wahlen dieser Spezialisierung entfernen."])
         -- the list in the right half, down to the page's bottom
         f:Footer({ { "help", help = true } })
@@ -783,6 +1157,10 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
             f.headLeft:SetWidth(lw)
             f.room:SetWidth(lw)
             f.doll.SetDollWidth(lw - 2 * PL.PAD)
+            local sw = f.showGoals:GetWidth() + T.TAB_GAP + f.showWorn:GetWidth()
+            W.Row(f.panel, { f.showGoals, f.showWorn }, T.TAB_GAP, math.floor((lw - sw) / 2),
+                -(PL.DOLL_Y + PL.DOLL.MODEL_H + PL.DOLL.WEAPON_GAP + PL.DOLL.SLOT + PL.SWITCH_GAP))
+            f.score:SetWidth(lw - 2 * PL.PAD - f.reset:GetWidth() - LAY.ITEM_GAP)
             f.list:ClearAllPoints()
             f.list:SetPoint("TOPLEFT", lw + PL.GAP, f.top)
             f.list:SetWidth((T.PAGE_W_NOW or T.PAGE_W) - lw - PL.GAP - T.SCROLL_ROOM)
@@ -803,15 +1181,19 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
         local lo, hi = range()
         fillPanel(f.panel)
         fillHead(f, o, res)
-        DK.fillDoll(f.doll, res, "goals", chosen)
-        DK.dress(f.doll, res, "goals")
+        local m = dollMode()
+        DK.fillDoll(f.doll, res, m, chosen)
+        DK.dress(f.doll, res, m)
+        f.showGoals:SetOn(m == "goals")
+        f.showWorn:SetOn(m == "worn")
+        fillScore(f, res, o)
         local ench = enchAll()
         for key, b in pairs(f.doll.slots) do
             if b.ench then fillEnch(b.ench, ench[key]) end
         end
         f.reset:SetEnabled(hasPicks(o))
         local rows, title = listRows(res, o, chosen, lo, hi)
-        fillRange(f, lo, hi, title)
+        fillRange(f, lo, hi, title, res)
         f.list.opts = o
         f.list:SetItems(rows)
     end,
@@ -836,7 +1218,7 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
 -- with a text; slotKey: the chosen slot.
 function ns.ShowPlanner(view, arg, slotKey)
     local st = state()
-    if view == "suggest" or view == "wish" then
+    if view == "suggest" or view == "wish" or view == "goals" then
         st.planTab, setCat, openSet, query = view, nil, nil, ""
     elseif view == "sets" and Cat.ValidCat(arg) then
         setCat, openSet, query = arg, nil, ""

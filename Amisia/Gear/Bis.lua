@@ -2941,7 +2941,7 @@ ns.RegisterSlash("bis", { aliases = { "ziele", "ausruestung" },   -- l10n-ok: co
         elseif sub == "sim" or sub == "simulation" then
             ns.ShowGear("sim")
         elseif sub == "gross" or sub == "gro\195\159" or sub == "big" then   -- l10n-ok: typed words
-            if ns.ShowGoalsFrame then ns.ShowGoalsFrame() end
+            if ns.ShowPlanner then ns.ShowPlanner("goals") end
         else
             ns.msg(L["Aufruf: /amisia bis [hier | item <Link> | aus <Link> | zurueck | vergleich <Link> <Link> | gewichte | plan <auto|2h|dw|schild> | sim | gross]"])
         end

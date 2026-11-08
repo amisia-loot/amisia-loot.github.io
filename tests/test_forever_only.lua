@@ -48,7 +48,7 @@ assert(#interface == 1 and interface[1] == "16001, 20506, 11509",
 assert(not toc:find("TBC", 1, true) and not toc:find("AllowLoadGameType tbc", 1, true), "no TBC line")
 assert(not toc:find("## AllowLoadGameType", 1, true), "no TOC-wide load condition")
 -- the Forever parts (D-57): exactly these load on Forever only, every other file on all three clients
-local FOREVER_FILES = { ["Core/Duels.lua"] = true, ["Raid/Handover.lua"] = true, ["UI/GoalsWindow.lua"] = true,
+local FOREVER_FILES = { ["Core/Duels.lua"] = true, ["Raid/Handover.lua"] = true, ["UI/GearDoll.lua"] = true,
                         ["UI/SlotCard.lua"] = true, ["UI/DuelInfo.lua"] = true }
 for _, page in ipairs({ "Gear", "JournalParts", "Dungeons", "RaidJournal", "Map", "Professions", "Quests", "Talents", "MageScrolls", "Duels",
                         "Tools", "Export", "Planner" }) do

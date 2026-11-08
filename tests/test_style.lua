@@ -489,7 +489,7 @@ for _, g in ipairs({ "gear", "dungeons", "prof", "talents", "guild", "amisia" })
 local talentMarks = table.concat(tabsOf, " | "):match("| talents talents( [^|]*) |")
 assert(talentMarks == " class:WARRIOR class:PALADIN class:HUNTER class:ROGUE class:PRIEST class:SHAMAN class:MAGE class:WARLOCK"
     .. " class:DRUID slot:1 slot:2 live reset import export", tostring(talentMarks))
-assert(table.concat(tabsOf, " | "):gsub(talentMarks, "", 1):gsub(" L%d+", ""):gsub(" %d+", "") == "planner gear gear goals raid dungeon pvp craft world rep"
+assert(table.concat(tabsOf, " | "):gsub(talentMarks, "", 1):gsub(" L%d+", ""):gsub(" %d+", "") == "planner gear raid dungeon pvp craft world rep"
     .. " | dungeons raidjournal quests map | professions overview camp favor | talents talents"
     .. " | members calendar bank duels | settings gear bis dungeons prof raid guild amisia about feedback", table.concat(tabsOf, " | "))
 NS.Set("ui.view", "officer")
@@ -551,9 +551,9 @@ NS.Reset("ui.expert")
 NS.Reset("ui.view")
 
 -- the side windows: a row of their tab right under their page, the chat window's maximize sign at
--- the right; the gear table and the goals under Ausrüstung, the talent window under Talente, the roll
+-- the right; none under Ausrüstung (D-80), the talent window under Talente, the roll
 -- window and the soft-reserve import under Raid (officers)
-local WIN_TAB = { gear = "gear", goals = "gear", talents = "talents", rolls = "raid", softres = "raid" }
+local WIN_TAB = { talents = "talents", rolls = "raid", softres = "raid" }
 local function winsShown()
     local out = {}
     for _, g in ipairs({ "gear", "talents", "raid" }) do
@@ -570,25 +570,25 @@ local function win(key)
     return navRow("win", key)
 end
 NS.Set("ui.view", "officer")
-assert(winsShown() == "gear goals talents softres rolls", winsShown())
-for _, k in ipairs({ "gear", "goals", "talents", "rolls", "softres" }) do
+assert(winsShown() == "talents softres rolls", winsShown())
+for _, k in ipairs({ "talents", "rolls", "softres" }) do
     local w = win(k)
     assert(w.button.sign:IsShown() and w.button.sign.texture == "Interface\\ChatFrame\\UI-ChatIcon-Maximize-Up", "the window sign: " .. k)
     assert(w.button.label.points.LEFT.x == M.NAV_SUB_X and w.button.symbol:IsShown(), "with its symbol: " .. k)
 end
-assert(win("gear").button.label:GetText() == "Tabelle" and win("rolls").button.label:GetText() == "Würfelfenster"
+assert(win("rolls").button.label:GetText() == "Würfelfenster"
     and win("softres").button.label:GetText() == "Importieren" and win("talents").button.label:GetText() == "Talentrechner")
 -- every row's name fits its row (the sign takes the right end)
-for _, k in ipairs({ "gear", "goals", "talents", "rolls", "softres" }) do
+for _, k in ipairs({ "talents", "rolls", "softres" }) do
     local l = win(k).button.label
     assert(l:GetStringWidth() <= l:GetWidth(), k .. ": " .. l:GetStringWidth() .. " > " .. l:GetWidth())
 end
 -- right under their pages
 NS.ShowTab("raid")
 assert(navAll():find("softres softres rolls rolls ", 1, true), navAll())
--- a raider sees the gear table, the goals and the talent window; without gear data the talents' only
+-- a raider sees the talent window; without gear data still (no gear windows in the side bar, D-80)
 NS.Set("ui.view", "raider"); STUB.tick(0)
-assert(winsShown() == "gear goals talents", winsShown())
+assert(winsShown() == "talents", winsShown())
 NS.ShowPage("professions")
 local keepGear = NS.GEAR
 NS.GEAR = nil
@@ -618,10 +618,6 @@ assert(AmisiaSoftResFrame:IsShown() and win("softres").entry.on == true)
 AmisiaSoftResFrame:Hide(); assert(navRow("win", "softres").entry.on == false, "off on hide")
 AmisiaSoftResFrame:Show(); assert(navRow("win", "softres").entry.on == true, "on on show")
 AmisiaSoftResFrame:Hide()
-win("gear").button:Click()
-assert(AmisiaGearFrame:IsShown() and win("gear").entry.on == true)
-win("gear").button:Click()
-assert(not AmisiaGearFrame:IsShown() and not win("gear").entry.on)
 NS.Reset("ui.view")
 
 -- the close button hides the main window in combat, without HideUIPanel
@@ -745,9 +741,9 @@ do
     end
     assert(not gsrc:find("UIPanelCloseButton", 1, true), "the frame's own close button")
 end
-assert(winRowOn("gear") == true, "the gear table's row is on while the table shows")
+NS.ShowTab("gear")
+for _, e in ipairs(MF.navOrder) do assert(e.entry.kind ~= "win", "the gear table has no row in the side bar (D-80)") end
 closesInCombat("the gear table", GF)
-assert(winRowOn("gear") == false, "the gear table's row follows the hide")
 
 -- the roll window: a dialog, the time beside the item under the bar, red buttons
 NS.ToggleRollFrame()

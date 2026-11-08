@@ -71,7 +71,7 @@ F.tabs.dungeons:Click()
 assert(NS.CurrentPage() == "quests", "the tab remembers its page: " .. NS.CurrentPage())
 -- Ausrüstung and Talente: the side windows right under their pages
 NS.ShowPage("gear")
-assert(navAll() == "planner gear gear goals", navAll())
+assert(navAll() == "planner gear", navAll())
 NS.ShowTab("talents")
 -- the page and the window, then the page's marks: classes, plans, actions (D-76)
 assert(NS.CurrentPage() == "talents" and navAll():match("^talents talents class:") and navAll():find(" slot:1 slot:2 ", 1, true), navAll())

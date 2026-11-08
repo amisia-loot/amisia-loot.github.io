@@ -4,8 +4,8 @@
 -- nothing else is), beats a BiS pick, follows the weapon plan (kept but unused when it does not fit),
 -- an item the data lacks counts with the client's stats ("unbekannt"); "Hier" and the dungeon gains
 -- follow it, the tooltip's "Upgrade für dich" does not; ns.BisRanking (the ten best, the own pick
--- starred, not moved ahead), the hint "Überholt"; the slot panel of the window: ranking clicks, the
--- red X, the field.
+-- starred, not moved ahead), the hint "Überholt"; on the page Ausrüstungsplaner (D-80): ranking clicks,
+-- "Deine Wahl" with the red X, a link or id in the search box, Übernehmen, the weapon plan.
 local Gear = NS.Gear
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function plain(t) return (tostring(t or ""):gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
@@ -184,63 +184,64 @@ assert(me.pick == nil, "nothing left: no table")
 NS.BisSetPick("HEAD", nil)
 
 ---------------------------------------------------------------------------
--- the slot panel of the window
+-- the own pick on the page Ausrüstungsplaner (until 2.64.0 the window's slot panel, D-80): "Deine
+-- Wahl" over the suggestions, a click makes a row the pick, the red X, a link or id in the search box,
+-- "Überholt ... Übernehmen", "Passt nicht zum Waffenplan"
 ---------------------------------------------------------------------------
-local win = assert(NS.ShowGoalsFrame())
-NS.GoalsFrameState().slot = "HEAD"
-NS.GoalsRefresh()
-local S = win.side
-assert(S.slot == "HEAD" and has(S.title:GetText(), "Kopf"), "the chosen slot's panel: " .. tostring(S.title:GetText()))
-assert(S.none:GetText() == "Keine eigene Wahl: Amisia nimmt das Beste." and S.none.vis ~= false, "no pick yet")
-assert(has(S.rankHead:GetText(), "Rangliste für") and has(S.rankHead:GetText(), "60"), S.rankHead:GetText())
-local row3 = S.rank.rows[3]
-assert(row3.item and row3.item.id == 603, "the third of the ranking")
-row3:Click()
+NS.ShowPlanner("suggest", nil, "HEAD")
+local f = NS.PageFrame("planner")
+local function rowOf(id)
+    for _, r in ipairs(f.list.rows) do if r:IsShown() and r.item and r.item.id == id then return r end end
+end
+local pr = function() return f.list.rows[1] end
+assert(f.list.items[1].pickRow and has(plain(pr().name:GetText()), "Keine eigene Wahl: Amisia nimmt das Beste."), "no pick yet")
+assert(f.title:GetText() == "Kopf", "the chosen slot")
+rowOf(603):Click()
 assert(NS.BisPick("HEAD") == 603, "a click makes it the own pick")
-assert(S.pick.vis ~= false and has(plain(S.pick.name:GetText()), "Helm Drei") and S.pick.id == 603, "Deine Wahl shows it")
-assert(win.list.items[2].opt.id == 603 and win.list.items[2].opt.own, "the list shows it as the head's target")
-row3 = S.rank.rows[3]
-assert(row3.item.own and has(row3.name:GetText(), "|A:") or has(row3.name:GetText(), "|T"), "starred in the ranking")
-row3:Click()
+assert(has(plain(pr().name:GetText()), "Deine Wahl: Helm Drei"), "Deine Wahl shows it")
+assert(NS.BisTargets().HEAD[1].id == 603 and NS.BisTargets().HEAD[1].own, "the head's target")
+assert(has(rowOf(603).name:GetText(), "|A:") or has(rowOf(603).name:GetText(), "|T"), "starred in the ranking")
+rowOf(603):Click()
 assert(NS.BisPick("HEAD") == nil, "a second click lifts it")
-S.rank.rows[2]:Click()
+rowOf(602):Click()
 assert(NS.BisPick("HEAD") == 602)
-S.pick.del:Click()
+pr().del:Click()
 assert(NS.BisPick("HEAD") == nil, "the red X lifts it")
--- the field: a ring for the head is refused and changes nothing
-S.field:SetText(LINKS[604])
-S.add:Click()
-assert(S.msg:GetText() == "Passt nicht in Kopf." and NS.BisPick("HEAD") == nil, "refused: " .. tostring(S.msg:GetText()))
-S.field:SetText("602")
-S.add:Click()
-assert(NS.BisPick("HEAD") == 602 and S.field:GetText() == "" and S.msg:GetText() == "", "an id takes")
--- a Shift-clicked link goes into the field while it has the focus
-S.field:SetFocus()
-assert(S.takeLink(LINKS[601]) and S.field:GetText() == LINKS[601], "the link in the field")
-S.field:ClearFocus()
+-- a link or id in the search box: a ring for the head is refused and changes nothing
+local said = {}
+local msg = NS.msg
+NS.msg = function(t) said[#said + 1] = t end
+f.search:SetText(LINKS[604])
+f.search:GetScript("OnEnterPressed")(f.search)
+f.list.rows[1]:Click()
+NS.msg = msg
+assert(said[1] == "Passt nicht in Kopf." and NS.BisPick("HEAD") == nil, "refused: " .. tostring(said[1]))
+f.search:SetText("602")
+f.search:GetScript("OnEnterPressed")(f.search)
+f.list.rows[1]:Click()
+assert(NS.BisPick("HEAD") == 602 and f.list.items[1].pickRow, "an id takes, the box is free again")
+f.search:SetText("")
+f.search:GetScript("OnEnterPressed")(f.search)
 -- overtaken: the pick worn, the hint with "Übernehmen"
 STUB.worn[1] = LINKS[602]
 STUB.fire("PLAYER_EQUIPMENT_CHANGED")
-NS.GoalsRefresh()
-assert(has(plain(S.note:GetText()), "Überholt: Helm Eins ist +33 % besser"), plain(S.note:GetText()))
-assert(S.take.vis ~= false and S.take.id == 601, "Übernehmen")
-S.take:Click()
+STUB.tick(0)
+NS.Refresh()
+assert(has(plain(pr().sub:GetText()), "Überholt: Helm Eins ist +33 % besser"), plain(pr().sub:GetText()))
+assert(pr().take:IsShown() and pr().take.id == 601, "Übernehmen")
+pr().take:Click()
 assert(NS.BisPick("HEAD") == 601, "taken over on the click, never by itself")
 -- a pick the plan rules out says so
-NS.GoalsFrameState().slot = "MAINHAND"
+NS.ShowPlanner("suggest", nil, "MAINHAND")
 assert(NS.BisSetPick("MAINHAND", 607))
 assert(NS.BisSetPlan("SHIELD"))
-assert(has(plain(S.note:GetText()), "Passt nicht zum Waffenplan"), plain(S.note:GetText()))
+assert(has(plain(pr().sub:GetText()), "Passt nicht zum Waffenplan"), plain(pr().sub:GetText()))
+assert(f.warn:IsShown(), "and the warning")
 assert(NS.BisSetPlan("auto"))
--- the drops near the level: none in this data set, the line says so
-assert(#S.drops.items == 0 and has(S.dropEmpty:GetText(), "Kein Dungeon"), "no drops")
-S.all:Click()
-assert(NS.CurrentPage() == "dungeons", "Alle zeigen opens the page Dungeons")
 
 ---------------------------------------------------------------------------
 -- review fixes (2026-10-17): rings 604 = 60, 605 = 40, 606 = 20
 ---------------------------------------------------------------------------
-win:Hide()
 assert(NS.BisSetPick("HEAD", nil) and NS.BisSetPick("MAINHAND", nil))
 local function wear(t)
     STUB.worn = t

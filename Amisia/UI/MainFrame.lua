@@ -37,14 +37,8 @@ local query = ""          -- the search text, trimmed and lower case
 -- its page: "Importieren" under "Soft-Reserves"); tip: what the window is for (the row's tooltip under
 -- its full name).
 local SIDE_WINDOWS = {
-    { key = "gear", label = L["Ausrüstungstabelle"], row = L["Tabelle"], group = "gear", after = "gear", frame = "AmisiaGearFrame",
-      tip = L["Das beste Item je Platz für jede Stufe, mit Quelle und Alternativen."],
-      visible = function() return ns.Gear ~= nil and ns.Gear.Available() and ns.ToggleGearFrame ~= nil end,
-      toggle = function() ns.ToggleGearFrame() end },
-    { key = "goals", label = L["Ausrüstungsziele"], group = "gear", after = "gear", frame = "AmisiaGoalsFrame",
-      tip = L["Deine Ziele an deinem Charakter anprobieren, Platz für Platz mit Rangliste und Katalog."],
-      visible = function() return ns.Gear ~= nil and ns.Gear.Available() and ns.ToggleGoalsFrame ~= nil end,
-      toggle = function() ns.ToggleGoalsFrame() end },
+    -- the tab Ausrüstung has none (D-80): the goals are the page Ausrüstungsplaner, the gear table opens
+    -- from the page Ausrüstung
     { key = "talents", label = L["Talentrechner"], group = "talents", after = "talents", frame = "AmisiaTalentFrame",
       tip = L["Talente planen, im großen Fenster."],
       visible = function() return ns.Talents ~= nil and ns.Talents.Available() and ns.ToggleTalentFrame ~= nil end,
@@ -146,7 +140,6 @@ function ns.ResetPositions()
     if ns.ResetGearPosition then ns.ResetGearPosition() end
     if ns.ResetRollWindowPosition then ns.ResetRollWindowPosition() end
     if ns.ResetTalentWindowPosition then ns.ResetTalentWindowPosition() end
-    if ns.ResetGoalsWindowPosition then ns.ResetGoalsWindowPosition() end
     if ns.ResetRaidCalendarPosition then ns.ResetRaidCalendarPosition() end
     ns.msg(L["Fensterposition zurückgesetzt."])
 end

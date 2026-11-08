@@ -26,7 +26,7 @@ assert(gameWith(18, nil, 16001) == "forever", "the interface number decides then
 -- the gate
 assert(NS.Visible({ forever = true }) and NS.Visible(NS.SettingItem("ui.talentScale")), "on Forever shown")
 NS.FOREVER = false
-assert(not NS.Visible({ forever = true }) and not NS.Visible(NS.SettingItem("ui.goalScale")), "off Forever hidden")
+assert(not NS.Visible({ forever = true }) and not NS.Visible(NS.SettingItem("ui.talentScale")), "off Forever hidden")
 assert(not NS.Visible(NS.SettingItem("record.exportWarn")))
 NS.FOREVER = true
 

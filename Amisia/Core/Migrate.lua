@@ -53,6 +53,14 @@ ns.MIGRATIONS = {
             ns.MigrateMoveSetting(db, m[1], m[2])
         end
     end,
+    -- 3 (2.65.0): the window "Ausrüstungsziele" is the page Ausrüstungsplaner (D-80): its place, its
+    -- choices and its scale go
+    function(db)
+        local s = type(db.settings) == "table" and db.settings
+        if not s then return end
+        s.goalWindow = nil
+        if type(s.ui) == "table" then s.ui.goalScale = nil end
+    end,
 }
 
 local newer   -- the schema of a file a newer Amisia saved, for the one chat line

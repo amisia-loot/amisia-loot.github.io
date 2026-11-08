@@ -416,6 +416,7 @@ S.STATES = {
     { page = "gear", name = "gear-sim", open = function() NS.ShowGear("sim") end },
     -- the gear planner (F-149): the wish list tab, a set category of the side bar, the search
     { page = "planner", name = "planner-wish", open = function() NS.ShowPlanner("wish") end },
+    { page = "planner", name = "planner-goals", open = function() NS.ShowPlanner("goals") end },
     { page = "planner", name = "planner-sets", open = function() NS.ShowPlanner("sets", "dungeon") end },
     { page = "planner", name = "planner-search", open = function() NS.ShowPlanner("search", "a") end },
     { page = "raidlog", name = "raidlog-bench", open = function() NS.ShowRaidLog("bench") end },
@@ -703,10 +704,6 @@ S.WINDOWS = {
         NS.TalentsSetPlan(plan)
         NS.ShowTalentFrame()
         return AmisiaTalentFrame
-    end },
-    { key = "goalsframe", view = "raider", open = function()
-        -- the window "Ausrüstungsziele" with the priest's targets, the first slot with an upgrade chosen
-        return NS.ShowGoalsFrame()
     end },
     { key = "lootrules-bar", view = "officer", open = function()
         -- one click: the bar beside the loot window with what the rules would hand out

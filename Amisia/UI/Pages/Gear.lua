@@ -586,13 +586,13 @@ local function buildGoals(f)
     end, fillGoalRow)
     -- 11 of 17 slots (18 + 264 = 282 of the view's 406)
 
-    -- the window "Ausrüstungsziele" (UI/GoalsWindow.lua), why the weights are as they are
+    -- the page Ausrüstungsplaner on its tab Ziele (D-80), why the weights are as they are
     -- (tooltip), and the simulation of another class or level: 20 high, between the list (it ends
     -- at -282) and the first option (-302), from the right edge; the title takes the rest
-    G.big = W.Button(G, L["Ausrüstungsziele"], 110, function() if ns.ToggleGoalsFrame then ns.ToggleGoalsFrame() end end,
+    G.big = W.Button(G, L["Ausrüstungsplaner"], 110, function() if ns.ShowPlanner then ns.ShowPlanner("goals") end end,
         { height = T.ROW_BUTTON_H })
     W.FitChip(G.big, 110)
-    W.Tooltip(G.big, L["Ausrüstungsziele"], L["Puppe, Liste und Rangliste je Slot in einem großen Fenster."])
+    W.Tooltip(G.big, L["Ausrüstungsplaner"], L["Dein Modell mit allen Plätzen, deine Ziele und die Vorschläge je Platz."])
     G.why = W.Link(G, L["Warum?"], nil)
     G.why:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -1312,6 +1312,7 @@ ns.GearPageKit = {
     state = state, cached = cached, itemText = itemText, marks = marks, gainText = gainText,
     itemTooltip = itemTooltip, hideTip = hideTip, modifiedClick = modifiedClick, menuEntries = menuEntries,
     say = say, col = col, specPicker = specPicker, fillSpec = fillSpec, styleChip = styleChip, fillStyle = fillStyle,
+    styleEntries = styleEntries,
     noOptionText = noOptionText,
     -- for the window "Ausrüstungsziele": the source text, the map button, the link and whether a shown
     -- row had no item name yet

@@ -17,7 +17,7 @@ for _, key in ipairs({ "bis", "crafters", "wishes", "map", "quests", "collect", 
     for _, sec in ipairs(NS.schema) do assert(sec.key ~= key, "no settings section " .. key) end
 end
 -- hidden off Forever by the switch
-assert(not NS.Visible(NS.SettingItem("ui.talentScale")) and not NS.Visible(NS.SettingItem("ui.goalScale")))
+assert(not NS.Visible(NS.SettingItem("ui.talentScale")))
 assert(not NS.Visible(NS.SettingItem("record.exportWarn")), "no export reminder")
 assert(not NS.Visible({ forever = true }) and NS.Visible({}), "the switch")
 -- the export command is gone, its help line too

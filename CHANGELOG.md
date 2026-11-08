@@ -5,6 +5,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(gear): no extra gear window: the gear goals live in the gear planner (F-149)
+
+  The Gear Goals window is gone; everything it had is on the Gear Planner page. The new Goals tab
+  shows "N/17 goals" with its bar, the filters and your slots by section; a click shows that slot's
+  suggestions, which now start with "Your pick" (remove it, or take over a better item). Under the
+  model switch between targets and worn gear and see your score; its tooltip shows the best at your
+  level and the biggest stat changes. "Options" holds the weapon plan, sources and play style, and the
+  search box also takes an item link or ID. The Gear tab's side bar lists no windows any more; the
+  gear table still opens from the Gear page. The goals window's size setting is gone.
+
 - feat(ui): the "+Item" display shows money too, in the items' quality colours, with its own font size (F-152)
 
   Item names now always take their quality colour (in 2.64.0 they stayed white on Forever). Money you

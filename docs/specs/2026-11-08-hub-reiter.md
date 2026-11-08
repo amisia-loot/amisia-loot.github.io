@@ -194,6 +194,9 @@ Nichts. Nur Oberfläche, nichts wird gesendet.
   Teilung folgt der Fensterbreite (links 42 %), Plätze 40 px, Zeilen 52 hoch mit "Stufe · Dungeon - Boss", Beruf mit
   Rang, Quest mit "!", "neu" ohne angelegtes Item, Berufssymbol; der Trichter wird das Menü "Quellen" (der Client hat
   kein Trichtersymbol), "Stufe" steht wieder vor den Feldern; die Reiter bleiben Textreiter (D-67).
+- 2026-11-08, Nutzer nach dem Öffnen des Fensters Ausrüstungsziele: "ich will kein extra Fenster, will es so wie hier in dem 1
+  Fenster" (D-80): das Fenster geht in die Seite (Reiter Ziele, Deine Wahl, Wertung, Angelegt, Optionen, Link im Suchfeld);
+  die Leiste des Reiters Ausrüstung zeigt keine Fenster mehr; die Ausrüstungstabelle bleibt ein Fenster ohne Leistenzeile.
 
 - 2026-11-08, Nutzer: "Passt, los". Damit gelten die Vorschläge zu den Fragen 1 bis 3 und 5; Frage 4 wartet auf
   die Fotos der Reiter Armory und Talent Trees. Die Journal-Schritte 3 bis 5 sind vorher committet (d4f752e).

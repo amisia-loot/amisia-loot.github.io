@@ -72,7 +72,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du den Reiter Ausrüstung öffnest, dann siehst du zuerst den Ausrüstungsplaner: links dein Modell auf dem Bild der Anprobe (beim breiteren Fenster breiter) mit acht Plätzen links (mit Hemd und Wappenrock), acht rechts und den Waffen darunter, oben dein Name, deine Stufe und die Spezialisierung zum Wählen.
 - Prüfung: Wenn du einen Platz anklickst, dann zeigt die Liste rechts seine Vorschläge mit Symbol, Name in Qualitätsfarbe (Questbelohnung mit gelbem "!"), "Stufe 25 · Dungeon - Boss", "Stufe 32 · Schneiderei 150" oder "Quest: Titel", Zuwachs in Prozent ("neu" ohne angelegtes Item), Quellsymbol (Beruf: sein Symbol) und grauem Stern; "Quellen" schaltet Quellen ab; "Alle" oder andere Stufen zeigen die Items dieses Bereichs, "Alle Items suchen ..." findet Items nach Namen.
 - Prüfung: Wenn du eine Zeile anklickst, dann wird sie deine Wahl für den Platz und steht am Modell; ein zweiter Klick hebt sie auf, "Zurücksetzen" fragt erst und nimmt dann alle deine Wahlen weg; der Stern wird beim Klick gold und das Item steht unter "Wunschliste".
-- Prüfung: Wenn du neben einem Platz das kleine Quadrat ansiehst, dann zeigt es die Verzauberung deines angelegten Items oder ein "+"; ein Klick listet die passenden Verzauberungen.
+- Prüfung: Wenn du "Ziele" wählst, dann stehen "N/17 Ziele", der Balken, die Filter und deine Plätze nach Abschnitt; ein Klick auf einen Platz zeigt seine Vorschläge, oben "Deine Wahl" mit X und "Übernehmen". Unter dem Modell wechseln "Ziele | Angelegt", die Wertung zeigt im Tooltip das Beste und die Wertänderungen; das Quadrat neben einem Platz listet die Verzauberungen.
 - Prüfung: Wenn du links unter den Seiten auf "Dungeon-Sets" (oder Raid-, PvP-, Handwerks-, Welt-Sets, Ruf) klickst, dann stehen rechts die Sets dieser Art; ein Klick öffnet ein Set, der Reiter "Vorschläge" führt zurück.
 - Notiz: Spec docs/specs/2026-11-08-hub-reiter.md; D-77. Im Spiel prüfen: der Hintergrund der Anprobe deiner Rasse und das Warnzeichen.
 
@@ -959,12 +959,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn deine angelegten Items fast nichts wert sind (niedrige Stufe, Startausrüstung), dann steht bei einem viel besseren Ziel ">999 %" statt einer abgeschnittenen Zahl wie "+9070...".
 - Notiz: Spec docs/specs/2026-10-17-ziele-fenster.md, Teil A. Offen im Spiel: ob Forevers DressUpModel SetUnit/Undress/TryOn hat (Selbsttest-Zeile "Charaktermodell"), ob TryOn die Hand (MAINHANDSLOT/SECONDARYHANDSLOT/RANGEDSLOT) annimmt, die leeren Slot-Bilder und der Stern-Atlas.
 - Notiz: 2.49.2: Bildschirmfoto des Nutzers 2026-11-05 ("warum flakert der Charmodel"): jede Item-Antwort (GET_ITEM_INFO_RECEIVED) zog das Modell neu an (SetUnit, Undress, TryOn), und eine fehlgeschlagene Antwort fragte beim nächsten Refresh wieder; jetzt nur neu, wenn sich ein Link der Puppe ändert. Prozent über 999 gekürzt.
+- Notiz: seit 2.65.0 im Ausrüstungsplaner (D-80): das Fenster gibt es nicht mehr.
 
 ### F-111 Ausrüstungsziele: Wertungs-Kopf
 - Version: 2.44.0
 - Status: gebaut
 - Prüfung: Wenn du im Fenster eine eigene Wahl triffst, dann ändern sich "Wertung", "+N" und die Wertänderungen unter der Puppe; der Balken endet bei "Bestes auf Stufe N", das sich durch deine Wahl nicht ändert.
 - Notiz: Spec docs/specs/2026-10-17-ziele-fenster.md, Teil B.
+- Notiz: seit 2.65.0 im Ausrüstungsplaner (D-80): das Fenster gibt es nicht mehr.
 
 ### F-112 Ausrüstungsziele: Slot-Leiste und eigene Wahl
 - Version: 2.44.0
@@ -972,12 +974,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du ein Item der Rangliste anklickst, dann trägt es den Stern, ist in der Liste, auf der Seite Ziele und als Pin auf der Weltkarte das Ziel dieses Slots, und nach `/reload` noch immer; ein zweiter Klick (oder das rote X unter "Deine Wahl") nimmt die Wahl weg.
 - Prüfung: Wenn du einen Item-Link in das Feld der Leiste ziehst, der nicht in den Slot passt, dann sagt die Zeile darunter "Passt nicht in Kopf." und nichts ändert sich.
 - Notiz: Spec docs/specs/2026-10-17-ziele-fenster.md, Teil C.
+- Notiz: seit 2.65.0 im Ausrüstungsplaner (D-80): das Fenster gibt es nicht mehr.
 
 ### F-113 Ausrüstungsziele: Fortschritt und Filter
 - Version: 2.44.0
 - Status: gebaut
 - Prüfung: Wenn du "Zu holen" wählst, dann zeigt die Liste nur Slots mit Ziel, das du nicht hast, der Chip sagt die Zahl; "Ohne Verzauberung" zeigt die angelegten Items in verzauberbaren Slots ohne Verzauberung.
 - Notiz: Spec docs/specs/2026-10-17-ziele-fenster.md, Teil D.
+- Notiz: seit 2.65.0 im Ausrüstungsplaner (D-80): das Fenster gibt es nicht mehr.
 
 ### F-124 Spielstil-Filter für die Ziele
 - Version: 2.46.0
@@ -1129,6 +1133,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du ein Teil per Rechtsklick "Als meine Wahl" setzt, dann zeigt "Ziele" es in seinem Slot mit Stern.
 - Notiz: Spec `docs/specs/2026-10-17-ziele-katalog.md` (freigegeben 2026-10-17); Wunsch mit zwei Bildschirmfotos eines anderen Addons.
 - Notiz: 2.46.0: Kategorie "Ruf" (je Fraktion eine Gruppe der Items mit Rufbedingung aus ItemSparse, F-124).
+- Notiz: seit 2.65.0 im Ausrüstungsplaner (D-80): das Fenster gibt es nicht mehr.
 
 ### F-129 Ausrüstungsziele: Stufen-Sets im Katalog
 - Version: 2.50.0
@@ -1138,6 +1143,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du ein Stufen-Set anklickst, dann stehen darunter je Slot das beste Item für deine Spezialisierung am oberen Ende des Bereichs, mit Slot, Stufe, Zuwachs und Quelle; der Tooltip des Sets sagt "Das Beste je Slot für deine Spezialisierung auf Stufe N."
 - Prüfung: Wenn du eine andere Spezialisierung oder den Spielstil wechselst, dann ändern sich die Stufen-Sets mit; "Set anprobieren" zieht ein Stufen-Set dem Modell an, Rechtsklick auf ein Teil "Als meine Wahl" setzt es als deine Wahl.
 - Notiz: Wunsch des Nutzers 2026-11-05 ("kannst du dich nach items set für gewisse lvl bereiche erstellen und unsere bis liste dafür aktualisieren"); Auswahl: im Katalog, berechnet, 10er-Schritte. Rechnet wie die Simulation (`ns.BisFor`) mit deiner Klasse, Spezialisierung, Fraktion, Quellen, Waffenplan und Ausschlüssen; die BiS-Empfehlungen (bis_picks.json) gehen vor. Neue Items aus `/amisia scan` kommen mit dem nächsten `build.py data` hinein.
+- Notiz: seit 2.65.0 im Ausrüstungsplaner (D-80): das Fenster gibt es nicht mehr.
 
 ### F-132 Realistische Quellen und eigener Tooltip
 - Version: 2.51.0

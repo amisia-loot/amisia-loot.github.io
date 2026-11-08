@@ -1,8 +1,8 @@
 -- The card "Upgrades: <Slot>" beside the character window (F-125, D-56): a right-click on a slot of
 -- the game's character window shows the best items of that slot for the own character, with the own
 -- source chips and play style (ns.BisRanking). A click on a row sets the map target, Ctrl the try-on,
--- Shift the chat link, the right button the menu of the targets; "Im Fenster Ausrüstungsziele" opens
--- the goals window on the slot. Escape or a second right-click closes it.
+-- Shift the chat link, the right button the menu of the targets; "Im Ausrüstungsplaner" opens
+-- the planner page on the slot (D-80). Escape or a second right-click closes it.
 --
 -- Amisia only hooks the game's slot buttons (HookScript after the game's own click, which uses an
 -- item with a use effect): on such an item a plain right-click is left to the game, Alt + right-click
@@ -77,11 +77,9 @@ local function rowClick(self, button)
     if not ok and why then ns.msg(why) end
 end
 
--- The goals window on the card's slot; the card closes.
+-- The planner on the card's slot (its suggestions, D-80); the card closes.
 local function openGoals()
-    local st = ns.GoalsFrameState and ns.GoalsFrameState()
-    if st and card.slot then st.slot = card.slot end
-    if ns.ShowGoalsFrame then ns.ShowGoalsFrame() end
+    if ns.ShowPlanner then ns.ShowPlanner("suggest", nil, card.slot) end
     card:Hide()
 end
 
@@ -104,7 +102,7 @@ local function build()
     card.ench.text = W.Text(card.ench, T.FONT.hint, C.W - 2 * C.PAD)
     card.ench.text:SetPoint("LEFT", 0, 0)
     card.ench:SetScript("OnClick", function() openGoals() end)
-    W.Tooltip(card.ench, L["Verzauberung"], L["Klick: Vorschläge im Fenster Ausrüstungsziele."])
+    W.Tooltip(card.ench, L["Verzauberung"], L["Klick: Vorschläge im Ausrüstungsplaner."])
     card.rows = {}
     for i = 1, C.ROWS do
         local r = CreateFrame("Button", nil, card)
@@ -132,7 +130,7 @@ local function build()
     end
     card.empty = W.Text(card, T.FONT.hint, C.W - 2 * C.PAD, true)
     card.empty:SetPoint("TOPLEFT", C.PAD, -(C.PAD + C.TITLE_H))
-    card.open = W.Link(card, L["Im Fenster Ausrüstungsziele"], function() openGoals() end)
+    card.open = W.Link(card, L["Im Ausrüstungsplaner"], function() openGoals() end)
     W.FitChip(card.open)
     card.open:SetPoint("BOTTOMLEFT", C.PAD, C.PAD)
     card:Hide()
