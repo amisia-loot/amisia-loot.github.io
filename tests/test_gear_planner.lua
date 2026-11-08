@@ -26,6 +26,7 @@ NS.GEAR = { game = "forever", cap = 60, built = "test-planner", I = {}, Z = {}, 
     { "X", "Geschmolzener Kern", "Ragnaros", 409, 2717, 1, 0 },   -- 1
     { "D", "Stratholme", "Baron Totenschwur", nil, 329, 2017 },   -- 2
     { "C", "leatherworking", 300 },                                -- 3
+    { "Q", "Endlich frei", 30, 25, "", 1429, 0, 0 },               -- 4
 } }
 STUB.areas[2717], STUB.areas[2017] = "Geschmolzener Kern", "Stratholme"
 Gear._reset()
@@ -48,6 +49,7 @@ gear(405, "Teufelssaurier-Gamaschen", "LEGS", 25, 53, { 3 })
 gear(406, "Anfängerhelm", "HEAD", 5, 10, { 2 }, 2)
 gear(407, "Armschiene", "WRIST", 5, 40, { 2 })
 gear(410, "Alter Helm", "HEAD", 2, 1)
+gear(408, "Queststiefel", "FEET", 10, 25, { 4 })
 NS.BIS = { SET = {
     [1] = { name = "Pestset", items = { 402, 403 }, b = { { 2, "STRENGTH=10" } } },
     [2] = { name = "Teufelssaurier", items = { 404, 405 }, b = { { 2, "" } } },
@@ -103,7 +105,11 @@ for _ in pairs(d.slots) do n = n + 1 end
 assert(n == 19, "19 slots: " .. n)
 assert(#P.LEFT == 8 and #P.RIGHT == 8 and P.LEFT[6] == "SHIRT" and P.LEFT[7] == "TABARD", "8 and 8 as on the character frame")
 assert(d.slots.HEAD.points.TOPLEFT.x == 0 and d.slots.HEAD.points.TOPLEFT.y == 0, "the left column from the top")
-assert(d.slots.HANDS.points.TOPLEFT.x == P.DOLL_W - P.SLOT, "the right column")
+-- the panel: 42 % of the page (252 of 602), the doll as wide as the panel less its pads
+local LW = math.max(PL.LEFT_MIN, math.min(PL.LEFT_MAX, math.floor(NS.Theme.PAGE_W * PL.LEFT_RATIO)))
+assert(LW == 252 and f.panel:GetWidth() == LW and d.dollW == LW - 2 * PL.PAD, "the split at 602: " .. LW)
+assert(d.slots.HANDS.points.TOPLEFT.x == d.dollW - P.SLOT, "the right column")
+assert(d.slots.HEAD:GetWidth() == 40, "slots 40 px")
 assert(d.slots.MAINHAND.points.TOPLEFT.y == -(P.MODEL_H + P.WEAPON_GAP), "the weapons under the model")
 assert(d.model and d.model.unit == "player" and d.model.undressed, "the model wears the targets")
 assert(d.parent == f.panel or d:GetParent() == f.panel, "the doll on the dark panel")
@@ -128,6 +134,8 @@ assert(chestQ:IsShown() and chestQ.icon:IsShown() and not chestQ.plus:IsShown(),
 assert(wristQ:IsShown() and not wristQ.icon:IsShown() and wristQ.plus:IsShown() and wristQ.plus:GetText() == "+", "a + on the wrist")
 assert(not headQ:IsShown(), "nothing fits the helm: no square")
 assert(chestQ.points.TOPLEFT.rel == d.slots.CHEST and chestQ.points.TOPLEFT.x == PL.ENCH_GAP, "beside its slot, towards the model")
+local mhQ = d.slots.MAINHAND.ench
+assert(mhQ.points.BOTTOM and mhQ.points.BOTTOM.rel == d.slots.MAINHAND and mhQ.points.BOTTOM.y == PL.ENCH_GAP, "a weapon's square above it")
 local handsQ = d.slots.HANDS.ench
 assert(handsQ.points.TOPRIGHT.rel == d.slots.HANDS and handsQ.points.TOPRIGHT.x == -PL.ENCH_GAP, "the right column's square left of it")
 -- the menu: what fits, the best first
@@ -168,7 +176,7 @@ assert(row.src:IsShown() and row.src.atlas == "Dungeon", "the source's symbol: t
 assert(row.star:IsShown() and not row.star.on, "the star grey")
 assert(row:GetHeight() == PL.ROW_H - 1 and row.frame._w == PL.ROW_ICON, "rows " .. PL.ROW_H .. " high, the icon " .. PL.ROW_ICON)
 -- the list fills the right half down to the page's bottom
-local x0 = PL.LEFT_W + PL.GAP
+local x0 = LW + PL.GAP
 assert(f.list.points.TOPLEFT.x == x0 and f.list:GetWidth() == NS.Theme.PAGE_W - x0 - NS.Theme.SCROLL_ROOM, "the right half")
 assert(f.list.rowCount == math.floor((NS.Theme.PAGE_H - 52) / PL.ROW_H), "rows to the bottom: " .. f.list.rowCount)
 
@@ -255,6 +263,33 @@ f.tabSuggest:Click()
 assert(f.tabSuggest.on and not mark("dungeon").entry.on and ids() == "402,406", "the tab Vorschläge leads back")
 
 ---------------------------------------------------------------------------
+-- the lines of the photo: a drop "Stufe 58 · Stratholme - Baron", crafted "Lederverarbeitung 300" with
+-- the profession's icon, a quest reward with "!" and "Quest: <title>" without the level, nothing
+-- worn: "neu"
+---------------------------------------------------------------------------
+assert(has(plain(f.list.rows[1].sub:GetText()), "Stufe 58 · Stratholme - Baron Totenschwur"), plain(f.list.rows[1].sub:GetText()))
+d.slots.LEGS:Click()
+assert(ids() == "405", ids())
+assert(has(plain(f.list.rows[1].sub:GetText()), "Stufe 53 · Lederverarbeitung 300"), plain(f.list.rows[1].sub:GetText()))
+assert(f.list.rows[1].src.texture == NS.Prof.ICONS.leatherworking, "the profession's icon: " .. tostring(f.list.rows[1].src.texture))
+assert(plain(f.list.rows[1].gain:GetText()) == "neu", "nothing worn: " .. plain(f.list.rows[1].gain:GetText()))
+d.slots.FEET:Click()
+assert(ids() == "408", ids())
+assert(has(f.list.rows[1].name:GetText(), "!") and plain(f.list.rows[1].sub:GetText()) == "Quest: Endlich frei", plain(f.list.rows[1].sub:GetText()))
+-- the menu "Quellen": the gear page's source switches
+f.srcLink:Click()
+local entries = {}
+for _, b in ipairs(AmisiaMenu.buttons) do if b:IsShown() then entries[#entries + 1] = plain(b.label:GetText()) end end
+assert(table.concat(entries, "|"):find("Quests", 1, true), table.concat(entries, "|"))
+for _, b in ipairs(AmisiaMenu.buttons) do if b:IsShown() and plain(b.label:GetText()):find("Quests") then b:Click() break end end
+assert(NS.BisOpts().sources.Q == false or not NS.BisOpts().sources.Q, "quests off")
+assert(ids() == "note", "no quest reward without quests: " .. ids())
+f.srcLink:Click()
+for _, b in ipairs(AmisiaMenu.buttons) do if b:IsShown() and plain(b.label:GetText()):find("Quests") then b:Click() break end end
+assert(NS.BisOpts().sources.Q and ids() == "408", "back on")
+d.slots.HEAD:Click()
+
+---------------------------------------------------------------------------
 -- Zurücksetzen asks first
 ---------------------------------------------------------------------------
 NS.BisSetPick("HEAD", 406)
@@ -279,8 +314,16 @@ assert(not f.warn:IsShown(), "gone again")
 ---------------------------------------------------------------------------
 -- the page: 602 x 478, the head row at the top, nothing past the right edge
 ---------------------------------------------------------------------------
-assert(f.bands[1]:GetHeight() == NS.Theme.LAYOUT.ROW_H and f.headLeft:GetWidth() == PL.LEFT_W)
-assert(PL.LEFT_W + PL.GAP + 310 == NS.Theme.PAGE_W, "284 + 8 + 310")
+assert(f.bands[1]:GetHeight() == NS.Theme.LAYOUT.ROW_H and f.headLeft:GetWidth() == LW)
+-- the window dragged wider (D-71): the panel, the doll and the list follow
+NS.Theme.PAGE_W_NOW = 1000
+NS.W.FitWidths()
+local wide = math.floor(1000 * PL.LEFT_RATIO)
+assert(f.panel:GetWidth() == wide and d.dollW == wide - 2 * PL.PAD and d.slots.HANDS.points.TOPLEFT.x == d.dollW - P.SLOT, "wider")
+assert(f.list.points.TOPLEFT.x == wide + PL.GAP and f.list:GetWidth() == 1000 - wide - PL.GAP - NS.Theme.SCROLL_ROOM, "the list follows")
+NS.Theme.PAGE_W_NOW = NS.Theme.PAGE_W
+NS.W.FitWidths()
+assert(f.panel:GetWidth() == LW)
 assert(PL.DOLL_Y + P.MODEL_H + P.WEAPON_GAP + P.SLOT <= NS.Theme.PAGE_H - PL.PAD - NS.Theme.BUTTON_H, "the doll above Zurücksetzen")
 -- NS.ShowPlanner opens a view
 NS.ShowPlanner("wish")

@@ -293,10 +293,8 @@ local function buildDoll(parent, P, opts)
     for _, key in ipairs(P.BOTTOM_ROW) do bottom[#bottom + 1] = slotButton(d, key, P, d) end
     -- the left column centred on the right one (6 slots beside 8 in the window)
     W.Column(d, left, P.SLOT_GAP, 0, -math.floor((#right - #left) * pitch / 2))
-    W.Column(d, right, P.SLOT_GAP, P.DOLL_W - P.SLOT, 0)
     local gap = P.BOTTOM_GAP or P.SLOT_GAP
     local rowW = #bottom * P.SLOT + (#bottom - 1) * gap + (P.BOTTOM_EXTRA or 0)
-    W.Row(d, bottom, gap, math.floor((P.DOLL_W - rowW) / 2), -(P.MODEL_H + P.WEAPON_GAP))
     for _, part in ipairs({ { "left", left }, { "right", right }, { "bottom", bottom } }) do
         for _, b in ipairs(part[2]) do
             d.slots[b.key] = b
@@ -308,7 +306,17 @@ local function buildDoll(parent, P, opts)
     local mx = P.SLOT + P.MODEL_GAP
     d.inset = W.Inset(d)
     d.inset:SetPoint("TOPLEFT", mx, 0)
-    d.inset:SetSize(P.DOLL_W - 2 * mx, P.MODEL_H)
+    -- the width (the planner's follows the page, D-77): the right column at its edge, the weapons
+    -- centred, the model between
+    function d.SetDollWidth(w)
+        d.dollW = w
+        d:SetWidth(w)
+        W.Column(d, right, P.SLOT_GAP, w - P.SLOT, 0)
+        W.Row(d, bottom, gap, math.floor((w - rowW) / 2), -(P.MODEL_H + P.WEAPON_GAP))
+        d.inset:SetSize(w - 2 * mx, P.MODEL_H)
+        if d.noModel then d.noModel:SetWidth(w - 2 * mx - 16) end
+    end
+    d.SetDollWidth(P.DOLL_W)
     d.inset.fill(0, 0, 0, P.MODEL_SHADE or 0.35)
     d.model = makeModel(d.inset)
     if d.model then

@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(gear): the gear planner closer to its model: wider panel, richer rows, source menu (F-149)
+
+  The planner's left panel takes about 42 % of the page and grows with the window, the model with it;
+  slots are bigger and the weapons' enchant squares sit above them. Rows are taller and read like
+  "Level 25 · Razorfen Kraul - Roogug", "Level 32 · Tailoring 150" or "Quest: Free at Last" (with a
+  yellow "!" after the name); crafted items show their profession's icon and an empty slot shows
+  "new" instead of a percentage. "Sources" next to the search turns the gear page's source switches
+  on and off, and "Level" stands before the level boxes again.
+
 - feat(prof): professions overview first, four cards a row and the nearest trainers (F-151)
 
   The Professions tab now opens on the overview the first time in a session, even when a profession
