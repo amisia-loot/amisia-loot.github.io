@@ -896,6 +896,29 @@ function Pr.Favor()
     return out
 end
 
+-- The own Merchant's Favor (the client's currency of the data): amount, name; nil without the data
+-- or the currency (cheap: no recipe walk, for the side bar's count).
+function Pr.FavorAmount()
+    local d = data()
+    local F = d and d.FAVOR
+    local C = C_CurrencyInfo
+    if type(F) ~= "table" or type(C) ~= "table" then return nil end
+    local info = call(C.GetCurrencyInfo, F.currency)
+    if type(info) ~= "table" then return nil end
+    return tonumber(ns.Plain(info.quantity)), ns.Plain(info.name)
+end
+
+-- How many recipes of a skill line the own character knows, or nil while its profession window was
+-- never read.
+function Pr.KnownCount(skill)
+    if not Pr.HasSnapshot(skill) then return nil end
+    local n = 0
+    for _, r in ipairs(Pr.Recipes(skill)) do
+        if Pr.Known(r.spell, skill) then n = n + 1 end
+    end
+    return n
+end
+
 -- Whether a writ (crafting order) exists for the item a recipe makes.
 function Pr.HasWrit(r)
     local d = data()

@@ -18,7 +18,11 @@ assert(#Pr.Own() == 0 and Pr.Rank(164) == nil and Pr.Reagents(3321) == nil)
 
 NS.ShowProfessions()
 local f = NS.PageFrame("professions")
-assert(f.prof.label:GetText() == "Alchimie", "the data's first profession: " .. f.prof.label:GetText())
+-- the overview (D-78): no own profession, every profession of the data with its recipe count
+local ov = f.ovView
+assert(ov:IsShown() and #ov.secs[1].cards == 0 and ov.none:IsShown() and #ov.secs[2].cards == 3, "the overview")
+assert(ov.secs[2].cards[1].name == "Alchimie" and ov.secs[2].cards[1].sub == "2 Rezepte", ov.secs[2].cards[1].sub)
+assert(ov.secs[3].cards[2].sub == "Rezepte für Gunst und wie du sie bekommst", "no currency: no amount")
 NS.ShowProfessions("schmied")
 assert(#f.list.items == 5 and has(f.list.rows[1].name:GetText(), "Rezept 2663"), f.list.rows[1].name:GetText())
 assert(f.rank:GetText():find("nicht erlernt"), f.rank:GetText())

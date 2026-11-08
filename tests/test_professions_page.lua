@@ -30,6 +30,69 @@ STUB.item(279988, "Amboss", 1)
 STUB.item(279944, "Schleifrad", 1)
 STUB.bags[0] = { STUB.items[2840].link }
 
+-- the overview (F-151, D-78): the page opens on it; its sections as cards, the side bar's marks
+local function mark(key)
+    for _, e in ipairs(AmisiaFrame and AmisiaFrame.navOrder or {}) do
+        if e.entry.kind == "jump" and e.entry.key == key then return e end
+    end
+end
+NS.ShowPage("professions")
+local f = NS.PageFrame("professions")
+local ov = f.ovView
+assert(ov:IsShown() and not f.list:IsShown() and not f.prof:IsShown() and not f.detail:IsShown(), "the overview alone")
+assert(has(ov.intro:GetText(), "Wähle einen Beruf"), ov.intro:GetText())
+local function secTitles()
+    local out = {}
+    for _, s in ipairs(ov.secs) do out[#out + 1] = s.title .. "=" .. #s.cards end
+    return table.concat(out, ",")
+end
+-- own: blacksmithing and cooking (in the data); all: the data's three; more: camp and favor
+assert(secTitles() == "Deine Berufe=2,Alle Berufe=3,Weiteres=2", secTitles())
+local c1 = ov.cards[1]
+assert(c1:IsShown() and c1.name:GetText() == "Schmiedekunst" and c1.sub:GetText() == "Rang 45/150", c1.sub:GetText())
+assert(c1.icon.texture == "Interface\\Icons\\Trade_BlackSmithing", tostring(c1.icon.texture))
+assert(ov.cards[3].name:GetText() == "Alchimie" and ov.cards[3].sub:GetText() == "2 Rezepte", ov.cards[3].sub:GetText())
+assert(ov.cards[6].name:GetText() == "Lager" and ov.cards[7].sub:GetText() == "Du hast 120 Gunst · wie du sie bekommst",
+    ov.cards[7].sub:GetText())
+-- 3 cards a row at 602 px (less than 4 x CARD_MIN_W), the wide ones 2; every text fits its card
+local P = NS.Theme.PROFPAGE
+assert(c1:GetWidth() * 3 + 2 * P.CARD_GAP <= 602 - NS.Theme.SCROLL_ROOM and ov.cards[6]:GetWidth() > c1:GetWidth() * 1.4,
+    c1:GetWidth() .. " / " .. ov.cards[6]:GetWidth())
+assert(ov.cards[2].points.TOPLEFT.y == c1.points.TOPLEFT.y and ov.cards[2].points.TOPLEFT.x > c1.points.TOPLEFT.x, "side by side")
+assert(ov.child:GetHeight() > 0, "the scroll child holds the sections")
+-- the marks: Übersicht (chosen), the professions with their icons from the gold line on, then Lager
+-- and Händlergunst with the own favor
+local mo, mb, mc, mf = mark("overview"), mark(164), mark("camp"), mark("favor")
+assert(mo and mb and mc and mf and mark(171) and mark(185), "the marks")
+assert(mo.entry.on and not mb.entry.on and mark(171).entry.first and not mb.entry.first and mc.entry.first and not mf.entry.first,
+    "chosen and blocks")
+assert(mb.entry.label == "Schmiedekunst" and mb.entry.icon.file == "Interface\\Icons\\Trade_BlackSmithing", mb.entry.label)
+assert(mf.entry.count == 120 and mf.entry.label == "Händlergunst", tostring(mf.entry.count))
+-- a click on a mark shows that view, the mark follows
+mc.button:Click()
+assert(AmisiaDB.settings.professions.view == "camp" and not ov:IsShown() and f.list:IsShown() and #f.list.items == 3, "the camp")
+assert(mark("camp").entry.on and not mark("overview").entry.on, "the camp mark is chosen")
+mark("overview").button:Click()
+assert(ov:IsShown() and AmisiaDB.settings.professions.view == "overview", "back on the overview")
+-- a click on a card opens the profession's recipe list (the route switch goes back to recipes)
+AmisiaDB.settings.professions.mode = "route"
+ov.cards[3]:Click()
+assert(AmisiaDB.settings.professions.view == 171 and AmisiaDB.settings.professions.mode == "recipes", "alchemy's recipes")
+assert(not ov:IsShown() and f.list:IsShown() and f.prof:IsShown() and mark(171).entry.on, "the recipe list")
+mark("overview").button:Click()
+ov.cards[7]:Click()
+assert(AmisiaDB.settings.professions.view == "favor" and #f.list.items == 1, "the favor card")
+-- a wider window: wider cards, at most CARD_COLS_MAX a row
+mark("overview").button:Click()
+local narrow = ov.cards[1]:GetWidth()
+NS.Theme.PAGE_W_NOW = 1000
+NS.W.FitWidths()
+assert(ov.child:GetWidth() == 1000 - NS.Theme.SCROLL_ROOM and ov.cards[1]:GetWidth() == math.floor((988 - 3 * P.CARD_GAP) / 4),
+    ov.cards[1]:GetWidth())
+assert(ov.cards[1]:GetWidth() > narrow)
+NS.Theme.PAGE_W_NOW = 602
+NS.W.FitWidths()
+
 -- the command opens the page on the profession
 NS.Dispatch("berufe schmied")
 assert(NS.CurrentPage() == "professions", tostring(NS.CurrentPage()))
@@ -56,6 +119,11 @@ local order = {}
 for i, it in ipairs(f.list.items) do order[i] = it.recipe.spell end
 assert(table.concat(order, ",") == "2663,9999,1252229,3321,1301421", table.concat(order, ","))
 assert(not has(f.hint:GetText(), "Berufsfenster"), f.hint:GetText())
+-- the overview counts what the window showed as known
+NS.ShowProfessions("übersicht")
+assert(f.ovView:IsShown() and f.ovView.cards[1].sub:GetText() == "Rang 45/150 · 2 bekannt", f.ovView.cards[1].sub:GetText())
+assert(f.ovView.cards[4].sub:GetText() == "5 Rezepte · 2 bekannt", f.ovView.cards[4].sub:GetText())
+NS.ShowProfessions("schmied")
 
 -- the detail of the first row is shown; a click chooses another
 assert(f.selected and f.selected.recipe.spell == 2663, "the first row is chosen")

@@ -29,7 +29,7 @@ local realHas = Cr.Has
 local shared = {}
 Cr.Has = function(spell) return shared[spell] == true end
 
-NS.ShowProfessions("schmied")
+NS.ShowProfessions("blacksmithing")   -- the key: the same in both locales
 local f = NS.PageFrame("professions")
 NS.Refresh()
 
