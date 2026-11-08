@@ -414,6 +414,10 @@ S.STATES = {
     { page = "gear", name = "gear-wish", open = function() NS.ShowGear("wish") end },
     { page = "gear", name = "gear-guild", open = function() NS.ShowGear("guild") end },
     { page = "gear", name = "gear-sim", open = function() NS.ShowGear("sim") end },
+    -- the gear planner (F-149): the wish list tab, a set category of the side bar, the search
+    { page = "planner", name = "planner-wish", open = function() NS.ShowPlanner("wish") end },
+    { page = "planner", name = "planner-sets", open = function() NS.ShowPlanner("sets", "dungeon") end },
+    { page = "planner", name = "planner-search", open = function() NS.ShowPlanner("search", "a") end },
     { page = "raidlog", name = "raidlog-bench", open = function() NS.ShowRaidLog("bench") end },
     { page = "raidlog", name = "raidlog-rolls", open = function() NS.ShowRaidLog("rolls") end },
     { page = "raidlog", name = "raidlog-discord", open = function() NS.ShowRaidLog("discord") end },

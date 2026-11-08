@@ -181,6 +181,12 @@ Nichts. Nur Oberfläche, nichts wird gesendet.
 - 2026-11-08, Nutzer schickt die Fotos der Reiter Armory, Talent Trees und Professions: "mach gear so wie bei
   [dem Vorbild]", "Talente auch", "berufe auch". Damit gilt Frage 4; die Teile oben (D-75 bis D-78) sind danach
   festgelegt. Neue Features F-149 Ausrüstung, F-150 Talente, F-151 Berufe.
+- 2026-11-08, beim Bauen des Teils Ausrüstung (D-77): Das Modell der Seite baut derselbe Bauer wie das Fenster
+  Ausrüstungsziele; das Quadrat neben einem Platz zeigt die Verzauberung des angelegten Items (geplante speichert
+  Amisia nicht); über der eigenen Stufe rechnet die Liste auf der oberen Stufe; Hemd und Wappenrock zeigen nur, was
+  angelegt ist; der Filtertrichter des Fotos entfällt (die Quellen-Schalter stehen auf der Seite Ausrüstung); die
+  Stufenfelder stehen ohne das Wort "Stufe" (ihr Tooltip nennt es) und der Reiter "Vorschläge" führt aus den Sets zurück,
+  damit der Name des Platzes in 602 Breite passt.
 
 - 2026-11-08, Nutzer: "Passt, los". Damit gelten die Vorschläge zu den Fragen 1 bis 3 und 5; Frage 4 wartet auf
   die Fotos der Reiter Armory und Talent Trees. Die Journal-Schritte 3 bis 5 sind vorher committet (d4f752e).

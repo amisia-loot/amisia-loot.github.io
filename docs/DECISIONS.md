@@ -1819,6 +1819,57 @@ Symbole von Marken dürfen die eigenen Symbole des Spiels für Klassen (Klassenw
 
 **Durchgesetzt durch:** `tests/test_talents_page.lua` (Marken, Zeile der Punkte, Bäume mit Rahmen und Klassenbild, Import, Export, Wachsen, Layout), `tests/test_talent_window.lua` (Bedienung des Fensters, ein Plan in beiden), `tests/test_style.lua` (die Leiste des Reiters).
 
+## D-77 Ausrüstungsplaner: Modell mit Plätzen, Vorschläge je Platz, Sets in der Leiste
+
+**Datum:** 2026-11-08
+**Entscheidung:** Teil Ausrüstung der Spec `docs/specs/2026-11-08-hub-reiter.md` (F-149). Der Reiter Ausrüstung bekommt
+eine neue erste Seite "Ausrüstungsplaner" (`UI/Pages/Planner.lua`, Schlüssel `planner`, Tokens `T.PLANNER`); die Seite
+"Ausrüstung" mit ihren Ansichten und die Fenster Tabelle und Ziele bleiben darunter.
+- **Links** eine dunkle Fläche (`LEFT_W` 284) auf dem Hintergrund der Anprobe des Clients für die eigene Rasse, abgedunkelt
+  (ohne die Datei nur der dunkle Grund):
+  - oben in der Kopfzeile "Name Stufe N ·" und der Spec-Wähler der Ausrüstung (`ns.BisSetSpec`), mittig;
+  - das Modell des Fensters "Ausrüstungsziele": ein Bauer für beide (`ns.GoalsKit.buildDoll`, Größen je Profil wie die
+    Talentansicht mit `TALENT.PAGE` und `TALENT.BIG`): `T.GOALS` im Fenster, `T.PLANNER.DOLL` auf der Seite. Auf der Seite links acht Plätze wie im
+    Charakterfenster (Hemd und Wappenrock zeigen nur, was angelegt ist), rechts acht, die Waffen unter dem Modell;
+  - je Platz das Ziel (die eigene Wahl zuerst, D-55) im Rahmen seiner Qualität, grün, wenn das Ziel angelegt ist, gold
+    der gewählte;
+  - daneben ein kleines Quadrat: das Symbol der Verzauberung auf dem angelegten Item oder "+", wenn eine passt
+    (`Gear/Enchants.lua`, `E.Icon`); ein Klick listet die passenden Verzauberungen als Menü (ein Klick darin setzt das
+    Kartenziel wie im Fenster). Ohne Item oder ohne passende Verzauberung kein Quadrat. Geplante Verzauberungen
+    speichert Amisia nicht;
+  - unten rechts "Zurücksetzen": nach einer Frage (`W.Confirm`) alle eigenen Wahlen der Spezialisierung weg.
+- **Rechts** in der Kopfzeile die Reiter "Vorschläge | Wunschliste", das Warnzeichen des Clients nur, solange eine
+  eigene Wahl nicht genutzt wird (Waffenplan, tragbar; Tooltip nennt die Plätze, ein Klick wählt den ersten) und das
+  Suchfeld über alle Items (`ns.Catalog.Search`). Darunter der Name des gewählten Platzes, die Stufen "[von] - [bis]" und
+  "Meine Stufe | Alle".
+- **Liste** (44 hoch): Symbol im Qualitätsrahmen, Name in Qualitätsfarbe, grau "Stufe N · Quelle" (die Quelltexte der
+  Ausrüstung), rechts der Zuwachs in Prozent, das Symbol der Quellart (Marken des Clients: Raid, Dungeon, Quest, Beruf,
+  Händler, Auktionshaus, PvP, Ruf, Welt) und der Stern der Wunschliste (grau, gold gewünscht; ein Klick schaltet).
+  - Vorschläge: bis zur eigenen Stufe die Rangliste des Platzes (`ns.BisRanking`, 40), sonst dieselbe Rechnung auf
+    der oberen Stufe (`ns.BisFor`), beides nur Items mit der Mindeststufe im Bereich;
+  - Wunschliste: alle Wünsche mit ihrem Platz;
+  - ein Klick macht die Zeile zur eigenen Wahl ihres Platzes (`ns.BisSetPick`, ein Ring oder Schmuck in den gewählten
+    der beiden), ein zweiter hebt sie auf; Rechtsklick das Menü der Ausrüstung.
+- **Leiste:** die Kategorien des Katalogs als Marken (D-75): Raid-, Dungeon-, PvP-, Handwerks- und Welt-Sets, Ruf in
+  einem eigenen Block, je mit ihrer Zahl im Stufenbereich und einer Marke des Clients. Eine Marke zeigt rechts die Sets
+  der Kategorie (`ns.Catalog.Sets`), ein Set klappt seine Teile auf, der Reiter "Vorschläge" führt zurück. Reittiere und
+  Legendäres entfallen (keine Daten).
+- **Gespeichert** in `settings.bis`: `planSlot`, `planTab`, `planLo`/`planHi` (fehlen: 1 bis zur eigenen Stufe). Kategorie,
+  offenes Set und Suche nur im Speicher.
+
+**Grund:** Nutzer 2026-11-08 mit dem Foto des Reiters Armory des Vorbilds: "mach gear so wie bei [dem Vorbild]"
+(Spec, Entscheidungen). Übernommen sind Aufbau und Verhalten; Bilder und Symbole kommen aus dem Client (D-04, D-70).
+
+**Folge:**
+- Das Fenster "Ausrüstungsziele" bleibt; es baut sein Modell mit demselben Bauer.
+- Die Seite reicht für 602 × 478 und wächst mit der Breite und Höhe des Fensters (die rechte Hälfte, die Liste, D-71).
+- Ob Forever die Hintergründe `Interface\DressUpFrame\DressUpBackground-<Rasse>1` bis `4` und das Warnzeichen
+  `UI-Dialog-Icon-AlertNew` hat, ist im Spiel zu prüfen; ohne sie bleibt die Fläche dunkel, das Zeichen fehlt.
+
+**Durchgesetzt durch:** `tests/test_gear_planner.lua` (Modell, Plätze, Quadrate, Liste, Wahl, Stern, Wunschliste,
+Suche, Stufenbereich, Set-Marken, Zurücksetzen, Warnzeichen), `tests/test_goals_window.lua` (das Fenster mit dem
+gemeinsamen Bauer), `tests/test_main_sidebar.lua`, `tests/test_style.lua` (Reiter Ausrüstung), die Layoutregeln.
+
 ## D-78 Berufe mit Übersicht und Berufsliste in der Leiste
 
 **Datum:** 2026-11-08

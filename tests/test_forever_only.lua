@@ -51,7 +51,7 @@ assert(not toc:find("## AllowLoadGameType", 1, true), "no TOC-wide load conditio
 local FOREVER_FILES = { ["Core/Duels.lua"] = true, ["Raid/Handover.lua"] = true, ["UI/GoalsWindow.lua"] = true,
                         ["UI/SlotCard.lua"] = true, ["UI/DuelInfo.lua"] = true }
 for _, page in ipairs({ "Gear", "JournalParts", "Dungeons", "RaidJournal", "Map", "Professions", "Quests", "Talents", "MageScrolls", "Duels",
-                        "Tools", "Export" }) do
+                        "Tools", "Export", "Planner" }) do
     FOREVER_FILES["UI/Pages/" .. page .. ".lua"] = true
 end
 local function foreverOnly(name)

@@ -26,6 +26,17 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
   each in a thin gold-brown frame on its part of the class's own art; the trees grow with the window.
   Export marks the code for Ctrl+C, import empties the code box for a pasted code or build link.
 
+- feat(gear): gear planner with your model, suggestions per slot and sets in the side bar (F-149)
+
+  The Gear tab opens with the new Gear Planner. On the left your character stands on a dark panel
+  between eight slots on each side and the weapons below, with your name, level and spec picker on
+  top; each slot shows its target in its quality's frame (green once worn) and a small square with
+  the enchantment of your worn item, or a "+" that lists the enchantments that fit. On the right pick
+  Suggested or Wishlist, search all items, and set the level range; each row shows the item, its
+  level and source, the gain, the source's symbol and a star for the wish list. Click a row to make
+  it your pick for the slot (click again to lift it); Reset removes all your picks after asking. The
+  side bar lists raid, dungeon, PvP, crafted and world sets and reputation; a click shows them.
+
 ## [v2.63.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.63.0) (2026-11-08)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.62.1...v2.63.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
