@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.66.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.66.0) (2026-11-08)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.65.0...v2.66.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(prof): recipe view with WoW icons, favorites and a crafting list (F-151, F-153)
 
   A profession's recipes now look like the game's: tabs All recipes, Favorites, Merchant's Favor, Crafting
