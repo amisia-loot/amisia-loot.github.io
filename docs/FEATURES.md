@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-155 Berufslehrer lesen: echte Lernstufen
-- Version: -
-- Status: geplant
+- Version: 2.68.0
+- Status: gebaut
 - Prüfung: Wenn du einen Bergbaulehrer ansprichst und danach auf der Seite Berufe, Bergbau "Zinn verhütten" öffnest, dann steht in Details "lernbar ab <Wert des Lehrers> (vom Lehrer)" und "Gelernt bei" nennt den Lehrer mit Ort und Wegpunkt.
 - Prüfung: Wenn du einen Beruf öffnest, dessen Lehrer du noch nicht angesprochen hast, dann steht im Kopf "N Lernstufen geschätzt (?)" und in Details hinter der Lernstufe ein "?".
 - Prüfung: Wenn du im Lehrerfenster Filter (z. B. nur verfügbare) eingestellt hast und den Lehrer erneut ansprichst, dann sind die Filter danach wie vorher.
@@ -49,8 +49,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-08-lehrer-lesen.md, D-86. Nach dem Besuch: `build.py data` übernimmt die Lesungen in tools/trainer_archive.json.
 
 ### F-154 Dungeons und Raids: Bosse mit Porträt, Beute mit Symbolen
-- Version: -
-- Status: geplant
+- Version: 2.68.0
+- Status: gebaut
 - Prüfung: Wenn du auf der Seite Dungeons einen Dungeon öffnest (Teil Übersicht), dann stehen links die Bosse untereinander, jeder mit rundem Porträt im Goldring (das Modell des Bosses, ohne Modell der Totenkopf des Spiels), "1. Name" und darunter grau "4 Items · 1 Upgrade"; rechts steht der gewählte Boss groß mit Porträt, Name und "Boss 1 von 6", darunter seine Beute: Symbol im Rahmen der Qualität, Name, Slot und Zuwachs, Dropchance und der Stern.
 - Prüfung: Wenn du links auf einen anderen Boss klickst, dann zeigt die rechte Seite seine Beute; die Maus auf einem Boss zeigt ihn im Bild oben, Rechtsklick markiert ihn als getötet oder nicht.
 - Prüfung: Wenn du auf den Stern einer Beutezeile klickst, dann kommt das Item auf die Wunschliste (der Stern leuchtet), ein zweiter Klick nimmt es wieder herunter; Strg-Klick auf die Zeile zeigt die Anprobe, Rechtsklick das Menü.
@@ -74,7 +74,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du beim Händler etwas kaufst oder verkaufst, Post abholst oder handelst, dann erscheint nichts.
 
 ### F-151 Berufe mit Übersicht und Berufsliste in der Leiste
-- Version: 2.66.0
+- Version: 2.68.0
 - Status: gebaut
 - Prüfung: Wenn du im Reiter Berufe links auf "Übersicht" klickst (oder `/amisia berufe übersicht` eingibst), dann zeigt die Seite "Deine Berufe" mit Rang und bekannten Rezepten, "Alle Berufe" mit ihrer Rezeptzahl und "Weiteres" mit Lager und Händlergunst als Kacheln.
 - Prüfung: Wenn du links unter "Übersicht" schaust, dann stehen dort die Berufe mit ihrem Symbol, darunter Lager und Händlergunst mit deiner Gunst als Zahl; die gezeigte Ansicht ist hervorgehoben.
@@ -112,7 +112,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-08-hub-reiter.md, Schritt 2; D-74. Ersetzt die Kacheln von F-143.
 
 ### F-147 Hub: Bildkopf, Reiter oben, Leiste je Reiter, Fußzeile
-- Version: 2.66.0
+- Version: 2.68.0
 - Status: gebaut
 - Prüfung: Wenn du /amisia öffnest, dann hat das Fenster den Rahmen der Spielfenster mit Titel "Amisia", rotem X und rotem Minimieren-Knopf; darunter stehen das Logo, "Amisia" und ein Streifen eines Ladebilds, rechts Suchfeld und Feedback, darunter die Reiter Ausrüstung, Dungeons & Raids, Berufe, Talente, Raid, Gilde und das Zahnrad.
 - Prüfung: Wenn du einen Reiter klickst, dann zeigt die linke Leiste oben dessen Symbol und Namen und nur seine Seiten, und seine zuletzt gewählte Seite öffnet sich.
