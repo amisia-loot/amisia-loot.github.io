@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.65.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.65.0) (2026-11-08)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.64.0...v2.65.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(gear): no extra gear window: the gear goals live in the gear planner (F-149)
 
   The Gear Goals window is gone; everything it had is on the Gear Planner page. The new Goals tab
