@@ -112,53 +112,78 @@ T.LAYOUT = {
 -- search box, the groups as headings with their pages and side windows as the auction house's
 -- sub-category bars); the page in the content inset on the right. Nothing hangs under or beside it.
 T.MAIN = {
-    -- 560 until 2.62.0; the page head (PAGE_HEAD, D-69) made it taller, the page keeps its 478
-    W = 806, H = 598,
+    -- the hub (D-73): 806 x 642 at its own size; the page keeps its 602 x 478 (D-69)
+    W = 806, H = 642,
     -- the size the player can drag (the grip at the bottom right, the chat window's size grabber,
-    -- GRIP square in the frame's corner (GRIP_OUT past it), over its border and clear of the page's controls
-    -- in its bottom right corner): H_MIN to H_MAX, never taller than the screen; T.PAGE_H and the side
-    -- bar follow (D-68)
-    H_MIN = 598, H_MAX = 898, GRIP = 12, GRIP_OUT = 0,
-    -- and its width (D-71): W_MIN to W_MAX, never wider than the screen; T.PAGE_W_NOW follows
+    -- GRIP square in the frame's corner, GRIP_OUT past it): H_MIN to H_MAX and W_MIN to W_MAX, never
+    -- more than the screen; T.PAGE_H, T.PAGE_W_NOW and the side bar follow (D-68, D-71)
+    H_MIN = 642, H_MAX = 942, GRIP = 12, GRIP_OUT = 0,
     W_MIN = 806, W_MAX = 1440,
-    -- the minimize button (the client's UIPanelHideButtonNoScripts, 24 square) left of the close
-    -- button; the bar it leaves (MINI: in the tooltip's frame, the logo LOGO square from LOGO_X, the
-    -- name and under it the open page from TEXT_X, the close button X square X_R from the right)
-    MIN_SIZE = 24, MIN_SIZE_OLD = 20,
+    -- the bar the minimize button leaves (D-71; MINI: in the tooltip's frame, the logo LOGO square from
+    -- LOGO_X, the name and under it the open page from TEXT_X, the close button X square X_R from the right)
     MINI = { W = 214, H = 36, LOGO = 22, LOGO_X = 9, TEXT_X = 38, NAME_Y = 7, PAGE_Y = -7, X = 20, X_R = 6, TEXT_W = 140 },
-    -- the side bar (D-70, after the reference's hub): at its top the head (NAV_HEAD high: the logo
-    -- LOGO square, the name in gold and under it the version and the view in grey, the gold line at
-    -- its bottom), the search box under it, then a W.List of NAV_ROW_H rows, the client's list spacing
-    -- 0, a scroll bar when not all fit. Every group with a page is a heading (gold, capitals, from
-    -- NAV_LABEL_X; the gold line over it from the second on); each page and side window a
-    -- sub-category bar with its symbol (NAV_ICON square at NAV_ICON_X, T.NAV_ICONS) and its name from
-    -- NAV_SUB_X (gold); under the open page "Einstellungen" its tabs from NAV_SUB2_X (gold) and the
-    -- chosen tab's sections from NAV_SUB3_X (white, D-49); a side window with the chat window's
-    -- maximize sign (FOLD square) FOLD_R from the right. NAV_LIST_H: the list's height at H
-    NAV_HEAD = 40, LOGO = 30, LOGO_X = 2, HEAD_TEXT_X = 38, HEAD_NAME_Y = 4, HEAD_SUB_Y = 21, HEAD_RULE_Y = 38,
-    NAV_W = 164, NAV_LIST_H = 452, NAV_SUB_X = 29, NAV_SUB2_X = 34, NAV_SUB3_X = 46,
-    NAV_ROW_H = 21, NAV_LABEL_X = 8, NAV_LABEL_W = 150, NAV_ICON = 14, NAV_ICON_X = 11, FOLD = 14, FOLD_R = 6,
-    -- the search box under the head (T.FIELD_H high), the list SEARCH_GAP under it; typing turns the
-    -- list into the results (RES_ROW_H rows: a group as a category bar, its hits as the indented
-    -- sub-category bars, RES_HIT_X the hit's text as the client's 18), at least SEARCH_MIN
-    -- characters, at most RES_MAX hits per group; 21 x 21 = 441 of the 452
-    SEARCH_GAP = 6, SEARCH_MIN = 2, RES_ROWS = 21, RES_ROW_H = 21, RES_MAX = 8, RES_HIT_X = 18,
-    MARGIN = 6,           -- the insets from the window's edge
-    TOP = 62,             -- the insets start this far below the top (title bar and status line)
-    LIST_W = 176,         -- the side bar's inset
-    CONTENT_X = 184,      -- the content inset's left edge
-    INNER = 6,            -- the side bar inside its inset
-    PAGE_PAD = 7,         -- the page inside the content inset
-    -- the page head (D-69) at the top of the content inset, PAGE_HEAD high over the page: the page's
-    -- name (T.FONT.big, gold) at TITLE_Y, its one line (T.FONT.hint) at SUB_Y, the gold line fading to
-    -- both ends at RULE_Y (RULE_ALPHA at its middle); at its right end the page's help ("?", the
-    -- client's help-i) and its settings (the quest log's gear, D-49) as small icons, ICON_SIZE square,
-    -- ICON_GAP apart, ICON_Y from the head's top
-    PAGE_HEAD = 38, TITLE_Y = 2, SUB_Y = 21, RULE_Y = 35, RULE_ALPHA = 0.7, ICON_Y = 4,
-    HEAD_X = 66, HEAD_Y = 26, HEAD_H = 22,  -- the status line right of the portrait (D-67)
-    -- the recording and the view sit in a menu behind the status line (its arrow MENU_SIZE); the right
-    -- end of the window's head keeps ICON_RIGHT free (the close button's row)
-    ICON_SIZE = 22, ICON_GAP = 6, ICON_RIGHT = 12, MENU_SIZE = 20,
+    -- the head (D-73), HEAD_H high over the whole width: the logo LOGO round from LOGO_X, "Amisia"
+    -- (NAME_FONT) from HEAD_TEXT_X at NAME_Y and its line at HEAD_SUB_Y; behind it the client's picture
+    -- (T.HUB.BANNER) from BANNER_X to the right edge; at the right the search box (SEARCH_W) and the
+    -- square buttons (HBTN, HBTN_GAP apart, HBTN_R from the right, HBTN_Y from the top)
+    HEAD_H = 60, LOGO = 44, LOGO_X = 12, HEAD_TEXT_X = 66, NAME_Y = 12, HEAD_SUB_Y = 38, NAME_FONT = "GameFontNormalHuge",
+    BANNER_X = 200, SEARCH_W = 180, HBTN = 24, HBTN_GAP = 6, HBTN_R = 10, HBTN_Y = 18,
+    -- the tabs (D-73) under the head: TAB_H high from TAB_X, TAB_GAP apart; each its symbol (TAB_ICON
+    -- square, TAB_PAD from its left edge) and its name TAB_ICON_GAP right of it, TAB_PAD room at the end;
+    -- the chosen one lighter with a gold line (TAB_LINE) at its bottom; the gear tab GEAR_W wide at the
+    -- right end
+    TAB_H = 26, TAB_X = 6, TAB_GAP = 3, TAB_PAD = 10, TAB_ICON = 16, TAB_ICON_GAP = 5, TAB_LINE = 2, GEAR_W = 34,
+    -- the side bar of the open tab (D-73): its head (NAV_HEAD high: the tab's symbol NAV_HEAD_ICON
+    -- square, its name in gold from NAV_HEAD_X, the gold line at HEAD_RULE_Y), then a W.List of
+    -- NAV_ROW_H rows: a page or side window its symbol (NAV_ICON square at NAV_ICON_X) and its name from
+    -- NAV_SUB_X, the chosen one lighter with a gold bar (SEL_W) at its left edge; under the open page
+    -- "Einstellungen" its tabs from NAV_SUB2_X and the chosen tab's sections from NAV_SUB3_X (D-49); a
+    -- side window the chat window's maximize sign (FOLD square) FOLD_R from the right. NAV_LIST_H: the
+    -- list's height at H (NAV_GAP under the head)
+    NAV_HEAD = 40, NAV_HEAD_ICON = 28, NAV_HEAD_X = 38, HEAD_RULE_Y = 38, NAV_GAP = 4,
+    NAV_W = 164, NAV_LIST_H = 474, NAV_SUB_X = 28, NAV_SUB2_X = 34, NAV_SUB3_X = 46, SEL_W = 2,
+    NAV_ROW_H = 24, NAV_LABEL_X = 8, NAV_ICON = 16, NAV_ICON_X = 7, FOLD = 14, FOLD_R = 6,
+    -- the search (in the head): typing turns the side bar into the results (RES_ROW_H rows: a group as
+    -- a category bar, its hits as the indented sub-category bars, RES_HIT_X the hit's text as the
+    -- client's 18), at least SEARCH_MIN characters, at most RES_MAX hits per group; the hint SEARCH_GAP
+    -- under the list's top
+    SEARCH_GAP = 6, SEARCH_MIN = 2, RES_ROWS = 22, RES_ROW_H = 21, RES_MAX = 8, RES_HIT_X = 18,
+    MARGIN = 6,           -- the side bar and the page from the window's edge
+    TOP = 90,             -- they start this far below the top (the head and the tabs)
+    BOTTOM = 22,          -- and end this far above the bottom (the footer)
+    LIST_W = 176,         -- the side bar
+    CONTENT_X = 184,      -- the page's field's left edge
+    INNER = 6,            -- the side bar's parts inside it
+    PAGE_PAD = 7,         -- the page inside its field
+    -- the footer (D-73), BOTTOM high: the recording state from FOOT_X (a click opens the menu with the
+    -- recording and the view, its arrow MENU_SIZE), the view and the version at the right end
+    FOOT_X = 10, MENU_SIZE = 16,
+    -- the page head (D-69, D-73) at the top of the page's field, PAGE_HEAD high: the page's symbol
+    -- (PAGE_ICON square), its name (T.FONT.big, gold) PAGE_ICON_GAP right of it at TITLE_Y, its one line
+    -- (T.FONT.hint) at SUB_Y, the gold line fading to both ends at RULE_Y (RULE_ALPHA at its middle); at
+    -- its right end the page's help ("?") and its settings (the quest log's gear, D-49), ICON_SIZE
+    -- square, ICON_GAP apart, ICON_Y from the head's top
+    PAGE_HEAD = 38, TITLE_Y = 2, SUB_Y = 21, RULE_Y = 35, RULE_ALPHA = 0.7, ICON_Y = 4, PAGE_ICON = 30, PAGE_ICON_GAP = 8,
+    ICON_SIZE = 22, ICON_GAP = 6,
+}
+
+-- The hub's colours (D-73): the window dark brown-black with a thin gold edge, the head a shade
+-- lighter over the client's picture, the tabs and the side bar's rows; { r, g, b, a }.
+T.HUB = {
+    BG = { 0.065, 0.05, 0.035, 0.97 },
+    EDGE = { 0.78, 0.6, 0.27, 0.9 },
+    LINE = { 0.78, 0.6, 0.27, 0.35 },    -- the lines between head, tabs, side bar, page and footer
+    HEAD_BG = { 0.11, 0.075, 0.045, 1 },
+    SIDE_BG = { 0.09, 0.07, 0.045, 0.9 },
+    TAB_BG = { 0.12, 0.09, 0.06, 0.95 },
+    TAB_ON = { 0.25, 0.18, 0.09, 1 },
+    TAB_EDGE = { 0.78, 0.6, 0.27, 0.45 },
+    BTN_BG = { 0.07, 0.05, 0.03, 0.95 },
+    ROW_HOVER = { 1, 0.85, 0.5, 0.07 },
+    ROW_ON = { 0.85, 0.62, 0.2, 0.2 },
+    -- the client's picture behind the head: a band of a loading screen (coords), BANNER alpha, fading
+    -- in from the left over FADE px; without the file the head stays plain
+    BANNER = { file = "Interface\\Glues\\LoadingScreens\\LoadScreenKalimdor", coords = { 0, 1, 0.36, 0.47 }, alpha = 0.6, FADE = 160 },
 }
 
 -- The symbol of each page and side window in the side bar (D-70): the client's own marks (the
@@ -204,6 +229,17 @@ T.NAV_ICONS = {
     ["win:talents"] = { file = TRACK .. "Class" },
     ["win:rolls"] = { file = "Interface\\Buttons\\UI-GroupLoot-Dice-Up" },
     ["win:softres"] = { file = GOSSIP .. "PetitionGossipIcon" },
+}
+
+-- The symbol of each tab (D-73), the same kind of marks as the side bar's.
+T.TAB_ICONS = {
+    gear = { file = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Chest" },
+    dungeons = { atlas = "Dungeon" },
+    prof = { file = TRACK .. "Profession" },
+    talents = { file = TRACK .. "Class" },
+    raid = { file = "Interface\\Buttons\\UI-GroupLoot-Dice-Up" },
+    guild = { file = GOSSIP .. "TabardGossipIcon" },
+    amisia = { atlas = "questlog-icon-setting" },
 }
 
 -- A bar of the auction house's category list (AuctionCategoryButtonTemplate as the client's

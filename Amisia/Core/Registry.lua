@@ -120,14 +120,17 @@ function ns.RegisterPanel(spec)
     upsert(ns.panels, spec, "key")
 end
 
--- The groups of the main window's side bar, top to bottom (D-68; until 2.62.0 the tabs under the
--- window, D-45): each a category bar of the auction house's list with its pages under it.
+-- The tabs of the main window (D-73; D-68 to D-70 a side bar with every group, until 2.62.0 the tabs
+-- under the window, D-45), left to right along its top; each has its own side bar with its pages.
+-- "amisia" is the gear tab at the right end (its symbol only).
 ns.PANEL_GROUPS = {
+    { key = "gear", label = L["Ausrüstung"] },
+    { key = "dungeons", label = L["Dungeons & Raids"] },
+    { key = "prof", label = L["Berufe"] },
+    { key = "talents", label = L["Talente"] },
     { key = "raid", label = "Raid" },
-    { key = "char", label = L["Charakter"] },
-    { key = "world", label = L["Welt"] },
     { key = "guild", label = L["Gilde"] },
-    { key = "amisia", label = "Amisia" },
+    { key = "amisia", label = "Amisia", gear = true },
 }
 
 -- The tab of a page: its group, else by its order (a page without one or with an unknown one, a
@@ -137,7 +140,7 @@ function ns.PanelGroup(p)
         if g.key == p.group then return p.group end
     end
     local o = p.order or 99
-    if o < 50 then return "raid" elseif o < 60 then return "char" elseif o < 900 then return "guild" end
+    if o < 50 then return "raid" elseif o < 60 then return "gear" elseif o < 900 then return "guild" end
     return "amisia"
 end
 

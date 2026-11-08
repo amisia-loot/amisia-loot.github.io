@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(ui): the main window is a hub with tabs along the top (F-147)
+
+  The window has a new dark frame with a thin gold edge. Its head shows the Amisia logo and name over a
+  strip of the game's loading screen, with the search box and buttons for feedback, minimize and close.
+  Under it sit the tabs Gear, Dungeons & Raids, Professions, Talents, Raid, Guild and the gear for the
+  settings; the side bar shows only the open tab's pages, each with its symbol. Quests and the map moved
+  to Dungeons & Raids, the mage scrolls to Professions. The footer shows the recording state (click it
+  for the menu), your view and the version.
+
 - feat(world): dungeon and raid journal with search, your run, instance maps, wishes and keys (F-146)
 
   The Dungeons and Raids pages get a search box, the choices All / Fitting / Quests and "Where am I".

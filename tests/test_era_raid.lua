@@ -8,25 +8,21 @@ assert(NS.Gear == nil and NS.Panel("export") == nil and NS.Panel("duels") == nil
 STUB.officer = true
 NS.ToggleMain()
 local F = AmisiaFrame
--- the side bar (D-68): a bar per group with a visible page; nothing under or beside the window
+-- the tabs (D-73): one per group with a visible page; the side bar's rows fit it
 local function groupBars()
     local out = {}
-    for _, e in ipairs(F.nav.items) do
-        if e.kind == "cat" then out[#out + 1] = e.key end
-    end
+    for _, b in ipairs(F.tabOrder) do out[#out + 1] = b.key end
     return table.concat(out, " ")
 end
--- the group bars (in place of the tabs under the window) inside the side bar, their names fit
 local function barsFit()
-    assert(F.nav:GetWidth() <= T.MAIN.NAV_W, "the side bar inside its inset: " .. F.nav:GetWidth())
-    for _, e in ipairs(F.navOrder) do
-        local b = e.button
-        assert(b:IsShown(), e.entry.key)
-        assert(e.entry.kind ~= "cat" or b.label:GetStringWidth() <= b.label:GetWidth() + 0.5,
-            "the group's name fits its bar: " .. e.entry.key .. " " .. b.label:GetStringWidth() .. " > " .. b.label:GetWidth())
+    assert(F.nav:GetWidth() <= T.MAIN.NAV_W, "the side bar inside its field: " .. F.nav:GetWidth())
+    for _, e in ipairs(F.navOrder) do assert(e.button:IsShown(), e.entry.key) end
+    for _, b in ipairs(F.tabOrder) do
+        local at = b.points.TOPLEFT
+        assert(not at or at.x + b:GetWidth() <= F:GetWidth() - T.MAIN.GEAR_W, "the tab inside the window: " .. b.key)
     end
 end
-assert(F.tabs == nil and F.sideTabs == nil and F.tabOrder == nil, "no tabs under or beside the window")
+assert(F.sideTabs == nil, "no tabs beside the window")
 assert(groupBars() == "raid guild amisia", groupBars())
 for _, key in ipairs({ "raid", "guild", "amisia" }) do
     NS.ShowTab(key)

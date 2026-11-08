@@ -17,12 +17,12 @@ NS.GEAR.I[501] = { "HEAD", 4, 2, 16, 3, 1, 20, 0, 0, 0, 1 }
 NS.Gear._reset()
 assert(NS.Gear.Available(), "gear data")
 
--- the page: first in the group Welt, before the raids, the quests and the map
+-- the page: first in the tab Dungeons & Raids, before the raids, the quests and the map
 local p = NS.Panel("dungeons")
-assert(p and p.label == "Dungeons" and NS.PanelGroup(p) == "world", "registered in the group Welt")
+assert(p and p.label == "Dungeons" and NS.PanelGroup(p) == "dungeons", "registered in the tab Dungeons & Raids")
 local after = {}
 for _, q in ipairs(NS.panels) do
-    if NS.PanelGroup(q) == "world" and q.order then after[#after + 1] = q end
+    if NS.PanelGroup(q) == "dungeons" and q.order then after[#after + 1] = q end
 end
 table.sort(after, function(a, b) return a.order < b.order end)
 assert(after[1].key == "dungeons" and after[2].key == "raidjournal", "the group's first page: " .. after[1].key)

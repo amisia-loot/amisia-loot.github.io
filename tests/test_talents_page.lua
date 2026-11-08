@@ -49,7 +49,7 @@ end
 ---------------------------------------------------------------------------
 -- the page opens on the own class, level 60, no Talented ranks
 ---------------------------------------------------------------------------
-assert(NS.Panel("talents") and NS.Panel("talents").group == "char", "registered in the group Charakter")
+assert(NS.Panel("talents") and NS.Panel("talents").group == "talents", "registered in the tab Talente")
 NS.ShowTalents()
 assert(NS.CurrentPage() == "talents")
 local f = NS.PageFrame("talents")

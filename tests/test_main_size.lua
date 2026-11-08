@@ -46,8 +46,8 @@ assert(box2:GetWidth() == before2, "a page of its own width keeps it")
 F.applySize(M.W + 200, M.H + 50)
 F.heightDone()
 assert(box:GetWidth() == before, "and shrinks back: " .. box:GetWidth())
--- the status line is as wide as the window
-assert(F.statusBar.points.TOPRIGHT, "the status line stretches")
+-- the tabs' line and the footer's version follow the width (D-73)
+assert(F.tabBar.points.TOPRIGHT and F.viewText.points.BOTTOMRIGHT, "the tabs and the footer stretch")
 
 -- never past W_MAX nor the screen; never under W_MIN
 F.applySize(5000, M.H)
@@ -68,11 +68,10 @@ assert(W.w == M.W + 300)
 NS.ResetPositions()
 assert(F:GetWidth() == M.W and F:GetHeight() == M.H and W.w == nil and T.PAGE_W_NOW == T.PAGE_W)
 
--- minimize: the client's red "-" left of the close button
+-- minimize: the square "-" of the head, left of its close button (D-73)
 local b = F.minBtn
-assert(b and b.inherits.UIPanelHideButtonNoScripts and b.points.TOPRIGHT.rel == F.CloseButton, "left of the close button")
-assert(b._w == M.MIN_SIZE and b._h == M.MIN_SIZE)
-assert(F.border == "PortraitFrameTemplateMinimizable" or F.SetBorder == nil, "the corner art for two buttons: " .. tostring(F.border))
+assert(b and b == F.head.min and b.points.RIGHT.rel == F.head.close, "left of the close button")
+assert(b._w == M.HBTN and b._h == M.HBTN and b.glyph:GetText() == "-")
 NS.ShowPage("awards")
 F._right, F._top = 1500, 950
 -- a drag of the grip ends with it

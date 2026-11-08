@@ -1769,7 +1769,9 @@ end
 -- the template the flat window of before, with the same fields and methods.
 function W.Window(name, width, height, opts)
     opts = opts or {}
-    local F = inherit("Frame", name, UIParent, "PortraitFrameTemplate",
+    -- opts.flat: the flat window on every client (the main window's hub, D-73), its ground opts.bg and its
+    -- edge opts.edge ({ r, g, b, a })
+    local F = not opts.flat and inherit("Frame", name, UIParent, "PortraitFrameTemplate",
         function(f) return f.TitleContainer and f.TitleContainer.TitleText and f.CloseButton and f.SetTitle end)
     if F then
         if opts.portrait then
@@ -1796,8 +1798,9 @@ function W.Window(name, width, height, opts)
         end
     else
         F = CreateFrame("Frame", name, UIParent)
-        W.Flat(F, W.BG[1], W.BG[2], W.BG[3], W.BG[4])
-        F.edges = W.Border(F, GOLD[1], GOLD[2], GOLD[3], 0.6)
+        local bg, edge = opts.bg or W.BG, opts.edge or { GOLD[1], GOLD[2], GOLD[3], 0.6 }
+        F.ground = W.Flat(F, bg[1], bg[2], bg[3], bg[4])
+        F.edges = W.Border(F, edge[1], edge[2], edge[3], edge[4])
         F.TitleContainer = CreateFrame("Frame", nil, F)
         F.TitleContainer:SetHeight(20)
         F.TitleContainer:SetPoint("TOPLEFT", 12, -1)

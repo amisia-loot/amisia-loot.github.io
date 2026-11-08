@@ -362,7 +362,7 @@ local function create(parent)
     return f
 end
 
-ns.RegisterPanel{ key = "quests", label = "Quests", sub = L["Deine Quests mit dem nächsten Schritt und der Belohnung."], icon = ICON, order = 54, group = "world",
+ns.RegisterPanel{ key = "quests", label = "Quests", sub = L["Deine Quests mit dem nächsten Schritt und der Belohnung."], icon = ICON, order = 54, group = "dungeons",
     available = function() return ns.Get("quests.enabled") ~= false end,
     create = create, refresh = refresh }
 

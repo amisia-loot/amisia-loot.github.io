@@ -39,6 +39,33 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-150 Talente im Aufbau des Vorbilds
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du den Reiter Talente öffnest, dann sieht er aus wie im Foto des Vorbilds, das der Nutzer schickt.
+- Notiz: Spec docs/specs/2026-11-08-hub-reiter.md, Schritt 4; wartet auf ein Foto des Reiters Talent Trees.
+
+### F-149 Ausrüstung im Aufbau des Vorbilds
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du den Reiter Ausrüstung öffnest, dann sieht er aus wie im Foto des Vorbilds, das der Nutzer schickt.
+- Notiz: Spec docs/specs/2026-11-08-hub-reiter.md, Schritt 3; wartet auf ein Foto des Reiters Armory.
+
+### F-148 Dungeons & Raids als Tabelle mit Stufenbereichen
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du "Dungeons" öffnest, dann siehst du eine Tabelle mit Dungeon, Stufe, Gebiet, Zone, Schlüssel, Quests und Aktionen, gruppiert nach Stufenbereichen; ein Klick auf einen Spaltenkopf sortiert.
+- Prüfung: Wenn du links auf einen Stufenbereich klickst, dann springt die Tabelle dorthin.
+- Notiz: Spec docs/specs/2026-11-08-hub-reiter.md, Schritt 2.
+
+### F-147 Hub: Bildkopf, Reiter oben, Leiste je Reiter, Fußzeile
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du /amisia öffnest, dann stehen oben das Logo, "Amisia" und ein Streifen eines Ladebilds, rechts Suchfeld, Feedback, Minimieren und X, darunter die Reiter Ausrüstung, Dungeons & Raids, Berufe, Talente, Raid, Gilde und das Zahnrad.
+- Prüfung: Wenn du einen Reiter klickst, dann zeigt die linke Leiste oben dessen Symbol und Namen und nur seine Seiten, und seine zuletzt gewählte Seite öffnet sich.
+- Prüfung: Wenn du unten links auf den Aufnahmezustand klickst, dann öffnet sich das Menü mit Aufnahme und Ansicht; rechts unten stehen Ansicht und Version.
+- Notiz: Spec docs/specs/2026-11-08-hub-reiter.md, Schritt 1; D-73. Ersetzt die Leiste mit allen Gruppen von F-145.
+
 ### F-146 Dungeon- und Raid-Journal nach dem Vorbild: Filter, Reiter, Lauf, Karte
 - Version: -
 - Status: geplant

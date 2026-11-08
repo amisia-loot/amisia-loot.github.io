@@ -998,7 +998,7 @@ local function create(parent)
     return f
 end
 
-ns.RegisterPanel{ key = "professions", label = L["Berufe"], sub = L["Rezepte, der Weg zum nächsten Skill und die Hersteller der Gilde."], icon = ICON, order = 57, group = "char",
+ns.RegisterPanel{ key = "professions", label = L["Berufe"], sub = L["Rezepte, der Weg zum nächsten Skill und die Hersteller der Gilde."], icon = ICON, order = 57, group = "prof",
     available = function() return Pr.Available() end, create = create, refresh = refresh }
 
 -- Opens the page; what: a profession (German name or key, a prefix is enough), "lager" or "gunst".

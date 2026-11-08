@@ -1581,6 +1581,9 @@ kommt in `SIDE_WINDOWS` (MainFrame) mit Gruppe und Seite, und sein Fenster ruft 
 `ns.UpdateSideTabs`. Seiten, die Höhen aus `T.PAGE_H` rechnen, tun das nur über `fill`/`W.FillTo`. Ohne die Balken des
 Auktionshauses (TBC, Era) bleibt der Fallback der Rezeptliste (Leuchten und Hover).
 **Durchgesetzt durch:** `tests/test_main_sidebar.lua`, `tests/test_main_sidebar_review.lua`, `tests/test_nav_find.lua`,
+
+**Nachtrag 2026-11-08:** Die Gruppen Charakter und Welt und die Leiste mit allen Gruppen ersetzt D-73 (Reiter oben, je
+Reiter eine Leiste). Die Seitenfenster als Zeilen unter ihrer Seite und die ziehbare Höhe bleiben.
 `tests/test_style.lua`, die Layoutregel "nav" (`tools/ui_layout.py`).
 
 ## D-69 Seitenkopf, Startseiten mit Kacheln, aufklappbare Zeilen (Schritte 2 bis 4 der UI-Überholung)
@@ -1659,6 +1662,9 @@ Look des Clients); eine Bossliste mit allen Items war auf großen Dungeons und R
 
 **Durchgesetzt durch:** `tests/test_main_sidebar.lua` (Kopf, Überschriften, Symbole, kein Aufklappen), `tests/test_style.lua` (jede Seite hat ein Symbol, keines aus `Interface\Icons`, Abstände und Zeilen), die Layoutregel `nav` (`tools/ui_layout.py`).
 
+**Nachtrag 2026-11-08:** Kopf mit Logo, Überschriften und die eine Leiste mit allen Gruppen ersetzt D-73: Logo und Name
+stehen im Kopf des Fensters, die Gruppen sind Reiter oben, die Leiste zeigt nur die Seiten des offenen Reiters.
+
 ## D-71 Hauptfenster in der Breite ziehbar und zu einer Leiste minimierbar
 
 **Datum:** 2026-11-08
@@ -1721,3 +1727,28 @@ Look des Clients); eine Bossliste mit allen Items war auf großen Dungeons und R
 
 **Durchgesetzt durch:** `tests/test_journal_start.lua` (Lauf, Abzeichen, Filter, Öffnen), `tests/test_journal_parts.lua` (Reiter, Lauf, Wunschliste, Karte, Zugang), die Layoutregeln.
 
+## D-73 Hub mit Reitern oben, Bildkopf und Fußzeile
+
+**Datum:** 2026-11-08
+**Entscheidung:** Schritt 1 der Spec `docs/specs/2026-11-08-hub-reiter.md` (F-147):
+- **Rahmen:** Das Hauptfenster ist ein flaches Fenster (`W.Window` mit `flat`), dunkel braunschwarz mit dünnem Goldrand (`T.HUB`). Der Porträt-Rahmen des Clients entfällt hier; die Seitenfenster behalten ihn.
+- **Kopf** (`T.MAIN.HEAD_H` 60):
+  - links das Logo rund im Goldring (ein Klick öffnet die Übersicht), "Amisia" groß in Gold und darunter "LOOT · RAID · GEAR";
+  - hinter dem rechten Teil ein Streifen des Ladebilds des Clients (`T.HUB.BANNER`), von links eingeblendet, nur wenn der Client die Datei hat;
+  - rechts das Suchfeld (die Treffer ersetzen die Leiste wie bisher) und drei quadratische Knöpfe: Feedback, Minimieren (D-71), Schließen.
+- **Reiter** unter dem Kopf: Ausrüstung, Dungeons & Raids, Berufe, Talente, Raid, Gilde und am rechten Ende das Zahnrad (Amisia: Einstellungen, Über, Feedback). Jeder mit seinem Symbol (`T.TAB_ICONS`, nur Marken des Clients) und Namen; der offene heller mit goldener Linie. Ein Reiter ohne sichtbare Seite oder Seitenfenster fehlt.
+- **Leiste:** nur die Seiten des offenen Reiters, oben dessen Symbol und Name mit der goldenen Linie; Zeilen 24 hoch mit Symbol, die gewählte heller mit goldenem Balken links. Seitenfenster bleiben Zeilen unter ihrer Seite (D-68). Unter "Einstellungen" deren Reiter und Abschnitte (D-49).
+- **Seiten:** Quests und Karte stehen unter Dungeons & Raids, Schriftrollen unter Berufe. Die Einstellungsabschnitte ziehen mit (`bis`, `wishes` → Ausrüstung; `map`, `drops`, `quests`, `collect` → Dungeons & Raids; `crafters` → Berufe).
+- **Seitenkopf:** dazu das Symbol der Seite (30 px) vor dem Namen.
+- **Fußzeile** (22 hoch): links der Aufnahmezustand mit dem Menü (D-67), rechts Ansicht und Version.
+- **Maße:** 806 × 642 (ziehbar 642 bis 942 hoch, D-71 sonst unverändert); die Seite bleibt 602 × 478.
+- `settings.window.tab` wird einmal auf den Reiter der zuletzt offenen Seite gesetzt; alte Gruppen (char, world) fallen so weg.
+
+**Grund:** Nutzer 2026-11-08 mit einem Foto des Hubs eines anderen Addons: "mach das addon/ui genau so", ohne dessen QoL-, Jägertier- und Bücher-Reiter, mit den Funktionen von Amisia; Spec freigegeben ("Passt, los"). Übernommen sind nur Aufbau und Verhalten; Grafiken kommen aus dem Client (D-04).
+
+**Folge:**
+- Eine neue Seite nennt ihren Reiter in `group` (ein Schlüssel von `ns.PANEL_GROUPS`) und ihr Symbol in `T.NAV_ICONS`.
+- Ob Forever das Ladebild `LoadScreenKalimdor` hat, ist im Spiel zu prüfen; ohne bleibt der Kopf schlicht.
+- Dungeons & Raids als Tabelle (F-148), Ausrüstung (F-149) und Talente (F-150) sind eigene Schritte der Spec.
+
+**Durchgesetzt durch:** `tests/test_main_sidebar.lua` (Kopf, Reiter, Leiste, Umzug, Knöpfe), `tests/test_style.lua` (Maße, Reiter in der Reihe und im Fenster, Leiste, Fußzeile, nur Marken des Clients), `tests/test_main_size.lua`, die Layoutregel `nav` (`tools/ui_layout.py`).

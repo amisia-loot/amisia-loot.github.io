@@ -384,38 +384,50 @@ assert(AmisiaMenu:GetFrameLevel() > 510, "the menu above the dialog's frame: " .
 AmisiaMenu:Hide()
 
 ---------------------------------------------------------------------------
--- the main window: Forever's frame, the status bar, the side bar with the groups and side windows
+-- the main window as a hub (D-73): the head, the tabs, the side bar of the open tab, the page, the footer
 ---------------------------------------------------------------------------
 STUB.officer = true
 NS.ShowPage("overview")
 local MF = AmisiaFrame
--- the portrait sits on a black disc of its size, under it (an icon with a see-through ground)
-do
-    local back, pic = MF.portraitBack, MF.PortraitContainer.portrait
-    assert(back and back.texture == W.DISC, "a disc under the portrait")
-    local c = back.vertexColor
-    assert(c and c[1] == 0 and c[2] == 0 and c[3] == 0 and c[4] == 1, "black")
-    assert(back.allPoints == pic or (back.points and next(back.points)), "on the portrait")
-end
-assert(MF and MF:IsShown() and MF.inherits.PortraitFrameTemplate and MF._w == 806 and MF._h == 598)
+local M, HB = NS.Theme.MAIN, NS.Theme.HUB
+assert(MF and MF:IsShown() and not (MF.inherits and MF.inherits.PortraitFrameTemplate) and MF._w == 806 and MF._h == 642)
 assert(MF.strata == "FULLSCREEN")
-assert(MF.portraitAsset == "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia", "the Amisia portrait")
-local mtitle = MF:GetTitleText():GetText()
-assert(mtitle == "Amisia", "the version moved to the side bar's head (D-70): " .. mtitle)
-assert(MF.Bg.atlas == "Profession-Background-Overview" and not MF.TopTileStreaks:IsShown())
-local ML = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF, 806, 598)
--- the head (D-67): the state as plain text right of the portrait, no bar; its arrow opens the menu;
--- no red buttons ("?" and the gear went to the page head, D-69)
+assert(MF.ground and MF.ground.color[1] == HB.BG[1] and #MF.edges == 4, "the dark ground and the gold edge")
+assert(not MF.TitleContainer:IsShown() and not MF.CloseButton:IsShown(), "the head's buttons, not the flat window's")
+local ML = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF, 806, 642)
+-- the head: the logo round on a black disc in a gold ring, the name, its line, the client's picture
+local head = MF.head
+assert(head._h == M.HEAD_H - 1 and head.logo._w == M.LOGO and head.logo.texture == "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia")
+assert(head.name:GetText() == "Amisia" and head.name.font == M.NAME_FONT and head.sub:GetText() == "LOOT · RAID · GEAR")
+assert(head.banner and head.banner.texture == HB.BANNER.file and head.banner.points.TOPLEFT.x == M.BANNER_X, "the client's picture")
+assert(MF.homeBtn and MF.homeBtn.parent == head, "the logo is the home button")
+-- the buttons at the right end, a row with the search box
+assert(head.close.points.TOPRIGHT.x == -M.HBTN_R and head.close._w == M.HBTN and head.close.glyph:GetText() == "X")
+ML.row("head buttons", MF.search, head.feedback, head.min, head.close)
+assert(MF.search.inherits.SearchBoxTemplate and MF.search._w == M.SEARCH_W, "the search box in the head")
+-- the tabs under the head, left to right, the gear at the right end; inside the window
+local order = {}
+for _, b in ipairs(MF.tabOrder) do order[#order + 1] = b.key end
+assert(table.concat(order, " ") == "gear dungeons prof talents raid guild amisia", table.concat(order, " "))
+local left = {}
+for _, b in ipairs(MF.tabOrder) do if b.key ~= "amisia" then left[#left + 1] = b end end
+ML.row("tabs", unpack(left))
+for _, b in ipairs(MF.tabOrder) do
+    ML.inside("tab " .. b.key, b)
+    assert(b._h == M.TAB_H, b.key)
+    if b.label then assert(b.label:GetStringWidth() <= b:GetWidth() - 2 * M.TAB_PAD, "the name fits: " .. b.key) end
+end
+local _, lastRight = ML.span(left[#left])
+local gearLeft = ML.span(MF.tabs.amisia)
+assert(lastRight < gearLeft, "the tabs clear of the gear tab")
+assert(MF.tabs.raid.on and MF.tabs.raid.line:IsShown() and MF.tabs.raid.label.font == "GameFontHighlight", "the open tab")
+assert(not MF.tabs.gear.on and MF.tabs.gear.label.font == "GameFontNormal", "the others gold")
+-- the footer: the state (its arrow opens the menu), the view and the version at the right end
 local status = MF.statusBar
-assert(status._h == 22 and status.points.TOPLEFT.x == 66 and status.points.TOPLEFT.y == -26
-    and status.points.TOPRIGHT.x == -12 and status.points.TOPRIGHT.y == -26, "as wide as the window (D-71)")
-assert(status.bgParts == nil and status.frameParts == nil and status.bg == nil, "no bar textures")
-assert(MF.pauseBtn == nil and MF.viewBtn == nil, "no red buttons in the head")
-local sl = ML.span(status)
-local st = ML.vspan(status)
-assert(sl >= 58 and st <= -W.TITLE_H, "right of the portrait and below the title bar")
-assert(MF.menuBtn.points.LEFT.rel == MF.statusText and MF.menuBtn._w == 20, "the arrow right of the state")
-assert(MF.statusText.points.CENTER and MF.statusText.points.CENTER.y == 0)
+assert(status._h == M.BOTTOM and status.points.BOTTOMLEFT.x == M.FOOT_X and status.points.BOTTOMLEFT.y == 0, "the footer")
+assert(MF.menuBtn.points.LEFT.rel == MF.statusText, "the arrow right of the state")
+assert(MF.viewText:GetText():find(NS.VERSION, 1, true) and MF.viewText.points.BOTTOMRIGHT, "the version at the right")
+assert(MF.pauseBtn == nil and MF.viewBtn == nil, "no red buttons")
 NS.ShowPage("map")
 local gear, help = MF.settingsBtn, MF.helpBtn
 assert(gear:IsShown() and gear._w == 22 and gear.points.TOPRIGHT.rel == MF.pageHead and gear.points.TOPRIGHT.x == 0
@@ -423,40 +435,40 @@ assert(gear:IsShown() and gear._w == 22 and gear.points.TOPRIGHT.rel == MF.pageH
 assert(gear.icon.atlas == "questlog-icon-setting", "the quest log's gear")
 assert(help:IsShown() and help.points.RIGHT.rel == gear and help.icon.texture == "Interface\\common\\help-i", "the ? left of the gear")
 ML.row("page head icons", help, gear)
--- the page head (D-69): the page's name gold and large, its line grey under it, the gold line fading to
--- both ends under them, all over the page area
+-- the page head (D-69, D-73): the page's symbol, its name gold and large, its line grey under it, the
+-- gold line fading to both ends under them, all over the page area
+assert(MF.pageIcon:IsShown() and MF.pageIcon._w == M.PAGE_ICON and MF.pageIcon.texture == NS.Theme.NAV_ICONS.map.file, "the page's symbol")
 assert(MF.pageTitle:GetText() == "Karte" and MF.pageTitle.font == "GameFontNormalLarge", tostring(MF.pageTitle:GetText()))
+assert(MF.pageTitle.points.TOPLEFT.x == NS.Theme.LAYOUT.TEXT_X + M.PAGE_ICON + M.PAGE_ICON_GAP, "the name right of the symbol")
 assert(MF.pageSub:IsShown() and MF.pageSub.font == "GameFontDisableSmall" and MF.pageSub:GetText() == NS.Panel("map").sub)
 assert(MF.pageHead._h == 38 and MF.pageHead.rule and MF.pageHead.rule.points.TOPLEFT.y == -35, "the line under them")
 local hl, hr = ML.span(MF.pageHead)
 local ht, hb = ML.vspan(MF.pageHead)
-assert(hl == 191 and hr == 793 and ht == -69 and hb == -107, ("the page head: %d..%d, %d..%d"):format(hl, hr, ht, hb))
-NS.ShowPage("dungeons")   -- the group Welt remembers its first page again (the group checks below)
+assert(hl == 191 and hr == 793 and ht == -97 and hb == -135, ("the page head: %d..%d, %d..%d"):format(hl, hr, ht, hb))
+NS.ShowPage("dungeons")   -- the tab remembers its first page again (the checks below)
 NS.ShowPage("overview")
 assert(not help:IsShown(), "the overview explains nothing: no ?")
 NS.SetEnabled(false); STUB.tick(0); assert(MF.statusText:GetText():find("pausiert", 1, true) and MF.headMenu()[1][1] == "Aufnahme fortsetzen")
 MF.headMenu()[1][2](); assert(NS.IsEnabled())
--- the side bar and the content field side by side, the page area exactly 602 x 478 at (191, -107)
+-- the side bar and the page's field side by side, the page area exactly 602 x 478 at (191, -135)
 local listIn, contentIn = MF.listInset, MF.contentInset
-assert(listIn.border.atlas == "common-insideframe" and listIn.ground.atlas == "Professions-background-summarylist")
-assert(contentIn.border.atlas == "common-insideframe")
+assert(listIn.ground.color[1] == HB.SIDE_BG[1] and listIn.edge, "the side bar's ground and its line")
 ML.row("columns", listIn, contentIn)
 local ll, lr = ML.span(listIn)
 local lt, lb = ML.vspan(listIn)
-assert(ll == 6 and lr == 182 and lt == -62 and lb == -592, ("the list 176 x 530: %d..%d, %d..%d"):format(ll, lr, lt, lb))
+assert(ll == 6 and lr == 182 and lt == -90 and lb == -620, ("the list 176 x 530: %d..%d, %d..%d"):format(ll, lr, lt, lb))
 local il, ir = ML.span(contentIn)
 local it, ib = ML.vspan(contentIn)
-assert(il == 184 and ir == 800 and it == -62 and ib == -592, ("the field 616 x 530: %d..%d, %d..%d"):format(il, ir, it, ib))
+assert(il == 184 and ir == 800 and it == -90 and ib == -620, ("the field 616 x 530: %d..%d, %d..%d"):format(il, ir, it, ib))
 local cl, cr = ML.span(MF.content)
 local ct, cb = ML.vspan(MF.content)
-assert(cl == 191 and ct == -107 and cr - cl == 602 and ct - cb == 478, ("the page area: %d, %d, %d x %d"):format(cl, ct, cr - cl, ct - cb))
+assert(cl == 191 and ct == -135 and cr - cl == 602 and ct - cb == 478, ("the page area: %d, %d, %d x %d"):format(cl, ct, cr - cl, ct - cb))
 ML.inside("content", MF.content)
 
--- the side bar (D-68, D-70): the head with the logo, the page groups as gold headings, all open with
--- their pages and side windows under them; no tabs under the window, no side tabs right of it
+-- the side bar (D-73): the open tab's symbol and name, its pages and side windows as rows
 local function navAll()
     local out = {}
-    for _, e in ipairs(MF.nav.items) do out[#out + 1] = (e.kind == "cat" and "#" or "") .. e.key end
+    for _, e in ipairs(MF.nav.items) do out[#out + 1] = e.key end
     return table.concat(out, " ")
 end
 local function navRow(kind, key)
@@ -464,106 +476,52 @@ local function navRow(kind, key)
         if e.entry.kind == kind and e.entry.key == key then return e end
     end
 end
-assert(MF.tabs == nil and MF.tabOrder == nil and MF.sideTabs == nil, "no tabs under or beside the window")
-assert(MF.clampInsets == nil, "nothing hangs out of the frame: no clamp insets")
+assert(MF.sideTabs == nil and MF.clampInsets == nil, "nothing hangs out of the frame")
 NS.Set("ui.view", "raider")
 NS.ShowPage("overview")
--- (2.10: the guild bank page is for everyone: its needs and pledges are for the raiders too; the side
--- windows right under their pages: the gear table and the goals under Ausrüstung)
-assert(navAll() == "#raid overview softres awards raidlog stats #char gear gear goals talents talents professions"
-    .. " #world dungeons raidjournal quests map #guild members calendar bank duels #amisia settings about feedback", navAll())
-local names = {}
-for _, e in ipairs(MF.nav.items) do if e.kind == "cat" then names[#names + 1] = e.label end end
-assert(table.concat(names, ",") == "Raid,Charakter,Welt,Gilde,Amisia", table.concat(names, ","))
-assert(navRow("cat", "raid").button.label:GetText() == "RAID", "headings in capitals")
+assert(navAll() == "overview softres awards raidlog stats", navAll())
+assert(MF.navHead.name:GetText() == "Raid" and MF.navHead.icon:IsShown() and MF.navHead.name.font == "GameFontNormalLarge")
+local tabsOf = {}
+for _, g in ipairs({ "gear", "dungeons", "prof", "talents", "guild", "amisia" }) do NS.ShowTab(g); tabsOf[#tabsOf + 1] = navAll() end
+assert(table.concat(tabsOf, " | ") == "gear gear goals | dungeons raidjournal quests map | professions | talents talents"
+    .. " | members calendar bank duels | settings gear bis dungeons prof raid guild amisia about feedback", table.concat(tabsOf, " | "))
 NS.Set("ui.view", "officer")
 NS.ShowPage("overview")
--- (DKP/EPGP: the page Punkte for officers, also while the guild rolls: they switch there; the roll
--- window and the soft-reserve import under their pages)
-assert(navAll():match("^#raid overview softres softres rolls rolls awards raidlog points stats raids export #char "), navAll())
+-- (DKP/EPGP: the page Punkte for officers; the roll window and the soft-reserve import under their pages)
+assert(navAll() == "overview softres softres rolls rolls awards raidlog points stats raids export", navAll())
 NS.Set("ui.expert", true)
-NS.Refresh()
-assert(navAll():match("#guild members calendar bank duels tools #amisia"), navAll())
--- the open page the gold rim of its bar, a heading never; ShowTab opens a group's last page
-assert(navRow("page", "overview").entry.on and not navRow("page", "softres").entry.on)
+NS.ShowTab("guild")
+assert(navAll() == "members calendar bank duels tools", navAll())
+-- ShowTab opens a tab's last page
 NS.ShowPage("map")
 NS.ShowTab("raid"); assert(NS.CurrentPage() == "overview", NS.CurrentPage())
-NS.ShowTab("world"); assert(NS.CurrentPage() == "map", "the group remembers its last page: " .. NS.CurrentPage())
-assert(AmisiaDB.settings.window.tab == "world" and AmisiaDB.settings.window.pages.world == "map")
-NS.Dispatch("statistik"); assert(NS.CurrentPage() == "stats" and navRow("page", "stats").entry.on, NS.CurrentPage())
--- a group without a visible page is not shown; the next takes its place
-local hide = { NS.Panel("bank"), NS.Panel("members"), NS.Panel("calendar"), NS.Panel("duels") }
-local keepAvail = {}
-NS.Set("ui.view", "raider")
-NS.Set("ui.expert", false)
-for i, p in ipairs(hide) do keepAvail[i] = p.available; p.available = function() return false end end
-NS.Refresh()
-assert(not navAll():find("#guild", 1, true) and navAll():find("map #amisia", 1, true), navAll())
-for i, p in ipairs(hide) do p.available = keepAvail[i] end
-NS.Set("ui.view", "officer")
-NS.Set("ui.expert", true)
-NS.ShowPage("overview")
--- every page keeps its row of 21, the side bar scrolls, the open page stays in view
-local function missingRows()
-    local rows, miss = {}, {}
-    for _, e in ipairs(MF.nav.items) do if e.kind == "page" then rows[e.key] = true end end
-    for _, p in ipairs(NS.panels) do
-        if NS.Visible(p) and not rows[p.key] then miss[#miss + 1] = p.key end
+NS.ShowTab("dungeons"); assert(NS.CurrentPage() == "map", "the tab remembers its last page: " .. NS.CurrentPage())
+assert(AmisiaDB.settings.window.tab == "dungeons" and AmisiaDB.settings.window.pages.dungeons == "map")
+NS.Dispatch("statistik"); assert(NS.CurrentPage() == "stats" and navRow("page", "stats").entry.on and MF.tabs.raid.on, NS.CurrentPage())
+-- every page is in its tab's side bar
+for _, p in ipairs(NS.panels) do
+    if NS.Visible(p) then
+        NS.ShowPage(p.key)
+        assert(navRow("page", p.key) and navRow("page", p.key).entry.on, "the row of " .. p.key)
     end
-    return table.concat(miss, ",")
 end
-assert(missingRows() == "", missingRows())
-assert(#MF.nav.items > MF.nav.rowCount and MF.nav.rowCount == 21 and #MF.navOrder == 21, "more than fit: " .. #MF.nav.items)
-assert(MF.navOrder[1].button._h == 20 and MF.navOrder[2].button.subArt.normal._h == 30, "the rows keep their height")
-NS.ShowPage("feedback")
-local seen = navRow("page", "feedback")
-assert(seen and seen.entry.on and MF.nav.offset > 0, "scrolled to the open page: " .. MF.nav.offset)
-local before = MF.nav.offset
-MF.nav.scripts.OnMouseWheel(MF.nav, 1)
-assert(MF.nav.offset == before - 1, "the wheel scrolls one row back: " .. MF.nav.offset)
 NS.ShowPage("overview")
-assert(navRow("page", "overview"), "the open page in view again")
-MF.nav.offset = 0
-NS.Refresh()
--- the head: the logo (round, on a black disc) at the side bar's top, the name and the version, the
--- gold line under it; the search box under the head, the list under the search box
-local head = MF.navHead
-local M = NS.Theme.MAIN
-assert(head.points.TOPLEFT.y == -6 and head._w == 164 and head._h == M.NAV_HEAD, "the head at the top")
-assert(head.logo._w == M.LOGO and head.name:GetText() == "Amisia" and head.name.font == "GameFontNormalLarge")
-assert(head.view:GetText():find(NS.VERSION, 1, true) and head.view.font == "GameFontDisableSmall", head.view:GetText())
--- the rows packed from the list's top, 21 apart (20 high, the list's 1 px between), not indented
-local NL = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF.nav, 164, 454)
-local parts = {}
+-- the rows packed from the list's top, NAV_ROW_H apart, not indented; the list under the side bar's head
+local RH = M.NAV_ROW_H
+assert(MF.nav.rowCount == math.floor(M.NAV_LIST_H / RH), "rows: " .. MF.nav.rowCount)
+local NL = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF.nav, 152, MF.nav.rowCount * RH)
 for i, e in ipairs(MF.navOrder) do
-    parts[#parts + 1] = e.button
     NL.inside("nav part", e.button)
-    assert(e.button._h == 20 and e.button.points.TOPLEFT.x == 0 and e.button.points.TOPLEFT.y == -(i - 1) * 21,
-        "rows 21 apart, not indented")
+    assert(e.button._h == RH - 1 and e.button.points.TOPLEFT.x == 0 and e.button.points.TOPLEFT.y == -(i - 1) * RH,
+        "rows " .. RH .. " apart, not indented")
 end
-NL.column("nav", unpack(parts))
-local _, lastB = NL.vspan(parts[#parts])
-assert(lastB == -(#parts * 21 - 1), "packed without gaps: " .. lastB)
-assert(MF.nav.points.TOPLEFT.y == -(6 + M.NAV_HEAD + 20 + 6) and MF.search.points.TOPLEFT.y == -(6 + M.NAV_HEAD), "the search box over the list")
-assert(MF.search._w == 164 and MF.search.inherits.SearchBoxTemplate)
--- a heading: no bar, the gold small name in capitals from x 8, no sign, the gold line over it from
--- the second on; a page: the sub-category bar (1 px in), its symbol at x 11, the gold name from x 29.
--- The chosen page has the bright gold rim (added light), the hover no blue glow; the name white under
--- the mouse
-local raidBar, ovRow, raidsRow = navRow("cat", "raid").button, navRow("page", "overview").button, navRow("page", "raids").button
-assert(not raidBar.subArt.normal:IsShown() and not raidBar.sign:IsShown() and not raidBar.rule:IsShown(), "the first heading")
-assert(raidBar.label.points.LEFT.x == 8 and raidBar.label.font == "GameFontNormalSmall", "the gold name")
-raidBar.scripts.OnEnter(raidBar); assert(raidBar.label.font == "GameFontNormalSmall", "a heading does not light up")
-local charBar = navRow("cat", "char").button
-assert(charBar.rule:IsShown() and charBar.rule.points.TOPLEFT.y == 0, "the gold line over the second heading")
-local sub = ovRow.subArt
-assert(ovRow.symbol:IsShown() and ovRow.symbol._w == 14 and ovRow.symbol.points.LEFT.x == 11, "the page's symbol, right of the rim's start")
-assert(sub.normal.atlas == "auctionhouse-nav-button-secondary" and sub.normal.points.TOPLEFT.x == 1 and sub.normal.points.TOPRIGHT.x == 1
-    and sub.normal:IsShown() and not ovRow.sign:IsShown(), "the page's bar")
-assert(ovRow.label.points.LEFT.x == 29 and ovRow.label._w == 152 - 29 - 6 and ovRow.label.font == "GameFontNormal", "indented")
-assert(sub.sel.atlas == "auctionhouse-nav-button-secondary-select" and sub.sel.blend == "ADD"
-    and sub.sel.layer == "ARTWORK" and sub.sel:IsShown() and not raidsRow.subArt.sel:IsShown(), "the shown page has the gold rim")
-assert(sub.hover.atlas == nil and sub.hover.texture == nil, "no blue glow on hover")
+assert(MF.nav.points.TOPLEFT.y == -(M.INNER + M.NAV_HEAD + M.NAV_GAP) and MF.navHead.points.TOPLEFT.y == -M.INNER, "the list under the head")
+-- a page: its symbol at NAV_ICON_X, its gold name from NAV_SUB_X; the chosen one lighter with the
+-- gold bar; the name white under the mouse
+local ovRow, raidsRow = navRow("page", "overview").button, navRow("page", "raids").button
+assert(ovRow.symbol:IsShown() and ovRow.symbol._w == M.NAV_ICON and ovRow.symbol.points.LEFT.x == M.NAV_ICON_X, "the page's symbol")
+assert(ovRow.label.points.LEFT.x == M.NAV_SUB_X and ovRow.label.font == "GameFontNormal", "the gold name")
+assert(ovRow.sel:IsShown() and ovRow.bar:IsShown() and ovRow.bar._w == M.SEL_W and not raidsRow.bar:IsShown(), "the chosen row")
 ovRow.scripts.OnEnter(ovRow); assert(ovRow.label.font == "GameFontHighlight", "white under the mouse")
 ovRow.scripts.OnLeave(ovRow); assert(ovRow.label.font == "GameFontNormal", "gold again")
 -- every page of the addon has its symbol, and only the client's marks: no spell or item icons
@@ -572,10 +530,12 @@ for _, p in ipairs(NS.panels) do
     assert(def, "a symbol for " .. p.key)
     assert(def.atlas or not def.file:lower():find("^interface\\icons\\"), "no item icon for " .. p.key)
 end
+for key, def in pairs(NS.Theme.TAB_ICONS) do
+    assert(def.atlas or not def.file:lower():find("^interface\\icons\\"), "no item icon for the tab " .. key)
+end
 -- a click on a row shows its page
 raidsRow:Click()
-assert(NS.CurrentPage() == "raids" and navRow("page", "raids").button.subArt.sel:IsShown()
-    and not navRow("page", "overview").button.subArt.sel:IsShown())
+assert(NS.CurrentPage() == "raids" and navRow("page", "raids").button.bar:IsShown() and not navRow("page", "overview").button.bar:IsShown())
 -- the collapsed sections of before 2.27.0 are dropped
 AmisiaDB.settings.window.collapsed = { raid = true }
 NS.ShowPage("overview")
@@ -583,22 +543,23 @@ assert(AmisiaDB.settings.window.collapsed == nil)
 NS.Reset("ui.expert")
 NS.Reset("ui.view")
 
--- the side windows (until 2.62.0 the side tabs right of the frame): a row of their group right under
--- their page, the chat window's maximize sign at the right; the gear table, the goals and the talent
--- window under Charakter, the roll window and the soft-reserve import under Raid (officers)
+-- the side windows: a row of their tab right under their page, the chat window's maximize sign at
+-- the right; the gear table and the goals under Ausrüstung, the talent window under Talente, the roll
+-- window and the soft-reserve import under Raid (officers)
+local WIN_TAB = { gear = "gear", goals = "gear", talents = "talents", rolls = "raid", softres = "raid" }
 local function winsShown()
     local out = {}
-    for _, g in ipairs({ "char", "raid" }) do
-        local mine = false
-        for _, e in ipairs(MF.nav.items) do
-            if e.kind == "cat" then mine = e.key == g end
-            if mine and e.kind == "win" then out[#out + 1] = e.key end
+    for _, g in ipairs({ "gear", "talents", "raid" }) do
+        local keep = MF.tabs[g]:IsShown()
+        if keep then
+            NS.ShowTab(g)
+            for _, e in ipairs(MF.nav.items) do if e.kind == "win" then out[#out + 1] = e.key end end
         end
     end
     return table.concat(out, " ")
 end
 local function win(key)
-    NS.ShowTab((key == "rolls" or key == "softres") and "raid" or "char")
+    NS.ShowTab(WIN_TAB[key])
     return navRow("win", key)
 end
 NS.Set("ui.view", "officer")
@@ -606,22 +567,22 @@ assert(winsShown() == "gear goals talents softres rolls", winsShown())
 for _, k in ipairs({ "gear", "goals", "talents", "rolls", "softres" }) do
     local w = win(k)
     assert(w.button.sign:IsShown() and w.button.sign.texture == "Interface\\ChatFrame\\UI-ChatIcon-Maximize-Up", "the window sign: " .. k)
-    assert(w.button.label.points.LEFT.x == 29 and w.button.subArt.normal:IsShown() and w.button.symbol:IsShown(), "on a page's bar with its symbol: " .. k)
+    assert(w.button.label.points.LEFT.x == M.NAV_SUB_X and w.button.symbol:IsShown(), "with its symbol: " .. k)
 end
 assert(win("gear").button.label:GetText() == "Tabelle" and win("rolls").button.label:GetText() == "Würfelfenster"
     and win("softres").button.label:GetText() == "Importieren" and win("talents").button.label:GetText() == "Talentrechner")
--- every row's name fits its bar (the sign takes the right end)
+-- every row's name fits its row (the sign takes the right end)
 for _, k in ipairs({ "gear", "goals", "talents", "rolls", "softres" }) do
     local l = win(k).button.label
     assert(l:GetStringWidth() <= l:GetWidth(), k .. ": " .. l:GetStringWidth() .. " > " .. l:GetWidth())
 end
 -- right under their pages
-assert(navAll():find("#char gear gear goals talents talents ", 1, true), navAll())
-assert(navAll():find(" softres softres rolls rolls ", 1, true), navAll())
+NS.ShowTab("raid")
+assert(navAll():find("softres softres rolls rolls ", 1, true), navAll())
 -- a raider sees the gear table, the goals and the talent window; without gear data the talents' only
 NS.Set("ui.view", "raider"); STUB.tick(0)
 assert(winsShown() == "gear goals talents", winsShown())
-NS.ShowPage("professions")   -- Charakter opens it below (not the talents page: its atlases are the calculator's)
+NS.ShowPage("professions")
 local keepGear = NS.GEAR
 NS.GEAR = nil
 NS.UpdateSideTabs()
@@ -636,12 +597,12 @@ NS.Set("ui.view", "officer"); STUB.tick(0)
 assert(winsShown() == "talents softres rolls", winsShown())
 NS.GEAR = keepGear
 NS.UpdateSideTabs()
--- a click opens and closes the window, the page stays; the row of an open window is on (white)
+-- a click opens and closes the window, the page stays; the row of an open window is on
 NS.ShowPage("awards")
 assert(not win("rolls").entry.on)
 win("rolls").button:Click()
 assert(AmisiaRollFrame and AmisiaRollFrame:IsShown() and win("rolls").entry.on == true and NS.CurrentPage() == "awards", "open and on")
-assert(win("rolls").button.subArt.sel:IsShown(), "the open window's row has the rim")
+assert(win("rolls").button.bar:IsShown(), "the open window's row is chosen")
 win("rolls").button:Click()
 assert(not AmisiaRollFrame:IsShown() and win("rolls").entry.on == false, "closed and off")
 win("softres").button:Click()
@@ -659,7 +620,7 @@ NS.Reset("ui.view")
 -- the close button hides the main window in combat, without HideUIPanel
 MF:Show()
 STUB.combat = true
-MF.CloseButton:Click()
+MF.head.close:Click()
 STUB.combat = false
 assert(not MF:IsShown(), "closed in combat")
 
@@ -692,7 +653,7 @@ end
 local function winRowOn(key)
     local hidden = not MF:IsShown()
     if hidden then MF:Show() end
-    NS.ShowTab((key == "rolls" or key == "softres") and "raid" or "char")
+    NS.ShowTab(WIN_TAB[key])
     local on
     for _, e in ipairs(MF.navOrder) do
         if e.entry.kind == "win" and e.entry.key == key then on = e.entry.on end
@@ -873,14 +834,14 @@ local rfh = assert(io.open(ADDON_DIR .. "/Core/Registry.lua", "rb"))
 local rsrc = rfh:read("*a")
 rfh:close()
 for lead in rsrc:gmatch("[\192-\255]") do assert(lead:byte() <= 195, "beyond Latin-1 in Registry.lua") end
--- the groups of the side bar (D-68)
-local groupKeys, groupNames = {}, {}
-for _, g in ipairs(NS.PANEL_GROUPS) do groupKeys[#groupKeys + 1], groupNames[#groupNames + 1] = g.key, g.label end
-assert(table.concat(groupKeys, " ") == "raid char world guild amisia" and table.concat(groupNames, ",") == "Raid,Charakter,Welt,Gilde,Amisia",
-    table.concat(groupNames, ","))
--- every page names its group
+-- the tabs of the window (D-73)
+local groupKeys, groupNames, known = {}, {}, {}
+for _, g in ipairs(NS.PANEL_GROUPS) do groupKeys[#groupKeys + 1], groupNames[#groupNames + 1], known[g.key] = g.key, g.label, true end
+assert(table.concat(groupKeys, " ") == "gear dungeons prof talents raid guild amisia"
+    and table.concat(groupNames, ",") == "Ausrüstung,Dungeons & Raids,Berufe,Talente,Raid,Gilde,Amisia", table.concat(groupNames, ","))
+-- every page names its tab
 for _, p in ipairs(NS.panels) do
-    assert(p.group == "raid" or p.group == "char" or p.group == "world" or p.group == "guild" or p.group == "amisia",
+    assert(known[p.group],
         "a group for " .. p.key)
 end
 
@@ -912,8 +873,10 @@ for name, def in pairs(NS.Theme.NAV_ICONS) do if def.atlas then ALLOWED[def.atla
 for _, part in ipairs({ "", "-select", "-highlight", "-secondary", "-secondary-select", "-secondary-highlight" }) do
     ALLOWED["auctionhouse-nav-button" .. part] = true
 end
+-- the talent page's own (its arrows and frames, tests/test_talents_page.lua), opened by the tab checks
+-- above (D-73)
 for name in pairs(STUB.atlasCalls) do
-    assert(ALLOWED[name], "an atlas outside the design: " .. name)
+    assert(ALLOWED[name] or name:find("^talents?%-"), "an atlas outside the design: " .. name)
 end
 
 ---------------------------------------------------------------------------

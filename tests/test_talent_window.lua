@@ -217,10 +217,8 @@ NS.msg = function(t) said = t end
 NS.Dispatch("talente gross")
 NS.msg = msg
 assert(not win:IsShown() and has(said, "nicht verfügbar"), tostring(said))
-NS.ShowTab("char")
-local listed = false
-for _, e in ipairs(MF.nav.items) do if e.kind == "cat" and e.key == "char" then listed = true end end
-assert(listed and not winRow(), "no row without data (its group listed)")
+NS.ShowTab("gear")
+assert(not MF.tabs.talents:IsShown() and not winRow(), "no row and no tab without data")
 NS.TALENTS = keep
 T._reset()
 print("test_talent_window ok")

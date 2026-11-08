@@ -115,7 +115,7 @@ _G.IsPlayerSpell = function(id) return id == 8200 end
 -- the page: mages see it, others open it with the command
 ---------------------------------------------------------------------------
 local panel = NS.Panel("scrolls")
-assert(panel and panel.group == "char" and panel.label == "Schriftrollen", "registered under Charakter")
+assert(panel and panel.group == "prof" and panel.label == "Schriftrollen", "registered under Berufe")
 assert(NS.Visible(panel), "a mage sees it")
 STUB.class = "WARRIOR"
 assert(not NS.Visible(panel), "a warrior does not")

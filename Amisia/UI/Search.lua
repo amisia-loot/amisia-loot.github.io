@@ -298,12 +298,12 @@ end
 local function pageHits(q)
     local out, named = {}, {}
     local function add(p)
-        -- the tab in the tooltip: two pages may share a name (Raids in Raid and in Ausrüstung)
+        -- the tab in the tooltip: two pages may share a name (Raids in Raid and in Dungeons & Raids)
         local tab = ns.PanelGroup(p)
         for _, g in ipairs(ns.PANEL_GROUPS) do
             if g.key == tab then tab = g.label end
         end
-        out[#out + 1] = { text = p.label, tip = L["Seite in der Gruppe %s."]:format(tab),
+        out[#out + 1] = { text = p.label, tip = L["Seite im Reiter %s."]:format(tab),
             run = function() ns.ShowPage(p.key) end }
     end
     for _, p in ipairs(ns.panels) do

@@ -2419,6 +2419,6 @@ ns.DungeonJournalKit = { buildArt = buildArt, fillArt = fillArt, buildDetail = b
     -- the bosses' fold (F-144)
     showBosses = showBosses, foldLink = foldLink, foldState = foldState, placeParts = placeParts }
 
-ns.RegisterPanel{ key = "dungeons", label = "Dungeons", sub = L["Was dir jeder Dungeon bringt: Bosse, Beute und Quests."], icon = ICON, order = 51, group = "world",
+ns.RegisterPanel{ key = "dungeons", label = "Dungeons", sub = L["Was dir jeder Dungeon bringt: Bosse, Beute und Quests."], icon = ICON, order = 51, group = "dungeons",
     available = function() return ns.Gear.Available() end,
     create = create, refresh = refresh }

@@ -1,10 +1,11 @@
--- Amisia main window in the look of Forever's profession window: the client's portrait frame, a
--- status bar with the recording state, on the left the side bar (D-68, D-70: a head with the logo, a
--- search box, every group as a heading with its pages and side windows as rows with their symbols),
--- the page itself in an inset on the right. The size can be dragged at the bottom right corner (D-68,
--- D-71); the minimize button folds the window to a small bar (D-71). Typing two
--- characters into the search box turns the side bar into the results (UI/Search.lua). Pages are built
--- the first time they are opened and refreshed only while shown.
+-- Amisia main window as a hub (D-73): a dark window with a thin gold edge; the head with the logo, the
+-- name and the client's picture behind it, the search box and the square buttons (feedback, minimize,
+-- close); under it the tabs (ns.PANEL_GROUPS), each with its own side bar on the left (the tab's
+-- symbol and name, its pages and side windows as rows with their symbols); the page on the right
+-- under its head; the footer with the recording state and the version. The size can be dragged at
+-- the bottom right corner (D-68, D-71); the minimize button folds the window to a small bar (D-71).
+-- Typing two characters into the search box turns the side bar into the results (UI/Search.lua).
+-- Pages are built the first time they are opened and refreshed only while shown.
 local ADDON, ns = ...
 local L = ns.L
 
@@ -20,8 +21,11 @@ local PORTRAIT = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
 local WINDOW_SIGN = "Interface\\ChatFrame\\UI-ChatIcon-Maximize-Up"
 local GRABBER = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-"
 
+local H = T.HUB
 local F, mini, minBtn, navHead, viewText, nav, content, statusBar, statusText, menuBtn, helpBtn, settingsBtn, search, results, noHits, searchHint, homeBtn, grip
-local pageHead, pageTitle, pageSub   -- the page head over the page (D-69)
+local pageHead, pageIcon, pageTitle, pageSub   -- the page head over the page (D-69, D-73)
+local tabBar, tabs = nil, {}   -- the tabs under the head (D-73), by group key
+local openTab          -- the tab whose side bar shows
 local built, current = {}, nil
 local previous      -- the page shown before the current one (the feedback's details name it)
 local navShownFor   -- the page (and what the settings show) the side bar last scrolled into view
@@ -33,15 +37,15 @@ local query = ""          -- the search text, trimmed and lower case
 -- its page: "Importieren" under "Soft-Reserves"); tip: what the window is for (the row's tooltip under
 -- its full name).
 local SIDE_WINDOWS = {
-    { key = "gear", label = L["Ausrüstungstabelle"], row = L["Tabelle"], group = "char", after = "gear", frame = "AmisiaGearFrame",
+    { key = "gear", label = L["Ausrüstungstabelle"], row = L["Tabelle"], group = "gear", after = "gear", frame = "AmisiaGearFrame",
       tip = L["Das beste Item je Platz für jede Stufe, mit Quelle und Alternativen."],
       visible = function() return ns.Gear ~= nil and ns.Gear.Available() and ns.ToggleGearFrame ~= nil end,
       toggle = function() ns.ToggleGearFrame() end },
-    { key = "goals", label = L["Ausrüstungsziele"], group = "char", after = "gear", frame = "AmisiaGoalsFrame",
+    { key = "goals", label = L["Ausrüstungsziele"], group = "gear", after = "gear", frame = "AmisiaGoalsFrame",
       tip = L["Deine Ziele an deinem Charakter anprobieren, Platz für Platz mit Rangliste und Katalog."],
       visible = function() return ns.Gear ~= nil and ns.Gear.Available() and ns.ToggleGoalsFrame ~= nil end,
       toggle = function() ns.ToggleGoalsFrame() end },
-    { key = "talents", label = L["Talentrechner"], group = "char", after = "talents", frame = "AmisiaTalentFrame",
+    { key = "talents", label = L["Talentrechner"], group = "talents", after = "talents", frame = "AmisiaTalentFrame",
       tip = L["Talente planen, im großen Fenster."],
       visible = function() return ns.Talents ~= nil and ns.Talents.Available() and ns.ToggleTalentFrame ~= nil end,
       toggle = function() ns.ToggleTalentFrame() end },
@@ -82,9 +86,11 @@ local function windowState()
             local now = p and ns.PanelGroup(p)
             if now and (pages[now] == nil or g == now) then pages[now] = key end
         end
-        if w.tab ~= nil and not known[w.tab] then
+        -- the tab of the last page: an unknown tab, or one whose page moved to another tab (D-73: the
+        -- group "gear" of before 2.27.0 is a tab again, its page "map" is under Dungeons & Raids)
+        if w.tab ~= nil then
             local p = type(w.pages[w.tab]) == "string" and ns.Panel(w.pages[w.tab]) or nil
-            w.tab = p and ns.PanelGroup(p) or nil
+            if p then w.tab = ns.PanelGroup(p) elseif not known[w.tab] then w.tab = nil end
         end
         w.pages = pages
         local h = tonumber(w.h)
@@ -166,7 +172,8 @@ local function updateHeader()
     else
         statusText:SetText("|cffe0a344" .. L["Aufnahme pausiert"] .. "|r")
     end
-    viewText:SetText(("v%s · %s"):format(ns.VERSION or "?", ns.IsOfficerView() and L["Offiziersansicht"] or L["Raider-Ansicht"]))
+    viewText:SetText(("%s · %s"):format(ns.IsOfficerView() and L["Offiziersansicht"] or L["Raider-Ansicht"],
+        L["Version %s"]:format(ns.VERSION or "?")))
     settingsBtn:SetShown(current ~= "settings" and ns.SettingsSectionsOf ~= nil and #ns.SettingsSectionsOf(current) > 0)
     -- the "?" sits left of the gear, or at the head's end when the page has no settings
     helpBtn:ClearAllPoints()
@@ -179,7 +186,9 @@ end
 
 -- The page head (D-69): the open page's name and its one line (sub: a text; none: the name alone, a
 -- little lower).
+local setArt
 local function updatePageHead(p)
+    setArt(pageIcon, p and T.NAV_ICONS[p.key])
     pageTitle:SetText(p and p.label or "")
     local sub = p and p.sub
     pageSub:SetText(type(sub) == "string" and sub or "")
@@ -258,18 +267,16 @@ local function windowEntry(def)
     return { kind = "win", key = def.key, label = def.row or def.label, def = def, on = win ~= nil and win:IsShown() and true or false }
 end
 
--- What the side bar shows (D-70): every group with a visible page or side window as a heading, under
--- it its pages, each side window right under its page (or at the end), and while the settings page
--- is open, under it its tabs and, under the tab of the chosen section, that tab's sections (D-49),
--- unless folded: { kind = "cat"|"page"|"group"|"section"|"win", key, label, on = chosen, changed,
--- open, has, first = the first heading }.
+-- What the side bar shows (D-73): the pages of the open tab, each side window right under its page
+-- (or at the end), and while the settings page is open, under it its tabs and, under the tab of the
+-- chosen section, that tab's sections (D-49), unless folded: { kind = "page"|"group"|"section"|"win",
+-- key, label, on = chosen, changed, open, has }.
 local function navEntries(byGroup)
     local out = {}
     byGroup = byGroup or pagesByGroup()
     for _, g in ipairs(ns.PANEL_GROUPS) do
-        local pages, wins = byGroup[g.key], windowsOf(g.key)
-        if #pages + #wins > 0 then
-            out[#out + 1] = { kind = "cat", key = g.key, label = g.label, first = #out == 0 }
+        local pages, wins = byGroup[g.key] or {}, windowsOf(g.key)
+        if g.key == openTab and #pages + #wins > 0 then
             local placed = {}
             for _, p in ipairs(pages) do
                 out[#out + 1] = { kind = "page", key = p.key, label = p.label, on = p.key == current }
@@ -390,9 +397,8 @@ applySize = function(w, h)
     F:SetSize(w, h)
     T.PAGE_H = PAGE_H0 + h - HEIGHT
     T.PAGE_W_NOW = PAGE_W0 + w - WIDTH
-    local rows = math.floor((M.NAV_LIST_H + h - HEIGHT) / ROW_H)
-    nav:Fit(rows)
-    results:Fit(rows)
+    nav:Fit(math.floor((M.NAV_LIST_H + h - HEIGHT) / ROW_H))
+    results:Fit(math.floor((M.NAV_LIST_H + h - HEIGHT) / M.RES_ROW_H))
     return w, h
 end
 -- the height alone (the width kept)
@@ -552,33 +558,30 @@ local function buildMini()
     return bar
 end
 
--- The minimize button: the client's (UIPanelHideButtonNoScripts, the red "-"), left of the close
--- button, the frame's corner art for two buttons as the client's own minimizable windows
--- (PortraitFrameTemplateMinimizable); without the template the old client's smaller-window button.
--- In the flat window of TBC and Era (no TitleContainer: the old 32 px close button) MIN_SIZE_OLD,
--- centred on the close button and clear of the status line.
-local function buildMinButton()
-    local modern = F.TitleContainer ~= nil
-    local ok, b = pcall(CreateFrame, "Button", nil, F, "UIPanelHideButtonNoScripts")
-    if not ok or not b then
-        b = CreateFrame("Button", nil, F)
-        b:SetNormalTexture("Interface\\Buttons\\UI-Panel-SmallerButton-Up")
-        b:SetPushedTexture("Interface\\Buttons\\UI-Panel-SmallerButton-Down")
-        b:SetHighlightTexture("Interface\\Buttons\\UI-Panel-SmallerButton-Highlight", "ADD")
-    end
-    local size = modern and M.MIN_SIZE or M.MIN_SIZE_OLD
-    b:SetSize(size, size)
-    if F.CloseButton and modern then
-        -- its top at the window's top (the close button's template hangs 1 px over it)
-        b:SetPoint("TOPRIGHT", F.CloseButton, "TOPLEFT", 0, -1)
-        if F.SetBorder then pcall(F.SetBorder, F, "PortraitFrameTemplateMinimizable") end
-    elseif F.CloseButton then
-        b:SetPoint("RIGHT", F.CloseButton, "LEFT", 0, 0)
+-- A square button of the head (D-73): dark with the gold edge, a gold sign (a symbol from art, else
+-- the glyph) and a soft gold light under the mouse.
+local function headButton(parent, art, glyph, title, tip, onClick)
+    local b = CreateFrame("Button", nil, parent)
+    b:SetSize(M.HBTN, M.HBTN)
+    b.ground = W.Flat(b, H.BTN_BG[1], H.BTN_BG[2], H.BTN_BG[3], H.BTN_BG[4])
+    b.edges = W.Border(b, H.EDGE[1], H.EDGE[2], H.EDGE[3], H.EDGE[4])
+    local hl = b:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    hl:SetColorTexture(1, 0.82, 0.4, 0.15)
+    b.sign = b:CreateTexture(nil, "ARTWORK")
+    b.sign:SetPoint("TOPLEFT", 4, -4)
+    b.sign:SetPoint("BOTTOMRIGHT", -4, 4)
+    b.glyph = W.Text(b, T.FONT.title)
+    b.glyph:SetPoint("CENTER", 0, 0)
+    b.glyph:SetJustifyH("CENTER")
+    if art and setArt(b.sign, art) then
+        b.glyph:Hide()
     else
-        b:SetPoint("TOPRIGHT", -M.MIN_SIZE, 0)
+        b.sign:Hide()
+        b.glyph:SetText(glyph or "?")
     end
-    b:SetScript("OnClick", minimize)
-    W.Tooltip(b, L["Minimieren"], L["Klappt das Fenster zu einer kleinen Leiste zusammen; ein Klick darauf öffnet es wieder."])
+    b:SetScript("OnClick", onClick)
+    W.Tooltip(b, title, tip)
     return b
 end
 
@@ -721,42 +724,32 @@ function ns.UpdateSideTabs()
     if F and F:IsShown() then updateNav() end
 end
 
--- A row of the side bar (a row of the W.List nav, D-70): a group as a heading (gold capitals from
--- NAV_LABEL_X, no bar, the gold line over it from the second on); a page and a side window on the
--- auction house's sub-category bar with its symbol (T.NAV_ICONS) and the name gold from NAV_SUB_X; the
--- settings' tabs on that bar from NAV_SUB2_X (gold), a section white from NAV_SUB3_X (D-49); a side
--- window with the chat window's maximize sign at the right. The name white while the mouse is over
--- it. Without the client's bars: the recipe list's glow when chosen and its hover, the same names.
-local LABEL_X = { cat = M.NAV_LABEL_X, page = M.NAV_SUB_X, win = M.NAV_SUB_X, group = M.NAV_SUB2_X, section = M.NAV_SUB3_X }
+-- Where a row's name starts, by what it shows.
+local LABEL_X = { page = M.NAV_SUB_X, win = M.NAV_SUB_X, group = M.NAV_SUB2_X, section = M.NAV_SUB3_X }
 
--- A heading in capitals (the umlauts too, which string.upper leaves).
-local function caps(text)
-    return (tostring(text):upper():gsub("ä", "Ä"):gsub("ö", "Ö"):gsub("ü", "Ü"))   -- l10n-ok: letters, not text
-end
-
--- The symbol of a row: its page's or side window's (T.NAV_ICONS), else none; none either when the
--- client lacks the atlas or (where it can tell, GetFileIDFromPath) the file. A pooled row's texture
--- coordinates from an atlas are reset for a file.
-local function setSymbol(tex, key)
-    local def = key and T.NAV_ICONS[key]
+-- A symbol of the client (def: { atlas } or { file }, T.NAV_ICONS, T.TAB_ICONS) on tex, shown; none
+-- (hidden, false) without def or when the client lacks the atlas or (where it can tell,
+-- GetFileIDFromPath) the file. A pooled texture's coordinates from an atlas are reset for a file.
+setArt = function(tex, def)
     if def and def.atlas and W.HasAtlas(def.atlas) then
         tex:SetAtlas(def.atlas, false)
         tex:Show()
+        return true
     elseif def and def.file and not (GetFileIDFromPath and GetFileIDFromPath(def.file) == nil) then
         tex:SetTexture(def.file)
         tex:SetTexCoord(0, 1, 0, 1)
         tex:Show()
-    else
-        tex:Hide()
+        return true
     end
+    tex:Hide()
+    return false
 end
+local function setSymbol(tex, key) setArt(tex, key and T.NAV_ICONS[key]) end
 
 local function navClick(self)
     local e = self.item
     if not e then return end
-    if e.kind == "cat" then
-        return   -- a heading
-    elseif e.kind == "win" then
+    if e.kind == "win" then
         e.def.toggle()
         ns.UpdateSideTabs()
     elseif e.kind == "section" then
@@ -790,58 +783,56 @@ local function navClick(self)
     end
 end
 
+-- A row of the side bar (D-73): on the side bar's ground, a light shade under the mouse; the chosen
+-- one lighter with a gold bar at its left edge; a page or side window its symbol (T.NAV_ICONS) and its
+-- name in gold from NAV_SUB_X (white under the mouse), a side window the chat window's maximize sign at
+-- the right; the settings' tabs from NAV_SUB2_X (gold), a section white from NAV_SUB3_X (D-49).
 local function buildNav(b)
     local w = NAV_W - T.SCROLL_ROOM
-    b.subArt = W.NavBar(b, true)
-    if b.subArt then
-        b.subArt:Fit(ROW_H - 1)
-        b.bg:Hide()
-        b.hover:SetAlpha(0)    -- the bars bring their own glow
-    else
-        b.bg:Hide()
-        b.sel = W.SelectBar(b)
-    end
+    b.bg:Hide()
+    b.hover:SetColorTexture(H.ROW_HOVER[1], H.ROW_HOVER[2], H.ROW_HOVER[3], H.ROW_HOVER[4])
+    b.hover:SetAlpha(1)
+    b.sel = b:CreateTexture(nil, "BACKGROUND", nil, 1)
+    b.sel:SetAllPoints()
+    b.sel:SetColorTexture(H.ROW_ON[1], H.ROW_ON[2], H.ROW_ON[3], H.ROW_ON[4])
+    b.sel:Hide()
+    b.bar = b:CreateTexture(nil, "ARTWORK")
+    b.bar:SetPoint("TOPLEFT", 0, 0)
+    b.bar:SetPoint("BOTTOMLEFT", 0, 0)
+    b.bar:SetWidth(M.SEL_W)
+    b.bar:SetColorTexture(T.GOLD[1], T.GOLD[2], T.GOLD[3], 1)
+    b.bar:Hide()
     b.symbol = b:CreateTexture(nil, "OVERLAY")
     b.symbol:SetSize(M.NAV_ICON, M.NAV_ICON)
     b.symbol:SetPoint("LEFT", M.NAV_ICON_X, 0)
     b.symbol:Hide()
-    b.rule = W.GoldRule(b, M.RULE_ALPHA)
-    b.rule:SetPoint("TOPLEFT", M.NAV_LABEL_X, 0)
-    b.rule:SetPoint("TOPRIGHT", -M.NAV_LABEL_X, 0)
-    b.rule:Hide()
     b.sign = b:CreateTexture(nil, "OVERLAY")
     b.sign:SetSize(M.FOLD, M.FOLD)
     b.sign:SetPoint("RIGHT", -M.FOLD_R, 0)
-    b.label = W.Text(b, T.FONT.title, M.NAV_LABEL_W)
-    b.label:SetPoint("LEFT", M.NAV_LABEL_X, 0)
+    b.label = W.Text(b, T.FONT.title, w - M.NAV_SUB_X - 6)
+    b.label:SetPoint("LEFT", M.NAV_SUB_X, 0)
     if b.label.SetShadowOffset then b.label:SetShadowOffset(1, -1) end
     b.font = T.FONT.title
-    -- the bar, the indent, the font and the sign of what the row shows
+    -- the indent, the font and the sign of what the row shows
     function b:SetKind(kind)
         self.kind = kind
-        local head = kind == "cat"
-        if self.subArt then
-            self.subArt.normal:SetShown(not head)
-            self.subArt.hover:SetShown(not head)
-        else
-            self.hover:SetShown(not head)
-        end
         local x = LABEL_X[kind] or M.NAV_SUB_X
         local signed = kind == "win"
         self.label:ClearAllPoints()
         self.label:SetPoint("LEFT", x, 0)
         self.label:SetWidth(w - x - 6 - (signed and (M.FOLD + M.FOLD_R) or 0))
-        self.font = (head and T.FONT.head) or (kind == "section" and T.FONT.text) or T.FONT.title
+        self.font = kind == "section" and T.FONT.text or T.FONT.title
         self.label:SetFontObject(self.font)
     end
     function b:SetSelected(on)
-        on = (on and self.kind ~= "cat") and true or false
-        if self.subArt then self.subArt:SetSelected(on) else self.sel:SetShown(on) end
+        on = on and true or false
+        self.sel:SetShown(on)
+        self.bar:SetShown(on)
     end
     b:SetScript("OnClick", navClick)
     b:SetScript("OnEnter", function(self)
         local e = self.item
-        if not e or e.kind == "cat" then return end
+        if not e then return end
         self.label:SetFontObject(T.FONT.body)
         if e.kind == "win" then
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -860,12 +851,7 @@ end
 local function fillNav(b, e)
     b.key = e.key
     b:SetKind(e.kind)
-    if e.kind == "cat" then
-        b.label:SetText(caps(e.label))
-    else
-        b.label:SetText(e.kind == "section" and e.changed and (DOT .. e.label) or e.label)
-    end
-    b.rule:SetShown(e.kind == "cat" and not e.first)
+    b.label:SetText(e.kind == "section" and e.changed and (DOT .. e.label) or e.label)
     if e.kind == "page" then
         setSymbol(b.symbol, e.key)
     elseif e.kind == "win" then
@@ -882,9 +868,111 @@ local function fillNav(b, e)
     b:SetSelected(e.on)
 end
 
+---------------------------------------------------------------------------
+-- The tabs (D-73)
+---------------------------------------------------------------------------
+-- A tab: dark with a thin gold edge, its symbol and its name in gold (the gear tab its symbol only);
+-- the chosen one lighter with the gold line at its bottom and the name white. A click opens the tab's
+-- last page.
+local function buildTab(group)
+    local b = CreateFrame("Button", nil, tabBar)
+    b.key = group.key
+    b:SetHeight(M.TAB_H)
+    b.ground = W.Flat(b, H.TAB_BG[1], H.TAB_BG[2], H.TAB_BG[3], H.TAB_BG[4])
+    b.edges = W.Border(b, H.TAB_EDGE[1], H.TAB_EDGE[2], H.TAB_EDGE[3], H.TAB_EDGE[4])
+    local hl = b:CreateTexture(nil, "HIGHLIGHT")
+    hl:SetAllPoints()
+    hl:SetColorTexture(1, 0.82, 0.4, 0.08)
+    b.line = b:CreateTexture(nil, "OVERLAY")
+    b.line:SetHeight(M.TAB_LINE)
+    b.line:SetPoint("BOTTOMLEFT", 1, 1)
+    b.line:SetPoint("BOTTOMRIGHT", -1, 1)
+    b.line:SetColorTexture(T.GOLD[1], T.GOLD[2], T.GOLD[3], 1)
+    b.line:Hide()
+    b.icon = b:CreateTexture(nil, "ARTWORK")
+    b.icon:SetSize(M.TAB_ICON, M.TAB_ICON)
+    local hasIcon = setArt(b.icon, T.TAB_ICONS[group.key])
+    if group.gear then
+        b.icon:SetPoint("CENTER", 0, 0)
+        b:SetWidth(M.GEAR_W)
+        if not hasIcon then
+            b.label = W.Text(b, T.FONT.title)
+            b.label:SetPoint("CENTER", 0, 0)
+            b.label:SetText(group.label)
+            b:SetWidth(math.max(M.GEAR_W, math.ceil(b.label:GetStringWidth() or 0) + 2 * M.TAB_PAD))
+        end
+    else
+        b.icon:SetPoint("LEFT", M.TAB_PAD, 0)
+        b.label = W.Text(b, T.FONT.title)
+        b.label:SetPoint("LEFT", hasIcon and (M.TAB_PAD + M.TAB_ICON + M.TAB_ICON_GAP) or M.TAB_PAD, 0)
+        b.label:SetText(group.label)
+        local textW = math.ceil(b.label:GetStringWidth() or 0)
+        b:SetWidth((hasIcon and (M.TAB_ICON + M.TAB_ICON_GAP) or 0) + textW + 2 * M.TAB_PAD)
+    end
+    if b.label and b.label.SetShadowOffset then b.label:SetShadowOffset(1, -1) end
+    function b:SetOn(on)
+        self.on = on and true or false
+        local c = self.on and H.TAB_ON or H.TAB_BG
+        self.ground:SetColorTexture(c[1], c[2], c[3], c[4])
+        local e = self.on and H.EDGE or H.TAB_EDGE
+        W.SetBorderColor(self.edges, e[1], e[2], e[3], e[4])
+        self.line:SetShown(self.on)
+        if self.label then self.label:SetFontObject(self.on and T.FONT.body or T.FONT.title) end
+    end
+    b:SetScript("OnClick", function(self)
+        ns.ClearSearch()
+        ns.ShowTab(self.key)
+    end)
+    b:SetScript("OnEnter", function(self)
+        if self.label then self.label:SetFontObject(T.FONT.body) end
+        if group.gear then
+            GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+            GameTooltip:AddLine(L["Einstellungen"], 1, 0.82, 0)
+            GameTooltip:AddLine(L["Einstellungen, Feedback und Über Amisia."], 0.85, 0.85, 0.85, true)
+            GameTooltip:Show()
+        end
+    end)
+    b:SetScript("OnLeave", function(self)
+        if self.label then self.label:SetFontObject(self.on and T.FONT.body or T.FONT.title) end
+        GameTooltip:Hide()
+    end)
+    b:SetOn(false)
+    return b
+end
+
+-- The tabs with a visible page or side window, left to right from TAB_X (the gear tab at the right
+-- end), the open one chosen; the side bar's head shows the open tab. F.tabOrder: the shown tabs in order.
+local function updateTabs(byGroup)
+    local order, x = {}, M.TAB_X
+    for _, g in ipairs(ns.PANEL_GROUPS) do
+        local b = tabs[g.key]
+        local shown = #(byGroup[g.key] or {}) + #windowsOf(g.key) > 0
+        b:SetShown(shown)
+        b:SetOn(g.key == openTab)
+        if shown then
+            b:ClearAllPoints()
+            if g.gear then
+                b:SetPoint("TOPRIGHT", tabBar, "TOPRIGHT", -M.TAB_X, 0)
+            else
+                b:SetPoint("TOPLEFT", tabBar, "TOPLEFT", x, 0)
+                x = x + b:GetWidth() + M.TAB_GAP
+            end
+            order[#order + 1] = b
+        end
+        if g.key == openTab then
+            -- the large font, the smaller one for a name too long for it (Dungeons & Raids)
+            navHead.name:SetFontObject(T.FONT.big)
+            navHead.name:SetText(g.label)
+            if (navHead.name:GetStringWidth() or 0) > navHead.name:GetWidth() then navHead.name:SetFontObject(T.FONT.title) end
+            setArt(navHead.icon, T.TAB_ICONS[g.key])
+        end
+    end
+    F.tabOrder = order
+end
+
 local function build()
-    F = W.Window("AmisiaFrame", WIDTH, HEIGHT, { portrait = PORTRAIT, strata = "FULLSCREEN",
-        title = "Amisia", background = "Profession-Background-Overview",
+    F = W.Window("AmisiaFrame", WIDTH, HEIGHT, { flat = true, strata = "FULLSCREEN",
+        bg = H.BG, edge = H.EDGE,
         onShow = function(self)
             if self.Raise then self:Raise() end
             -- another screen or scale since the last open: the size stays on it
@@ -902,110 +990,157 @@ local function build()
         onDragStop = function() savePosition() end })
     restorePosition()
     ns.ApplyScale()
+    -- the flat window's own title and X give way to the head's
+    if F.TitleContainer then F.TitleContainer:Hide() end
+    if F.CloseButton then F.CloseButton:Hide() end
 
-    -- the head (D-67): the recording state as plain text, centred right of the portrait, on the
-    -- frame's own ground (a dark bar there did not fit the window's look); a click on it or on its arrow
-    -- opens the menu with the recording and the view. No red buttons; "?" and the gear went to the page
-    -- head (D-69).
-    local bar = CreateFrame("Button", nil, F)
-    bar:SetHeight(M.HEAD_H)
-    bar:SetPoint("TOPLEFT", M.HEAD_X, -M.HEAD_Y)
-    bar:SetPoint("TOPRIGHT", -M.ICON_RIGHT, -M.HEAD_Y)   -- as wide as the window (D-71)
-    statusBar = bar
-    statusText = W.Text(bar, T.FONT.body)
-    statusText:SetPoint("CENTER", bar, "CENTER", -(M.MENU_SIZE + M.ICON_GAP) / 2, 0)
-    statusText:SetJustifyH("CENTER")
-    if statusText.SetShadowOffset then statusText:SetShadowOffset(1, -1) end
-    local function openMenu() W.Menu(menuBtn, headMenu()) end
-    menuBtn = W.ArrowButton(bar, "down", M.MENU_SIZE, openMenu)
-    menuBtn:SetPoint("LEFT", statusText, "RIGHT", M.ICON_GAP, 0)
-    bar:SetScript("OnClick", openMenu)
-    -- the status line still moves the window, as the head did before it took the mouse
-    dragMoves(bar)
-    local function statusTip(self)
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:AddLine(L["Raid-Aufnahme"], 1, 0.82, 0)
-        GameTooltip:AddLine(ns.IsEnabled() and L["Aufnahme an: startet von selbst in einer Raidinstanz mit Raidgruppe."]
-            or L["Aufnahme pausiert."], 0.85, 0.85, 0.85, true)
-        GameTooltip:AddLine(ns.IsOfficerView() and L["Ansicht: Offiziere"] or L["Ansicht: Raider"], 0.85, 0.85, 0.85)
-        GameTooltip:AddLine(L["Klick: pausieren, fortsetzen oder die Ansicht wechseln."], 0.6, 0.6, 0.6, true)
-        GameTooltip:Show()
+    -- the head (D-73): a shade lighter than the window, the client's picture behind its right part
+    -- fading in from the left, the gold line under it; it moves the window
+    local head = CreateFrame("Frame", nil, F)
+    head:SetPoint("TOPLEFT", 1, -1)
+    head:SetPoint("TOPRIGHT", -1, -1)
+    head:SetHeight(M.HEAD_H - 1)
+    head:EnableMouse(true)
+    head:RegisterForDrag("LeftButton")
+    head:SetScript("OnDragStart", function() F:StartMoving() end)
+    head:SetScript("OnDragStop", function()
+        F:StopMovingOrSizing()
+        savePosition()
+    end)
+    head.ground = W.Flat(head, H.HEAD_BG[1], H.HEAD_BG[2], H.HEAD_BG[3], H.HEAD_BG[4])
+    local pic = H.BANNER
+    if not (GetFileIDFromPath and GetFileIDFromPath(pic.file) == nil) then
+        head.banner = head:CreateTexture(nil, "BORDER")
+        head.banner:SetTexture(pic.file)
+        head.banner:SetTexCoord(unpack(pic.coords))
+        head.banner:SetPoint("TOPLEFT", M.BANNER_X, 0)
+        head.banner:SetPoint("BOTTOMRIGHT", 0, 0)
+        head.banner:SetAlpha(pic.alpha)
+        head.fade = head:CreateTexture(nil, "ARTWORK")
+        head.fade:SetColorTexture(1, 1, 1, 1)
+        head.fade:SetPoint("TOPLEFT", head.banner, "TOPLEFT", 0, 0)
+        head.fade:SetPoint("BOTTOMLEFT", head.banner, "BOTTOMLEFT", 0, 0)
+        head.fade:SetWidth(pic.FADE)
+        local c = H.HEAD_BG
+        local ok = head.fade.SetGradient and CreateColor and pcall(head.fade.SetGradient, head.fade, "HORIZONTAL",
+            CreateColor(c[1], c[2], c[3], 1), CreateColor(c[1], c[2], c[3], 0))
+        if not ok then head.fade:Hide() end
     end
-    bar:SetScript("OnEnter", statusTip)
-    bar:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    menuBtn:HookScript("OnEnter", statusTip)
-    menuBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
-    -- the portrait: a click opens the overview from every tab (the window's "home")
-    local portrait = F.PortraitContainer and F.PortraitContainer.portrait or F.portrait
-    if portrait then
-        homeBtn = CreateFrame("Button", nil, F.PortraitContainer or F)
-        homeBtn:SetAllPoints(portrait)
-        -- dragging the portrait still moves the window
-        dragMoves(homeBtn)
-        homeBtn:SetScript("OnClick", function()
-            ns.ClearSearch()
-            ns.ShowPage("overview")
-        end)
-        W.Tooltip(homeBtn, L["Übersicht"], L["Ein Klick auf das Bild öffnet die Übersicht, von jeder Seite aus."])
-    end
-
-    -- the side bar in an inset with the recipe list's ground, the page in an inset beside it
-    local listInset = W.Inset(F)
-    listInset:SetPoint("TOPLEFT", M.MARGIN, -M.TOP)
-    listInset:SetPoint("BOTTOMLEFT", M.MARGIN, M.MARGIN)
-    listInset:SetWidth(M.LIST_W)
-    listInset.fill("Professions-background-summarylist")
-    local contentInset = W.Inset(F)
-    contentInset:SetPoint("TOPLEFT", M.CONTENT_X, -M.TOP)
-    contentInset:SetPoint("BOTTOMRIGHT", -M.MARGIN, M.MARGIN)
-
-    -- the side bar's head (D-70): the logo, the name, the version and the view, the gold line under it
-    navHead = CreateFrame("Frame", nil, listInset)
-    navHead:SetPoint("TOPLEFT", M.INNER, -M.INNER)
-    navHead:SetSize(NAV_W, M.NAV_HEAD)
-    local logo = navHead:CreateTexture(nil, "ARTWORK")
+    head.rule = head:CreateTexture(nil, "OVERLAY")
+    head.rule:SetHeight(1)
+    head.rule:SetPoint("BOTTOMLEFT", 0, -1)
+    head.rule:SetPoint("BOTTOMRIGHT", 0, -1)
+    head.rule:SetColorTexture(H.EDGE[1], H.EDGE[2], H.EDGE[3], H.EDGE[4])
+    -- the logo round on a black disc in a gold ring; a click opens the overview (the window's "home")
+    local logo = head:CreateTexture(nil, "OVERLAY", nil, 2)
     logo:SetSize(M.LOGO, M.LOGO)
-    logo:SetPoint("TOPLEFT", M.LOGO_X, -math.floor((M.HEAD_RULE_Y - M.LOGO) / 2))
-    -- round as the window's portrait (the client's template: the texture under a round mask), on a
-    -- black disc
+    logo:SetPoint("LEFT", M.LOGO_X, 0)
     logo:SetTexture(PORTRAIT)
-    if navHead.CreateMaskTexture and logo.AddMaskTexture then
-        local mask = navHead:CreateMaskTexture()
+    if head.CreateMaskTexture and logo.AddMaskTexture then
+        local mask = head:CreateMaskTexture()
         mask:SetAllPoints(logo)
         mask:SetTexture(W.DISC, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
         logo:AddMaskTexture(mask)
     end
-    local disc = navHead:CreateTexture(nil, "BORDER")
+    local disc = head:CreateTexture(nil, "OVERLAY", nil, 1)
     disc:SetTexture(W.DISC)
     disc:SetVertexColor(0, 0, 0, 1)
     disc:SetAllPoints(logo)
-    local name = W.Text(navHead, T.FONT.big, NAV_W - M.HEAD_TEXT_X)
-    name:SetPoint("TOPLEFT", M.HEAD_TEXT_X, -M.HEAD_NAME_Y)
+    local ring = head:CreateTexture(nil, "OVERLAY", nil, 0)
+    ring:SetTexture(W.DISC)
+    ring:SetVertexColor(H.EDGE[1], H.EDGE[2], H.EDGE[3], 1)
+    ring:SetPoint("TOPLEFT", logo, "TOPLEFT", -2, 2)
+    ring:SetPoint("BOTTOMRIGHT", logo, "BOTTOMRIGHT", 2, -2)
+    local name = W.Text(head, M.NAME_FONT)
+    name:SetPoint("TOPLEFT", M.HEAD_TEXT_X, -M.NAME_Y)
     name:SetText("Amisia")
     if name.SetShadowOffset then name:SetShadowOffset(1, -1) end
-    viewText = W.Text(navHead, T.FONT.hint, NAV_W - M.HEAD_TEXT_X)
-    viewText:SetPoint("TOPLEFT", M.HEAD_TEXT_X, -M.HEAD_SUB_Y)
-    navHead.rule = W.GoldRule(navHead, M.RULE_ALPHA)
-    navHead.rule:SetPoint("TOPLEFT", 0, -M.HEAD_RULE_Y)
-    navHead.rule:SetPoint("TOPRIGHT", 0, -M.HEAD_RULE_Y)
-    navHead.logo, navHead.name, navHead.view = logo, name, viewText
+    local sub = W.Text(head, T.FONT.head)
+    sub:SetPoint("TOPLEFT", M.HEAD_TEXT_X, -M.HEAD_SUB_Y)
+    sub:SetText(L["LOOT · RAID · GEAR"])
+    homeBtn = CreateFrame("Button", nil, head)
+    homeBtn:SetAllPoints(logo)
+    dragMoves(homeBtn)
+    homeBtn:SetScript("OnClick", function()
+        ns.ClearSearch()
+        ns.ShowPage("overview")
+    end)
+    W.Tooltip(homeBtn, L["Übersicht"], L["Ein Klick auf das Logo öffnet die Übersicht, von jeder Seite aus."])
+    head.logo, head.name, head.sub = logo, name, sub
+    -- the square buttons at the right: close, minimize (D-71), feedback
+    local closeBtn = headButton(head, nil, "X", L["Schließen"], L["Schließt das Fenster; /amisia öffnet es wieder."],
+        function() F:Hide() end)
+    closeBtn:SetPoint("TOPRIGHT", -M.HBTN_R, -M.HBTN_Y)
+    minBtn = headButton(head, nil, "-", L["Minimieren"], L["Klappt das Fenster zu einer kleinen Leiste zusammen; ein Klick darauf öffnet es wieder."],
+        function() minimize() end)
+    minBtn:SetPoint("RIGHT", closeBtn, "LEFT", -M.HBTN_GAP, 0)
+    local feedBtn = headButton(head, T.NAV_ICONS.feedback, "?", L["Feedback"], L["Einen Fehler melden oder einen Wunsch schicken."],
+        function()
+            ns.ClearSearch()
+            ns.ShowPage("feedback")
+        end)
+    feedBtn:SetPoint("RIGHT", minBtn, "LEFT", -M.HBTN_GAP, 0)
+    head.close, head.min, head.feedback = closeBtn, minBtn, feedBtn
 
-    -- the search box under the head, the groups and pages (or the results) under it
-    search = W.SearchBox(listInset, NAV_W, nil)
-    search:SetPoint("TOPLEFT", M.INNER, -(M.INNER + M.NAV_HEAD))
+    -- the search box left of the buttons; its hits take the side bar's place
+    search = W.SearchBox(head, M.SEARCH_W, nil)
+    search:SetPoint("RIGHT", feedBtn, "LEFT", -2 * M.HBTN_GAP, 0)
     search:HookScript("OnTextChanged", function(self) setQuery(self:GetText()) end)
     search:SetScript("OnEscapePressed", function() ns.ClearSearch() end)
     if search.clearButton then search.clearButton:HookScript("OnClick", function() ns.ClearSearch() end) end
-    -- what the box finds and from how many characters; above the window, so it never covers the hits
+    -- what the box finds and from how many characters
     search:HookScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
         GameTooltip:AddLine(L["Suchen"], 1, 0.82, 0)
         GameTooltip:AddLine(L["Ab %d Zeichen: Seiten, Einstellungen, Dungeons und in der Offiziersansicht Spieler. Ab %d Zeichen auch Items, Rezepte und Befehle. Stichwörter finden die passende Seite, z. B. \"dkp\" die Punkte. Escape leert das Feld."]
             :format(M.SEARCH_MIN, ns.SearchIndex.ITEM_MIN), 0.85, 0.85, 0.85, true)
         GameTooltip:Show()
     end)
     search:HookScript("OnLeave", function() GameTooltip:Hide() end)
-    local listTop = M.INNER + M.NAV_HEAD + T.FIELD_H + M.SEARCH_GAP
+
+    -- the tabs under the head (D-73), the line under them
+    tabBar = CreateFrame("Frame", nil, F)
+    tabBar:SetPoint("TOPLEFT", 0, -(M.HEAD_H + 2))
+    tabBar:SetPoint("TOPRIGHT", 0, -(M.HEAD_H + 2))
+    tabBar:SetHeight(M.TAB_H)
+    for _, g in ipairs(ns.PANEL_GROUPS) do tabs[g.key] = buildTab(g) end
+    tabBar.rule = tabBar:CreateTexture(nil, "BORDER")
+    tabBar.rule:SetHeight(1)
+    tabBar.rule:SetPoint("BOTTOMLEFT", 1, 0)
+    tabBar.rule:SetPoint("BOTTOMRIGHT", -1, 0)
+    tabBar.rule:SetColorTexture(H.LINE[1], H.LINE[2], H.LINE[3], H.LINE[4])
+
+    -- the side bar on its ground with the line at its right edge, the page's field beside it
+    local listInset = CreateFrame("Frame", nil, F)
+    listInset:SetPoint("TOPLEFT", M.MARGIN, -M.TOP)
+    listInset:SetPoint("BOTTOMLEFT", M.MARGIN, M.BOTTOM)
+    listInset:SetWidth(M.LIST_W)
+    listInset.ground = W.Flat(listInset, H.SIDE_BG[1], H.SIDE_BG[2], H.SIDE_BG[3], H.SIDE_BG[4])
+    listInset.edge = listInset:CreateTexture(nil, "BORDER")
+    listInset.edge:SetWidth(1)
+    listInset.edge:SetPoint("TOPRIGHT", 0, 0)
+    listInset.edge:SetPoint("BOTTOMRIGHT", 0, 0)
+    listInset.edge:SetColorTexture(H.LINE[1], H.LINE[2], H.LINE[3], H.LINE[4])
+    local contentInset = CreateFrame("Frame", nil, F)
+    contentInset:SetPoint("TOPLEFT", M.CONTENT_X, -M.TOP)
+    contentInset:SetPoint("BOTTOMRIGHT", -M.MARGIN, M.BOTTOM)
+
+    -- the side bar's head (D-73): the open tab's symbol and name, the gold line under it
+    navHead = CreateFrame("Frame", nil, listInset)
+    navHead:SetPoint("TOPLEFT", M.INNER, -M.INNER)
+    navHead:SetSize(NAV_W, M.NAV_HEAD)
+    navHead.icon = navHead:CreateTexture(nil, "ARTWORK")
+    navHead.icon:SetSize(M.NAV_HEAD_ICON, M.NAV_HEAD_ICON)
+    navHead.icon:SetPoint("TOPLEFT", 2, -math.floor((M.HEAD_RULE_Y - M.NAV_HEAD_ICON) / 2))
+    navHead.name = W.Text(navHead, T.FONT.big, NAV_W - M.NAV_HEAD_X)
+    navHead.name:SetPoint("LEFT", navHead.icon, "RIGHT", M.NAV_HEAD_X - 2 - M.NAV_HEAD_ICON, 0)
+    if navHead.name.SetShadowOffset then navHead.name:SetShadowOffset(1, -1) end
+    navHead.rule = W.GoldRule(navHead, M.RULE_ALPHA)
+    navHead.rule:SetPoint("TOPLEFT", 0, -M.HEAD_RULE_Y)
+    navHead.rule:SetPoint("TOPRIGHT", 0, -M.HEAD_RULE_Y)
+
+    -- the pages (or the results) under it
+    local listTop = M.INNER + M.NAV_HEAD + M.NAV_GAP
     nav = W.List(listInset, math.floor(M.NAV_LIST_H / ROW_H), ROW_H, buildNav, fillNav)
     nav:SetPoint("TOPLEFT", M.INNER, -listTop)
     nav:SetWidth(NAV_W - T.SCROLL_ROOM)
@@ -1018,21 +1153,62 @@ local function build()
     noHits:SetJustifyH("CENTER")
     noHits:SetText(L["Nichts gefunden."])
     noHits:Hide()
-    -- under SEARCH_MIN characters: how many more (updateSearchHint places it under the last bar)
+    -- under SEARCH_MIN characters: how many more (updateSearchHint places it at the list's top)
     searchHint = W.Text(listInset, T.FONT.hint, NAV_W - 2 * M.NAV_LABEL_X)
     searchHint:Hide()
 
-    -- the page head (D-69): name, one line, the gold line fading to both ends, "?" and the gear
+    -- the footer (D-73): the recording state (a click opens the menu with the recording and the view,
+    -- D-67), the view and the version at the right end, the line over it
+    local bar = CreateFrame("Button", nil, F)
+    bar:SetHeight(M.BOTTOM)
+    bar:SetPoint("BOTTOMLEFT", M.FOOT_X, 0)
+    bar:SetWidth(T.PAGE_W)
+    statusBar = bar
+    statusText = W.Text(bar, T.FONT.text)
+    statusText:SetPoint("LEFT", 0, 1)   -- the menu's arrow clear of the window's edge
+    local function openMenu() W.Menu(menuBtn, headMenu()) end
+    menuBtn = W.ArrowButton(bar, "down", M.MENU_SIZE, openMenu)
+    menuBtn:SetPoint("LEFT", statusText, "RIGHT", M.ICON_GAP, 0)
+    bar:SetScript("OnClick", openMenu)
+    dragMoves(bar)
+    local function statusTip(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:AddLine(L["Raid-Aufnahme"], 1, 0.82, 0)
+        GameTooltip:AddLine(ns.IsEnabled() and L["Aufnahme an: startet von selbst in einer Raidinstanz mit Raidgruppe."]
+            or L["Aufnahme pausiert."], 0.85, 0.85, 0.85, true)
+        GameTooltip:AddLine(ns.IsOfficerView() and L["Ansicht: Offiziere"] or L["Ansicht: Raider"], 0.85, 0.85, 0.85)
+        GameTooltip:AddLine(L["Klick: pausieren, fortsetzen oder die Ansicht wechseln."], 0.6, 0.6, 0.6, true)
+        GameTooltip:Show()
+    end
+    bar:SetScript("OnEnter", statusTip)
+    bar:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    menuBtn:HookScript("OnEnter", statusTip)
+    menuBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
+    viewText = W.Text(F, T.FONT.hint)
+    viewText:SetPoint("BOTTOMRIGHT", -(M.GRIP + 2 * M.MARGIN), math.floor((M.BOTTOM - 10) / 2))
+    viewText:SetJustifyH("RIGHT")
+    local footLine = F:CreateTexture(nil, "BORDER")
+    footLine:SetHeight(1)
+    footLine:SetPoint("BOTTOMLEFT", 1, M.BOTTOM - 1)
+    footLine:SetPoint("BOTTOMRIGHT", -1, M.BOTTOM - 1)
+    footLine:SetColorTexture(H.LINE[1], H.LINE[2], H.LINE[3], H.LINE[4])
+
+    -- the page head (D-69, D-73): the page's symbol, name, one line, the gold line fading to both
+    -- ends, "?" and the gear
     pageHead = CreateFrame("Frame", nil, contentInset)
     pageHead:SetPoint("TOPLEFT", M.PAGE_PAD, -M.PAGE_PAD)
     pageHead:SetPoint("TOPRIGHT", -M.PAGE_PAD, -M.PAGE_PAD)
     pageHead:SetHeight(M.PAGE_HEAD)
-    local textW = T.PAGE_W - 2 * (M.ICON_SIZE + M.ICON_GAP) - T.LAYOUT.TEXT_X
+    pageIcon = pageHead:CreateTexture(nil, "ARTWORK")
+    pageIcon:SetSize(M.PAGE_ICON, M.PAGE_ICON)
+    pageIcon:SetPoint("TOPLEFT", T.LAYOUT.TEXT_X, -math.floor((M.RULE_Y - M.PAGE_ICON) / 2))
+    local titleX = T.LAYOUT.TEXT_X + M.PAGE_ICON + M.PAGE_ICON_GAP
+    local textW = T.PAGE_W - 2 * (M.ICON_SIZE + M.ICON_GAP) - titleX
     pageTitle = W.Text(pageHead, T.FONT.big, textW)
-    pageTitle:SetPoint("TOPLEFT", T.LAYOUT.TEXT_X, -M.TITLE_Y)
+    pageTitle:SetPoint("TOPLEFT", titleX, -M.TITLE_Y)
     if pageTitle.SetShadowOffset then pageTitle:SetShadowOffset(1, -1) end
     pageSub = W.Text(pageHead, T.FONT.hint, textW)
-    pageSub:SetPoint("TOPLEFT", T.LAYOUT.TEXT_X, -M.SUB_Y)
+    pageSub:SetPoint("TOPLEFT", titleX, -M.SUB_Y)
     pageHead.rule = W.GoldRule(pageHead, M.RULE_ALPHA)
     pageHead.rule:SetPoint("TOPLEFT", 0, -M.RULE_Y)
     pageHead.rule:SetPoint("TOPRIGHT", 0, -M.RULE_Y)
@@ -1070,14 +1246,14 @@ local function build()
     content:SetPoint("BOTTOMRIGHT", -M.PAGE_PAD, M.PAGE_PAD)
 
     grip = buildGrip()
-    minBtn = buildMinButton()
     mini = buildMini()
     local state = windowState()
     applySize(state.w or WIDTH, state.h or HEIGHT)
     -- test hooks and the parts the layout tests read
     F.statusBar, F.statusText, F.menuBtn, F.helpBtn, F.settingsBtn, F.headMenu = statusBar, statusText, menuBtn, helpBtn, settingsBtn, headMenu
     F.listInset, F.contentInset, F.nav, F.content, F.navHead = listInset, contentInset, nav, content, navHead
-    F.pageHead, F.pageTitle, F.pageSub = pageHead, pageTitle, pageSub
+    F.pageHead, F.pageIcon, F.pageTitle, F.pageSub = pageHead, pageIcon, pageTitle, pageSub
+    F.head, F.tabBar, F.tabs, F.tabOrder, F.viewText = head, tabBar, tabs, {}, viewText
     F.navOrder, F.grip, F.applyHeight, F.applySize, F.heightDone = {}, grip, applyHeight, applySize, sizeDone
     F.minBtn, F.mini, F.Minimize, F.Restore = minBtn, mini, minimize, restore
     F.search, F.results, F.noHits, F.searchHint, F.homeBtn = search, results, noHits, searchHint, homeBtn
@@ -1134,9 +1310,11 @@ function ns.Refresh()
         showPage("overview", false)
         return
     end
+    openTab = ns.PanelGroup(p)
     updateHeader()
     updatePageHead(p)
     local byGroup = pagesByGroup()
+    updateTabs(byGroup)
     updateNav(byGroup)
     -- the hits again for the new data, at the same scroll place
     if #query >= M.SEARCH_MIN then showResults() else updateSearchHint() end

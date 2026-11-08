@@ -49,18 +49,18 @@ assert(texts(group(g, "settings")) == "Expertenmodus", texts(group(g, "settings"
 g = NS.Search("automatisch")
 assert(has(texts(group(g, "settings")), "Ansicht"), "by a choice's name: " .. texts(group(g, "settings")))
 -- hidden pages are not found: the raider view has no officers' Raid-Archiv (the journal "Raids"
--- in the group Welt, F-122, D-68, is for everyone) and no players
+-- in the tab Dungeons & Raids, F-122, D-73, is for everyone) and no players
 local tips = {}
 for _, h in ipairs(group(NS.Search("raids"), "pages").hits) do if h.text == "Raids" then tips[#tips + 1] = h.tip end end
-assert(table.concat(tips, "|") == "Seite in der Gruppe Welt.", table.concat(tips, "|"))
+assert(table.concat(tips, "|") == "Seite im Reiter Dungeons & Raids.", table.concat(tips, "|"))
 local archive = {}
 for _, h in ipairs(group(NS.Search("archiv"), "pages").hits) do if h.text == "Raid-Archiv" then archive[#archive + 1] = h.tip end end
-assert(table.concat(archive, "|") == "Seite in der Gruppe Raid.", table.concat(archive, "|"))
+assert(table.concat(archive, "|") == "Seite im Reiter Raid.", table.concat(archive, "|"))
 NS.Set("ui.view", "raider")
 g = NS.Search("raids")
 tips = {}
 for _, h in ipairs(group(g, "pages").hits) do if h.text == "Raids" then tips[#tips + 1] = h.tip end end
-assert(table.concat(tips, "|") == "Seite in der Gruppe Welt.", table.concat(tips, "|"))
+assert(table.concat(tips, "|") == "Seite im Reiter Dungeons & Raids.", table.concat(tips, "|"))
 assert(group(NS.Search("archiv"), "pages") == nil, "the raider view finds no Raid-Archiv")
 assert(group(NS.Search("frak"), "players") == nil, "players only in the officer view")
 NS.Set("ui.view", "officer")
@@ -113,7 +113,7 @@ assert(hitRow.hitArt.normal.atlas == "auctionhouse-nav-button-secondary" and hit
 assert(hitRow.hitArt.hover.atlas == nil and hitRow.hitArt.hover.texture == nil, "no blue glow on hover")
 assert(hitRow.label:GetText() == "Expertenmodus" and hitRow.label.font == "GameFontHighlightSmall" and hitRow.label.points.LEFT.x == 18)
 assert(hitRow.icon == nil and not row.bg:IsShown() and row.hover.alpha == 0, "no icon, no shade, the bars' own glow")
-assert(F.results.rowCount == 21 and F.results._h == 21 * 21 and hitRow._h == 20, "21 rows of 21 under the head")
+assert(F.results.rowCount == 22 and F.results._h == 22 * 21 and hitRow._h == 20, "22 rows of 21 under the head")
 F.results.rows[2]:Click()
 assert(NS.CurrentPage() == "settings" and box:GetText() == "" and F.nav:IsShown() and not F.results:IsShown(),
     "a click opens the settings and empties the box")

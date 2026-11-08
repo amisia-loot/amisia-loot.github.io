@@ -1333,7 +1333,7 @@ StaticPopupDialogs["AMISIA_BIS_CLEAR_EX"] = {
     preferredIndex = 3,
 }
 
-ns.RegisterPanel{ key = "gear", label = L["Ausrüstung"], sub = L["Das beste Item je Platz und woher du es bekommst."], icon = "Interface\\Icons\\INV_Chest_Chain_05", order = 50, group = "char",
+ns.RegisterPanel{ key = "gear", label = L["Ausrüstung"], sub = L["Das beste Item je Platz und woher du es bekommst."], icon = "Interface\\Icons\\INV_Chest_Chain_05", order = 50, group = "gear",
     available = function() return Gear.Available() end,
     create = function(parent)
         local f = W.Page(parent)

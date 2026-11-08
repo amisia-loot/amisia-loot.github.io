@@ -259,7 +259,7 @@ function ns.ShowRaid(key)
     return main ~= nil and main:IsShown() and true or false
 end
 
-ns.RegisterPanel{ key = "raidjournal", label = "Raids", sub = L["Bosse und Beute der Raids, mit deinen Upgrades."], icon = ICON, order = 52, group = "world",
+ns.RegisterPanel{ key = "raidjournal", label = "Raids", sub = L["Bosse und Beute der Raids, mit deinen Upgrades."], icon = ICON, order = 52, group = "dungeons",
     available = function() return ns.Gear.Available() end,
     create = create, refresh = refresh }
 

@@ -33,6 +33,7 @@ NS.FOREVER = true
 -- the reset button beside its control (all clients), the stepper's arrows the Forever atlases here
 NS.ToggleMain()
 NS.Dispatch("einstellungen")
+NS.ShowSettingsSection("record")
 NS.Set("record.keepSessions", 80)
 NS.Refresh()
 local r = NS.SettingsRows()["record.keepSessions"]
