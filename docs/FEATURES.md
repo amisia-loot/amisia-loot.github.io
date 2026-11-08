@@ -47,7 +47,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: D-82. Je Charakter gespeichert; Herstellen selbst geht nur im Berufsfenster des Spiels.
 
 ### F-152 Anzeige erhaltener Items beim Looten und bei Questbelohnungen
-- Version: 2.65.0
+- Version: 2.67.0
 - Status: gebaut
 - Prüfung: Wenn du etwas lootest oder eine Quest mit Belohnung abgibst, dann steht kurz "+Name" mit dem Symbol des Items in seiner Qualitätsfarbe links über der Bildschirmmitte und blendet aus.
 - Prüfung: Wenn du unter Einstellungen, Oberfläche "Erhaltene Items anzeigen" ausschaltest, dann erscheint nichts mehr; "Ab Qualität" blendet schlechtere Items aus; "Anzeige ausprobieren" zeigt ein Beispiel.
@@ -1021,7 +1021,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: 2.57.0: Seite Karte öffnet auf "Alle Zonen" (nach Zonen, nächste zuerst), Chip "Quests" (nächster Questweg-Schritt, auch als "!" auf der Weltkarte, Einstellung `map.pinsQuests`), Ansicht "Ohne Ort", Zielkarte mit Richtung und Pfeil, Knopf "Karte" je Zeile, deutsche Namen aus eigener Beobachtung.
 
 ### F-105 Orte auf der Weltkarte (Eingänge, Flugmeister, Zeppeline, Schiffe)
-- Version: 2.49.0
+- Version: 2.67.0
 - Status: gebaut
 - Prüfung: Wenn du die Weltkarte im Brachland öffnest, dann siehst du die Eingänge der Höhlen des Wehklagens und des Kral der Klingenhauer, Flugmeister deiner Fraktion und das Schiff in Ratschet; der Tooltip des Schiffs sagt "Schiff nach Beutebucht"; in Durotar, im Sumpfland und in der Dunkelküste stehen Zeppelinturm und Anleger auf den Stegen.
 - Prüfung: Wenn du auf den Eingang der Höhlen des Wehklagens klickst, dann öffnet sich Amisia auf der Seite Dungeons mit diesem Dungeon gewählt, die Weltkarte bleibt vorn; mit Shift setzt der Klick das Ziel zum Eingang (Chat "Ziel ...", Pfeil).
