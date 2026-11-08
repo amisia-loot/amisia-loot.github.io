@@ -1975,3 +1975,23 @@ es so wie hier in dem 1 Fenster".
 Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `tests/test_goals_progress.lua`,
 `tests/test_goals_summary.lua`, `tests/test_goals_catalog.lua`, `tests/test_gear_planner_nomodel.lua`, `tests/test_style.lua`,
 `tests/test_main_sidebar.lua`.
+
+## D-81 Eigene goldene Symbole für Reiter und Leiste
+
+**Datum:** 2026-11-08
+**Entscheidung:** Die Reiter und die Seiten (und Seitenfenster) der Leiste tragen Amisias eigene Symbole statt der Marken des Clients (D-70):
+- Linienbilder von Lucide (lucide.dev, ISC, lucide-static 0.460.0), etwas dicker gezeichnet, mit einem Goldverlauf (oben hell, unten tief) über einem weichen dunklen Rand, 64 × 64 als echte TGA in `Amisia/Media/Icons/ui/<key>.tga`.
+- Gezeichnet von `tools/make_ui_icons.py`; die SVGs liegen in `tools/art/lucide`, der Lizenzhinweis in `Amisia/Media/Icons/LICENSE.txt`.
+- `T.NAV_ICONS` und `T.TAB_ICONS` nennen sie mit `own = true`; ein eigenes Bild wird nicht in den Dateien des Clients gesucht (`GetFileIDFromPath` kennt Addon-Dateien nicht).
+- Zauber- und Itemsymbole bleiben verboten. Die Marken der Seiten (Klassen, Berufe, D-75) bleiben die Symbole des Spiels.
+
+**Grund:** Nutzer 2026-11-08 mit einem Bild der grauen Brust-Platz-Marke im Reiter Ausrüstung: "kannst hier auch paar coole Icons erstellen".
+
+**Folge:**
+- Neue Texturen: Nach dem Release braucht es einen vollständigen Neustart des Clients.
+- Eine neue Seite bekommt ihr Symbol mit einem Eintrag in `ICONS` von `tools/make_ui_icons.py` und in `T.NAV_ICONS`.
+
+**Durchgesetzt durch:** `tests/test_style.lua` (jede Seite hat ein Symbol, keines aus `Interface\Icons`), `tests/test_main_sidebar.lua` (Symbole der Zeilen und Reiter).
+
+**Nachtrag 2026-11-08 (Nutzer zum Planer: "die Rahmen der Items nicht so dick und abgerundet"):** Die Plätze am Modell und die Item-Symbole der Planer-Listen haben statt des 2 px breiten eckigen Rahmens einen dünnen abgerundeten Ring in der Farbe der Qualität (gold für den gewählten Platz, grün, wenn das Ziel angelegt ist). Das Symbol darunter hat runde Ecken. Beides ist Amisias eigene Zeichnung: `ui/slot_ring.tga` (weiß, im Addon eingefärbt) und `ui/slot_mask.tga` (die Maske des Clients mit dieser Form), von `tools/make_ui_icons.py`. Helfer `ns.GoalsKit.roundIcon`/`setRing`.
+

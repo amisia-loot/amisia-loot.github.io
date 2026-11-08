@@ -155,7 +155,8 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Core/SelfTestGroup.lua` | `/amisia selbsttest gruppe` (en `selftest group`): the group probe of the raid check spec (2026-10-12) and of the lineup checks 10, 11 and 13 (parts C and D), alone: looks up the invite, convert, sort, assistant, ready check, saved instance, aura and gear functions and the system message templates; invites `GT.NAME` ("Niemand Nirgends", a name nobody has) once inside the key press and once from a C_Timer and reports the system message (which template it fits) and ADDON_ACTION_BLOCKED/FORBIDDEN for Amisia (no invite in combat or the lockdown); `RequestRaidInfo` + `UPDATE_INSTANCE_INFO` and the own saved instances; the own buffs (count, secret ones, long ones; `C_Secrets`) and a targeted player's; durability per worn item, `GetAverageItemLevel`, the enchant of each worn item from the item link and the tooltip data line types (15 `ItemEnchantmentPermanent`); free talent points (`ns.Talents.Live`); its own event frame only while it runs; report in the self-test window | - | SelfTest (`ST.Kit`, `ST.ShowText`), RaidCheckRead (the readers it shares with the raid check); never converts, sorts, promotes or starts a ready check |
 
 Other folders: `Media/Icons` (TGA, made by `tools/make_icons.py`; the map pins `place_*.tga` of F-105 by
-`tools/make_place_icons.py`; a new texture needs a full client restart), `LICENSES/` (licence texts shipped with the addon).
+`tools/make_place_icons.py`; the gold line icons of the tabs and the side bar `ui/*.tga` of D-81 by
+`tools/make_ui_icons.py`; a new texture needs a full client restart), `LICENSES/` (licence texts shipped with the addon).
 
 ### Load order rules
 

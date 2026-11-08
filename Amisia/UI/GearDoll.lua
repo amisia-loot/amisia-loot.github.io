@@ -98,17 +98,34 @@ local function slotButton(parent, key, P, d)
     local b = CreateFrame("Button", nil, parent)
     b:SetSize(P.SLOT, P.SLOT)
     b.key = key
-    b.bg = W.Flat(b, 0, 0, 0, 0.6)
+    -- the slot (D-81 Nachtrag): a dark rounded ground, the icon with rounded corners (the client's
+    -- mask texture over Amisia's own slot_mask), a thin rounded ring in the item's colour over it
+    b.bg = b:CreateTexture(nil, "BACKGROUND")
+    b.bg:SetAllPoints()
+    b.bg:SetTexture(P.SLOT_MASK)
+    b.bg:SetVertexColor(0, 0, 0, 0.6)
     b.art = b:CreateTexture(nil, "BORDER")
-    b.art:SetAllPoints()
+    b.art:SetPoint("TOPLEFT", P.SLOT_INSET, -P.SLOT_INSET)
+    b.art:SetPoint("BOTTOMRIGHT", -P.SLOT_INSET, P.SLOT_INSET)
     b.icon = b:CreateTexture(nil, "ARTWORK")
     b.icon:SetPoint("TOPLEFT", P.SLOT_INSET, -P.SLOT_INSET)
     b.icon:SetPoint("BOTTOMRIGHT", -P.SLOT_INSET, P.SLOT_INSET)
     b.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    b.edges = W.Border(b, 0.3, 0.3, 0.3, 1, P.SLOT_EDGE)
+    if b.CreateMaskTexture and b.icon.AddMaskTexture then
+        local mask = b:CreateMaskTexture()
+        mask:SetAllPoints(b)
+        mask:SetTexture(P.SLOT_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        b.icon:AddMaskTexture(mask)
+        b.art:AddMaskTexture(mask)
+        b.mask = mask
+    end
+    b.ring = b:CreateTexture(nil, "OVERLAY")
+    b.ring:SetAllPoints()
+    b.ring:SetTexture(P.SLOT_RING)
     b.hl = b:CreateTexture(nil, "HIGHLIGHT")
     b.hl:SetAllPoints()
-    b.hl:SetColorTexture(1, 1, 1, 0.15)
+    b.hl:SetTexture(P.SLOT_MASK)
+    b.hl:SetVertexColor(1, 1, 1, 0.15)
     b.dot = b:CreateTexture(nil, "OVERLAY")
     b.dot:SetSize(P.DOT, P.DOT)
     b.dot:SetPoint("BOTTOMRIGHT", 1, -1)
@@ -129,6 +146,28 @@ local function slotButton(parent, key, P, d)
     return b
 end
 
+-- Rounds an icon on frame f (D-81 Nachtrag): the icon (and the extra textures) under Amisia's
+-- rounded mask, a thin rounded ring over them (f.ring; colour it with ringColor). P: SLOT_RING, SLOT_MASK.
+local function roundIcon(f, P, ...)
+    if f.CreateMaskTexture then
+        local mask = f:CreateMaskTexture()
+        mask:SetAllPoints(f)
+        mask:SetTexture(P.SLOT_MASK, "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        for _, t in ipairs({ ... }) do if t.AddMaskTexture then t:AddMaskTexture(mask) end end
+        f.mask = mask
+    end
+    f.ring = f:CreateTexture(nil, "OVERLAY")
+    f.ring:SetAllPoints()
+    f.ring:SetTexture(P.SLOT_RING)
+    return f.ring
+end
+
+-- The ring's colour (b.ringColor for the tests).
+local function setRing(b, r, g, bl)
+    b.ringColor = { r, g, bl, 1 }
+    b.ring:SetVertexColor(r, g, bl, 1)
+end
+
 local function fillSlot(b, item, chosen, stateColor)
     b.item = item
     if item and item.id then
@@ -137,14 +176,14 @@ local function fillSlot(b, item, chosen, stateColor)
         b.art:Hide()
         local q = qualityOf(item.id, item.link)
         local c = q and PL.QUALITY[q] or PL.QUALITY[1]
-        W.SetBorderColor(b.edges, c[1], c[2], c[3], 1)
+        setRing(b, c[1], c[2], c[3])
     else
         b.icon:Hide()
         b.art:SetTexture(slotArt(b.key))
         b.art:Show()
-        W.SetBorderColor(b.edges, 0.3, 0.3, 0.3, 1)
+        setRing(b, 0.3, 0.3, 0.3)
     end
-    if chosen then W.SetBorderColor(b.edges, GOLD[1], GOLD[2], GOLD[3], 1) end
+    if chosen then setRing(b, GOLD[1], GOLD[2], GOLD[3]) end
     if stateColor then
         b.dot:SetVertexColor(stateColor[1], stateColor[2], stateColor[3])
         b.dot:Show()
@@ -326,7 +365,7 @@ local function fillDoll(d, res, m, chosen)
         fillSlot(b, shownItem(res, key, m), key == chosen, hasTarget and (st == "done" or st == "bag") and PL.STATE_COLOR[st] or nil)
         if m == "goals" and hasTarget and st == "done" and key ~= chosen then
             local c = PL.STATE_COLOR.done
-            W.SetBorderColor(b.edges, c[1], c[2], c[3], 1)
+            setRing(b, c[1], c[2], c[3])
         end
     end
     return p
@@ -448,6 +487,7 @@ local function planText(o, res)
 end
 
 ns.GoalsKit = {
+    roundIcon = roundIcon, setRing = function(f, r, g, b) f.ringColor = { r, g, b, 1 } f.ring:SetVertexColor(r, g, b, 1) end,
     buildDoll = buildDoll, fillDoll = fillDoll, dress = dress, wornLink = wornLink,
     iconOf = iconOf, qualityOf = qualityOf, ownMark = ownMark, pctText = pctText, setTip = setTip,
     unenchanted = unenchanted, goalItems = goalItems, planText = planText, QUESTION = QUESTION,

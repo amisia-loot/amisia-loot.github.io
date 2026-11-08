@@ -186,59 +186,50 @@ T.HUB = {
     BANNER = { file = "Interface\\Glues\\LoadingScreens\\LoadScreenKalimdor", coords = { 0, 1, 0.36, 0.47 }, alpha = 0.6, FADE = 160 },
 }
 
--- The symbol of each page and side window in the side bar (D-70): the client's own marks (the
--- minimap's tracking icons, the gossip icons, the map's marks, the money and group loot art), never a
--- spell or item icon in their place. { file = path } or { atlas = name }; a key not here: no symbol.
-local TRACK, GOSSIP = "Interface\\Minimap\\Tracking\\", "Interface\\GossipFrame\\"
+-- The symbol of each page and side window in the side bar and of each tab (D-81, before it the
+-- client's marks of D-70): Amisia's own gold line art, Media/Icons/ui/<key>.tga, drawn by
+-- tools/make_ui_icons.py from Lucide (ISC); never a spell or item icon in their place. { file = path,
+-- own = true } (own: shipped with the addon, so not looked up in the client's files) or { atlas = name };
+-- a key not here: no symbol.
+local function own(key) return { file = "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\" .. key, own = true } end
 T.NAV_ICONS = {
-    -- Raid
-    overview = { file = TRACK .. "Innkeeper" },
-    lineup = { file = GOSSIP .. "GossipGossipIcon" },
-    raidcheck = { file = "Interface\\RaidFrame\\ReadyCheck-Ready" },
-    softres = { file = GOSSIP .. "PetitionGossipIcon" },
-    rolls = { file = "Interface\\Buttons\\UI-GroupLoot-Dice-Up" },
-    awards = { file = GOSSIP .. "VendorGossipIcon" },
-    raidlog = { file = "Interface\\TargetingFrame\\UI-TargetingFrame-Skull" },
-    points = { atlas = "coin-gold" },
-    stats = { file = GOSSIP .. "TrainerGossipIcon" },
-    raids = { file = TRACK .. "None" },
-    export = { file = "Interface\\Buttons\\UI-GuildButton-PublicNote-Up" },
-    -- Charakter
-    planner = { file = "Interface\\PaperDoll\\UI-PaperDoll-Slot-MainHand" },
-    gear = { file = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Chest" },
-    talents = { file = TRACK .. "Class" },
-    professions = { file = TRACK .. "Profession" },
-    scrolls = { file = TRACK .. "Reagents" },
-    -- Welt
-    dungeons = { atlas = "Dungeon" },
-    raidjournal = { atlas = "Raid" },
-    quests = { file = GOSSIP .. "AvailableQuestIcon" },
-    map = { file = TRACK .. "FlightMaster" },
-    -- Gilde
-    members = { file = GOSSIP .. "TabardGossipIcon" },
-    calendar = { file = "Interface\\Calendar\\MeetingIcon" },
-    bank = { file = GOSSIP .. "BankerGossipIcon" },
-    duels = { file = GOSSIP .. "BattleMasterGossipIcon" },
-    tools = { file = TRACK .. "Repair" },
-    -- Amisia
-    settings = { atlas = "questlog-icon-setting" },
-    about = { file = "Interface\\common\\help-i" },
-    feedback = { file = TRACK .. "Mailbox" },
-    -- the side windows (key "win:" .. their key)
-    ["win:talents"] = { file = TRACK .. "Class" },
-    ["win:rolls"] = { file = "Interface\\Buttons\\UI-GroupLoot-Dice-Up" },
-    ["win:softres"] = { file = GOSSIP .. "PetitionGossipIcon" },
+    overview = own("overview"),
+    lineup = own("lineup"),
+    raidcheck = own("raidcheck"),
+    softres = own("softres"),
+    rolls = own("rolls"),
+    awards = own("awards"),
+    raidlog = own("raidlog"),
+    points = own("points"),
+    stats = own("stats"),
+    raids = own("raids"),
+    export = own("export"),
+    planner = own("planner"),
+    gear = own("gear"),
+    talents = own("talents"),
+    professions = own("professions"),
+    scrolls = own("scrolls"),
+    dungeons = own("dungeons"),
+    raidjournal = own("raidjournal"),
+    quests = own("quests"),
+    map = own("map"),
+    members = own("members"),
+    calendar = own("calendar"),
+    bank = own("bank"),
+    duels = own("duels"),
+    tools = own("tools"),
+    settings = own("settings"),
+    about = own("about"),
+    feedback = own("feedback"),
+    ["win:talents"] = own("win_talents"),
+    ["win:rolls"] = own("win_rolls"),
+    ["win:softres"] = own("win_softres"),
 }
 
--- The symbol of each tab (D-73), the same kind of marks as the side bar's.
+-- The symbol of each tab (D-73, D-81), the same gold line art as the side bar's.
 T.TAB_ICONS = {
-    gear = { file = "Interface\\PaperDoll\\UI-PaperDoll-Slot-Chest" },
-    dungeons = { atlas = "Dungeon" },
-    prof = { file = TRACK .. "Profession" },
-    talents = { file = TRACK .. "Class" },
-    raid = { file = "Interface\\Buttons\\UI-GroupLoot-Dice-Up" },
-    guild = { file = GOSSIP .. "TabardGossipIcon" },
-    amisia = { atlas = "questlog-icon-setting" },
+    gear = own("tab_gear"), dungeons = own("tab_dungeons"), prof = own("tab_prof"), talents = own("tab_talents"),
+    raid = own("tab_raid"), guild = own("tab_guild"), amisia = own("tab_amisia"),
 }
 
 -- A bar of the auction house's category list (AuctionCategoryButtonTemplate as the client's
@@ -617,7 +608,10 @@ T.PLANNER = {
     -- shirt and the tabard only show what is worn), the model between, the weapons under it with their
     -- enchant squares above them; DOLL_W at the narrowest panel (SetDollWidth follows the panel)
     DOLL = {
-        DOLL_W = 224, SLOT = 38, SLOT_GAP = 4, SLOT_EDGE = 2, SLOT_INSET = 2, DOT = 10,
+        DOLL_W = 224, SLOT = 38, SLOT_GAP = 4, SLOT_INSET = 2, DOT = 10,
+        -- the slot's thin rounded ring and the rounded mask of its icon (Amisia's own, D-81 Nachtrag)
+        SLOT_RING = "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\slot_ring",
+        SLOT_MASK = "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\slot_mask",
         MODEL_GAP = 20,       -- the enchant square and 4 px between a slot column and the model
         MODEL_H = 332,        -- 8 slots and their gaps
         MODEL_SHADE = 0.2,    -- the inset's ground under the model

@@ -892,6 +892,19 @@ visible pixel sits inside the round portrait; the windows and the minimap button
 it (`W.DISC`). `--preview DIR` also writes PNGs to look at (one on the black disc). A changed texture
 needs a full client restart before WoW shows it; `/reload` is not enough. Requires Pillow.
 
+## make_ui_icons.py
+
+```
+~/.venvs/amisia/bin/python tools/make_ui_icons.py [--preview DIR] [--offline]
+```
+
+The hub's own symbols (D-81): for each key of `ICONS` (the keys of `ns.Theme.NAV_ICONS`, `tab_<group>` for a
+tab) the Lucide icon (ISC, lucide-static 0.460.0; the SVG kept in `tools/art/lucide`, fetched from unpkg
+once when missing) is drawn at 256 px with a thicker stroke, coloured with a gold gradient over a soft dark
+rim, scaled to 64 px and written as a genuine TGA to `Amisia/Media/Icons/ui/<key>.tga`. `--preview` writes a
+contact sheet `ui_icons.png`. Needs Pillow and `resvg-py` (`pip install resvg-py`, no system libraries). A new
+texture needs a full client restart.
+
 ## make_place_icons.py
 
 Draws the map pins of F-105 as genuine 32-bit TGAs, Amisia's own art: `place_flight.tga` (winged

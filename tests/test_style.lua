@@ -870,8 +870,12 @@ ALLOWED["common-dropdown-a-button-shadowless"] = true
 ALLOWED["auctionhouse-ui-filter-redx"] = true
 -- the head's gear (UIPanelIconDropdownButtonTemplate, D-67)
 ALLOWED["questlog-icon-setting"] = true
--- the side bar's symbols (D-70, T.NAV_ICONS): the map's dungeon and raid marks, the favourite star
+-- the side bar's symbols (T.NAV_ICONS; since D-81 Amisia's own files, an atlas only where one is left)
 for name, def in pairs(NS.Theme.NAV_ICONS) do if def.atlas then ALLOWED[def.atlas] = true end end
+-- the map's dungeon and raid marks (the journal's and the map's pins, D-72) and the favourite star
+ALLOWED["Dungeon"], ALLOWED["Raid"], ALLOWED["auctionhouse-icon-favorite"] = true, true, true
+-- the money mark of the professions' Händlergunst (D-78)
+ALLOWED["coin-gold"] = true
 -- the auction house's category bars (W.NavBar: the side bar, the search results)
 for _, part in ipairs({ "", "-select", "-highlight", "-secondary", "-secondary-select", "-secondary-highlight" }) do
     ALLOWED["auctionhouse-nav-button" .. part] = true

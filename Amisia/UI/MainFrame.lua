@@ -732,15 +732,15 @@ end
 -- Where a row's name starts, by what it shows.
 local LABEL_X = { page = M.NAV_SUB_X, win = M.NAV_SUB_X, group = M.NAV_SUB2_X, section = M.NAV_SUB3_X, jump = M.NAV_LABEL_X }
 
--- A symbol of the client (def: { atlas } or { file, coords }, T.NAV_ICONS, T.TAB_ICONS, a mark's icon) on tex, shown; none
--- (hidden, false) without def or when the client lacks the atlas or (where it can tell,
--- GetFileIDFromPath) the file. A pooled texture's coordinates from an atlas are reset for a file.
+-- A symbol (def: { atlas } or { file, coords, own }, T.NAV_ICONS, T.TAB_ICONS, a mark's icon) on tex, shown;
+-- none (hidden, false) without def or when the client lacks the atlas or (where it can tell,
+-- GetFileIDFromPath) the file; an own file (shipped with the addon, D-81) is not looked up. A pooled texture's coordinates from an atlas are reset for a file.
 setArt = function(tex, def)
     if def and def.atlas and W.HasAtlas(def.atlas) then
         tex:SetAtlas(def.atlas, false)
         tex:Show()
         return true
-    elseif def and def.file and not (type(def.file) == "string" and GetFileIDFromPath and GetFileIDFromPath(def.file) == nil) then
+    elseif def and def.file and (def.own or not (type(def.file) == "string" and GetFileIDFromPath and GetFileIDFromPath(def.file) == nil)) then
         -- a path or a file data id (a profession's icon from the client); coords: a part of it
         tex:SetTexture(def.file)
         if def.coords then tex:SetTexCoord(unpack(def.coords)) else tex:SetTexCoord(0, 1, 0, 1) end

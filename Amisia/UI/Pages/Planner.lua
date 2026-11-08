@@ -357,7 +357,7 @@ local function setIcon(r, id, link)
     r.icon:SetTexture(DK.iconOf(id) or DK.QUESTION)
     local q = DK.qualityOf(id, link)
     local c = T.QUALITY_RGB[q or 1] or T.QUALITY_RGB[1]
-    W.SetBorderColor(r.edges, c[1], c[2], c[3], 1)
+    DK.setRing(r.frame, c[1], c[2], c[3])
 end
 
 -- "Deine Wahl: <item>" with its source, or the line without a pick; the red X, "Übernehmen".
@@ -537,7 +537,7 @@ local function buildRow(r)
     r.icon:SetPoint("TOPLEFT", PL.ROW_EDGE, -PL.ROW_EDGE)
     r.icon:SetPoint("BOTTOMRIGHT", -PL.ROW_EDGE, PL.ROW_EDGE)
     r.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
-    r.edges = W.Border(r.frame, 1, 1, 1, 1, PL.ROW_EDGE)
+    DK.roundIcon(r.frame, PL.DOLL, r.icon)   -- the thin rounded ring of the slots (D-81 Nachtrag)
     -- the right end: the gain, the source's symbol, the star
     local starX = PL.END
     local srcX = starX + PL.STAR + PL.END

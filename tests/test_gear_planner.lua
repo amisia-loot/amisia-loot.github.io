@@ -119,7 +119,9 @@ assert(d.parent == f.panel or d:GetParent() == f.panel, "the doll on the dark pa
 assert(d.points.TOPLEFT.x == PL.PAD and d.points.TOPLEFT.y == -PL.DOLL_Y)
 -- the chosen slot: the first with an upgrade (the head), gold; the target's icon in its quality's frame
 assert(d.slots.HEAD.item and d.slots.HEAD.item.id == 402, "the head's target: " .. tostring(d.slots.HEAD.item and d.slots.HEAD.item.id))
-local function edge(b) return b.edges[1].color end
+local function edge(b) return b.ringColor end
+-- the slot's thin rounded ring (Amisia's own art) and the rounded icon
+assert(d.slots.HEAD.ring.texture:find("slot_ring", 1, true) and d.slots.HEAD.edges == nil, "the rounded ring, no square edges")
 local GOLD, DONE = NS.Theme.GOLD, PL.STATE_COLOR.done
 assert(edge(d.slots.HEAD)[1] == GOLD[1] and edge(d.slots.HEAD)[2] == GOLD[2], "the chosen slot gold")
 assert(d.slots.CHEST.item.id == 403 and edge(d.slots.CHEST)[1] == DONE[1] and edge(d.slots.CHEST)[2] == DONE[2],

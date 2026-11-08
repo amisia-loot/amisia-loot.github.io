@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(ui): Amisia's own gold icons for the tabs and the side bar (F-147)
+
+  The tabs and the pages in the side bar now carry gold line icons drawn for Amisia (a shield for
+  Gear, swords for Dungeons & Raids, a hammer for Professions, dice for Raid and so on) instead of the
+  game's grey marks. The item slots of the gear planner have a thin rounded frame in the item's
+  quality colour instead of the thick square one, and their icons rounded corners.
+
 ## [v2.65.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.65.0) (2026-11-08)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.64.0...v2.65.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

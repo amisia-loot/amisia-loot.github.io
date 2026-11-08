@@ -2,6 +2,12 @@ place_flight.tga, place_ship_a.tga, place_ship_h.tga and place_zeppelin.tga are 
 drawn by tools/make_place_icons.py.
 
 arrow.tga is the icon "navigation-2" of Lucide (lucide.dev), filled and rasterised at 64x64.
+The files in ui/ are icons of Lucide (lucide.dev, lucide-static 0.460.0: shield, swords, hammer,
+sparkles, dices, users, settings, layout-dashboard, list-ordered, clipboard-check, bookmark, gift,
+scroll-text, coins, chart-column, archive, share-2, shirt, shield-half, scroll, castle, skull, flag,
+map, calendar-days, landmark, wrench, info, message-square, network, dice-5, clipboard-list), drawn
+with a thicker stroke in a gold gradient over a dark rim and rasterised at 64x64 by
+tools/make_ui_icons.py. ui/slot_ring.tga and ui/slot_mask.tga are Amisia's own, drawn by the same tool.
 Lucide is ISC licensed; this icon is derived from Feather (MIT). Both licences follow.
 
 ISC License
