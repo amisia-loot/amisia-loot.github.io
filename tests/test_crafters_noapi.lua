@@ -24,7 +24,8 @@ assert(NS.CraftersStats().pv == 0 and NS.CraftersStats().bytes == 0, "nothing se
 NS.Dispatch("berufe schmied")
 local f = NS.PageFrame("professions")
 f.list.rows[1]:Click()
-assert(has(f.detail.body.fs:GetText(), "Anna Amboss (300)"), f.detail.body.fs:GetText())
-assert(f.detail.ask:IsEnabled())
-f.detail.ask:Click()   -- no chat function: nothing happens, no error
+f.rd.offline:Click()   -- the offline ones too (D-82)
+assert(has(f.rd.who:GetText(), "Anna Amboss (300)"), f.rd.who:GetText())
+assert(f.rd.ask:IsShown())
+f.rd.ask:Click()   -- no chat function: nothing happens, no error
 assert(Cr.TooltipLine(2853) == "Kann herstellen: Anna Amboss (300), Vulo Sturmwind (45)", tostring(Cr.TooltipLine(2853)))

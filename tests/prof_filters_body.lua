@@ -109,7 +109,9 @@ assert(not f.guild.on and not f.learn.on, "the chips off")
 
 -- the layout holds with the counts and the reset button
 local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
-Lay.row("filters", f.known, f.source, f.learn, f.guild, f.counts)
+-- (the filters in the menu under the search, D-82)
+Lay.row("filters", f.known, f.source, f.learn, f.guild)
+Lay.row("search", f.search, f.filterBtn, f.counts)
 Lay.fits(f.counts)
 -- each dropdown is as wide as its widest entry needs: every entry fits the field
 for _, p in ipairs({ f.known, f.source }) do

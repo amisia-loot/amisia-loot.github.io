@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(prof): recipe view with WoW icons, favorites and a crafting list (F-151, F-153)
+
+  A profession's recipes now look like the game's: tabs All recipes, Favorites, Merchant's Favor, Crafting
+  list and Route; a head with the profession's icon, your skill and how many recipes you know; each recipe
+  with the crafted item's icon, a bar in its difficulty colour and dots for "I know it" and "the guild knows
+  it". The detail shows the colour steps, where to learn it, the reagents with what you have, and the guild
+  members who can craft it. Star a recipe to keep it under Favorites, or add a count to the crafting list,
+  which sums up all reagents and where to buy them. The filters moved into the funnel next to the search.
+
 - feat(ui): Amisia's own gold icons for the tabs and the side bar (F-147)
 
   The tabs and the pages in the side bar now carry gold line icons drawn for Amisia (a shield for

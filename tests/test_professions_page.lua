@@ -42,7 +42,7 @@ NS.ShowPage("professions")
 local f = NS.PageFrame("professions")
 local ov = f.ovView
 assert(AmisiaDB.settings.professions.view == 164, "the saved view stays")
-assert(ov:IsShown() and not f.list:IsShown() and not f.prof:IsShown() and not f.detail:IsShown(), "the overview alone")
+assert(ov:IsShown() and not f.list:IsShown() and not f.tabAll:IsShown() and not f.detail:IsShown() and not f.rd:IsShown(), "the overview alone")
 assert(has(ov.intro:GetText(), "Wähle einen Beruf"), ov.intro:GetText())
 local function secTitles()
     local out = {}
@@ -96,7 +96,7 @@ assert(ov:IsShown() and AmisiaDB.settings.professions.view == "overview", "back 
 AmisiaDB.settings.professions.mode = "route"
 ov.cards[3]:Click()
 assert(AmisiaDB.settings.professions.view == 171 and AmisiaDB.settings.professions.mode == "recipes", "alchemy's recipes")
-assert(not ov:IsShown() and f.list:IsShown() and f.prof:IsShown() and mark(171).entry.on, "the recipe list")
+assert(not ov:IsShown() and f.list:IsShown() and f.tabAll.on and mark(171).entry.on, "the recipe list")
 mark("overview").button:Click()
 ov.cards[7]:Click()
 assert(AmisiaDB.settings.professions.view == "favor" and #f.list.items == 1, "the favor card")
@@ -111,17 +111,23 @@ assert(ov.cards[1]:GetWidth() > narrow)
 NS.Theme.PAGE_W_NOW = 602
 NS.W.FitWidths()
 
--- the command opens the page on the profession
+-- the command opens the page on the profession: the tabs, the head band (icon, title, skill, legend,
+-- the hint to open the window), the search with the filter menu (D-82)
 NS.Dispatch("berufe schmied")
 assert(NS.CurrentPage() == "professions", tostring(NS.CurrentPage()))
 local f = NS.PageFrame("professions")
-assert(f.prof.label:GetText() == "Schmiedekunst (45/150)", f.prof.label:GetText())
-local values = {}
-for _, v in ipairs(f.prof.values) do values[#values + 1] = tostring(v.value) end
-assert(table.concat(values, ",") == "164,185,171,camp,favor", table.concat(values, ","))
-assert(has(f.rank:GetText(), "Dein Rang: 45 / 150"), f.rank:GetText())
+assert(f.tabAll.on and not f.tabFav.on and not f.tabFavor.on and not f.tabQueue.on and not f.tabRoute.on, "Alle Rezepte")
+assert(f.title:GetText() == "Schmiedekunst - Alle Rezepte", f.title:GetText())
+assert(f.rank:GetText() == "Dein Skill: 45/150 · 5 Rezepte", f.rank:GetText())
+assert(f.note:GetText() == "Öffne einmal dein Schmiedekunst-Fenster, um bekannte Rezepte zu markieren.", f.note:GetText())
+assert(f.legend:IsShown() and f.headIcon.icon.texture == "Interface\\Icons\\Trade_BlackSmithing", "legend and icon")
 assert(#f.list.items == 5 and f.counts:GetText() == "5 von 5 Rezepten", f.counts:GetText())
 assert(has(f.hint:GetText(), "Berufsfenster einmal öffnen"), f.hint:GetText())
+assert(f.filterBtn:IsShown() and not f.filters:IsShown(), "the filter menu closed")
+f.filterBtn:Click()
+assert(f.filters:IsShown() and f.known:GetParent() == f.filters, "the filters in the menu")
+f.filterBtn:Click()
+assert(not f.filters:IsShown())
 
 -- the profession window is read: known recipes are marked, the status line no longer asks
 STUB.fire("TRADE_SKILL_SHOW"); STUB.tick(1)
@@ -132,6 +138,11 @@ assert(has(rows[1].name:GetText(), "|c" .. Pr.COLORS.green), "green at rank 45 (
 assert(has(rows[4].name:GetText(), "|c" .. Pr.COLORS.yellow) and not has(rows[4].name:GetText(), "bekannt"), rows[4].name:GetText())
 assert(has(rows[5].name:GetText(), "|c" .. Pr.COLORS.red), "unknown and above the own rank")
 assert(rows[4].rank:GetText():find("10"), "the learn rank")
+-- the row's parts: the difficulty bar, the icon in its ring, the dot "kann ich", the source tag
+assert(rows[1].bar.color and math.abs(rows[1].bar.color[1] - 0x40 / 255) < 1e-6, "the green bar")
+assert(rows[1].dotMe:IsShown() and not rows[4].dotMe:IsShown() and not rows[1].dotGuild:IsShown(), "the dots")
+assert(rows[4].iconFrame.icon.texture ~= nil and has(rows[3].mark:GetText(), "Lehrer"), rows[3].mark:GetText())
+assert(f.rank:GetText() == "Dein Skill: 45/150 · 5 Rezepte, 2 bekannt" and f.note:GetText() == "", f.rank:GetText())
 -- sorted by the learn rank, then by when it turns yellow (the data had 3321 second)
 local order = {}
 for i, it in ipairs(f.list.items) do order[i] = it.recipe.spell end
@@ -151,28 +162,64 @@ NS.ShowProfessions("schmied")
 
 -- the detail of the first row is shown; a click chooses another
 assert(f.selected and f.selected.recipe.spell == 2663, "the first row is chosen")
+assert(f.rd:IsShown() and not f.detail:IsShown(), "a recipe in the boxes")
 rows[4]:Click()
 assert(f.selected.recipe.spell == 3321 and AmisiaDB.settings.professions.sel["164"] == 3321, "chosen and kept")
-local d = f.detail
-assert(has(d.title:GetText(), "Kupferkettenweste"), d.title:GetText())
-local body = d.body.fs:GetText()
-assert(has(body, "Schmiedekunst · Fertigkeit"), body)
+local rd = f.rd
+assert(has(rd.title:GetText(), "Kupferkettenweste"), rd.title:GetText())
+assert(has(rd.sub:GetText(), "Schmiedekunst"), rd.sub:GetText())
+local body = rd.info:GetText()
+assert(has(body, "Skill: lernbar ab "), body)
 assert(has(body, "Dein Rang 45: "), body)
 assert(has(body, "Nicht bekannt (lernbar ab 10)"), body)
-assert(has(body, "Reagenzien: noch unbekannt"), "the client does not answer")
-assert(has(body, "Händler: Suppla Smith, Wald von Elwynn 13, 33"), body)
+assert(has(body, "Gelernt bei:") and has(body, "Händler: Suppla Smith, Wald von Elwynn 13, 33"), body)
 assert(has(body, "Rezept: ") and has(body, "Pläne: Kupferkettenweste") and has(body, "(Rang 10)"), body)
 assert(has(body, "Handwerksauftrag für dieses Item möglich"), body)
-assert(d.go:IsEnabled(), "a source with a place")
-d.go:Click()
+assert(rd.reag.note:IsShown() and has(rd.reag.note:GetText(), "Reagenzien: noch unbekannt"), "the client does not answer")
+assert(rd.go:IsShown(), "a source with a place")
+rd.go:Click()
 assert(NS.MapTarget() and NS.MapTarget().map == 1429, "the waypoint of the source")
 NS.MapClearTarget()
--- reagents with the own count
+-- reagents with the own count (bags and bank), green when enough
 rows[1]:Click()
-body = d.body.fs:GetText()
-assert(has(body, "2x ") and has(body, "Kupferbarren") and has(body, "(1)"), body)
-assert(has(body, "Mit dem Beruf gelernt"), body)
-assert(not d.go:IsEnabled(), "no place to go")
+local rr = rd.reag.rows[1]
+assert(rr:IsShown() and has(rr.name:GetText(), "Kupferbarren") and has(rr.have:GetText(), "1 / 2") and has(rr.have:GetText(), NS.Theme.RED),
+    rr.have:GetText())
+assert(not rd.reag.note:IsShown() and has(rd.info:GetText(), "Mit dem Beruf gelernt"), rd.info:GetText())
+assert(not rd.go:IsShown(), "no place to go")
+assert(has(rd.who:GetText(), "Vuloo (45)") and not rd.ask:IsShown(), "the own character, nobody to ask")
+
+-- the star: a favourite of this character, the tab Favoriten lists it (all professions)
+assert(rd.star.icon.alpha == NS.Theme.PROFPAGE.STAR_OFF, "off")
+rd.star:Click()
+assert(Pr.IsFav(2663) and rd.star.icon.alpha == 1, "on")
+local who = NS.UnitFullName("player")
+assert(AmisiaDB.prof.lists[who].fav[2663] == true, "saved per character")
+f.tabFav:Click()
+assert(f.tabFav.on and AmisiaDB.settings.professions.mode == "fav" and #f.list.items == 1 and f.title:GetText() == "Favoriten",
+    f.title:GetText())
+assert(not f.search:IsShown() and f.counts:GetText() == "1 Favoriten" and f.rd:IsShown(), f.counts:GetText())
+rd.star:Click()
+assert(#f.list.items == 0 and f.empty:IsShown(), "the empty favourites")
+
+-- the crafting list: "+ Liste" with the count, the summed reagents with have/need and the source
+f.tabAll:Click()
+f.list.rows[1]:Click()
+rd.count.plus:Click()
+rd.count.plus:Click()
+rd.add:Click()
+assert(AmisiaDB.prof.lists[who].queue[1][1] == 2663 and AmisiaDB.prof.lists[who].queue[1][2] == 3, "3 crafts queued")
+rd.add:Click()
+assert(AmisiaDB.prof.lists[who].queue[1][2] == 6, "the same entry grows")
+f.tabQueue:Click()
+assert(f.tabQueue.on and f.queueView:IsShown() and not f.list:IsShown() and not f.rd:IsShown(), "the crafting list")
+assert(#f.qlist.items == 1 and f.qlist.rows[1].n:GetText() == "6x" and f.title:GetText() == "Herstellliste", f.qlist.rows[1].n:GetText())
+assert(#f.qneed.items == 1 and f.qneed.items[1].item == 2840 and f.qneed.items[1].need == 12, "12 copper bars")
+assert(has(f.qneed.rows[1].have:GetText(), "1 / 12"), f.qneed.rows[1].have:GetText())
+assert(f.counts:GetText() == "1 Rezepte, 6 Herstellungen" and f.clearQueue:IsShown(), f.counts:GetText())
+f.qlist.rows[1].del:Click()
+assert(#f.qlist.items == 0 and f.qempty:IsShown() and #f.qneed.items == 0, "removed")
+f.tabAll:Click()
 
 -- filters
 -- the two dropdowns name their filter; a pick goes through the picker's onPick
@@ -181,9 +228,11 @@ assert(f.source.arrow and f.source.label:GetText() == "Quelle: Alle", f.source.l
 f.known.onPick("known")
 assert(#f.list.items == 2 and AmisiaDB.settings.professions.known == "known", #f.list.items)
 assert(f.known.label:GetText() == "Bekannt: Bekannt" and f.counts:GetText() == "2 von 5 Rezepten", f.counts:GetText())
+assert(f.filterBtn.dot:IsShown(), "the funnel shows a filter is on")
 f.known.onPick("unknown")
 assert(#f.list.items == 3)
 f.known.onPick("all")
+assert(not f.filterBtn.dot:IsShown())
 f.learn:Click()
 assert(#f.list.items == 2 and f.learn.on, "unknown and learnable at 45: the vest and the recipe without data")
 f.learn:Click()
@@ -203,15 +252,18 @@ f.search:SetText("")
 f.search.scripts.OnEnterPressed(f.search)
 assert(#f.list.items == 5)
 
--- another profession through the picker
-f.prof.onPick(171)
-assert(f.prof.label:GetText() == "Alchimie" and #f.list.items == 2 and has(f.rank:GetText(), "nicht erlernt"), f.rank:GetText())
+-- another profession through its mark in the side bar
+mark(171).button:Click()
+assert(f.title:GetText() == "Alchimie - Alle Rezepte" and #f.list.items == 2 and has(f.rank:GetText(), "Nicht erlernt"), f.rank:GetText())
 
 -- the camp view
 NS.Dispatch("berufe lager")
-assert(f.prof.label:GetText() == "Lager (Camping)" and #f.list.items == 3, f.prof.label:GetText())
-assert(not f.known:IsShown() and not f.search:IsShown(), "the recipe filters hide")
+assert(f.title:GetText() == "Lager" and #f.list.items == 3 and not f.legend:IsShown(), f.title:GetText())
+assert(not f.known:IsShown() and not f.search:IsShown() and not f.filterBtn:IsShown(), "the recipe filters hide")
+assert(f.detail:IsShown() and not f.rd:IsShown(), "the text detail")
+assert(not f.tabAll.on and not f.tabFavor.on, "no tab for the camp")
 assert(has(rows[1].mark:GetText(), "3 Pl."), "a campfire's places")
+local d = f.detail
 -- the description is not loaded yet on the first ask: a placeholder, the client is asked to load
 -- the spell (once), and SPELL_DATA_LOAD_RESULT fills the text in
 local loaded, asked, realDesc = false, {}, C_Spell.GetSpellDescription
@@ -233,14 +285,17 @@ assert(has(body, "Ersetzt Schleifrad und behält dessen Wirkung."), body)
 assert(has(body, "ab Rang 140 (dein Rang 45)"), body)
 assert(has(f.counts:GetText(), "3 Lagerobjekte") and has(f.hint:GetText(), "Lagerfeuer"), f.counts:GetText())
 
--- the Merchant's Favor view
-NS.ShowProfessions("gunst")
-assert(f.prof.label:GetText() == "Händlergunst" and #f.list.items == 1, #f.list.items)
+-- the Merchant's Favor view: its tab, the text detail as before
+f.tabFavor:Click()
+assert(f.tabFavor.on and f.title:GetText() == "Händlergunst" and #f.list.items == 1, #f.list.items)
+assert(AmisiaDB.settings.professions.view == "favor" and AmisiaDB.settings.professions.skill == 171, "the profession kept")
 assert(has(f.counts:GetText(), "Händlergunst: 120") and has(f.counts:GetText(), "1 Zertifizierungen"), f.counts:GetText())
 assert(has(f.hint:GetText(), "Händler: Hilda"), f.hint:GetText())
 assert(has(rows[1].rank:GetText(), "45"), "the price")
 body = d.body.fs:GetText()
 assert(has(body, "Händlergunst: 45 Gunst, Neutral (Allianz)"), body)
+f.tabAll:Click()
+assert(AmisiaDB.settings.professions.view == 171 and f.tabAll.on, "back to the profession")
 
 -- layout, officer and raider
 NS.ShowProfessions("schmied")
@@ -249,14 +304,17 @@ for _, view in ipairs({ "officer", "raider" }) do
     NS.Set("ui.view", view)
     NS.ShowProfessions()
     NS.Refresh()
-    L.row(view .. " head", f.prof, f.search, f.rank)
-    L.row(view .. " filters", f.known, f.source, f.learn, f.guild, f.counts)
-    L.row(view .. " buttons", f.detail.ask, f.detail.go)
-    L.row(view .. " body", f.list, f.list.bar, f.detail)
-    L.row(view .. " row", rows[1].name, rows[1].mark, rows[1].rank)
-    L.inside(view .. " detail", f.detail)
-    L.column(view .. " page", f.prof, f.known, f.list)
+    L.row(view .. " tabs", f.tabAll, f.tabFav, f.tabFavor, f.tabQueue, f.tabRoute)
+    L.row(view .. " search", f.search, f.filterBtn, f.counts)
+    L.row(view .. " body", f.list, f.rd)
+    L.row(view .. " row", rows[1].iconFrame, rows[1].name, rows[1].mark, rows[1].rank)
+    L.inside(view .. " detail", f.rd)
+    L.column(view .. " page", f.tabAll, f.headBlock, f.search, f.list)
     assert(f.hint.isHelp and f.data.isHelp)
-    for _, fs in ipairs({ f.counts, f.rank }) do L.fits(fs) end
+    L.fits(f.counts)
+    for _, fs in ipairs({ f.rank, f.title }) do
+        local l, r = L.span(fs)
+        assert(fs:GetStringWidth() <= r - l, fs:GetText())
+    end
 end
 NS.Reset("ui.view")

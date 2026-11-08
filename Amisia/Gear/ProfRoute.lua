@@ -931,13 +931,19 @@ function R.Shopping(route)
             for item, n in pairs(s.reagents) do need[item] = (need[item] or 0) + n end
         end
     end
+    return R.ShoppingFor(need, route and route.skill)
+end
+
+-- The same list for any need ({ [item] = count }; the crafting list of the professions page, D-82);
+-- skill: the profession whose own crafts count as a source (nil: none).
+function R.ShoppingFor(need, skill)
     local out = {}
     for item, n in pairs(need) do
         local count = math.ceil(n - 1e-6)
         if count > 0 then
             local have, twinks = R.Have(item), R.Twinks(item)
             local price, vendors = R.Price(item)
-            local kind, from = R.Source(item, route.skill)
+            local kind, from = R.Source(item, skill)
             out[#out + 1] = { item = item, need = count, have = have, twinks = twinks,
                 missing = math.max(0, count - have - twinks), price = price, vendors = vendors, kind = kind, from = from,
                 enough = have >= count }

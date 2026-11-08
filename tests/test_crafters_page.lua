@@ -23,22 +23,29 @@ Cr.Changed()
 
 NS.Dispatch("berufe schmied")
 local f = NS.PageFrame("professions")
-local d = f.detail
+local d = f.rd
 assert(#f.list.items == 5)
--- Kupferarmschienen: Anna (offline, 300) after Vulo himself (online, 45)
+-- Kupferarmschienen: Anna (offline, 300) after Vulo himself (online, 45); the offline ones only counted
+-- until "Offline zeigen" (D-82)
 f.list.rows[1]:Click()
-local body = d.body.fs:GetText()
-assert(has(body, "Hergestellt von: " .. NS.Theme.GREEN .. "Vulo Sturmwind (45)|r, Anna Amboss (300)"), body)
-assert(d.ask:IsEnabled(), "Anna can be asked")
+assert(d.who:GetText() == NS.Theme.GREEN .. "Vulo Sturmwind (45)|r\n" .. NS.Theme.GREY .. "1 offline|r", d.who:GetText())
+assert(not d.offline:GetChecked() and f.list.rows[1].dotGuild:IsShown(), "Anna's green dot")
+d.offline:Click()
+assert(AmisiaDB.settings.professions.offline == true and d.offline:GetChecked(), "kept")
+local body = d.who:GetText()
+assert(has(body, NS.Theme.GREEN .. "Vulo Sturmwind (45)|r, Anna Amboss (300)"), body)
+assert(has(d.sub:GetText(), "In der Gilde bekannt"), d.sub:GetText())
+assert(d.ask:IsShown(), "Anna can be asked")
 local said
 ChatFrameUtil.SendTellWithMessage = function(name, text) said = { name, text } end
 d.ask:Click()
 assert(said and said[1] == "Anna Amboss" and has(said[2], "[Kupferarmschienen]"), said and said[2])
 -- the vest only Anna knows (fourth by learn rank); a recipe nobody knows says so and cannot be asked
 f.list.rows[4]:Click()
-assert(has(d.body.fs:GetText(), "Hergestellt von: Anna Amboss (300)"), d.body.fs:GetText())
+assert(has(d.who:GetText(), "Anna Amboss (300)"), d.who:GetText())
 f.list.rows[3]:Click()
-assert(has(d.body.fs:GetText(), "Hergestellt von: niemand aus der Gilde bekannt") and not d.ask:IsEnabled())
+assert(has(d.who:GetText(), "Hergestellt von: niemand aus der Gilde bekannt") and not d.ask:IsShown())
+assert(not f.list.rows[3].dotGuild:IsShown(), "no green dot")
 
 -- only what the guild knows
 assert(f.guild.label:GetText() == "Gilde (2)" and f.guild:IsEnabled() and not f.guild.dim, f.guild.label:GetText())
@@ -56,8 +63,8 @@ AmisiaDB.crafters.c["Bob Hammer"] = { via = "Bob Hammer", self = true, seen = D,
 Cr.Changed()
 STUB.tick(1)
 f.list.rows[3]:Click()
-assert(has(d.body.fs:GetText(), "Hergestellt von: " .. NS.Theme.GREEN .. "Bob Hammer (120)|r"), d.body.fs:GetText())
-assert(d.ask:IsEnabled())
+assert(has(d.who:GetText(), NS.Theme.GREEN .. "Bob Hammer (120)|r"), d.who:GetText())
+assert(d.ask:IsShown())
 -- the camp view has no crafters and no ask
 NS.Dispatch("berufe lager")
-assert(not d.ask:IsEnabled() and not f.guild:IsShown())
+assert(not f.detail.ask:IsEnabled() and not f.guild:IsShown() and not d:IsShown())

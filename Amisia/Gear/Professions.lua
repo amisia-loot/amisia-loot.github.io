@@ -958,6 +958,128 @@ function Pr.NearestTrainer(skill)
     return p and owner[p] or list[1]
 end
 
+---------------------------------------------------------------------------
+-- Favourites and the crafting list of the own character (D-82):
+-- AmisiaDB.prof.lists = { [character] = { fav = { [spell] = true }, queue = { { spell, n } } } }
+---------------------------------------------------------------------------
+local FAV_CAP, QUEUE_CAP, QUEUE_N = 500, 50, 999
+local function lists(create)
+    if not AmisiaDB then return nil end
+    local p = AmisiaDB.prof
+    if type(p) ~= "table" then
+        if not create then return nil end
+        p = { chars = {} }
+        AmisiaDB.prof = p
+    end
+    if type(p.lists) ~= "table" then
+        if not create then return nil end
+        p.lists = {}
+    end
+    local key = charKey()
+    local l = p.lists[key]
+    if type(l) ~= "table" then
+        if not create then return nil end
+        l = {}
+        p.lists[key] = l
+    end
+    if create then
+        l.fav = type(l.fav) == "table" and l.fav or {}
+        l.queue = type(l.queue) == "table" and l.queue or {}
+    end
+    return l
+end
+
+function Pr.IsFav(spell)
+    local l = lists(false)
+    return l ~= nil and type(l.fav) == "table" and l.fav[tonumber(spell)] == true
+end
+
+-- Turns a recipe's star on or off; false when the list is full.
+function Pr.SetFav(spell, on)
+    spell = tonumber(spell)
+    if not spell then return false end
+    local l = lists(true)
+    if on and not l.fav[spell] and ns.Count(l.fav) >= FAV_CAP then return false end
+    l.fav[spell] = on and true or nil
+    ns.Fire("PROF_LISTS_CHANGED")
+    return true
+end
+
+-- The favourite recipes the data knows, by profession (data order) and name.
+function Pr.Favs()
+    local l = lists(false)
+    local out = {}
+    for spell in pairs(l and type(l.fav) == "table" and l.fav or {}) do
+        local r = type(spell) == "number" and Pr.Recipe(spell)
+        if r then out[#out + 1] = r end
+    end
+    local order = {}
+    for i, skill in ipairs(Pr.Skills()) do order[skill] = i end
+    table.sort(out, function(a, b)
+        if a.skill ~= b.skill then return (order[a.skill] or 99) < (order[b.skill] or 99) end
+        local na, nb = Pr.RecipeName(a), Pr.RecipeName(b)
+        if na ~= nb then return na < nb end
+        return a.spell < b.spell
+    end)
+    return out
+end
+
+-- The crafting list: { { recipe, n crafts } } in the order added (recipes the data no longer knows left out).
+function Pr.Queue()
+    local l = lists(false)
+    local out = {}
+    for _, e in ipairs(l and type(l.queue) == "table" and l.queue or {}) do
+        local r = type(e) == "table" and Pr.Recipe(tonumber(e[1]) or 0)
+        local n = type(e) == "table" and tonumber(e[2])
+        if r and n and n > 0 then out[#out + 1] = { recipe = r, n = n } end
+    end
+    return out
+end
+
+-- Adds n crafts of a recipe (to its entry when it is there already); false when the list is full.
+function Pr.QueueAdd(spell, n)
+    spell, n = tonumber(spell), math.floor(tonumber(n) or 1)
+    if not spell or n < 1 then return false end
+    local l = lists(true)
+    for _, e in ipairs(l.queue) do
+        if type(e) == "table" and e[1] == spell then
+            e[2] = math.min(QUEUE_N, (tonumber(e[2]) or 0) + n)
+            ns.Fire("PROF_LISTS_CHANGED")
+            return true
+        end
+    end
+    if #l.queue >= QUEUE_CAP then return false end
+    l.queue[#l.queue + 1] = { spell, math.min(QUEUE_N, n) }
+    ns.Fire("PROF_LISTS_CHANGED")
+    return true
+end
+
+-- Removes a recipe from the crafting list (all of it), or everything without a spell.
+function Pr.QueueRemove(spell)
+    local l = lists(false)
+    if not l or type(l.queue) ~= "table" then return end
+    if spell == nil then
+        l.queue = {}
+    else
+        for i = #l.queue, 1, -1 do
+            if type(l.queue[i]) == "table" and l.queue[i][1] == tonumber(spell) then table.remove(l.queue, i) end
+        end
+    end
+    ns.Fire("PROF_LISTS_CHANGED")
+end
+
+-- The reagents of the crafting list summed: { [item] = count } and whether a recipe's reagents are
+-- unknown (the client did not answer).
+function Pr.QueueNeeds()
+    local need, unknown = {}, false
+    for _, e in ipairs(Pr.Queue()) do
+        local list = Pr.Reagents(e.recipe.spell)
+        if not list then unknown = true end
+        for _, g in ipairs(list or {}) do need[g[1]] = (need[g[1]] or 0) + g[2] * e.n end
+    end
+    return need, unknown
+end
+
 -- Whether a writ (crafting order) exists for the item a recipe makes.
 function Pr.HasWrit(r)
     local d = data()

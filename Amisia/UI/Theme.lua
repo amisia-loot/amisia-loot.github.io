@@ -414,7 +414,7 @@ T.DBOSS = {
 }
 
 T.PROFPAGE = {
-    PICKER_W = 170, SEARCH_W = 150, RANK_W = 120,
+    SEARCH_W = 190, RANK_W = 120,
     STEP_ROWS = 9, STEP_H = 36, TICK = 14, MARK_X = 4, TEXT_X = 22, LINE1_Y = -4, LINE2_Y = -19, COST_W = 80,
     TICK_TEX = "Interface\\RaidFrame\\ReadyCheck-Ready",
     SHOP_ROWS = 14, SHOP_H = 22,
@@ -437,6 +437,32 @@ T.PROFPAGE = {
     TRAINER_COLS = 3, TRAINER_H = 36, TRAINER_ICON = 24, TRAINER_PAD = 6, TRAINER_TEXT_X = 36, TRAINER_BTN = 18,
     TRAINER_NAME_Y = -5, TRAINER_LINE_Y = -20, TRAINER_EDGE = { 0.85, 0.7, 0.35, 0.5 },
     MAP_ART = "Interface\\WorldMap\\UI-World-Icon",
+    -- the recipe view (D-82). The head band (HEAD_LINES lines): the profession's icon HEAD_ICON square
+    -- in the rounded ring, the title and the lines from HEAD_TEXT_X, at the right the legend LEGEND_W
+    -- wide (DOT square marks: the client's yellow and green indicator)
+    HEAD_LINES = 3, HEAD_ICON = 40, HEAD_TEXT_X = 48, LEGEND_W = 150, DOT = 8, DOT_GAP = 4, LEGEND_GAP = 10,
+    DOT_ME = "Interface\\COMMON\\Indicator-Yellow", DOT_GUILD = "Interface\\COMMON\\Indicator-Green",
+    -- the filter menu's button (Amisia's own funnel, D-81) and its flyout (FLY_PAD inside, FLY_GAP under it)
+    FILTER_BTN = 20, FILTER_ICON = "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\prof_filter", FLY_PAD = 6, FLY_GAP = 2,
+    -- the list LIST_W wide, rows ROW_H high (at least ROWS): the thin frame ROW_EDGE (gold when chosen),
+    -- the difficulty bar ROW_BAR_W at the left edge, the item's icon ROW_ICON square at ROW_ICON_X in
+    -- the rounded ring, the name from ROW_TEXT_X; at the right the skill (ROW_RANK_W), the dots "kann
+    -- ich" and "Gilde" (DOT_ME_R, DOT_GUILD_R from the right), the tag or upgrade mark (ROW_MARK_W,
+    -- ROW_MARK_R from the right)
+    LIST_W = 318, DETAIL_X = 334, ROW_H = 34, ROWS = 8, ROW_EDGE = { 0.4, 0.36, 0.28, 0.55 }, ROW_BAR_W = 3,
+    ROW_ICON = 24, ROW_ICON_X = 8, ROW_TEXT_X = 38, ROW_RANK_W = 30, DOT_ME_R = 52, DOT_GUILD_R = 40,
+    ROW_MARK_W = 50, ROW_MARK_R = 64,
+    -- the recipe's detail: the icon RD_ICON at RD_PAD, title and quiet line from RD_TITLE_X, the star
+    -- (Amisia's own, STAR square, STAR_OFF alpha while off) at the top right; the boxes from RD_BODY_Y in
+    -- a scroll frame, RD_BOX_GAP apart (RD_BOX_PAD inside, head RD_HEAD_H, controls RD_CTRL_H, reagent
+    -- rows RD_REAG_H with their icon RD_REAG_ICON; the guild's box tinted RD_GUILD_BG)
+    RD_PAD = 8, RD_ICON = 32, RD_TITLE_X = 46, RD_TITLE_Y = -9, RD_SUB_Y = -28, RD_BODY_Y = 46,
+    STAR = 18, STAR_ICON = "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\prof_star", STAR_OFF = 0.3,
+    RD_BOX_GAP = 6, RD_BOX_PAD = 6, RD_HEAD_H = 16, RD_LINE_H = 12, RD_CTRL_H = 22, RD_REAG_H = 18, RD_REAG_ICON = 16,
+    RD_COUNT_W = 70, RD_HAVE_W = 50, RD_BOX_BG = { 0, 0, 0, 0.3 }, RD_GUILD_BG = { 0.25, 0.75, 0.25, 0.1 },
+    -- the crafting list: its list LIST_W wide (QUEUE_DEL_W for "Entfernen"), the reagents beside it
+    -- (two lines each, NEED_H high: name and have/need, the source under it)
+    NEED_H = 34, NEED_HAVE_W = 70, QUEUE_N_W = 40,
     ICON_COORDS = { 0.07, 0.93, 0.07, 0.93 },   -- a profession's icon without the client's icon frame
     CARD_BG = { 0, 0, 0, 0.45 }, CARD_EDGE = { 0.45, 0.4, 0.3, 0.6 }, CARD_HOVER = 0.08,
     SEC_H = 22, SEC_GAP = 10, SEC_LINE_GAP = 8, SEC_LINE_A = 0.6,

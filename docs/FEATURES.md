@@ -39,6 +39,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-153 Berufe: Favoriten und Herstellliste
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du im Rezept oben rechts auf den Stern klickst und dann den Reiter "Favoriten" öffnest, dann steht das Rezept dort (auch aus anderen Berufen); ein zweiter Klick auf den Stern nimmt es wieder heraus.
+- Prüfung: Wenn du im Rezept die Anzahl wählst und "+ Liste" klickst, dann zeigt der Reiter "Herstellliste" das Rezept mit der Anzahl und daneben alle Reagenzien mit hast/brauchst und dem nächsten Händler; "Entfernen" und "Liste leeren" nehmen sie wieder heraus.
+- Notiz: D-82. Je Charakter gespeichert; Herstellen selbst geht nur im Berufsfenster des Spiels.
+
 ### F-152 Anzeige erhaltener Items beim Looten und bei Questbelohnungen
 - Version: 2.65.0
 - Status: gebaut
@@ -52,7 +59,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Status: gebaut
 - Prüfung: Wenn du im Reiter Berufe links auf "Übersicht" klickst (oder `/amisia berufe übersicht` eingibst), dann zeigt die Seite "Deine Berufe" mit Rang und bekannten Rezepten, "Alle Berufe" mit ihrer Rezeptzahl und "Weiteres" mit Lager und Händlergunst als Kacheln.
 - Prüfung: Wenn du links unter "Übersicht" schaust, dann stehen dort die Berufe mit ihrem Symbol, darunter Lager und Händlergunst mit deiner Gunst als Zahl; die gezeigte Ansicht ist hervorgehoben.
-- Prüfung: Wenn du auf eine Berufskachel oder links auf einen Beruf klickst, dann öffnet sich seine Rezeptliste mit Filtern und Route wie bisher.
+- Prüfung: Wenn du auf eine Berufskachel oder links auf einen Beruf klickst, dann öffnet sich "Alle Rezepte": oben das Berufssymbol und "Schneiderei – Alle Rezepte", links die Rezepte mit Symbol, Farbbalken und Punkten, rechts die Kästen Details, Reagenzien und Gildenmitglieder; der Trichter neben der Suche öffnet die Filter.
 - Prüfung: Wenn du den Reiter Berufe zum ersten Mal nach einem /reload öffnest, dann steht die Übersicht da, mit vier Kacheln je Zeile und unten "Nächste Lehrer" (je Beruf ein Lehrer deiner Fraktion mit Zone und Kartenknopf, der den Wegpunkt setzt).
 - Notiz: Spec docs/specs/2026-11-08-hub-reiter.md; D-78 mit Nachtrag (Start, vier Spalten, Lehrer aus AllTheThings).
 

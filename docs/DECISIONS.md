@@ -1995,3 +1995,23 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 
 **Nachtrag 2026-11-08 (Nutzer zum Planer: "die Rahmen der Items nicht so dick und abgerundet"):** Die Plätze am Modell und die Item-Symbole der Planer-Listen haben statt des 2 px breiten eckigen Rahmens einen dünnen abgerundeten Ring in der Farbe der Qualität (gold für den gewählten Platz, grün, wenn das Ziel angelegt ist). Das Symbol darunter hat runde Ecken. Beides ist Amisias eigene Zeichnung: `ui/slot_ring.tga` (weiß, im Addon eingefärbt) und `ui/slot_mask.tga` (die Maske des Clients mit dieser Form), von `tools/make_ui_icons.py`. Helfer `ns.GoalsKit.roundIcon`/`setRing`.
 
+## D-82 Rezeptansicht der Berufe nach dem Foto
+
+**Datum:** 2026-11-08
+**Entscheidung:** Die Rezepte eines Berufs (F-151, F-153) nach dem Foto des Reiters Professions → Tailoring des Vorbilds, mit den Symbolen aus WoW:
+- **Kopfzeile:** die Reiter "Alle Rezepte | Favoriten | Händlergunst | Herstellliste | Route" als Textreiter (D-67, kein roter Knopf). Der Berufswähler der Seite entfällt; die Leiste wählt den Beruf (D-78). Händlergunst bleibt die Ansicht von vorher, der Beruf steht dabei in `settings.professions.skill`.
+- **Kopf:** das Berufssymbol des Clients (40 px) im runden Ring (D-81), "Schneiderei - Alle Rezepte" groß in Gold, darunter "Dein Skill: 115/150 · 413 Rezepte, 0 bekannt"; rechts die Legende "Kann ich" (gelber Punkt) und "Gilde" (grüner Punkt); solange das Berufsfenster nie gelesen wurde, der goldene Hinweis "Öffne einmal dein Schneiderei-Fenster, …".
+- **Suche und Filter:** das Suchfeld und Amisias eigener Trichter (Lucide "filter", D-81); er öffnet die Filter Bekannt, Quelle, Lernbar und Gilde in einem kleinen Feld unter der Suche, ein Punkt zeigt, dass einer an ist. Ein eigener "!"-Knopf für Lernbar entfällt (Lernbar steht im Feld).
+- **Liste** (318 breit, Zeilen 34): je Rezept ein dunkler Rahmen (gold, wenn gewählt), links ein Balken in der Farbe der Schwierigkeit, das Symbol des hergestellten Items aus dem Client (sonst das des Zaubers) im runden Ring seiner Qualität, der Name, das Quellwort (Lehrer, Gunst, Händler, Quest, Drop) oder die Upgrade-Marke, der gelbe Punkt "kann ich", der grüne Punkt, wenn jemand anderes aus der Gilde es kann, rechts der nötige Skill.
+- **Detail:** Symbol, Name, Stern (Favorit, je Charakter), eine leise Zeile (Beruf, grün "In der Gilde bekannt"); die Kästen "Details" (Farbstufen, eigener Rang, bekannt, "Gelernt bei", Rezeptitem, Handwerksauftrag; Anzahl mit "+ Liste" und "Wegpunkt"), "Reagenzien" (Symbol, Name, hast/brauchst aus Taschen und Bank, grün, wenn genug) und "Gildenmitglieder, die es können" (grün getönt; "Offline zeigen", sonst nur die Zahl der Offline; "Fragen").
+- **Favoriten:** die gemerkten Rezepte aller Berufe, gleiche Liste und gleiches Detail. **Herstellliste:** die gemerkten Herstellungen (Anzahl, Entfernen, Klick öffnet das Rezept) und daneben alle Reagenzien zusammen (hast/brauchst, nächster Händler mit Preis oder die Quelle wie in der Route). Beides je Charakter in `AmisiaDB.prof.lists` (höchstens 500 Favoriten, 50 Einträge).
+- **Kein "Herstellen":** Herstellen aus einem Addon braucht das Berufsfenster und einen Tastendruck des Spielers (geschützte Funktion). Auch "Im Berufsfenster" (das eigene Fenster öffnen) fehlt: ob der Client das einem Addon außerhalb des Kampfes erlaubt, ist hier nicht prüfbar; ein Fehlversuch hinterließe "Aktion blockiert".
+- Lager und Händlergunst behalten das Textdetail von vorher.
+
+**Grund:** Nutzer 2026-11-08 mit dem Foto des Rezeptreiters: "Berufe genau so, auch mit den Icons aus WoW".
+
+**Folge:**
+- Neue Texturen `ui/prof_filter.tga` und `ui/prof_star.tga`: nach dem Release einmal den Client ganz neu starten.
+- Ob `Interface\COMMON\Indicator-Yellow`/`-Green` in Forever da sind, ist im Spiel zu prüfen; ohne bleiben die Punkte leer.
+
+**Durchgesetzt durch:** `tests/test_professions_page.lua` (Reiter, Kopf, Trichter, Zeilen, Detail, Stern, Favoriten, Herstellliste), `tests/test_crafters_page.lua` (Gildenkasten, Offline zeigen, grüner Punkt), `tests/prof_filters_body.lua`, die Layoutregeln (Zustände `professions-fav`, `professions-queue`).

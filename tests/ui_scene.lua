@@ -503,6 +503,18 @@ S.STATES = {
         p.mode, p.routeTab, p.routeVendor = "route", "shop", true
         NS.ShowProfessions("schneiderei")
     end },
+    -- the favourites and the crafting list (D-82): two tailoring recipes each
+    { page = "professions", name = "professions-fav", open = function()
+        local p = AmisiaDB.settings.professions
+        p.mode, p.routeVendor = "fav", nil
+        for i, r in ipairs(NS.Prof.Recipes(197)) do if i <= 3 then NS.Prof.SetFav(r.spell, true) end end
+        NS.ShowProfessions("schneiderei")
+    end },
+    { page = "professions", name = "professions-queue", open = function()
+        AmisiaDB.settings.professions.mode = "queue"
+        for i, r in ipairs(NS.Prof.Recipes(197)) do if i <= 3 then NS.Prof.QueueAdd(r.spell, i * 2) end end
+        NS.ShowProfessions("schneiderei")
+    end },
     -- the priest build of S.priestPlan (every talent state)
     { page = "talents", name = "talents-plan", open = function() NS.ShowTalents(NS.Talents.Encode(S.priestPlan())) end },
     { page = "bank", name = "bank-stock", open = function() NS.ShowBank("bestand") end },

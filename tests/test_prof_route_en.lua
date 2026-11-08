@@ -7,7 +7,7 @@ AmisiaDB.settings.professions = { mode = "route", routeVendor = true }
 NS.ShowProfessions("tailoring")
 local f = NS.PageFrame("professions")
 assert(f.routeView:IsShown(), "the route view")
-assert(f.modeRecipes.label:GetText() == "Recipes" and f.modeRoute.label:GetText() == "Route")
+assert(f.modeRecipes.label:GetText() == "All recipes" and f.modeRoute.label:GetText() == "Route")
 assert(f.vendorT.label:GetText() == "trainer only" and f.vendorV.label:GetText() == "vendors too")
 assert(f.tabSteps.label:GetText() == "Steps" and f.tabShop.label:GetText() == "Shopping")
 local head = f.routeHead:GetText()

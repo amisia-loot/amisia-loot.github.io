@@ -53,6 +53,8 @@ ICONS = {
     'settings': 'settings', 'about': 'info', 'feedback': 'message-square',
     # the side windows
     'win_talents': 'network', 'win_rolls': 'dice-5', 'win_softres': 'clipboard-list',
+    # the professions page (D-82): the filter menu's button and the favourite star
+    'prof_filter': 'filter', 'prof_star': 'star',
 }
 
 

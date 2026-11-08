@@ -174,6 +174,10 @@ Nichts. Nur Oberfläche, nichts wird gesendet.
 
 ## Entscheidungen
 
+- 2026-11-08, Nutzer schickt das Foto des Rezeptreiters (Professions → Tailoring): "Berufe genau so, auch mit den Icons
+  aus WoW". D-82: Reiter Alle Rezepte, Favoriten, Händlergunst, Herstellliste, Route; Kopf mit Berufssymbol und Legende;
+  Trichter für die Filter; Zeilen mit Item-Symbol, Farbbalken und Punkten; Detail in Kästen; neu F-153.
+
 - 2026-11-08, Nutzer schickt das Foto der Berufe noch einmal ("so wie" dort), D-78 Nachtrag: das erste Öffnen
   zeigt die Übersicht, vier Kacheln je Zeile, "Nächste Lehrer" aus den Lehrern der Zonendateien von AllTheThings.
 
