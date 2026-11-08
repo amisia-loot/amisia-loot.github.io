@@ -410,13 +410,24 @@ T.DPART = {
     ACCESS = { ROW_H = 22, ICON = 16, TEXT_X = 24, STEP_X = 24, STATE_W = 110 },
 }
 
--- the boss list of the detail views of Dungeons and Raids (F-144, D-69): a boss's head row with the
--- quest log's plus or minus (SIGN square at SIGN_X), its name from NAME_X (NAME_W), its gain per run
--- from RATE_X (RATE_W); folded, a strip of at most MAX_ICONS item icons (ICON square, ICON_GAP apart,
--- an EDGE px frame in the item's quality colour) STRIP_R from the row's right end, "+N" (MORE_W) after them.
+-- the part Übersicht of the detail views of Dungeons and Raids (F-154, D-85): left the bosses (LIST_W
+-- wide with the list's bar, rows ROW_H high: the boss's model PORTRAIT square at PORT_X on a black
+-- disc in the gold RING, "n. Name" from TEXT_X over its grey line), GAP, right the chosen boss: its head
+-- HEAD_H high (the portrait HEAD_PORT square at HEAD_PORT_X, its name and line from HEAD_TEXT_X), its
+-- loot under it, GAP apart (rows LOOT_H high: the item's icon ICON square at ICON_X in its quality's
+-- rounded ring, the name over "slot · gain" from LOOT_TEXT_X, the drop rate RATE_W and the wish star
+-- STAR square at the right end, END apart). A boss the client shows no model of: the client's skull
+-- (NO_MODEL). MIN_ROWS: rows of each list at least.
 T.DBOSS = {
-    SIGN = 14, SIGN_X = 4, NAME_X = 22, NAME_W = 202, RATE_X = 228, RATE_W = 200,
-    ICON = 18, ICON_GAP = 2, MAX_ICONS = 6, EDGE = 1, STRIP_R = 4, MORE_W = 26,
+    LIST_W = 212, GAP = 8, MIN_ROWS = 3,
+    ROW_H = 44, PORTRAIT = 36, PORT_X = 4, TEXT_X = 46, NAME_Y = -7, SUB_Y = -24,
+    HEAD_H = 52, HEAD_PORT = 44, HEAD_PORT_X = 4, HEAD_TEXT_X = 56, HEAD_NAME_Y = -8, HEAD_SUB_Y = -30,
+    LOOT_H = 36, ICON = 28, ICON_X = 4, LOOT_TEXT_X = 40, LOOT_NAME_Y = -4, LOOT_SUB_Y = -20,
+    RATE_W = 72, STAR = 16, END = 6,
+    ZOOM = 0.9,                -- the model's portrait zoom (head and shoulders)
+    RING = "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\boss_ring",
+    NO_MODEL = "Interface\\TargetingFrame\\UI-TargetingFrame-Skull",
+    HEAD_BG = { 0, 0, 0, 0.35 },
 }
 
 T.PROFPAGE = {

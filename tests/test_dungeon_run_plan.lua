@@ -134,10 +134,10 @@ AmisiaDB.settings.bis = AmisiaDB.settings.bis or {}
 AmisiaDB.settings.bis.dpart = "bosses"
 NS.ShowDungeon("deadmines")
 local B = NS.PageFrame("dungeons")
-assert(B.detail:IsShown() and not B.table:IsShown() and B.plan:GetText() == "Lauf planen", "ShowDungeon opens the detail view")
+assert(B.bossView:IsShown() and not B.table:IsShown() and B.plan:GetText() == "Lauf planen", "ShowDungeon opens the detail view")
 B.plan:Click()
 local V = B.pathView
-assert(V:IsShown() and not B.detail:IsShown() and not B.table:IsShown() and not B.back:IsShown(), "the run planner from the bosses part")
+assert(V:IsShown() and not B.bossView:IsShown() and not B.table:IsShown() and not B.back:IsShown(), "the run planner from the bosses part")
 assert(V.title:GetText() == "Dein Lauf" and V.info:GetText() == "4 offene Quests · 2 Halte vor dem Lauf", V.info:GetText())
 local first = V.list.rows[1]
 assert(first.item.kind == "run" and first.sel:IsShown() and plain(first.title:GetText()) == "Dein Lauf", "the first row")
@@ -226,7 +226,7 @@ assert(V.plan ~= nil and not V.lvl:IsShown() and not V.doneLine:IsShown() and no
 local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(B, 602, 478)
 Lay.row("run head", V.back, V.map)
 V.back:Click()
-assert(not V:IsShown() and B.detail:IsShown() and not B.table:IsShown() and not B.parts.quests.on, "back to the bosses part of the detail view it came from")
+assert(not V:IsShown() and B.bossView:IsShown() and not B.table:IsShown() and not B.parts.quests.on, "back to the bosses part of the detail view it came from")
 
 -- at the level cap only the upgrades count
 STUB.level, STUB.xp = 60, { 0, 0 }

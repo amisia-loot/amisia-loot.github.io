@@ -263,7 +263,7 @@ NS.ShowPage("dungeons")
 local B = NS.PageFrame("dungeons")
 assert(B.table:IsShown() and not B.art:IsShown(), "the cards first, the image in the detail view")
 B.table:RowOf("thanes"):Click()
-assert(B.chosen == "thanes" and B.art:IsShown() and B.detail:IsShown())
+assert(B.chosen == "thanes" and B.art:IsShown() and B.bossView:IsShown())
 assert(B.art and B.art:IsShown() and B.art.tex.texture == A.D.thanes[1], "the thanes' screen")
 assert(B.art.tex.texCoord and #B.art.tex.texCoord == 4, "cropped")
 assert(B.art.title:GetText() == "Hall of Thanes", B.art.title:GetText())
@@ -283,7 +283,7 @@ B.art.model.SetCreature = setCreature
 -- hovering a boss row shows that boss, leaving it the default again
 NS.Refresh()
 local bossRow
-for _, row in ipairs(B.detail.rows) do if row.item and row.item.kind == "boss" and row.item.b.npc == 261306 then bossRow = row end end
+for _, row in ipairs(B.bossView.list.rows) do if row.item and row.item.kind == "boss" and row.item.b.npc == 261306 then bossRow = row end end
 assert(bossRow, "a boss row with its NPC id")
 B.art:SetModelNpc(261319)
 bossRow.scripts.OnEnter(bossRow)
@@ -306,7 +306,11 @@ assert(NS.DungeonMarked() == nil and B.mark:GetText() == "Alle auf Karte")
 -- Ctrl-click: the dressing room; Shift-click: the chat
 B.parts.bosses:Click()
 local irow
-for _, row in ipairs(B.detail.rows) do if row.item and row.item.id == 501 then irow = row end end
+-- the boss of the helm chosen (F-154), the helm's row in its loot
+for _, row in ipairs(B.bossView.list.rows) do
+    for _, e in ipairs(row.item and row.item.items or {}) do if e.id == 501 then row:Click() end end
+end
+for _, row in ipairs(B.bossView.loot.rows) do if row.item and row.item.id == 501 then irow = row end end
 assert(irow, "the helm's row")
 local ctrl, dressed = false, nil
 _G.IsControlKeyDown = function() return ctrl end

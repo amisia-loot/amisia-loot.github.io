@@ -39,6 +39,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-154 Dungeons und Raids: Bosse mit Porträt, Beute mit Symbolen
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du auf der Seite Dungeons einen Dungeon öffnest (Teil Übersicht), dann stehen links die Bosse untereinander, jeder mit rundem Porträt im Goldring (das Modell des Bosses, ohne Modell der Totenkopf des Spiels), "1. Name" und darunter grau "4 Items · 1 Upgrade"; rechts steht der gewählte Boss groß mit Porträt, Name und "Boss 1 von 6", darunter seine Beute: Symbol im Rahmen der Qualität, Name, Slot und Zuwachs, Dropchance und der Stern.
+- Prüfung: Wenn du links auf einen anderen Boss klickst, dann zeigt die rechte Seite seine Beute; die Maus auf einem Boss zeigt ihn im Bild oben, Rechtsklick markiert ihn als getötet oder nicht.
+- Prüfung: Wenn du auf den Stern einer Beutezeile klickst, dann kommt das Item auf die Wunschliste (der Stern leuchtet), ein zweiter Klick nimmt es wieder herunter; Strg-Klick auf die Zeile zeigt die Anprobe, Rechtsklick das Menü.
+- Prüfung: Wenn du einen Raid auf der Seite Raids öffnest, dann sieht die Übersicht genauso aus.
+- Notiz: Wunsch des Nutzers 2026-11-08 mit einem Bildschirmfoto eines anderen Addons ("die inis sollen auch da die bosse mit ihren icons anzeigen und die items die sie dropen auch mit den icons"); D-85, ersetzt die aufklappbare Bossliste von F-144. Neue Textur `ui/boss_ring.tga`: nach dem Release WoW ganz neu starten.
+
 ### F-153 Berufe: Favoriten und Herstellliste
 - Version: 2.66.0
 - Status: gebaut
@@ -124,6 +133,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du rechts neben Bosse/Quests (Raids: links von Wegpunkt) auf "Alle aufklappen" klickst, dann klappen alle Bosse auf und der Link heißt "Alle zuklappen"; im Teil Quests und im Questjournal fehlt der Link.
 - Prüfung: Wenn du einen anderen Dungeon öffnest und zurückkommst oder das Fenster höher ziehst, dann bleibt jeder Boss so auf- oder zugeklappt, wie du ihn gelassen hast; nach einem /reload gilt wieder die Vorgabe.
 - Notiz: Schritt 4 von 4 der UI-Überholung (Nutzer 2026-11-07: "mach die nächsten schritte"); D-69. Ohne Spec: nur Aussehen und Ablauf der Bossliste (docs/specs/README). Der Zustand liegt nur im Speicher, je Seite und Dungeon (Raid).
+- Notiz: Die Übersicht hat seit F-154 (D-85) zwei Spalten statt der aufklappbaren Liste; die Prüfungen hier gelten nicht mehr.
 
 ### F-143 Startseite mit Kacheln und Detailseite: Dungeons und Raids
 - Version: 2.62.0

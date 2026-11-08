@@ -161,23 +161,24 @@ local function create(parent)
     end)
     W.Tooltip(B.way, L["Wegpunkt zum Eingang"], L["Setzt das Kartenziel auf den nächsten Eingang des gewählten Raids."])
     W.Row(B, { B.way }, 0, 0, tabTop - 1, { right = true })
-    -- the bosses' fold (F-144) and the run (D-72) at the right end of the header's line
-    B.foldAll = J.foldLink(B)
+    -- the run (D-72) at the right end of the header's line
     JP.BuildRun(B)
-    B.partRow = { B.runBar, { B.foldAll, gap = G.ITEM_GAP }, { B.resetRun, gap = G.ITEM_GAP } }
+    B.partRow = { B.runBar, { B.resetRun, gap = G.ITEM_GAP } }
     function B:PlaceParts() J.placeParts(self, headerTop) end
     B:PlaceParts()
     B.detail = J.buildDetail(B, DETAIL_ROWS, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPLEFT", 0, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, headerTop - T.HEADER_H - G.GAP)
+    -- the bosses and the chosen one's loot (F-154), the map, the keys
+    J.buildBossView(B, headerTop - T.HEADER_H - G.GAP)
     JP.BuildMap(B, headerTop - T.HEADER_H - G.GAP)
     JP.BuildAccess(B, headerTop - T.HEADER_H - G.GAP)
     B.startParts = { B.next, B.why, B.table, B.table.head }
     for _, f in ipairs(B.filterParts) do B.startParts[#B.startParts + 1] = f end
     B.detailParts = { B.back, B.header, B.way }
     for _, k in ipairs(B.partKeys) do B.detailParts[#B.detailParts + 1] = B.parts[k] end
-    -- shown by the part (refresh): the list, the map, the keys, the run, the fold link
-    B.partViews = { B.detail, B.mapView, B.accessView, B.runBar, B.resetRun, B.foldAll }
+    -- shown by the part (refresh): the list, the bosses, the map, the keys, the run
+    B.partViews = { B.detail, B.bossView, B.mapView, B.accessView, B.runBar, B.resetRun }
     return B
 end
 
@@ -231,14 +232,14 @@ local function refresh(B)
     if detail then
         B.parts.access:SetShown(JP.Keys(e.key) ~= nil)
         JP.PlaceTabs(B)
-        B.detail:SetShown(part == "bosses" or part == "wish")
+        B.detail:SetShown(part == "wish")
+        B.bossView:SetShown(part == "bosses")
         B.mapView:SetShown(part == "map")
         B.accessView:SetShown(part == "access")
     end
     B.way:SetEnabled(e ~= nil and ns.DungeonEntrance(e.key) ~= nil)
     if e and part == "wish" then
         B.header:SetHeaderText(L["Wunschliste"])
-        B.foldEntry = nil
         B.detail:SetItems(J.wishItems(e))
     elseif e and part == "map" then
         B.header:SetHeaderText(L["Karte"])
@@ -253,8 +254,6 @@ local function refresh(B)
         B.header:SetHeaderText("")
         J.showBosses(B, nil)
     end
-    -- the fold link only in the part Übersicht for a raid with a boss that has items (F-144)
-    B.foldAll:SetShown(detail and part == "bosses" and e ~= nil and select(2, J.foldState(B, e)) and true or false)
     JP.FillRun(B, detail and e or nil, part == "bosses")
     B:PlaceParts()
     local hint = L["Je Lauf: Zuwachs der Upgrades mal Dropchance. Beute und Chance aus den Drop-Aufzeichnungen der Gilde."]
@@ -269,8 +268,8 @@ local function refresh(B)
         B.hint:SetText(part == "map" and J.MAP_HINT or J.ACCESS_HINT)
         return
     end
-    if e and #B.detail.items == 0 then hint = L["Für diesen Raid kennt Amisia noch keine Beute."] .. " " .. hint end
-    B.hint:SetText(hint .. " " .. J.foldHint .. " " .. J.itemHint)
+    if e and #B.bossView.list.items == 0 then hint = L["Für diesen Raid kennt Amisia noch keine Beute."] .. " " .. hint end
+    B.hint:SetText(hint .. " " .. J.bossHint .. " " .. J.itemHint)
 end
 
 ---------------------------------------------------------------------------

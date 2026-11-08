@@ -35,7 +35,7 @@ end
 assert(NS.ShowPage("raidjournal") ~= false)
 local P = NS.PageFrame("raidjournal")
 assert(P and P:IsShown() and NS.CurrentPage() == "raidjournal", "the page Raids")
-assert(P.table:IsShown() and not P.detail:IsShown() and not P.art:IsShown() and not P.back:IsShown(), "the table first")
+assert(P.table:IsShown() and not P.bossView:IsShown() and not P.art:IsShown() and not P.back:IsShown(), "the table first")
 local rows = rowsOf(P)
 assert(rows.barrow and rows.hyjal and rows.onyxia and #P.table.entries == 3, "three raids at level 16")
 assert(plain(rows.onyxia.cells.size:GetText()) == "40" and plain(rows.barrow.cells.size:GetText()) == "10"
@@ -62,7 +62,7 @@ assert(NS.RaidNext() == nil and not has(rows.onyxia.sub:GetText(), "Empfohlen")
     "no recommendation while the raids open later; dim unless it fits now")
 assert(plain(rows.onyxia.sub:GetText()):find("%d+ Upgrades · .- je Lauf · Wert %d+$"), "[" .. plain(rows.onyxia.sub:GetText()) .. "] " .. tostring(rows.onyxia.item.upgrades) .. tostring(rows.onyxia.item.computed))
 pick(P, "onyxia")
-assert(P.detail:IsShown() and P.back:IsShown() and P.art:IsShown() and not P.table:IsShown() and not P.next:IsShown(), "the detail view")
+assert(P.bossView:IsShown() and P.back:IsShown() and P.art:IsShown() and not P.table:IsShown() and not P.next:IsShown(), "the detail view")
 assert(AmisiaDB.settings.bis.raid == "onyxia")
 P.back:Click()
 rows = rowsOf(P)
@@ -71,11 +71,14 @@ pick(P, "onyxia")
 assert(P.header.ButtonText:GetText() == "Bosse", P.header.ButtonText:GetText())
 assert(P.art.title:GetText() == "Onyxia's Lair" and has(P.art.info:GetText(), "Raid 40"), P.art.info:GetText())
 local names = {}
-for _, x in ipairs(P.detail.items) do names[#names + 1] = x.kind == "boss" and x.text or (x.id and tostring(x.id)) or "" end
+for _, h in ipairs(P.bossView.list.items) do
+    names[#names + 1] = h.text
+    for _, x in ipairs(h.items) do names[#names + 1] = tostring(x.id) end
+end
 assert(names[1] == "Onyxia" and names[2] == "520", table.concat(names, ","))
 assert(not has(P.hint:GetText(), "noch keine Beute"), P.hint:GetText())
 pick(P, "barrow")
-assert(#P.detail.items == 0 and has(P.hint:GetText(), "Für diesen Raid kennt Amisia noch keine Beute."), P.hint:GetText())
+assert(#P.bossView.list.items == 0 and has(P.hint:GetText(), "Für diesen Raid kennt Amisia noch keine Beute."), P.hint:GetText())
 assert(not P.way:IsEnabled(), "no entrance known for the Barrow Deeps")
 
 -- the page Dungeons holds no raid, even at 60
@@ -101,7 +104,7 @@ NS.Dispatch("raids")
 assert(NS.CurrentPage() == "raidjournal")
 NS.ShowPage("dungeons")
 assert(NS.ShowDungeon("hyjal") ~= nil and NS.CurrentPage() == "raidjournal" and AmisiaDB.settings.bis.raid == "hyjal")
-assert(P.detail:IsShown() and P.header.ButtonText:GetText() == "Bosse" and not P.table:IsShown(), "the map's way in opens the detail")
+assert(P.bossView:IsShown() and P.header.ButtonText:GetText() == "Bosse" and not P.table:IsShown(), "the map's way in opens the detail")
 P.back:Click()
 assert(rowsOf(P).hyjal.artFrame.edges[1].color[4] == 0.95, "the chosen row")
 
@@ -123,9 +126,9 @@ for _, view in ipairs({ "officer", "raider" }) do
     -- the detail: the back link before the spec, the image, the header, the bosses
     pick(P, "onyxia")
     Lay.row(view .. " detail head row", P.back, P.spec)
-    Lay.row(view .. " detail head", P.header, P.way)
-    Lay.row(view .. " detail", P.detail, P.detail.bar)
-    Lay.column(view .. " detail body", P.spec, P.art, P.header, P.detail)
+    Lay.row(view .. " detail tabs", P.parts.bosses, P.parts.map, P.parts.wish, P.way)
+    Lay.row(view .. " detail", P.bossView.list, P.bossView.loot)
+    Lay.column(view .. " detail body", P.spec, P.art, P.header, P.bossView)
     P.back:Click()
 end
 NS.Reset("ui.view")

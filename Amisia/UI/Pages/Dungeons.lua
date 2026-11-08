@@ -18,7 +18,6 @@ local K = ns.GearPageKit
 local GREY, GREEN = T.GREY, "|cff4fd06a"
 local ICON = "Interface\\Icons\\INV_Misc_Book_11"
 -- the quest log's plus and minus before a boss that folds (F-144), as in the main window's side bar
-local PLUS, MINUS = "Interface\\Buttons\\UI-PlusButton-Up", "Interface\\Buttons\\UI-MinusButton-Up"
 local ROW_H = 24
 -- at least 5 rows of the chosen one under its image (they fill the page down to its bottom)
 local DETAIL_ROWS = 5
@@ -49,7 +48,7 @@ local DTEXT = {
     marked = L["%d Questgeber auf der Weltkarte markiert."],
     unmarked = L["Markierung der Questgeber entfernt."],
     itemHint = L["Strg-Klick: Anprobe. Shift-Klick: in den Chat."],
-    foldHint = L["Klick auf einen Boss: seine Beute auf- oder zuklappen."],
+    bossHint = L["Klick auf einen Boss: seine Beute rechts. Stern: Wunschliste."],
     xpLine = L["EP: %s"],
     xpLog = L["laut Questlog"],
     xpSeen = L["gesehen bei Level %d"],
@@ -210,9 +209,10 @@ local function detailItems(e)
     return out
 end
 
--- The fold of the boss list (F-144): per page and dungeon (raid) key the set of unfolded bosses, only
--- in memory. A new dungeon starts with the bosses that have an upgrade for the player unfolded (an
--- item marked "Upgrade" in its row).
+-- The part Übersicht (F-154, D-85): the bosses on the left, the chosen boss's loot on the right. The
+-- chosen boss per page and dungeon (raid) key, only in memory; a dungeon shown the first time starts
+-- with the first boss that has an upgrade for the player (an item marked "Upgrade" in its row), else
+-- the first with loot, else the first.
 local function bossUpgrade(b)
     -- the item's own mark (the gear data's threshold, an own pick of D-55), as its row shows it
     for _, it in ipairs(b.items or {}) do
@@ -220,43 +220,42 @@ local function bossUpgrade(b)
     end
     return false
 end
-local function foldSet(B, e)
-    B.folds = B.folds or {}
-    local open = B.folds[e.key]
-    if not open then
-        open = {}
-        for _, b in ipairs(e.bosses or {}) do
-            if bossUpgrade(b) then open[b.name] = true end
-        end
-        B.folds[e.key] = open
-    end
-    return open
-end
 
--- The rows of e on page B with the fold applied: each boss a head row of its own (open: unfolded),
--- the item rows only under an unfolded one.
-local function foldedItems(B, e)
-    local open = foldSet(B, e)
-    local out, shown = {}, false
+-- The boss rows of e on page B (n: the place in the game's order, on: the chosen one) and the chosen one.
+local function bossHeads(B, e)
+    local heads = {}
     for _, row in ipairs(detailItems(e)) do
         if row.kind == "boss" then
-            shown = open[row.text] and true or false
-            out[#out + 1] = { kind = "boss", text = row.text, b = row.b, items = row.items, open = shown,
+            heads[#heads + 1] = { kind = "boss", text = row.text, b = row.b, items = row.items, n = #heads + 1,
                 killed = JP.BossKilled(e.key, row.text) }
-        elseif shown then
-            out[#out + 1] = row
         end
     end
-    return out
+    B.bossSel = B.bossSel or {}
+    local name, sel = B.bossSel[e.key], nil
+    for _, h in ipairs(heads) do
+        if h.text == name then sel = h end
+    end
+    if not sel then
+        for _, h in ipairs(heads) do
+            if not sel and bossUpgrade(h.b) then sel = h end
+        end
+        for _, h in ipairs(heads) do
+            if not sel and #h.items > 0 then sel = h end
+        end
+        sel = sel or heads[1]
+        B.bossSel[e.key] = sel and sel.text or nil
+    end
+    if sel then sel.on = true end
+    return heads, sel
 end
 
 -- The part Wunschliste of e (D-72): each boss with an item the character wishes or the plan
--- recommends, unfolded, with only those items.
+-- recommends, with only those items.
 local function wishItems(e)
     local out, head = {}, nil
     for _, row in ipairs(detailItems(e)) do
         if row.kind == "boss" then
-            head = { kind = "boss", text = row.text, b = row.b, items = {}, open = true, killed = JP.BossKilled(e.key, row.text) }
+            head = { kind = "boss", text = row.text, b = row.b, items = {}, killed = JP.BossKilled(e.key, row.text) }
         elseif (row.wished or row.rec) and head then
             if #head.items == 0 then out[#out + 1] = head end
             out[#out + 1] = row
@@ -266,69 +265,35 @@ local function wishItems(e)
     return out
 end
 
--- Whether every boss with items of e is unfolded on B (false when none has items), and whether any has items.
-local function foldState(B, e)
-    local open = foldSet(B, e)
-    local all, any = true, false
-    for _, b in ipairs(e.bosses or {}) do
-        if #(b.items or {}) > 0 then
-            any = true
-            if not open[b.name] then all = false end
-        end
-    end
-    return any and all, any
-end
-
--- The detail list of page B shows e's bosses again with the fold as it is now (the offset clamps in
--- SetItems); the link "Alle aufklappen"/"Alle zuklappen" follows.
-local FOLD_TEXT = { open = L["Alle aufklappen"], close = L["Alle zuklappen"] }
-local function refold(B)
-    local e = B.foldEntry
-    if not e then return end
-    B.detail:SetItems(foldedItems(B, e))
-    if B.foldAll then
-        local all, any = foldState(B, e)
-        B.foldAll:SetText(all and FOLD_TEXT.close or FOLD_TEXT.open)
-        B.foldAll:SetEnabled(any)
-    end
-end
-
--- Folds or unfolds boss name of the shown dungeon on B.
-local function toggleBoss(B, name)
-    local e = B.foldEntry
-    if not e then return end
-    local open = foldSet(B, e)
-    open[name] = not open[name] or nil
-    refold(B)
-end
-
--- "Alle aufklappen" / "Alle zuklappen": all open folds every boss, else every boss with items opens.
-local function foldAll(B)
-    local e = B.foldEntry
-    if not e then return end
-    local all = foldState(B, e)
-    local open = foldSet(B, e)
-    for _, b in ipairs(e.bosses or {}) do
-        if all then open[b.name] = nil elseif #(b.items or {}) > 0 then open[b.name] = true end
-    end
-    refold(B)
-end
-
--- Shows e's bosses on B with the fold (the page's refresh); nil clears the list.
+-- The bosses of e on page B (the part Übersicht; ns.Refresh and a click on a boss); nil clears the view.
+local fillBossView
 local function showBosses(B, e)
-    B.foldEntry = e
+    local V = B.bossView
+    V.entry = e
     if not e then
-        B.detail:SetItems({})
+        V.list:SetItems({})
+        V.loot:SetItems({})
+        fillBossView(B, nil, 0)
         return
     end
-    refold(B)
+    local heads, sel = bossHeads(B, e)
+    -- another instance starts at the top
+    if V.shownKey ~= e.key then V.list.offset = 0 end
+    V.shownKey = e.key
+    if V.shownBoss ~= (sel and (e.key .. "\0" .. sel.text)) then V.loot.offset = 0 end
+    V.shownBoss = sel and (e.key .. "\0" .. sel.text) or nil
+    V.list:SetItems(heads)
+    V.loot:SetItems(sel and sel.items or {})
+    fillBossView(B, sel, #heads)
 end
 
--- The quiet link "Alle aufklappen"/"Alle zuklappen" of page B (in the bosses' header line).
-local function foldLink(B)
-    local link = W.Link(B, FOLD_TEXT.open, function() foldAll(B) end)
-    W.Tooltip(link, L["Bosse auf- und zuklappen"], L["Zeigt die Beute aller Bosse oder klappt jeden Boss zu einer Zeile mit seinen Beutesymbolen zu."])
-    return link
+-- Chooses boss name of the shown instance on B.
+local function chooseBoss(B, name)
+    local e = B.bossView.entry
+    if not (e and name) then return end
+    B.bossSel = B.bossSel or {}
+    B.bossSel[e.key] = name
+    showBosses(B, e)
 end
 
 -- The quest rows of a dungeon: one row per quest with its quest path (the pre-quests and rewards
@@ -384,9 +349,8 @@ local CELLS = {
     quest = { name = { 4, 178 }, slot = { 186, 48 }, way = { 236, 58 }, gain = { 298, 34 }, xp = { 336, 56 }, rate = { 398, 188 } },
     other = { name = { 4, 220 }, slot = { 228, 62 }, way = { 236, 58 }, gain = { 292, 40 }, xp = { 336, 56 }, rate = { 398, 188 } },
 }
-local BH = T.DBOSS
-CELLS.boss = { name = { BH.NAME_X, BH.NAME_W }, slot = { 228, 62 }, way = { 236, 58 }, gain = { 292, 40 }, xp = { 336, 56 },
-    rate = { BH.RATE_X, BH.RATE_W } }
+-- a boss of the Wunschliste: its name, its gain per run after it
+CELLS.boss = { name = { 4, 220 }, slot = { 228, 62 }, way = { 236, 58 }, gain = { 292, 40 }, xp = { 336, 56 }, rate = { 228, 200 } }
 local function placeCells(r, kind)
     kind = (kind == "quest" or kind == "boss") and kind or "other"
     if r.cellKind == kind then return end
@@ -398,57 +362,26 @@ local function placeCells(r, kind)
     end
 end
 
--- The strip of a folded boss's head row: at most BH.MAX_ICONS icons of its items in the rows' order,
--- "+N" for the rest; hidden on other rows and on an unfolded boss.
-local QUALITY = T.QUALITY_RGB
-local function fillStrip(r, e)
-    local items = e.kind == "boss" and not e.open and e.items or nil
-    local n = items and #items or 0
-    local k = math.min(n, BH.MAX_ICONS)
-    local more = n - k
-    r.more:SetText(more > 0 and (GREY .. "+" .. more .. "|r") or "")
-    r.more:SetShown(more > 0)
-    local right = BH.STRIP_R + (more > 0 and BH.MORE_W or 0)
-    for j, b in ipairs(r.strip) do
-        local row = j <= k and items[j] or nil
-        b.row = row
-        if row then
-            b.icon:SetTexture(itemIcon(row.id))
-            b.quality = itemQuality(row.id) or 1
-            local c = QUALITY[b.quality] or QUALITY[1]
-            W.SetBorderColor(b.edges, c[1], c[2], c[3], 1)
-            b:ClearAllPoints()
-            b:SetPoint("RIGHT", r, "RIGHT", -(right + (k - j) * (BH.ICON + BH.ICON_GAP)), 0)
-            b:Show()
-        else
-            b:Hide()
-        end
+-- A boss's gain per run ("je Lauf +12"), or for an NPC only the guild's records know its kills
+-- (listed, counted from its third kill); "" without either.
+local function bossRate(b)
+    if b.tentative then
+        local k = b.kills or 0
+        return GREY .. L["%d %s, zählt ab 3"]:format(k, k == 1 and "Kill" or "Kills") .. "|r"
     end
+    return (b.perRun or 0) > 0 and L["je Lauf %s"]:format(signed(b.perRun)) or ""
 end
 
 local function fillDetailRow(r, e)
     placeCells(r, e.kind)
     r.xp:SetText("")
     r.way:SetText("")
-    fillStrip(r, e)
-    if e.kind == "boss" and #(e.items or {}) > 0 then
-        r.sign:SetTexture(e.open and MINUS or PLUS)
-        r.sign:Show()
-    else
-        r.sign:Hide()
-    end
     if e.kind == "boss" then
         -- killed in the run (D-72): the ready check's tick, the name grey
         r.name:SetText(e.killed and (KILLED .. GREY .. e.text .. "|r") or (GOLD_TEXT .. e.text .. "|r"))
         r.slot:SetText("")
         r.gain:SetText("")
-        if e.b.tentative then
-            -- an NPC only the guild's records know: listed, counted from its third kill
-            local k = e.b.kills or 0
-            r.rate:SetText(GREY .. L["%d %s, zählt ab 3"]:format(k, k == 1 and "Kill" or "Kills") .. "|r")
-        else
-            r.rate:SetText(e.b.perRun > 0 and L["je Lauf %s"]:format(signed(e.b.perRun)) or "")
-        end
+        r.rate:SetText(bossRate(e.b))
     elseif e.kind == "item" then
         local it = e.it
         r.name:SetText(marks(it) .. itemText(it.id))
@@ -607,41 +540,6 @@ local function itemTip(owner, id)
     GameTooltip:Show()
 end
 
--- An icon of a folded boss's strip (F-144): the item's icon in a frame of its quality's colour; its
--- tooltip, its row's clicks, the boss stays in the image while the mouse is on it.
-local function stripIcon(B, r)
-    local b = CreateFrame("Button", nil, r)
-    b:SetSize(BH.ICON, BH.ICON)
-    b.icon = b:CreateTexture(nil, "ARTWORK")
-    b.icon:SetPoint("TOPLEFT", BH.EDGE, -BH.EDGE)
-    b.icon:SetPoint("BOTTOMRIGHT", -BH.EDGE, BH.EDGE)
-    b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    b.edges = W.Border(b, 1, 1, 1, 1, BH.EDGE)
-    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-    -- a plain click unfolds the boss (as a click on its head); Shift, Ctrl and the right button are the
-    -- item's, as on its row
-    b:SetScript("OnClick", function(self, button)
-        local mod = (IsShiftKeyDown and IsShiftKeyDown()) or (IsControlKeyDown and IsControlKeyDown())
-        if button == "LeftButton" and not mod then
-            local head = r.item
-            if head and head.text then toggleBoss(B, head.text) end
-            return
-        end
-        itemClick(self, self.row, button)
-    end)
-    b:SetScript("OnEnter", function(self)
-        local head = r.item
-        if head and head.kind == "boss" then B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry, head.b)) end
-        if self.row then itemTip(self, self.row.id) end
-    end)
-    b:SetScript("OnLeave", function()
-        hideTip()
-        B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry))
-    end)
-    b:Hide()
-    return b
-end
-
 local function buildDetail(B, rows, top)
     local list = W.List(B, rows, ROW_H, function(r)
         r.name = col(r, 4, 220, nil, T.FONT.text)
@@ -653,17 +551,6 @@ local function buildDetail(B, rows, top)
         r.rate = col(r, 398, 188, nil, T.FONT.text)
         r.way = col(r, 236, 58, nil, T.FONT.text)
         r.way:SetJustifyH("RIGHT")
-        -- a boss's head (F-144): the plus or minus before its name, folded the strip of its items
-        r.sign = r:CreateTexture(nil, "OVERLAY")
-        r.sign:SetSize(BH.SIGN, BH.SIGN)
-        r.sign:SetPoint("LEFT", BH.SIGN_X, 0)
-        r.sign:Hide()
-        r.strip = {}
-        for j = 1, BH.MAX_ICONS do r.strip[j] = stripIcon(B, r) end
-        r.more = W.Text(r, T.FONT.text, BH.MORE_W)
-        r.more:SetJustifyH("LEFT")
-        r.more:SetPoint("RIGHT", -BH.STRIP_R, 0)
-        r.more:Hide()
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         r:SetScript("OnClick", function(self, button)
             local e = self.item
@@ -674,12 +561,8 @@ local function buildDetail(B, rows, top)
                 return
             end
             if e.kind == "boss" then
-                -- a boss with items folds or unfolds (F-144); the right button: killed or not (D-72)
-                if button == "RightButton" then
-                    JP.BossMenu(B, self, e)
-                elseif #(e.items or {}) > 0 then
-                    toggleBoss(B, e.text)
-                end
+                -- the right button: killed or not (D-72)
+                if button == "RightButton" then JP.BossMenu(B, self, e) end
                 return
             end
             itemClick(self, e, button)
@@ -703,6 +586,269 @@ local function buildDetail(B, rows, top)
     end, fillDetailRow)
     if top then W.FillTo(list, B, top, rows, ROW_H) end
     return list
+end
+
+---------------------------------------------------------------------------
+-- The part Übersicht (F-154, D-85): the bosses with their portraits, the chosen boss's loot with icons
+---------------------------------------------------------------------------
+
+local BV = T.DBOSS
+local BTEXT = {
+    items = L["%d Items"], oneItem = L["1 Item"], noLoot = L["keine Beute bekannt"],
+    ups = L["%d Upgrades"], oneUp = L["1 Upgrade"],
+    of = L["Boss %d von %d"], killed = L["getötet"],
+    none = L["Für diesen Boss kennt Amisia keine Beute."],
+    noBosses = L["Für diese Instanz kennt Amisia keine Bosse."],
+    bossTip = L["Klick: seine Beute rechts. Rechtsklick: als getötet markieren oder nicht."],
+    wishOn = L["Von der Wunschliste nehmen"], wishOff = L["Auf die Wunschliste"],
+}
+
+-- A boss's portrait size px square on parent: a black disc, the boss's model over it (the client's
+-- skull while it has none), the gold ring on top (on a frame above the model: a model draws over its
+-- parent's textures).
+local function buildPortrait(parent, size)
+    local p = CreateFrame("Frame", nil, parent)
+    p:SetSize(size, size)
+    p.disc = p:CreateTexture(nil, "BORDER")
+    p.disc:SetAllPoints()
+    p.disc:SetTexture(W.DISC)
+    p.disc:SetVertexColor(0, 0, 0, 1)
+    p.skull = p:CreateTexture(nil, "ARTWORK")
+    p.skull:SetSize(math.floor(size / 2), math.floor(size / 2))
+    p.skull:SetPoint("CENTER")
+    p.skull:SetTexture(BV.NO_MODEL)
+    local ok, m = pcall(CreateFrame, "PlayerModel", nil, p)
+    if ok and m then
+        m:SetPoint("TOPLEFT", 2, -2)
+        m:SetPoint("BOTTOMRIGHT", -2, 2)
+        m:Hide()
+        p.model = m
+    end
+    p.top = CreateFrame("Frame", nil, p)
+    p.top:SetAllPoints()
+    if p.top.SetFrameLevel and p.GetFrameLevel then p.top:SetFrameLevel(p:GetFrameLevel() + 2) end
+    p.ring = p.top:CreateTexture(nil, "OVERLAY")
+    p.ring:SetAllPoints()
+    p.ring:SetTexture(BV.RING)
+    p.ring:SetVertexColor(W.GOLD[1], W.GOLD[2], W.GOLD[3], 1)
+    return p
+end
+
+-- The portrait p shows NPC npc (its model, zoomed to head and shoulders), else the skull.
+local function setPortrait(p, npc)
+    local m = p.model
+    if npc and m and type(m.SetCreature) == "function" then
+        if p.npc ~= npc then
+            if pcall(m.SetCreature, m, npc) then
+                if m.SetPortraitZoom then pcall(m.SetPortraitZoom, m, BV.ZOOM) end
+                p.npc = npc
+            else
+                p.npc = nil
+            end
+        end
+        if p.npc then
+            m:Show()
+            p.skull:Hide()
+            return
+        end
+    end
+    p.npc = nil
+    if m then m:Hide() end
+    p.skull:Show()
+end
+
+-- The grey line of a boss row: its items and upgrades ("4 Items · 1 Upgrade"), "keine Beute bekannt",
+-- or the kills of an NPC only the guild's records know.
+local function bossLine(h)
+    if h.b.tentative then return bossRate(h.b) end
+    local n = #(h.items or {})
+    if n == 0 then return GREY .. BTEXT.noLoot .. "|r" end
+    local text = GREY .. (n == 1 and BTEXT.oneItem or BTEXT.items:format(n)) .. "|r"
+    local ups = 0
+    for _, row in ipairs(h.items) do
+        if row.it and row.it.upgrade then ups = ups + 1 end
+    end
+    if ups > 0 then text = text .. GREY .. " · |r" .. GREEN .. (ups == 1 and BTEXT.oneUp or BTEXT.ups:format(ups)) .. "|r" end
+    return text
+end
+
+local function fillBossRow(r, h)
+    r.sel:SetShown(h.on and true or false)
+    setPortrait(r.port, h.b.npc)
+    r.port:SetAlpha(h.killed and 0.5 or 1)
+    local name = h.killed and (KILLED .. GREY .. h.text .. "|r") or ((h.on and GOLD_TEXT or "|cffffffff") .. h.text .. "|r")
+    r.name:SetText(GREY .. h.n .. ".|r " .. name)
+    r.sub:SetText(bossLine(h))
+end
+
+-- The chosen boss h of n in the head over its loot (nil: none, the instance's or the boss's empty text).
+fillBossView = function(B, h, n)
+    local V = B.bossView
+    local head = V.head
+    if not h then
+        setPortrait(head.port, nil)
+        head.port:SetAlpha(1)
+        head.name:SetText("")
+        head.sub:SetText(V.entry and (GREY .. BTEXT.noBosses .. "|r") or "")
+        V.none:Hide()
+        return
+    end
+    setPortrait(head.port, h.b.npc)
+    head.port:SetAlpha(h.killed and 0.5 or 1)
+    head.name:SetText(GOLD_TEXT .. h.text .. "|r")
+    local parts = { BTEXT.of:format(h.n, n) }
+    local rate = bossRate(h.b)
+    if rate ~= "" then parts[#parts + 1] = rate end
+    if h.killed then parts[#parts + 1] = KILLED .. BTEXT.killed end
+    head.sub:SetText(table.concat(parts, GREY .. " · |r"))
+    V.none:SetShown(#(h.items or {}) == 0)
+end
+
+local function setWishStar(b, on)
+    local PL = T.PLANNER
+    local tex = b.tex
+    if W.HasAtlas(PL.STAR_ATLAS) then tex:SetAtlas(PL.STAR_ATLAS, false) else tex:SetTexture(PL.STAR_FILE) end
+    if tex.SetDesaturated then tex:SetDesaturated(not on) end
+    local c = on and { 1, 1, 1 } or PL.STAR_OFF
+    tex:SetVertexColor(c[1], c[2], c[3])
+    b.on = on
+end
+
+local function fillLootRow(r, e)
+    local it = e.it
+    r.icon:SetTexture(itemIcon(e.id))
+    local q = itemQuality(e.id) or 1
+    local c = T.QUALITY_RGB[q] or T.QUALITY_RGB[1]
+    if ns.GoalsKit and r.frame.ring then ns.GoalsKit.setRing(r.frame, c[1], c[2], c[3]) end
+    -- the owned mark only: the star at the row's end shows the wish
+    r.name:SetText(marks({ owned = it.owned }) .. itemText(it.id))
+    local parts = {}
+    local slot = ns.BIS_SLOT_NAME[it.slotKey]
+    if slot then parts[#parts + 1] = GREY .. slot .. "|r" end
+    local gain = gainText(it)
+    if gain and gain ~= "" then parts[#parts + 1] = gain end
+    r.sub:SetText(table.concat(parts, GREY .. " · |r"))
+    r.rate:SetText(it.rate or "")
+    setWishStar(r.star, e.wished and true or false)
+end
+
+-- The view of the part Übersicht on page B at top (a SetPoint offset) down to the page's bottom:
+-- B.bossView with .list (the bosses), .head (the chosen one), .loot (its items), .none (no loot).
+local function buildBossView(B, top)
+    local V = CreateFrame("Frame", nil, B)
+    V:SetPoint("TOPLEFT", 0, top)
+    V:SetPoint("BOTTOMRIGHT", 0, B:Bottom())
+    B.bossView = V
+    -- the bosses: a click chooses, the right button marks killed (D-72), the mouse shows it in the image
+    V.list = W.List(V, BV.MIN_ROWS, BV.ROW_H, function(r)
+        r.sel = W.SelectBar(r)
+        r.port = buildPortrait(r, BV.PORTRAIT)
+        r.port:SetPoint("LEFT", BV.PORT_X, 0)
+        r.name = W.Text(r, T.FONT.body)
+        r.name:SetPoint("TOPLEFT", BV.TEXT_X, BV.NAME_Y)
+        r.name:SetPoint("TOPRIGHT", -4, BV.NAME_Y)
+        r.sub = W.Text(r, T.FONT.text)
+        r.sub:SetPoint("TOPLEFT", BV.TEXT_X, BV.SUB_Y)
+        r.sub:SetPoint("TOPRIGHT", -4, BV.SUB_Y)
+        r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        r:SetScript("OnClick", function(self, button)
+            local h = self.item
+            if not h then return end
+            if button == "RightButton" then
+                JP.BossMenu(B, self, h)
+            else
+                chooseBoss(B, h.text)
+            end
+        end)
+        r:SetScript("OnEnter", function(self)
+            local h = self.item
+            if not h then return end
+            B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry, h.b))
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(h.text, 1, 0.82, 0)
+            GameTooltip:AddLine(BTEXT.bossTip, 0.6, 0.6, 0.6, true)
+            GameTooltip:Show()
+        end)
+        r:SetScript("OnLeave", function()
+            hideTip()
+            B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry))
+        end)
+    end, fillBossRow)
+    V.list:SetPoint("TOPLEFT", 0, 0)
+    V.list:SetWidth(BV.LIST_W - T.SCROLL_ROOM)
+    W.FillTo(V.list, B, top, BV.MIN_ROWS, BV.ROW_H)
+    -- the chosen boss: its portrait, name and line on a dark ground with a gold edge
+    local x = BV.LIST_W + BV.GAP
+    local head = CreateFrame("Frame", nil, V)
+    head:SetPoint("TOPLEFT", x, 0)
+    head:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, 0)
+    head:SetHeight(BV.HEAD_H)
+    W.Flat(head, BV.HEAD_BG[1], BV.HEAD_BG[2], BV.HEAD_BG[3], BV.HEAD_BG[4])
+    head.edges = W.Border(head, W.GOLD[1], W.GOLD[2], W.GOLD[3], 0.5)
+    head.port = buildPortrait(head, BV.HEAD_PORT)
+    head.port:SetPoint("LEFT", BV.HEAD_PORT_X, 0)
+    head.name = W.Text(head, T.FONT.big)
+    head.name:SetPoint("TOPLEFT", BV.HEAD_TEXT_X, BV.HEAD_NAME_Y)
+    head.name:SetPoint("TOPRIGHT", -BV.END, BV.HEAD_NAME_Y)
+    head.sub = W.Text(head, T.FONT.text)
+    head.sub:SetPoint("TOPLEFT", BV.HEAD_TEXT_X, BV.HEAD_SUB_Y)
+    head.sub:SetPoint("TOPRIGHT", -BV.END, BV.HEAD_SUB_Y)
+    V.head = head
+    -- its loot: the item's icon in its quality's ring, name, slot and gain, drop rate, wish star; clicks
+    -- and the menu as on the item rows of the lists
+    local lootTop = -(BV.HEAD_H + BV.GAP)
+    V.loot = W.List(V, BV.MIN_ROWS, BV.LOOT_H, function(r)
+        r.frame = CreateFrame("Frame", nil, r)
+        r.frame:SetSize(BV.ICON, BV.ICON)
+        r.frame:SetPoint("LEFT", BV.ICON_X, 0)
+        r.icon = r.frame:CreateTexture(nil, "ARTWORK")
+        r.icon:SetPoint("TOPLEFT", 1, -1)
+        r.icon:SetPoint("BOTTOMRIGHT", -1, 1)
+        r.icon:SetTexCoord(0.07, 0.93, 0.07, 0.93)
+        -- the thin rounded ring of the planner's slots (D-81 Nachtrag)
+        if ns.GoalsKit then ns.GoalsKit.roundIcon(r.frame, T.PLANNER.DOLL, r.icon) end
+        local starX = BV.END
+        local rateX = starX + BV.STAR + BV.END
+        local textR = rateX + BV.RATE_W + BV.END
+        r.name = W.Text(r, T.FONT.text)
+        r.name:SetPoint("TOPLEFT", BV.LOOT_TEXT_X, BV.LOOT_NAME_Y)
+        r.name:SetPoint("TOPRIGHT", -textR, BV.LOOT_NAME_Y)
+        r.sub = W.Text(r, T.FONT.text)
+        r.sub:SetPoint("TOPLEFT", BV.LOOT_TEXT_X, BV.LOOT_SUB_Y)
+        r.sub:SetPoint("TOPRIGHT", -textR, BV.LOOT_SUB_Y)
+        r.rate = W.Text(r, T.FONT.text, BV.RATE_W)
+        r.rate:SetPoint("RIGHT", -rateX, 0)
+        r.rate:SetJustifyH("RIGHT")
+        r.star = CreateFrame("Button", nil, r)
+        r.star:SetSize(BV.STAR, BV.STAR)
+        r.star:SetPoint("RIGHT", -starX, 0)
+        r.star.tex = r.star:CreateTexture(nil, "ARTWORK")
+        r.star.tex:SetAllPoints()
+        r.star:SetScript("OnClick", function(self)
+            local e = self:GetParent().item
+            if not (e and e.id) then return end
+            if self.on then ns.WishRemove(e.id) else say(ns.WishAdd(e.id)) end
+        end)
+        r.star:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(self.on and BTEXT.wishOn or BTEXT.wishOff)
+            GameTooltip:Show()
+        end)
+        r.star:SetScript("OnLeave", hideTip)
+        r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        r:SetScript("OnClick", function(self, button) itemClick(self, self.item, button) end)
+        r:SetScript("OnEnter", function(self) if self.item then itemTip(self, self.item.id) end end)
+        r:SetScript("OnLeave", hideTip)
+    end, fillLootRow)
+    V.loot:SetPoint("TOPLEFT", x, lootTop)
+    V.loot:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, lootTop)
+    W.FillTo(V.loot, B, top + lootTop, BV.MIN_ROWS, BV.LOOT_H)
+    V.none = W.Text(V, T.FONT.dim)
+    V.none:SetPoint("TOPLEFT", V.loot, "TOPLEFT", BV.ICON_X, -BV.ICON_X)
+    V.none:SetPoint("TOPRIGHT", V.loot, "TOPRIGHT", -BV.END, -BV.ICON_X)
+    V.none:SetText(BTEXT.none)
+    V.none:Hide()
+    return V
 end
 
 ---------------------------------------------------------------------------
@@ -2331,18 +2477,18 @@ local function create(parent)
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
     W.Tooltip(B.way, L["Wegpunkt zum Eingang"], L["Setzt das Kartenziel auf den nächsten Eingang des gewählten Dungeons."])
-    -- the bosses' fold (F-144) and the run (D-72): "1/4" with its bar and "Lauf zurücksetzen", only
-    -- in the part Übersicht, at the right end of the header's line; the waypoint at the tabs' right end
-    B.foldAll = foldLink(B)
+    -- the run (D-72): "1/4" with its bar and "Lauf zurücksetzen", only in the part Übersicht, at the
+    -- right end of the header's line; the waypoint at the tabs' right end
     JP.BuildRun(B)
-    B.partRow = { B.runBar, { B.foldAll, gap = G.ITEM_GAP }, { B.resetRun, gap = G.ITEM_GAP } }
+    B.partRow = { B.runBar, { B.resetRun, gap = G.ITEM_GAP } }
     function B:PlaceParts() placeParts(self, headerTop) end
     W.Row(B, { B.way }, 0, 0, tabTop - 1, { right = true })
     B:PlaceParts()
     B.detail = buildDetail(B, DETAIL_ROWS, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPLEFT", 0, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, headerTop - T.HEADER_H - G.GAP)
-    -- the parts that are no list: the instance map and the keys (D-72), where the list is
+    -- the bosses and the chosen one's loot (F-154), the instance map and the keys (D-72), where the list is
+    buildBossView(B, headerTop - T.HEADER_H - G.GAP)
     JP.BuildMap(B, headerTop - T.HEADER_H - G.GAP)
     JP.BuildAccess(B, headerTop - T.HEADER_H - G.GAP)
     -- the quest path in place of the list, the image and the quests (F-135); only in memory
@@ -2367,8 +2513,8 @@ local function create(parent)
     for _, f in ipairs(B.filterParts) do B.startParts[#B.startParts + 1] = f end
     B.detailParts = { B.back, B.art, B.header, B.way, B.detail }
     for _, k in ipairs(B.partKeys) do B.detailParts[#B.detailParts + 1] = B.parts[k] end
-    -- shown by the part (refresh): the run's parts, the fold link, the map and the keys
-    B.planParts = { B.emptyGrid, B.runBar, B.foldAll, B.resetRun, B.mapView, B.accessView }
+    -- shown by the part (refresh): the run's parts, the bosses, the map and the keys
+    B.planParts = { B.emptyGrid, B.runBar, B.resetRun, B.bossView, B.mapView, B.accessView }
     for _, f in ipairs(B.startParts) do B.planParts[#B.planParts + 1] = f end
     for _, f in ipairs(B.detailParts) do B.planParts[#B.planParts + 1] = f end
     for _, chip in ipairs(sortRow) do B.planParts[#B.planParts + 1] = chip end
@@ -2489,14 +2635,11 @@ local function refresh(B)
         if detail then
             B.parts.access:SetShown(JP.Keys(e.key) ~= nil)
             JP.PlaceTabs(B)
-            B.detail:SetShown(part == "bosses" or part == "quests" or part == "wish")
+            B.detail:SetShown(part == "quests" or part == "wish")
+            B.bossView:SetShown(part == "bosses")
             B.mapView:SetShown(part == "map")
             B.accessView:SetShown(part == "access")
         end
-        -- the fold link only in the part Übersicht of a dungeon with a boss that has items (F-144)
-        local anyItems = false
-        if detail and part == "bosses" then anyItems = select(2, foldState(B, e)) end
-        B.foldAll:SetShown(anyItems)
         JP.FillRun(B, detail and e or nil, part == "bosses")
         B:PlaceParts()
     else
@@ -2521,12 +2664,10 @@ local function refresh(B)
         local rows
         rows, status = questItems(e.key)
         B.header:SetHeaderText("Quests")
-        B.foldEntry = nil
         B.detail:SetItems(rows)
         B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
     elseif e and part == "wish" then
         B.header:SetHeaderText(L["Wunschliste"])
-        B.foldEntry = nil
         B.detail:SetItems(wishItems(e))
         B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
     elseif e and part == "map" then
@@ -2562,8 +2703,8 @@ local function refresh(B)
         hint = part == "map" and MAP_HINT or ACCESS_HINT
     else
         hint = L["Je Lauf: Zuwachs der Upgrades mal Dropchance, ohne Mitbewerber in der Gruppe. Wert: offene Dungeon-Quests plus zwei Läufe."]
-        if e and e.computed and #B.detail.items == 0 then hint = L["In diesem Dungeon gibt es nichts mehr für dich."] .. " " .. hint end
-        hint = hint .. " " .. DTEXT.foldHint .. " " .. DTEXT.itemHint
+        if e and e.computed and #B.bossView.list.items == 0 then hint = L["In diesem Dungeon gibt es nichts mehr für dich."] .. " " .. hint end
+        hint = hint .. " " .. DTEXT.bossHint .. " " .. DTEXT.itemHint
     end
     if not detail then
         hint = L["Klick auf eine Zeile: Bild, Bosse, Beute und Quests des Dungeons. Klick auf einen Spaltenkopf: sortieren, auf einen Stufenbereich: auf- und zuklappen."] .. " " ..
@@ -2621,9 +2762,9 @@ ns.Listen("RUN", function() if ns.RefreshSoon then ns.RefreshSoon() end end)
 -- the journal parts the page Raids shares (UI/Pages/RaidJournal.lua)
 ns.DungeonJournalKit = { buildArt = buildArt, fillArt = fillArt, buildDetail = buildDetail,
     buildTable = buildTable, levelText = levelText, instanceZone = instanceZone, instanceSide = instanceSide, wishItems = wishItems, WISH_HINT = WISH_HINT, MAP_HINT = MAP_HINT, ACCESS_HINT = ACCESS_HINT,
-    buildFilter = buildFilter, holdHere = holdHere, applyFilter = applyFilter, runBadge = runBadge, newHere = newHere, ART_H = ART_H, itemHint = DTEXT.itemHint, foldHint = DTEXT.foldHint, signed = signed,
-    -- the bosses' fold (F-144)
-    showBosses = showBosses, foldLink = foldLink, foldState = foldState, placeParts = placeParts }
+    buildFilter = buildFilter, holdHere = holdHere, applyFilter = applyFilter, runBadge = runBadge, newHere = newHere, ART_H = ART_H, itemHint = DTEXT.itemHint, bossHint = DTEXT.bossHint, signed = signed,
+    -- the bosses and the chosen one's loot (F-154)
+    buildBossView = buildBossView, showBosses = showBosses, placeParts = placeParts }
 
 ns.RegisterPanel{ key = "dungeons", label = "Dungeons", sub = L["Was dir jeder Dungeon bringt: Bosse, Beute und Quests."], icon = ICON, order = 51, group = "dungeons",
     available = function() return ns.Gear.Available() end,

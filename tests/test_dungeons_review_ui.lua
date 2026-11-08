@@ -1,4 +1,4 @@
--- Review of the dungeon planner view (2.3): another dungeon's bosses start at the top of the detail
+-- Review of the dungeon planner view (2.3): another dungeon's bosses start at the top of the boss
 -- list, an NPC the planner does not count yet says so on its row, the overview card's dungeon line
 -- stays within two lines.
 local function plain(t) return (tostring(t or ""):gsub("|T.-|t", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
@@ -41,15 +41,15 @@ STUB.fire("PLAYER_EQUIPMENT_CHANGED")
 NS.ShowPage("dungeons")
 local D = NS.PageFrame("dungeons")
 assert(NS.DungeonNext().key == "thanes" and D.chosen == "thanes")
--- since the detail view starts right under the head row (F-143) the list shows 15 rows on the
--- smallest window: five here, so the thanes scroll as before
-D.detail:Fit(5)
-assert(#D.detail.items > D.detail.rowCount, "the thanes need the scroll bar: " .. #D.detail.items)
+-- the bosses on the left (F-154): one row here, so the thanes and the ruins scroll
+local BL = D.bossView.list
+BL:Fit(1)
+assert(#BL.items > BL.rowCount, "the thanes need the scroll bar: " .. #BL.items)
 
 -- scrolled down in the thanes, then the ruins: their first boss on top
-local wheel = D.detail:GetScript("OnMouseWheel")
-for _ = 1, 20 do wheel(D.detail, -1) end
-assert(D.detail.offset == #D.detail.items - D.detail.rowCount and D.detail.offset > 0, "scrolled down")
+local wheel = BL:GetScript("OnMouseWheel")
+for _ = 1, 20 do wheel(BL, -1) end
+assert(BL.offset == #BL.items - BL.rowCount and BL.offset > 0, "scrolled down")
 -- a card of the start view (F-143); from the detail view through its link back
 local rows = setmetatable({}, { __index = function(_, key)
     return { Click = function()
@@ -59,40 +59,43 @@ local rows = setmetatable({}, { __index = function(_, key)
 end })
 rows.lordaeron:Click()
 assert(D.chosen == "lordaeron")
-assert(#D.detail.items > D.detail.rowCount, "the ruins scroll too: " .. #D.detail.items)
-assert(D.detail.offset == 0, "the other dungeon starts at the top: offset " .. D.detail.offset)
-assert(D.detail.rows[1].item and D.detail.rows[1].item.kind == "boss", "its first boss is shown")
+assert(#BL.items > BL.rowCount, "the ruins scroll too: " .. #BL.items)
+assert(BL.offset == 0, "the other dungeon starts at the top: offset " .. BL.offset)
+assert(BL.rows[1].item and BL.rows[1].item.n == 1, "its first boss is shown")
 -- a refresh of the same dungeon keeps the place
 rows.thanes:Click()
-wheel(D.detail, -1); wheel(D.detail, -1)
-assert(D.detail.offset == 2)
+wheel(BL, -1)
+assert(BL.offset == 1)
 NS.Refresh()
-assert(D.detail.offset == 2, "the same dungeon keeps its scroll position")
+assert(BL.offset == 1, "the same dungeon keeps its scroll position")
 
 -- an NPC only the guild's records know: listed with its kills, not counted
 local today = NS.DropsToday()
 NS.DropsLearnNames({ [7777] = "Lordaeron Ghoul" }, { [3001] = { "party", "Ruins of Lordaeron" } })
 assert(NS.DropsMerge({ h = "0e000001", npc = 7777, inst = 3001, diff = 1, day = today, o = "aaaaaaaa", src = "G", it = { [531] = 1 } }) == "new")
 rows.lordaeron:Click()
-for _ = 1, 20 do wheel(D.detail, -1) end
+for _ = 1, 20 do wheel(BL, -1) end
 local ghoulRow
-for _, dr in ipairs(D.detail.rows) do
-    if dr.item and dr.item.kind == "boss" and dr.item.text == "Lordaeron Ghoul" then ghoulRow = dr end
+for _, dr in ipairs(BL.rows) do
+    if dr.item and dr.item.text == "Lordaeron Ghoul" then ghoulRow = dr end
 end
 assert(ghoulRow, "the ghoul is listed")
-assert(plain(ghoulRow.rate:GetText()) == "1 Kill, zählt ab 3", ghoulRow.rate:GetText())
-local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
-Lay.fits(ghoulRow.rate)
--- the item of an unknown chance says so
-for _ = 1, 20 do wheel(D.detail, 1) end
+assert(plain(ghoulRow.sub:GetText()) == "1 Kill, zählt ab 3", ghoulRow.sub:GetText())
+-- the item of an unknown chance says so (the Baron's shoulders)
+NS.W.FitLists()
+for _ = 1, 20 do wheel(BL, 1) end
+for _, dr in ipairs(BL.rows) do
+    if dr.item and dr.item.text == "The Baron" then dr:Click() end
+end
 local seen509
-for _, dr in ipairs(D.detail.rows) do
+for _, dr in ipairs(D.bossView.loot.rows) do
     if dr.item and dr.item.id == 509 then
         seen509 = true
         assert(plain(dr.rate:GetText()) == "Chance unbekannt", dr.rate:GetText())
     end
 end
-assert(seen509, "the shoulders are on top")
+assert(seen509, "the shoulders in the Baron's loot")
+NS.W.FitLists()
 
 -- the overview card: at most two lines above the button
 local card

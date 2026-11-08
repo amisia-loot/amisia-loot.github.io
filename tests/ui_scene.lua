@@ -425,21 +425,19 @@ S.STATES = {
     { page = "stats", name = "stats-fame", open = function() NS.ShowStats("fame") end },
     { page = "softres", name = "softres-raider", open = function() NS.ShowSoftRes("raider") end },
     { page = "softres", name = "softres-check", open = function() NS.ShowSoftRes("check") end },
-    -- the bosses of the Deadmines as a new dungeon shows them (F-144: the bosses with an upgrade
-    -- unfolded, the others folded to their loot icons), then all folded but the first
+    -- the bosses of the Deadmines as a new dungeon shows them (F-154: the bosses with their portraits
+    -- left, the first with an upgrade chosen and its loot right), then the last boss chosen
     { page = "dungeons", name = "dungeons-bosses", open = function()
         AmisiaDB.settings.bis.dpart = "bosses"
         NS.ShowDungeon("deadmines")
     end },
-    { page = "dungeons", name = "dungeons-bosses-folded", open = function()
+    { page = "dungeons", name = "dungeons-bosses-last", open = function()
         AmisiaDB.settings.bis.dpart = "bosses"
         NS.ShowDungeon("deadmines")
-        local D = NS.PageFrame("dungeons")
-        -- open all first (if not all are), then fold all
-        if D.foldAll:GetText() ~= NS.L["Alle zuklappen"] then D.foldAll:Click() end
-        D.foldAll:Click()
-        local first = D.detail.rows[1]
-        if first and first.item and first.item.kind == "boss" then first:Click() end
+        local V = NS.PageFrame("dungeons").bossView
+        local last
+        for _, r in ipairs(V.list.rows) do if r:IsShown() and r.item then last = r end end
+        if last then last:Click() end
     end },
     -- the dungeon quests of the Deadmines, then the quest path of "Red Silk Bandanas" (F-135): two
     -- steps done, the third in the log, the rest open

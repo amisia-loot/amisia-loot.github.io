@@ -1641,7 +1641,9 @@ Look des Clients); eine Bossliste mit allen Items war auf großen Dungeons und R
 
 **Nachtrag 2026-11-08:** Die Kacheln der Startseiten von Dungeons und Raids ersetzt D-74 (eine Tabelle mit Stufenbereichen).
 `tests/test_mainframe.lua`, `tests/test_settings_pages.lua`, `tests/test_dungeon_table.lua` (Schritt 3),
-`tests/test_boss_fold.lua` (Schritt 4).
+`tests/test_boss_view.lua` (Schritt 4, seit D-85).
+
+**Nachtrag 2026-11-08:** Die aufklappbare Bossliste (Schritt 4, `T.DBOSS` der Faltung) ersetzt D-85: Bosse links mit Porträt, Beute des gewählten rechts.
 
 ## D-70 Hauptfenster nach dem Hub eines anderen Addons: Kopf mit Logo, Überschriften, Symbolzeilen
 
@@ -2047,3 +2049,20 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 
 **Durchgesetzt durch:** `tests/test_style.lua` (Rahmen, Titel, X, Lagen), `tests/test_main_size.lua` (Minimieren), `tests/test_mainframe.lua` (Maße).
 
+## D-85 Übersicht der Dungeons und Raids: Bosse mit Porträt links, Beute mit Symbolen rechts
+
+**Datum:** 2026-11-08
+**Entscheidung:** Der Teil Übersicht der Detailseiten von Dungeons und Raids (F-154) hat zwei Spalten statt der aufklappbaren Liste von D-69 (Schritt 4). Maße in `T.DBOSS`.
+- **Links die Bosse** (`LIST_W` 212 mit Leiste, Zeilen 44 hoch) in der Reihenfolge des Spiels: ein rundes Porträt (36 px) aus einer schwarzen Scheibe (`W.DISC`), dem Modell des Bosses (`PlayerModel:SetCreature(npc)`, Porträt-Zoom 0,9) und dem Goldring `ui/boss_ring.tga` darüber (eigene Textur, `tools/make_ui_icons.py`; ein Modell lässt sich nicht maskieren, darum ein Ring auf einem Rahmen über dem Modell). Ohne NPC oder Modell: der Totenkopf des Clients (`UI-TargetingFrame-Skull`). Daneben "n. Name" und grau "4 Items · 1 Upgrade" ("keine Beute bekannt"; ein nur aus Aufzeichnungen bekannter NPC seine Kills). Ein getöteter Boss: Haken, grauer Name, Porträt halb durchsichtig.
+- **Ein Klick** wählt den Boss, Rechtsklick ist das Menü "Als getötet markieren" (D-72), die Maus zeigt ihn im Bild. Gewählt ist je Seite und Instanz der zuletzt geklickte, beim ersten Zeigen der erste mit einem Upgrade, sonst der erste mit Beute, sonst der erste; nur im Speicher, gehalten über Refresh und Fensterhöhe.
+- **Rechts der gewählte Boss:** ein Kopf (52 hoch, dunkler Grund, Goldrand) mit Porträt (44 px), Name groß in Gold und "Boss n von m · je Lauf +X · getötet"; darunter seine Beute (Zeilen 36 hoch): das Symbol des Items (28 px) im runden Rahmen seiner Qualität wie im Ausrüstungsplaner (D-81 Nachtrag), der Name (mit dem Haken, wenn man es hat), grau Slot und farbig der Zuwachs, die Dropchance und der Stern der Wunschliste (Klick: auf die Liste oder herunter). Klicks und Menü wie die Itemzeilen. Ohne Beute: "Für diesen Boss kennt Amisia keine Beute."
+- Beide Listen reichen bis zum Ende der Seite (`W.FillTo`) und wachsen mit dem Fenster.
+- Quests und Wunschliste bleiben Listen; die Bosse dort sind Überschriften ohne Plus und Minus. "Alle aufklappen"/"Alle zuklappen" entfallen.
+
+**Grund:** Nutzer 2026-11-08 mit einem Bildschirmfoto der Bosse und Beute eines anderen Addons: "die inis sollen auch da die bosse mit ihren icons anzeigen und die items die sie dropen auch mit den icons".
+
+**Folge:**
+- Neue Textur `ui/boss_ring.tga`: nach dem Release WoW ganz neu starten.
+- Ob Forever für jeden Boss ein Modell zeigt (`SetCreature` braucht den NPC im Cache des Clients), ist im Spiel zu prüfen; sonst bleibt der Totenkopf. Eine Stufe der Bosse kennt Amisia nicht, darum steht sie nicht da.
+
+**Durchgesetzt durch:** `tests/test_boss_view.lua` (Reihenfolge, Vorgabe, Porträt, Modell, Beute, Stern, Klicks, Lage, je Dungeon, Teile, leer, Raids), `tests/test_dungeons_page.lua`, `tests/test_journal_parts.lua`, die Layoutregeln (Aufnahmen `dungeons-bosses`, `dungeons-bosses-last`).

@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): bosses with portraits, their loot with icons (F-154)
+
+  The overview of a dungeon or raid now has two columns: on the left the bosses, each with a round
+  portrait of its model in a gold ring, its number, name and how many items and upgrades it drops; on
+  the right the chosen boss with its loot, each item with its icon in its quality's frame, slot, gain,
+  drop chance and a star for the wishlist. A click on a boss shows its loot.
+
 - feat(ui): the main window in the game's own window frame (F-147)
 
   The main window has the standard frame of the game's windows again: its border, the title bar with

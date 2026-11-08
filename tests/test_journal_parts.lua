@@ -22,7 +22,7 @@ local tabs = {}
 for _, k in ipairs(B.partKeys) do tabs[#tabs + 1] = k .. (B.parts[k]:IsShown() and "" or "-") end
 assert(table.concat(tabs, " ") == "bosses map quests wish access-", table.concat(tabs, " "))
 assert(B.parts.bosses.on and B.parts.bosses:GetText() == "Übersicht" and B.header.ButtonText:GetText() == "Bosse")
-assert(B.detail:IsShown() and not B.mapView:IsShown() and not B.accessView:IsShown())
+assert(B.bossView:IsShown() and not B.detail:IsShown() and not B.mapView:IsShown() and not B.accessView:IsShown())
 -- no run here: no "1/4", no reset
 assert(not B.runBar:IsShown() and not B.resetRun:IsShown(), "no run outside")
 
@@ -34,7 +34,7 @@ NS.Refresh()
 assert(B.runBar:IsShown() and B.runBar.text:GetText() == "1/4" and B.resetRun:IsShown(), "the run")
 assert(B.runBar.fill._w == math.floor(NS.Theme.DPART.RUN.BAR_W / 4 + 0.5), "a quarter of the bar: " .. tostring(B.runBar.fill._w))
 local function bossRow(name)
-    for _, r in ipairs(B.detail.rows) do
+    for _, r in ipairs(B.bossView.list.rows) do
         if r.item and r.item.kind == "boss" and r.item.text == name then return r end
     end
 end
@@ -55,15 +55,15 @@ assert(R.Killed("thanes", 3) and B.runBar.text:GetText() == "2/4", "marked by ha
 B.resetRun:Click()
 assert(select(2, R.Of("thanes")) == 0 and B.runBar:IsShown() and B.runBar.text:GetText() == "0/4", "the run reset")
 
--- Wunschliste: only bosses with a wished or recommended item, unfolded, those items only
+-- Wunschliste: only bosses with a wished or recommended item, those items only
 B.parts.wish:Click()
 assert(AmisiaDB.settings.bis.dpart == "wish" and B.parts.wish.on and B.header.ButtonText:GetText() == "Wunschliste")
-assert(not B.runBar:IsShown() and not B.foldAll:IsShown(), "no run and no fold in the wish list")
+assert(not B.runBar:IsShown() and not B.bossView:IsShown() and B.detail:IsShown(), "no run and no boss view in the wish list")
 local heads, items = 0, 0
 for _, it in ipairs(B.detail.items) do
     if it.kind == "boss" then
         heads = heads + 1
-        assert(it.open and #it.items > 0, "a boss with wishes, unfolded")
+        assert(#it.items > 0, "a boss with wishes")
     else
         items = items + 1
         assert(it.wished or it.rec, "only wished or recommended items")
@@ -146,7 +146,7 @@ C_Item.GetItemCount = keepCount
 assert(AmisiaDB.settings.bis.dpart == "access")
 fact.keys = nil
 NS.Refresh()
-assert(B.parts.bosses.on and not B.parts.access:IsShown() and B.detail:IsShown(), "back to Übersicht")
+assert(B.parts.bosses.on and not B.parts.access:IsShown() and B.bossView:IsShown(), "back to Übersicht")
 
 -- the raids page has the same tabs, without Quests
 NS.ShowRaid("onyxia")

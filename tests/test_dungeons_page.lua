@@ -108,22 +108,27 @@ NS.Refresh()
 rows = cardsOf()
 -- a click on a row opens its detail view
 rows.thanes:Click()
-assert(D.detail:IsShown() and D.art:IsShown() and D.back:IsShown() and not D.table:IsShown() and not D.sorts.level:IsShown(), "the detail")
+assert(D.bossView:IsShown() and D.art:IsShown() and D.back:IsShown() and not D.table:IsShown() and not D.sorts.level:IsShown(), "the detail")
 
 -- the chosen dungeon: header, bosses with their items, quests
 assert(D.header.ButtonText:GetText() == "Bosse", D.header.ButtonText:GetText())
 assert(D.parts.bosses.on and not D.parts.quests.on and D.sorts.level.on, "bosses, by level at first")
+-- the bosses on the left (F-154), the chosen one's loot on the right
+local V = D.bossView
 local texts = {}
-for _, dr in ipairs(D.detail.rows) do
-    if dr.item then texts[#texts + 1] = plain(dr.name:GetText()) .. "|" .. plain(dr.gain:GetText()) .. "|" .. plain(dr.rate:GetText()) end
+for _, lr in ipairs(V.loot.rows) do
+    if lr.item then texts[#texts + 1] = plain(lr.name:GetText()) .. "|" .. plain(lr.sub:GetText()) .. "|" .. plain(lr.rate:GetText()) end
 end
-D.detail.offset = 0
 local all = {}
-for _, e in ipairs(D.detail.items) do all[#all + 1] = e.kind .. ":" .. (e.text or e.id or "") end
+for _, h in ipairs(V.list.items) do
+    all[#all + 1] = h.kind .. ":" .. h.text
+    for _, e in ipairs(h.items) do all[#all + 1] = e.kind .. ":" .. e.id end
+end
 all = table.concat(all, ",")
 assert(has(all, "boss:Faldrim Anvilmar") and has(all, "item:501") and has(all, "boss:Magmatus") and has(all, "item:503"), all)
 assert(not has(all, "quest:"), "the quests have their own part: " .. all)
-assert(has(texts[2] or "", "Ambosshelm") and has(texts[2], "Chance 20 %"), texts[2])
+assert(V.list.items[1].text == "Faldrim Anvilmar" and V.list.items[1].on, "Faldrim chosen")
+assert(has(texts[1] or "", "Ambosshelm") and has(texts[1], "Chance 20 %"), tostring(texts[1]))
 -- the quests part: the item data's dungeon quests joined with the quest data's
 D.parts.quests:Click()
 assert(D.header.ButtonText:GetText() == "Quests" and D.parts.quests.on)
@@ -142,7 +147,9 @@ assert(not has(D.hint:GetText(), "fehlen"), "the quest data knows the thanes: " 
 D.parts.bosses:Click()
 -- the wished legs carry the star
 local legs
-for _, e in ipairs(D.detail.items) do if e.id == 503 then legs = e end end
+for _, h in ipairs(V.list.items) do
+    for _, e in ipairs(h.items) do if e.id == 503 then legs = e end end
+end
 assert(legs and legs.wished, "the wish is marked")
 
 -- the waypoint: none for the thanes, the entrance of the deadmines
@@ -176,24 +183,24 @@ for _, view in ipairs({ "officer", "raider" }) do
     NS.Set("ui.view", view)
     NS.ShowGear("dungeons")
     -- the detail view: the back link before the spec, the image, the header, the bosses
-    assert(D.detail:IsShown(), "the view stays")
+    local V = D.bossView
+    assert(V:IsShown(), "the view stays")
     Lay.row(view .. " detail head row", D.back, D.spec)
     Lay.row(view .. " detail tabs", D.parts.bosses, D.parts.map, D.parts.quests, D.parts.wish, D.way)
-    Lay.row(view .. " detail head", D.header, D.foldAll)
-    -- a boss's head (F-144): its sign, name and gain per run; an item row its four cells
-    local dr = D.detail.rows[1]
-    assert(dr.item.kind == "boss" and dr.item.open and dr.sign:IsShown(), "the thanes' first boss has an upgrade: unfolded")
-    Lay.row(view .. " detail boss row", dr.sign, dr.name, dr.rate)
-    local ir
-    for _, row in ipairs(D.detail.rows) do if not ir and row.item and row.item.kind == "item" then ir = row end end
-    Lay.row(view .. " detail row", ir.name, ir.slot, ir.gain, ir.rate)
-    Lay.row(view .. " detail", D.detail, D.detail.bar)
-    Lay.inside(view .. " detail bar", D.detail.bar)
-    Lay.column(view .. " detail body", D.spec, D.art, D.header, D.detail)
+    -- the bosses left (F-154): portrait and name; the chosen one's loot right: icon, name, rate, star
+    local br = V.list.rows[1]
+    assert(br.item.kind == "boss" and br.item.on and br.sel:IsShown(), "the thanes' first boss has an upgrade: chosen")
+    Lay.row(view .. " boss row", br.port, br.name)
+    local lr = V.loot.rows[1]
+    assert(lr:IsShown() and lr.item.kind == "item", "its loot")
+    Lay.row(view .. " loot row", lr.frame, lr.name, lr.rate, lr.star)
+    Lay.row(view .. " boss view", V.list, V.loot)
+    Lay.inside(view .. " boss bar", V.list.bar)
+    Lay.inside(view .. " loot bar", V.loot.bar)
+    Lay.column(view .. " detail body", D.spec, D.art, D.header, V)
     assert(D.hint.isHelp and not D.hint:IsShown(), "the hint is behind the window's ?")
-    -- (item names carry the owned and wish marks as texture codes, which the stub measures as text)
-    for _, row in ipairs(D.detail.rows) do
-        if row.item and row.item.kind ~= "quest" then Lay.fits(row.rate) end
+    for _, row in ipairs(V.loot.rows) do
+        if row:IsShown() then Lay.fits(row.rate) end
     end
     -- the start view: the order tabs, the recommendation, the column heads, the table
     D.back:Click()
@@ -220,7 +227,7 @@ assert(f.src.Q:IsShown() and not D:IsShown() and f.goals:IsShown())
 local facts = NS.DUNGEON_FACTS
 NS.DUNGEON_FACTS = nil
 NS.ShowGear("dungeons")
-assert(D.next:GetText() == "Keine Dungeon-Daten." and #D.table.entries == 0 and #D.detail.items == 0 and not D.way:IsEnabled())
-assert(D.table:IsShown() and not D.detail:IsShown(), "no dungeon: the (empty) start")
+assert(D.next:GetText() == "Keine Dungeon-Daten." and #D.table.entries == 0 and #D.bossView.list.items == 0 and not D.way:IsEnabled())
+assert(D.table:IsShown() and not D.bossView:IsShown(), "no dungeon: the (empty) start")
 NS.DUNGEON_FACTS = facts
 NS.ShowGear("goals")

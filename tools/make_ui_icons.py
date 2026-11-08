@@ -122,9 +122,23 @@ def rounded(fill, inset, radius, stroke=None):
     return img.resize((SIZE, SIZE), Image.LANCZOS)
 
 
+def circle_ring(stroke):
+    """A round ring (white, coloured by the addon) over the full square: the frame of a boss's
+    portrait (F-154); the portrait is a model, which no mask cuts, so the ring only frames it."""
+    from PIL import ImageDraw
+    big = SIZE * SHAPE_SCALE
+    img = Image.new('RGBA', (big, big), (255, 255, 255, 0))
+    ImageDraw.Draw(img).ellipse([0, 0, big - 1, big - 1], outline=(255, 255, 255, 255), width=stroke * SHAPE_SCALE)
+    return img.resize((SIZE, SIZE), Image.LANCZOS)
+
+
+BOSS_RING_STROKE = 4                    # at SIZE px
+
+
 SHAPES = {
     'slot_ring': lambda: rounded(False, 0, RING_RADIUS, RING_STROKE),
     'slot_mask': lambda: rounded(True, MASK_INSET, MASK_RADIUS),
+    'boss_ring': lambda: circle_ring(BOSS_RING_STROKE),
 }
 
 
