@@ -39,6 +39,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-157 Quellensymbol im Ausrüstungsplaner öffnet Boss oder Rezept
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du im Ausrüstungsplaner bei einem Vorschlag aus einem Dungeon auf das Dungeon-Symbol rechts klickst, dann öffnet sich Dungeons mit diesem Dungeon (Teil Übersicht), links ist der Boss gewählt, der das Item fallen lässt, und rechts ist die Zeile des Items markiert.
+- Prüfung: Wenn du bei einem Vorschlag aus einem Raid auf das Raid-Symbol klickst, dann öffnet sich die Seite Raids genauso beim Boss.
+- Prüfung: Wenn du bei einem hergestellten Item auf das Berufssymbol klickst, dann öffnet sich Berufe mit dem Rezept, das das Item herstellt.
+- Prüfung: Wenn du die Maus auf das Symbol hältst, dann nennt der Tooltip die Quelle und was ein Klick öffnet.
+- Notiz: Wunsch des Nutzers 2026-11-08 mit einem Bildschirmfoto eines anderen Addons; D-88.
+
 ### F-156 Offiziersansicht nur für Offiziere
 - Version: 2.69.0
 - Status: gebaut

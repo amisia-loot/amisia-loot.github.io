@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(gear): the source symbol in the gear planner opens the boss or the recipe (F-157)
+
+  A click on the dungeon or raid symbol of a suggestion opens that dungeon or raid at the boss that
+  drops the item, with the item's row marked. A click on a profession symbol opens the recipe on the
+  Professions page. The symbol's tooltip says where a click goes.
+
 ## [v2.69.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.69.0) (2026-11-08)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.68.0...v2.69.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

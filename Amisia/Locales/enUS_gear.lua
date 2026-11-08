@@ -866,3 +866,5 @@ L["Klick: deine Wahl für %s. Rechtsklick: Menü."] = "Click: your pick for %s. 
 L["Besser: %s (%s)"] = "Better: %s (%s)"
 L["Klick: passende Verzauberungen."] = "Click: enchantments that fit."
 L["Klick auf einen Platz: seine Vorschläge. Klick auf eine Zeile: deine Wahl für den Platz, nochmal: aufheben. Stern: Wunschliste. Das Quadrat neben einem Platz: die Verzauberung."] = "Click a slot: its suggestions. Click a row: your pick for the slot, again: lift it. Star: wish list. The square beside a slot: its enchantment."
+L["Klick: %s öffnen, beim Boss mit diesem Item."] = "Click: open %s at the boss with this item."
+L["Klick: das Rezept unter Berufe öffnen."] = "Click: open the recipe under Professions."

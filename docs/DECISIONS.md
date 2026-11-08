@@ -2095,3 +2095,18 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 **Folge:** Die Rechte prüft Amisia weiter am Rang des Absenders (D-41); die Sperre ist nur die Oberfläche, ein veränderter Client bekommt weiterhin DENIED. Annahme (nicht gefragt): das Offiziersnotiz-Recht des Clients zählt wie ein Offiziersrang, weil es sofort bekannt ist und bisher "Automatisch" bestimmte.
 
 **Durchgesetzt durch:** `tests/test_officer_view.lua` (Raider, gespeichertes "officer", Umschalter, Befehl, Einstellung, Seite, Rang später gelesen, Raider-Ansicht hin und zurück, Rang verloren, Notizrecht, Autor ohne Gilde, anderer Vulo), `tests/test_registry.lua`, `tests/test_setup.lua`, `tests/test_trust.lua`, `tests/test_sync_ops.lua` (ein veränderter Client bekommt DENIED).
+
+## D-88 Das Quellensymbol im Ausrüstungsplaner öffnet den Boss oder das Rezept
+
+**Datum:** 2026-11-08
+**Entscheidung:** Ein Klick auf das Quellensymbol einer Zeile im Ausrüstungsplaner (F-157) öffnet die Quelle des Items:
+- **Dungeon oder Raid** (Quelle D/X): die Seite Dungeons bzw. Raids mit dieser Instanz, Teil Übersicht (F-154), gewählt ist der Boss, der das Item fallen lässt; seine Beutezeile ist markiert (Auswahlbalken) und in Sicht gerollt. Die Markierung endet, sobald ein anderer Boss oder eine andere Instanz gewählt wird. Den Schlüssel findet `D.SourceKey` (die eine Instanz, sonst der Name der Quelle). Lässt kein Boss der Seite das Item fallen, öffnet sich die Instanz mit ihrem üblichen Boss.
+- **Hergestellt** (Quelle C, das Berufssymbol): die Seite Berufe beim Rezept, das das Item herstellt (`Pr.RecipeForItem`, `ns.ShowRecipe`: Filter aus, Rezept gewählt).
+- Die anderen Quellen (Quest, Händler, Weltdrop, Auktionshaus) bleiben ohne Klick; ihr Symbol zeigt den Tooltip der Zeile.
+- Der Tooltip des Symbols nennt die Quelle und "Klick: <Ort> öffnen, beim Boss mit diesem Item." bzw. "Klick: das Rezept unter Berufe öffnen."
+
+**Grund:** Nutzer 2026-11-08 mit einem Bildschirmfoto eines anderen Addons: "wenn man auf das instanz oder berufe symbol klick ... direkt in das fenster für das item kommt also ins berufe oder ini fenster mit boss usw".
+
+**Folge:** `ns.ShowRaid` nimmt einen Teil an (`part`). Annahme (nicht gefragt): Quest-Symbole öffnen nichts, weil der Nutzer nur Instanz und Beruf nannte.
+
+**Durchgesetzt durch:** `tests/test_source_jump.lua` (Schlüssel, Boss gewählt, Zeile markiert, Refresh, anderer Boss, anderer Dungeon, unbekanntes Item, Raid, Rezept), `tests/test_gear_planner.lua` (Tooltip und Klick des Symbols).

@@ -213,6 +213,21 @@ function Pr.Recipe(spell)
     return cache.bySpell[tonumber(spell)]
 end
 
+-- The recipe that makes item id (F-157), of the profession key ("tailoring") when given, and its
+-- skill line; nil when the data has none.
+function Pr.RecipeForItem(id, key)
+    id = tonumber(id)
+    if not id then return nil end
+    for _, skill in ipairs(Pr.Skills()) do
+        if not key or Pr.Key(skill) == key then
+            for _, r in ipairs(Pr.Recipes(skill)) do
+                if r.item == id then return r, skill end
+            end
+        end
+    end
+    return nil
+end
+
 -- A recipe item: { id, spell, rank, faction, standing, sources = { "V123", "F45@4A", ... } } or nil.
 function Pr.RecipeItem(id)
     fresh()

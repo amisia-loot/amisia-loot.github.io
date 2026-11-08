@@ -187,6 +187,17 @@ assert(has(plain(row.sub:GetText()), "Stufe 58") and (has(row.sub:GetText(), "St
     "level and source: " .. plain(row.sub:GetText()))
 assert(has(plain(row.gain:GetText()), "%"), "the gain in percent: " .. plain(row.gain:GetText()))
 assert(row.src:IsShown() and row.src.atlas == "Dungeon", "the source's symbol: the dungeon mark")
+-- the symbol's tooltip says where a click goes; the click opens Stratholme at the Baron (F-157)
+local srcTip = tipOf(function() row.srcBtn:GetScript("OnEnter")(row.srcBtn) end)
+assert(has(srcTip, "Stratholme") and has(srcTip, "beim Boss mit diesem Item"), "the symbol's tooltip: " .. srcTip)
+do
+    local shown
+    local keep = NS.ShowDungeonItem
+    NS.ShowDungeonItem = function(key, id) shown = key .. ":" .. id end
+    row.srcBtn:Click()
+    NS.ShowDungeonItem = keep
+    assert(shown == NS.Dungeons.SourceKey(NS.GEAR.S[2]) .. ":402", "the click opens the dungeon at the item: " .. tostring(shown))
+end
 assert(row.star:IsShown() and not row.star.on, "the star grey")
 assert(row:GetHeight() == PL.ROW_H - 1 and row.frame._w == PL.ROW_ICON, "rows " .. PL.ROW_H .. " high, the icon " .. PL.ROW_ICON)
 -- the list fills the right half down to the page's bottom

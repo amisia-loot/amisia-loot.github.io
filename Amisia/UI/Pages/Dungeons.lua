@@ -222,6 +222,11 @@ local function bossUpgrade(b)
 end
 
 -- The boss rows of e on page B (n: the place in the game's order, on: the chosen one) and the chosen one.
+-- An item asked for from elsewhere (F-157, the source symbol of the gear planner): { key, id, scroll }.
+-- The next showing of that instance chooses the boss that drops it, scrolls its loot row into view
+-- and marks it; choosing another boss or instance ends it.
+local focus
+
 local function bossHeads(B, e)
     local heads = {}
     for _, row in ipairs(detailItems(e)) do
@@ -231,6 +236,14 @@ local function bossHeads(B, e)
         end
     end
     B.bossSel = B.bossSel or {}
+    if focus and focus.key == e.key and not focus.chosen then
+        focus.chosen = true
+        for _, h in ipairs(heads) do
+            for _, row in ipairs(h.items) do
+                if row.id == focus.id then B.bossSel[e.key] = h.text end
+            end
+        end
+    end
     local name, sel = B.bossSel[e.key], nil
     for _, h in ipairs(heads) do
         if h.text == name then sel = h end
@@ -276,14 +289,22 @@ local function showBosses(B, e)
         fillBossView(B, nil, 0)
         return
     end
+    if focus and focus.key ~= e.key then focus = nil end
     local heads, sel = bossHeads(B, e)
     -- another instance starts at the top
     if V.shownKey ~= e.key then V.list.offset = 0 end
     V.shownKey = e.key
     if V.shownBoss ~= (sel and (e.key .. "\0" .. sel.text)) then V.loot.offset = 0 end
     V.shownBoss = sel and (e.key .. "\0" .. sel.text) or nil
+    local loot = sel and sel.items or {}
+    if focus and focus.scroll then
+        focus.scroll = nil
+        for i, row in ipairs(loot) do
+            if row.id == focus.id then V.loot.offset = math.max(0, i - math.max(1, V.loot.rowCount or 1)) end
+        end
+    end
     V.list:SetItems(heads)
-    V.loot:SetItems(sel and sel.items or {})
+    V.loot:SetItems(loot)
     fillBossView(B, sel, #heads)
 end
 
@@ -291,6 +312,7 @@ end
 local function chooseBoss(B, name)
     local e = B.bossView.entry
     if not (e and name) then return end
+    focus = nil
     B.bossSel = B.bossSel or {}
     B.bossSel[e.key] = name
     showBosses(B, e)
@@ -730,6 +752,7 @@ local function fillLootRow(r, e)
     r.sub:SetText(table.concat(parts, GREY .. " · |r"))
     r.rate:SetText(it.rate or "")
     setWishStar(r.star, e.wished and true or false)
+    r.sel:SetShown(focus ~= nil and focus.id == e.id)
 end
 
 -- The view of the part Übersicht on page B at top (a SetPoint offset) down to the page's bottom:
@@ -798,6 +821,7 @@ local function buildBossView(B, top)
     -- and the menu as on the item rows of the lists
     local lootTop = -(BV.HEAD_H + BV.GAP)
     V.loot = W.List(V, BV.MIN_ROWS, BV.LOOT_H, function(r)
+        r.sel = W.SelectBar(r)   -- the item asked for from the gear planner (F-157)
         r.frame = CreateFrame("Frame", nil, r)
         r.frame:SetSize(BV.ICON, BV.ICON)
         r.frame:SetPoint("LEFT", BV.ICON_X, 0)
@@ -2735,6 +2759,16 @@ function ns.ShowDungeon(key)
         if map.Raise then map:Raise() end
     end
     return main ~= nil and main:IsShown() and true or false
+end
+
+-- Opens the dungeon or raid key at the boss that drops item id, its loot row marked (F-157: a click
+-- on the source symbol of the gear planner). Returns true when the window shows.
+function ns.ShowDungeonItem(key, id)
+    if type(key) ~= "string" then return false end
+    focus = type(id) == "number" and { key = key, id = id, scroll = true } or nil
+    if ns.Dungeons.IsRaid(key) then return ns.ShowRaid ~= nil and ns.ShowRaid(key, "bosses") or false end
+    state().dpart = "bosses"
+    return ns.ShowDungeon(key)
 end
 
 -- Opens the page Dungeons with the quest path of quest qid of dungeon key (F-135). Returns true when

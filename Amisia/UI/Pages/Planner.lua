@@ -345,6 +345,25 @@ local function srcArt(rec)
     return PL.SRC_ICONS[rec[1]]
 end
 
+-- What a click on a row's source symbol opens (F-157): a dungeon or raid at the boss that drops the
+-- item, a crafted item's recipe on the page Berufe. Returns the action and its tooltip line, or nil.
+local function srcAction(rec, id)
+    if not (rec and id) then return nil end
+    if rec[1] == "D" or rec[1] == "X" then
+        local key = ns.Dungeons and ns.Dungeons.SourceKey(rec)
+        if key and ns.ShowDungeonItem then
+            return function() ns.ShowDungeonItem(key, id) end,
+                L["Klick: %s öffnen, beim Boss mit diesem Item."]:format(Gear.PlaceName(rec) or key)
+        end
+    elseif rec[1] == "C" and ns.Prof and ns.Prof.RecipeForItem and ns.ShowRecipe then
+        local r, skill = ns.Prof.RecipeForItem(id, rec[2])
+        if r then
+            return function() ns.ShowRecipe(skill, r.spell) end, L["Klick: das Rezept unter Berufe öffnen."]
+        end
+    end
+    return nil
+end
+
 local function hideItemParts(r)
     r.frame:Hide()
     r.src:Hide()
@@ -553,9 +572,31 @@ local function buildRow(r)
     r.gain = W.Text(r, T.FONT.body, PL.GAIN_W)
     r.gain:SetPoint("RIGHT", -gainX, 0)
     r.gain:SetJustifyH("RIGHT")
-    r.src = r:CreateTexture(nil, "ARTWORK")
-    r.src:SetSize(PL.SRC, PL.SRC)
-    r.src:SetPoint("RIGHT", -srcX, 0)
+    -- the source's symbol: a click opens the dungeon at its boss or the recipe (F-157)
+    r.srcBtn = CreateFrame("Button", nil, r)
+    r.srcBtn:SetSize(PL.SRC, PL.SRC)
+    r.srcBtn:SetPoint("RIGHT", -srcX, 0)
+    r.src = r.srcBtn:CreateTexture(nil, "ARTWORK")
+    r.src:SetAllPoints()
+    r.srcBtn:SetScript("OnClick", function(self)
+        local row = self:GetParent()
+        local e = row.item
+        if not (e and e.id and row.src:IsShown()) then return end
+        local run = srcAction(firstSource(e.id, row:GetParent().opts), e.id)
+        if run then run() end
+    end)
+    r.srcBtn:SetScript("OnEnter", function(self)
+        local row = self:GetParent()
+        local e = row.item
+        local rec = e and e.id and row.src:IsShown() and firstSource(e.id, row:GetParent().opts)
+        local _, line = srcAction(rec, e and e.id)
+        if not line then return rowTip(row) end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(Gear.SourceText(rec, true) or "", 1, 0.82, 0)
+        GameTooltip:AddLine(line, 0.6, 0.6, 0.6, true)
+        GameTooltip:Show()
+    end)
+    r.srcBtn:SetScript("OnLeave", K.hideTip)
     r.star = CreateFrame("Button", nil, r)
     r.star:SetSize(PL.STAR, PL.STAR)
     r.star:SetPoint("RIGHT", -starX, 0)

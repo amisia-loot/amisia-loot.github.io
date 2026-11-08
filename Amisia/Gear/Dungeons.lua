@@ -400,6 +400,20 @@ local function getIndex(facts)
     return index
 end
 
+-- The dungeon or raid key of a D or X source record of the gear data (F-157): the one key its
+-- instance hosts, else the key of its name; nil when the facts know neither.
+function D.SourceKey(rec)
+    if type(rec) ~= "table" or (rec[1] ~= "D" and rec[1] ~= "X") then return nil end
+    local facts = D.Facts()
+    if not facts then return nil end
+    local idx = getIndex(facts)
+    local place = Gear.PlaceOf(rec)
+    local inst = place and tonumber(place:match("^I:(%d+)$"))
+    local keys = inst and idx.instKeys[inst]
+    if keys and #keys == 1 then return keys[1] end
+    return idx.byName[lower(rec[2])] or idx.byName[lower(Gear.PlaceName(rec))]
+end
+
 ---------------------------------------------------------------------------
 -- Observations: which boss of which dungeon an NPC of the guild's records is
 ---------------------------------------------------------------------------

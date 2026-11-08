@@ -278,11 +278,13 @@ end
 
 -- Opens the page Raids with that raid chosen (the search, a click on its entrance on the world
 -- map through ns.ShowDungeon). While the world map shows, the window stays under it (F-011).
+-- part: the part to show ("bosses" for ns.ShowDungeonItem, F-157), else the last one.
 -- Returns true when the window shows.
-function ns.ShowRaid(key)
+function ns.ShowRaid(key, part)
     if type(key) ~= "string" then return false end
     J.holdHere(true)   -- asked for: no jump to the raid stood in (D-72)
     state().raid = key
+    if part then state().rpart = part end
     view = "detail"
     if ns.ShowPage then ns.ShowPage("raidjournal") end
     local main, map = _G.AmisiaFrame, _G.WorldMapFrame
