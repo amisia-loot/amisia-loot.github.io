@@ -1762,6 +1762,8 @@ stehen im Kopf des Fensters, die Gruppen sind Reiter oben, die Leiste zeigt nur 
 
 **Durchgesetzt durch:** `tests/test_main_sidebar.lua` (Kopf, Reiter, Leiste, Umzug, Knöpfe), `tests/test_style.lua` (Maße, Reiter in der Reihe und im Fenster, Leiste, Fußzeile, nur Marken des Clients), `tests/test_main_size.lua`, die Layoutregel `nav` (`tools/ui_layout.py`).
 
+**Nachtrag 2026-11-08:** Den eigenen Rahmen mit Goldrand und die eckigen Knöpfe für Schließen und Minimieren ersetzt D-84 durch den Fensterrahmen des Spiels.
+
 ## D-74 Dungeons und Raids als Tabelle mit Stufenbereichen, Sprungmarken in der Leiste
 
 **Datum:** 2026-11-08
@@ -2030,4 +2032,18 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 **Folge:** Die Daten (Flugmeister, Anleger) und die Bilder `place_*.tga` bleiben im Addon, damit das Einschalten weiter geht.
 
 **Durchgesetzt durch:** `tests/test_map_places.lua` (Standard aus, Schritt 4), `tests/test_map_layer_safe.lua`.
+
+## D-84 Das Hauptfenster im Fensterrahmen des Spiels
+
+**Datum:** 2026-11-08
+**Entscheidung:** Das Hauptfenster trägt wieder den Rahmen der Fenster des Clients (Forever und Era): den Rand von `ButtonFrameTemplateNoPortrait` (mit der Ecke für zwei Knöpfe, wo der Client sie hat), die Titelleiste mit "Amisia", das rote X des Clients und links daneben dessen roten Knopf zum Minimieren (D-71). Der eigene Goldrand und die eckigen Knöpfe für Schließen und Minimieren (D-73) entfallen. Im Kopf bleibt der Feedback-Knopf.
+- Innen liegt der dunkle Grund des Hubs unter der Titelleiste (`T.MAIN.FRAME_TOP` 22, `FRAME_X` 3, `FRAME_BOTTOM` 3). Kopf, Reiter, Leiste, Seite und Fußzeile rücken darum 22 px tiefer.
+- Das Fenster ist 806 × 667 (ziehbar 667 bis 967 hoch). Die Seite bleibt 602 × 478.
+- Ohne die Vorlage (ältere Clients) gilt das flache Fenster von `W.Window` mit seinem eigenen X.
+
+**Grund:** Nutzer 2026-11-08 mit einem Bild des Hubs: "kannst du den Schließen-Knopf und den Rahmen der UI wie Standard-WoW-Forever/Era-Rahmen machen".
+
+**Folge:** D-73 (eigener Rahmen) gilt für den Rahmen nicht mehr; Kopf mit Bild, Reiter, Leiste und Fußzeile bleiben.
+
+**Durchgesetzt durch:** `tests/test_style.lua` (Rahmen, Titel, X, Lagen), `tests/test_main_size.lua` (Minimieren), `tests/test_mainframe.lua` (Maße).
 

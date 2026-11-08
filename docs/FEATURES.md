@@ -95,7 +95,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ### F-147 Hub: Bildkopf, Reiter oben, Leiste je Reiter, Fußzeile
 - Version: 2.66.0
 - Status: gebaut
-- Prüfung: Wenn du /amisia öffnest, dann stehen oben das Logo, "Amisia" und ein Streifen eines Ladebilds, rechts Suchfeld, Feedback, Minimieren und X, darunter die Reiter Ausrüstung, Dungeons & Raids, Berufe, Talente, Raid, Gilde und das Zahnrad.
+- Prüfung: Wenn du /amisia öffnest, dann hat das Fenster den Rahmen der Spielfenster mit Titel "Amisia", rotem X und rotem Minimieren-Knopf; darunter stehen das Logo, "Amisia" und ein Streifen eines Ladebilds, rechts Suchfeld und Feedback, darunter die Reiter Ausrüstung, Dungeons & Raids, Berufe, Talente, Raid, Gilde und das Zahnrad.
 - Prüfung: Wenn du einen Reiter klickst, dann zeigt die linke Leiste oben dessen Symbol und Namen und nur seine Seiten, und seine zuletzt gewählte Seite öffnet sich.
 - Prüfung: Wenn du unten links auf den Aufnahmezustand klickst, dann öffnet sich das Menü mit Aufnahme und Ansicht; rechts unten stehen Ansicht und Version.
 - Notiz: Spec docs/specs/2026-11-08-hub-reiter.md, Schritt 1; D-73. Ersetzt die Leiste mit allen Gruppen von F-145.

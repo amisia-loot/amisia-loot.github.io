@@ -595,7 +595,6 @@ L["Ein Klick auf das Logo öffnet die Übersicht, von jeder Seite aus."] = "Clic
 L["Einen Fehler melden oder einen Wunsch schicken."] = "Report a bug or send a wish."
 L["Einstellungen, Feedback und Über Amisia."] = "Settings, feedback and about Amisia."
 L["LOOT · RAID · GEAR"] = "LOOT · RAID · GEAR"
-L["Schließt das Fenster; /amisia öffnet es wieder."] = "Closes the window; /amisia opens it again."
 L["Version %s"] = "Version %s"
 -- the loot toast (F-152, D-79)
 L["Ab Qualität"] = "From quality"

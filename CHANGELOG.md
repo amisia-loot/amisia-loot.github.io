@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(ui): the main window in the game's own window frame (F-147)
+
+  The main window has the standard frame of the game's windows again: its border, the title bar with
+  "Amisia", the red close button and the game's minimize button next to it. Inside, the hub stays as
+  it is: the picture head, the tabs, the side bar and the footer.
+
 ## [v2.67.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.67.0) (2026-11-08)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.66.0...v2.67.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

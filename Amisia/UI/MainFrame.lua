@@ -563,6 +563,39 @@ local function buildMini()
     return bar
 end
 
+-- The minimize button (D-71, D-84): the client's (UIPanelHideButtonNoScripts, the red "-"), left of
+-- the close button, the frame's corner art for two buttons as the client's own minimizable windows;
+-- without the template the old client's smaller-window button. In the flat window of the old
+-- clients MIN_SIZE_OLD, centred on the close button.
+local function buildMinButton()
+    local modern = F.NineSlice ~= nil
+    local ok, b = pcall(CreateFrame, "Button", nil, F, "UIPanelHideButtonNoScripts")
+    if not ok or not b then
+        b = CreateFrame("Button", nil, F)
+        b:SetNormalTexture("Interface\\Buttons\\UI-Panel-SmallerButton-Up")
+        b:SetPushedTexture("Interface\\Buttons\\UI-Panel-SmallerButton-Down")
+        b:SetHighlightTexture("Interface\\Buttons\\UI-Panel-SmallerButton-Highlight", "ADD")
+    end
+    local size = modern and M.MIN_SIZE or M.MIN_SIZE_OLD
+    b:SetSize(size, size)
+    if F.CloseButton and modern then
+        -- its top at the window's top (the close button's template hangs 1 px over it)
+        b:SetPoint("TOPRIGHT", F.CloseButton, "TOPLEFT", 0, -1)
+        if F.SetBorder then
+            if not pcall(F.SetBorder, F, "ButtonFrameTemplateNoPortraitMinimizable") then
+                pcall(F.SetBorder, F, "ButtonFrameTemplateNoPortrait")
+            end
+        end
+    elseif F.CloseButton then
+        b:SetPoint("RIGHT", F.CloseButton, "LEFT", 0, 0)
+    else
+        b:SetPoint("TOPRIGHT", -M.MIN_SIZE, 0)
+    end
+    b:SetScript("OnClick", function() minimize() end)
+    W.Tooltip(b, L["Minimieren"], L["Klappt das Fenster zu einer kleinen Leiste zusammen; ein Klick darauf öffnet es wieder."])
+    return b
+end
+
 -- A square button of the head (D-73): dark with the gold edge, a gold sign (a symbol from art, else
 -- the glyph) and a soft gold light under the mouse.
 local function headButton(parent, art, glyph, title, tip, onClick)
@@ -1003,8 +1036,8 @@ local function updateTabs(byGroup)
 end
 
 local function build()
-    F = W.Window("AmisiaFrame", WIDTH, HEIGHT, { flat = true, strata = "FULLSCREEN",
-        bg = H.BG, edge = H.EDGE,
+    -- the client's own window frame (D-84): its border, title bar with "Amisia" and its red X
+    F = W.Window("AmisiaFrame", WIDTH, HEIGHT, { strata = "FULLSCREEN", title = "Amisia",
         onShow = function(self)
             if self.Raise then self:Raise() end
             -- another screen or scale since the last open: the size stays on it
@@ -1022,15 +1055,17 @@ local function build()
         onDragStop = function() savePosition() end })
     restorePosition()
     ns.ApplyScale()
-    -- the flat window's own title and X give way to the head's
-    if F.TitleContainer then F.TitleContainer:Hide() end
-    if F.CloseButton then F.CloseButton:Hide() end
+    -- the hub's dark ground inside the frame
+    F.ground = F:CreateTexture(nil, "BACKGROUND", nil, 1)
+    F.ground:SetPoint("TOPLEFT", M.FRAME_X, -M.FRAME_TOP)
+    F.ground:SetPoint("BOTTOMRIGHT", -M.FRAME_X, M.FRAME_BOTTOM)
+    F.ground:SetColorTexture(H.BG[1], H.BG[2], H.BG[3], H.BG[4])
 
     -- the head (D-73): a shade lighter than the window, the client's picture behind its right part
     -- fading in from the left, the gold line under it; it moves the window
     local head = CreateFrame("Frame", nil, F)
-    head:SetPoint("TOPLEFT", 1, -1)
-    head:SetPoint("TOPRIGHT", -1, -1)
+    head:SetPoint("TOPLEFT", M.FRAME_X, -M.FRAME_TOP)
+    head:SetPoint("TOPRIGHT", -M.FRAME_X, -M.FRAME_TOP)
     head:SetHeight(M.HEAD_H - 1)
     head:EnableMouse(true)
     head:RegisterForDrag("LeftButton")
@@ -1099,19 +1134,15 @@ local function build()
     end)
     W.Tooltip(homeBtn, L["Übersicht"], L["Ein Klick auf das Logo öffnet die Übersicht, von jeder Seite aus."])
     head.logo, head.name, head.sub = logo, name, sub
-    -- the square buttons at the right: close, minimize (D-71), feedback
-    local closeBtn = headButton(head, nil, "X", L["Schließen"], L["Schließt das Fenster; /amisia öffnet es wieder."],
-        function() F:Hide() end)
-    closeBtn:SetPoint("TOPRIGHT", -M.HBTN_R, -M.HBTN_Y)
-    minBtn = headButton(head, nil, "-", L["Minimieren"], L["Klappt das Fenster zu einer kleinen Leiste zusammen; ein Klick darauf öffnet es wieder."],
-        function() minimize() end)
-    minBtn:SetPoint("RIGHT", closeBtn, "LEFT", -M.HBTN_GAP, 0)
+    -- the feedback button at the head's right end; close and minimize are the client's (D-84)
+    local closeBtn = F.CloseButton
+    minBtn = buildMinButton()
     local feedBtn = headButton(head, T.NAV_ICONS.feedback, "?", L["Feedback"], L["Einen Fehler melden oder einen Wunsch schicken."],
         function()
             ns.ClearSearch()
             ns.ShowPage("feedback")
         end)
-    feedBtn:SetPoint("RIGHT", minBtn, "LEFT", -M.HBTN_GAP, 0)
+    feedBtn:SetPoint("TOPRIGHT", -M.HBTN_R, -M.HBTN_Y)
     head.close, head.min, head.feedback = closeBtn, minBtn, feedBtn
 
     -- the search box left of the buttons; its hits take the side bar's place
@@ -1132,8 +1163,8 @@ local function build()
 
     -- the tabs under the head (D-73), the line under them
     tabBar = CreateFrame("Frame", nil, F)
-    tabBar:SetPoint("TOPLEFT", 0, -(M.HEAD_H + 2))
-    tabBar:SetPoint("TOPRIGHT", 0, -(M.HEAD_H + 2))
+    tabBar:SetPoint("TOPLEFT", M.FRAME_X, -(M.FRAME_TOP + M.HEAD_H + 2))
+    tabBar:SetPoint("TOPRIGHT", -M.FRAME_X, -(M.FRAME_TOP + M.HEAD_H + 2))
     tabBar:SetHeight(M.TAB_H)
     for _, g in ipairs(ns.PANEL_GROUPS) do tabs[g.key] = buildTab(g) end
     tabBar.rule = tabBar:CreateTexture(nil, "BORDER")
@@ -1192,8 +1223,8 @@ local function build()
     -- the footer (D-73): the recording state (a click opens the menu with the recording and the view,
     -- D-67), the view and the version at the right end, the line over it
     local bar = CreateFrame("Button", nil, F)
-    bar:SetHeight(M.BOTTOM)
-    bar:SetPoint("BOTTOMLEFT", M.FOOT_X, 0)
+    bar:SetHeight(M.FOOT_H)
+    bar:SetPoint("BOTTOMLEFT", M.FOOT_X, M.FRAME_BOTTOM)
     bar:SetWidth(T.PAGE_W)
     statusBar = bar
     statusText = W.Text(bar, T.FONT.text)
@@ -1217,12 +1248,12 @@ local function build()
     menuBtn:HookScript("OnEnter", statusTip)
     menuBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
     viewText = W.Text(F, T.FONT.hint)
-    viewText:SetPoint("BOTTOMRIGHT", -(M.GRIP + 2 * M.MARGIN), math.floor((M.BOTTOM - 10) / 2))
+    viewText:SetPoint("BOTTOMRIGHT", -(M.GRIP + 2 * M.MARGIN), M.FRAME_BOTTOM + math.floor((M.FOOT_H - 10) / 2))
     viewText:SetJustifyH("RIGHT")
     local footLine = F:CreateTexture(nil, "BORDER")
     footLine:SetHeight(1)
-    footLine:SetPoint("BOTTOMLEFT", 1, M.BOTTOM - 1)
-    footLine:SetPoint("BOTTOMRIGHT", -1, M.BOTTOM - 1)
+    footLine:SetPoint("BOTTOMLEFT", M.FRAME_X, M.BOTTOM - 1)
+    footLine:SetPoint("BOTTOMRIGHT", -M.FRAME_X, M.BOTTOM - 1)
     footLine:SetColorTexture(H.LINE[1], H.LINE[2], H.LINE[3], H.LINE[4])
 
     -- the page head (D-69, D-73): the page's symbol, name, one line, the gold line fading to both

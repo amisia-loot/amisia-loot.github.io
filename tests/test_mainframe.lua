@@ -9,9 +9,10 @@ NS.RegisterPanel{ key = "tpbad", label = "Kaputt", order = 7, create = function(
 
 NS.ShowPage("tp1")
 assert(AmisiaFrame and AmisiaFrame:IsShown() and NS.CurrentPage() == "tp1")
--- the hub: 806 x 642 (the head, the tabs and the footer, D-73), the page area stays 602 x 478
-assert(AmisiaFrame._w == 806 and AmisiaFrame._h == 642, "806 x 642")
-local ML = dofile(ADDON_DIR .. "/../tests/layout.lua")(AmisiaFrame, 806, 642)
+-- the hub in the client's frame: 806 x 667 (its title bar, the head, the tabs and the footer, D-73,
+-- D-84), the page area stays 602 x 478
+assert(AmisiaFrame._w == 806 and AmisiaFrame._h == 667, "806 x 667")
+local ML = dofile(ADDON_DIR .. "/../tests/layout.lua")(AmisiaFrame, 806, 667)
 local cl, cr = ML.span(AmisiaFrame.content)
 local ct, cb = ML.vspan(AmisiaFrame.content)
 assert(cr - cl == 602 and ct - cb == 478, ("the page area 602 x 478: %d x %d"):format(cr - cl, ct - cb))

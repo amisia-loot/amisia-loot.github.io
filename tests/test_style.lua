@@ -390,20 +390,24 @@ STUB.officer = true
 NS.ShowPage("overview")
 local MF = AmisiaFrame
 local M, HB = NS.Theme.MAIN, NS.Theme.HUB
-assert(MF and MF:IsShown() and not (MF.inherits and MF.inherits.PortraitFrameTemplate) and MF._w == 806 and MF._h == 642)
+-- the client's own window frame (D-84): its border, title bar "Amisia" and red X
+assert(MF and MF:IsShown() and MF.inherits.PortraitFrameTemplate and MF._w == 806 and MF._h == 667)
 assert(MF.strata == "FULLSCREEN")
-assert(MF.ground and MF.ground.color[1] == HB.BG[1] and #MF.edges == 4, "the dark ground and the gold edge")
-assert(not MF.TitleContainer:IsShown() and not MF.CloseButton:IsShown(), "the head's buttons, not the flat window's")
-local ML = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF, 806, 642)
+assert(MF.ground and MF.ground.color[1] == HB.BG[1] and MF.ground.points.TOPLEFT.y == -M.FRAME_TOP, "the hub's dark ground inside the frame")
+assert(MF:GetTitleText():GetText() == "Amisia" and MF.CloseButton:IsShown() and MF.NineSlice, "the frame's title, border and red X")
+local ML = dofile(ADDON_DIR .. "/../tests/layout.lua")(MF, 806, 667)
 -- the head: the logo round on a black disc in a gold ring, the name, its line, the client's picture
 local head = MF.head
 assert(head._h == M.HEAD_H - 1 and head.logo._w == M.LOGO and head.logo.texture == "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia")
 assert(head.name:GetText() == "Amisia" and head.name.font == M.NAME_FONT and head.sub:GetText() == "LOOT · RAID · GEAR")
 assert(head.banner and head.banner.texture == HB.BANNER.file and head.banner.points.TOPLEFT.x == M.BANNER_X, "the client's picture")
 assert(MF.homeBtn and MF.homeBtn.parent == head, "the logo is the home button")
--- the buttons at the right end, a row with the search box
-assert(head.close.points.TOPRIGHT.x == -M.HBTN_R and head.close._w == M.HBTN and head.close.glyph:GetText() == "X")
-ML.row("head buttons", MF.search, head.feedback, head.min, head.close)
+-- the head under the frame's title bar; at its right end the search box and the feedback button; close
+-- and minimize are the client's in the title bar
+assert(head.points.TOPLEFT.y == -M.FRAME_TOP and head.points.TOPLEFT.x == M.FRAME_X)
+assert(head.close == MF.CloseButton and head.min.inherits.UIPanelHideButtonNoScripts and head.min.points.TOPRIGHT.rel == MF.CloseButton)
+assert(head.feedback.points.TOPRIGHT.x == -M.HBTN_R and head.feedback._w == M.HBTN)
+ML.row("head buttons", MF.search, head.feedback)
 assert(MF.search.inherits.SearchBoxTemplate and MF.search._w == M.SEARCH_W, "the search box in the head")
 -- the tabs under the head, left to right, the gear at the right end; inside the window
 local order = {}
@@ -424,7 +428,7 @@ assert(MF.tabs.raid.on and MF.tabs.raid.line:IsShown() and MF.tabs.raid.label.fo
 assert(not MF.tabs.gear.on and MF.tabs.gear.label.font == "GameFontNormal", "the others gold")
 -- the footer: the state (its arrow opens the menu), the view and the version at the right end
 local status = MF.statusBar
-assert(status._h == M.BOTTOM and status.points.BOTTOMLEFT.x == M.FOOT_X and status.points.BOTTOMLEFT.y == 0, "the footer")
+assert(status._h == M.FOOT_H and status.points.BOTTOMLEFT.x == M.FOOT_X and status.points.BOTTOMLEFT.y == M.FRAME_BOTTOM, "the footer over the frame's bottom")
 assert(MF.menuBtn.points.LEFT.rel == MF.statusText, "the arrow right of the state")
 assert(MF.viewText:GetText():find(NS.VERSION, 1, true) and MF.viewText.points.BOTTOMRIGHT, "the version at the right")
 assert(MF.pauseBtn == nil and MF.viewBtn == nil, "no red buttons")
@@ -444,25 +448,25 @@ assert(MF.pageSub:IsShown() and MF.pageSub.font == "GameFontDisableSmall" and MF
 assert(MF.pageHead._h == 38 and MF.pageHead.rule and MF.pageHead.rule.points.TOPLEFT.y == -35, "the line under them")
 local hl, hr = ML.span(MF.pageHead)
 local ht, hb = ML.vspan(MF.pageHead)
-assert(hl == 191 and hr == 793 and ht == -97 and hb == -135, ("the page head: %d..%d, %d..%d"):format(hl, hr, ht, hb))
+assert(hl == 191 and hr == 793 and ht == -119 and hb == -157, ("the page head: %d..%d, %d..%d"):format(hl, hr, ht, hb))
 NS.ShowPage("dungeons")   -- the tab remembers its first page again (the checks below)
 NS.ShowPage("overview")
 assert(not help:IsShown(), "the overview explains nothing: no ?")
 NS.SetEnabled(false); STUB.tick(0); assert(MF.statusText:GetText():find("pausiert", 1, true) and MF.headMenu()[1][1] == "Aufnahme fortsetzen")
 MF.headMenu()[1][2](); assert(NS.IsEnabled())
--- the side bar and the page's field side by side, the page area exactly 602 x 478 at (191, -135)
+-- the side bar and the page's field side by side, the page area exactly 602 x 478 at (191, -157)
 local listIn, contentIn = MF.listInset, MF.contentInset
 assert(listIn.ground.color[1] == HB.SIDE_BG[1] and listIn.edge, "the side bar's ground and its line")
 ML.row("columns", listIn, contentIn)
 local ll, lr = ML.span(listIn)
 local lt, lb = ML.vspan(listIn)
-assert(ll == 6 and lr == 182 and lt == -90 and lb == -620, ("the list 176 x 530: %d..%d, %d..%d"):format(ll, lr, lt, lb))
+assert(ll == 6 and lr == 182 and lt == -112 and lb == -642, ("the list 176 x 530: %d..%d, %d..%d"):format(ll, lr, lt, lb))
 local il, ir = ML.span(contentIn)
 local it, ib = ML.vspan(contentIn)
-assert(il == 184 and ir == 800 and it == -90 and ib == -620, ("the field 616 x 530: %d..%d, %d..%d"):format(il, ir, it, ib))
+assert(il == 184 and ir == 800 and it == -112 and ib == -642, ("the field 616 x 530: %d..%d, %d..%d"):format(il, ir, it, ib))
 local cl, cr = ML.span(MF.content)
 local ct, cb = ML.vspan(MF.content)
-assert(cl == 191 and ct == -135 and cr - cl == 602 and ct - cb == 478, ("the page area: %d, %d, %d x %d"):format(cl, ct, cr - cl, ct - cb))
+assert(cl == 191 and ct == -157 and cr - cl == 602 and ct - cb == 478, ("the page area: %d, %d, %d x %d"):format(cl, ct, cr - cl, ct - cb))
 ML.inside("content", MF.content)
 
 -- the side bar (D-73): the open tab's symbol and name, its pages and side windows as rows

@@ -112,12 +112,16 @@ T.LAYOUT = {
 -- search box, the groups as headings with their pages and side windows as the auction house's
 -- sub-category bars); the page in the content inset on the right. Nothing hangs under or beside it.
 T.MAIN = {
-    -- the hub (D-73): 806 x 642 at its own size; the page keeps its 602 x 478 (D-69)
-    W = 806, H = 642,
+    -- the hub (D-73) in the client's own window frame (D-84: its border, title bar and red X; the hub's
+    -- parts start FRAME_TOP under the top, FRAME_X in from the sides and end FRAME_BOTTOM over the
+    -- bottom): 806 x 667 at its own size; the page keeps its 602 x 478 (D-69)
+    W = 806, H = 667, FRAME_TOP = 22, FRAME_X = 3, FRAME_BOTTOM = 3,
+    -- the client's minimize button (UIPanelHideButtonNoScripts) left of its close button (D-71)
+    MIN_SIZE = 24, MIN_SIZE_OLD = 20,
     -- the size the player can drag (the grip at the bottom right, the chat window's size grabber,
     -- GRIP square in the frame's corner, GRIP_OUT past it): H_MIN to H_MAX and W_MIN to W_MAX, never
     -- more than the screen; T.PAGE_H, T.PAGE_W_NOW and the side bar follow (D-68, D-71)
-    H_MIN = 642, H_MAX = 942, GRIP = 12, GRIP_OUT = 0,
+    H_MIN = 667, H_MAX = 967, GRIP = 12, GRIP_OUT = -2,
     W_MIN = 806, W_MAX = 1440,
     -- the bar the minimize button leaves (D-71; MINI: in the tooltip's frame, the logo LOGO square from
     -- LOGO_X, the name and under it the open page from TEXT_X, the close button X square X_R from the right)
@@ -125,7 +129,8 @@ T.MAIN = {
     -- the head (D-73), HEAD_H high over the whole width: the logo LOGO round from LOGO_X, "Amisia"
     -- (NAME_FONT) from HEAD_TEXT_X at NAME_Y and its line at HEAD_SUB_Y; behind it the client's picture
     -- (T.HUB.BANNER) from BANNER_X to the right edge; at the right the search box (SEARCH_W) and the
-    -- square buttons (HBTN, HBTN_GAP apart, HBTN_R from the right, HBTN_Y from the top)
+    -- square feedback button (HBTN, HBTN_R from the right, HBTN_Y from the head's top; the close and
+    -- minimize buttons are the client's, in its title bar, D-84)
     HEAD_H = 60, LOGO = 44, LOGO_X = 12, HEAD_TEXT_X = 66, NAME_Y = 12, HEAD_SUB_Y = 38, NAME_FONT = "GameFontNormalHuge",
     BANNER_X = 200, SEARCH_W = 180, HBTN = 24, HBTN_GAP = 6, HBTN_R = 10, HBTN_Y = 18,
     -- the tabs (D-73) under the head: TAB_H high from TAB_X, TAB_GAP apart; each its symbol (TAB_ICON
@@ -149,8 +154,9 @@ T.MAIN = {
     -- under the list's top
     SEARCH_GAP = 6, SEARCH_MIN = 2, RES_ROWS = 22, RES_ROW_H = 21, RES_MAX = 8, RES_HIT_X = 18,
     MARGIN = 6,           -- the side bar and the page from the window's edge
-    TOP = 90,             -- they start this far below the top (the head and the tabs)
-    BOTTOM = 22,          -- and end this far above the bottom (the footer)
+    TOP = 112,            -- they start this far below the top (the title bar, the head and the tabs)
+    BOTTOM = 25,          -- and end this far above the bottom (the footer and the frame)
+    FOOT_H = 22,          -- the footer's height
     LIST_W = 176,         -- the side bar
     CONTENT_X = 184,      -- the page's field's left edge
     INNER = 6,            -- the side bar's parts inside it

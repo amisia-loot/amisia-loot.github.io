@@ -68,10 +68,10 @@ assert(W.w == M.W + 300)
 NS.ResetPositions()
 assert(F:GetWidth() == M.W and F:GetHeight() == M.H and W.w == nil and T.PAGE_W_NOW == T.PAGE_W)
 
--- minimize: the square "-" of the head, left of its close button (D-73)
+-- minimize: the client's red "-" left of its close button, in the frame's title bar (D-71, D-84)
 local b = F.minBtn
-assert(b and b == F.head.min and b.points.RIGHT.rel == F.head.close, "left of the close button")
-assert(b._w == M.HBTN and b._h == M.HBTN and b.glyph:GetText() == "-")
+assert(b and b == F.head.min and b.inherits.UIPanelHideButtonNoScripts and b.points.TOPRIGHT.rel == F.CloseButton, "left of the close button")
+assert(b._w == M.MIN_SIZE and b._h == M.MIN_SIZE)
 NS.ShowPage("awards")
 F._right, F._top = 1500, 950
 -- a drag of the grip ends with it
