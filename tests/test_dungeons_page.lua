@@ -82,7 +82,7 @@ rows.thanes:Click()
 assert(D.detail:IsShown() and D.art:IsShown() and D.back:IsShown() and not D.grid:IsShown() and not D.sorts.level:IsShown(), "the detail")
 
 -- the chosen dungeon: header, bosses with their items, quests
-assert(D.header.ButtonText:GetText() == "Hall of Thanes · Bosse", D.header.ButtonText:GetText())
+assert(D.header.ButtonText:GetText() == "Bosse", D.header.ButtonText:GetText())
 assert(D.parts.bosses.on and not D.parts.quests.on and D.sorts.level.on, "bosses, by level at first")
 local texts = {}
 for _, dr in ipairs(D.detail.rows) do
@@ -97,7 +97,7 @@ assert(not has(all, "quest:"), "the quests have their own part: " .. all)
 assert(has(texts[2] or "", "Ambosshelm") and has(texts[2], "Chance 20 %"), texts[2])
 -- the quests part: the item data's dungeon quests joined with the quest data's
 D.parts.quests:Click()
-assert(D.header.ButtonText:GetText() == "Hall of Thanes · Quests" and D.parts.quests.on)
+assert(D.header.ButtonText:GetText() == "Quests" and D.parts.quests.on)
 local qall = {}
 for _, e in ipairs(D.detail.items) do qall[#qall + 1] = e.kind .. ":" .. (e.text or e.id or "") end
 qall = table.concat(qall, ",")
@@ -126,7 +126,7 @@ rows = cardsOf()
 rows.deadmines:Click()
 rows = cardsOf()
 assert(AmisiaDB.settings.bis.dungeon == "deadmines" and rows.deadmines.chosen and not rows.thanes.chosen)
-assert(D.header.ButtonText:GetText() == "The Deadmines · Bosse" and D.way:IsEnabled())
+assert(D.header.ButtonText:GetText() == "Bosse" and D.way:IsEnabled())
 D.way:Click()
 assert(STUB.waypoint.point and STUB.waypoint.point.uiMapID == 1436, "the waypoint to the entrance")
 NS.MapClearTarget()
@@ -148,7 +148,8 @@ for _, view in ipairs({ "officer", "raider" }) do
     -- the detail view: the back link before the spec, the image, the header, the bosses
     assert(D.detail:IsShown(), "the view stays")
     Lay.row(view .. " detail head row", D.back, D.spec)
-    Lay.row(view .. " detail head", D.header, D.parts.bosses, D.parts.quests, D.foldAll, D.way)
+    Lay.row(view .. " detail tabs", D.parts.bosses, D.parts.map, D.parts.quests, D.parts.wish, D.way)
+    Lay.row(view .. " detail head", D.header, D.foldAll)
     -- a boss's head (F-144): its sign, name and gain per run; an item row its four cells
     local dr = D.detail.rows[1]
     assert(dr.item.kind == "boss" and dr.item.open and dr.sign:IsShown(), "the thanes' first boss has an upgrade: unfolded")

@@ -292,7 +292,7 @@ def test_the_module_map_has_every_toc_file(arch):
 # the Forever parts (D-57): exactly these files load on Forever only; tests/test_tbc_raid.lua loads the rest alone
 FOREVER_DIRS = ('Data/', 'Collect/', 'Gear/')
 FOREVER_FILES = {'Core/Duels.lua', 'Raid/Handover.lua', 'UI/GoalsWindow.lua', 'UI/SlotCard.lua', 'UI/DuelInfo.lua'} | {
-    f'UI/Pages/{p}.lua' for p in ('Gear', 'Dungeons', 'RaidJournal', 'Map', 'Professions', 'Quests', 'Talents',
+    f'UI/Pages/{p}.lua' for p in ('Gear', 'JournalParts', 'Dungeons', 'RaidJournal', 'Map', 'Professions', 'Quests', 'Talents',
                                   'MageScrolls', 'Duels', 'Tools', 'Export')}
 
 

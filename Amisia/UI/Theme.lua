@@ -358,6 +358,17 @@ T.DCARD = {
     EDGE = 0.35, CHOSEN = 0.95, GLOW = 0.06, DIM = { 0.56, 0.53, 0.64 },
 }
 
+-- The journal's detail parts (D-72, Pages/Dungeons.lua and RaidJournal.lua): the run in the header's
+-- line (RUN: "1/4" TEXT_W wide, then the bar BAR_W x BAR_H), the instance map (MAP: the floor row
+-- BAR_H high with its arrows ARROW square, the map under it GAP lower, zoom 1 to ZOOM_MAX by WHEEL a
+-- notch, the player's arrow PIN square), the keys (ACCESS: rows ROW_H with the item's icon ICON
+-- square, steps indented STEP_X, the state right STATE_W wide)
+T.DPART = {
+    RUN = { W = 124, H = 14, TEXT_W = 40, BAR_W = 80, BAR_H = 6 },
+    MAP = { BAR_H = 22, ARROW = 18, LABEL_W = 260, GAP = 4, ZOOM_MAX = 6, WHEEL = 1.25, PIN = 16, HINT_W = 220 },
+    ACCESS = { ROW_H = 22, ICON = 16, TEXT_X = 24, STEP_X = 24, STATE_W = 110 },
+}
+
 -- the boss list of the detail views of Dungeons and Raids (F-144, D-69): a boss's head row with the
 -- quest log's plus or minus (SIGN square at SIGN_X), its name from NAME_X (NAME_W), its gain per run
 -- from RATE_X (RATE_W); folded, a strip of at most MAX_ICONS item icons (ICON square, ICON_GAP apart,

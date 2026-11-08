@@ -40,7 +40,7 @@ AmisiaDB.settings.bis = AmisiaDB.settings.bis or {}
 AmisiaDB.settings.bis.dpart = "quests"
 NS.ShowDungeon("deadmines")
 local B = NS.PageFrame("dungeons")
-assert(B.parts.quests.on and B.header.ButtonText:GetText() == "The Deadmines · Quests", B.header.ButtonText:GetText())
+assert(B.parts.quests.on and B.header.ButtonText:GetText() == "Quests", B.header.ButtonText:GetText())
 
 ---------------------------------------------------------------------------
 -- the list: one row per quest, the progress, the dungeon mark
@@ -144,7 +144,7 @@ B:OpenPath({ qid = 500, q = { title = "Final Quest" } })
 assert(V:IsShown())
 AmisiaDB.settings.bis.dungeon = "thanes"
 NS.Refresh()
-assert(not V:IsShown() and B.detail:IsShown() and B.header.ButtonText:GetText() == "Hall of Thanes · Quests", "another dungeon shows its detail")
+assert(not V:IsShown() and B.detail:IsShown() and B.header.ButtonText:GetText() == "Quests", "another dungeon shows its detail")
 -- ns.ShowDungeonQuest opens a path directly
 assert(NS.ShowDungeonQuest("deadmines", 500) ~= nil)
 assert(V:IsShown() and V.title:GetText() == "Final Quest")

@@ -145,3 +145,10 @@ Nichts: Es gibt keine neue Nachricht und keinen Austausch. Die Wunsch-Meldung bl
   2. Gebaut wird in fünf Schritten, jeder einzeln getestet. Schritt 1 ist die Seitenleiste.
   3. Die Karte kommt zuerst ohne Bosspins.
   4. Vor Schritt 5 wird im Spiel geprüft, ob der Client Dungeonkarten hat.
+- 2026-11-08, beim Bauen der Schritte 3 bis 5 (Nutzer: "mach alle schritte fertig"):
+  - Der Lauf liegt in `bis.chars[name].run` statt in `chars[].run`.
+  - Der Reiter wird in `settings.bis.dpart`/`rpart` gemerkt statt in `settings.journal.tab`.
+  - Die Meldung beim Drop eines Wunsches ist der bestehende Hinweis "Wunsch droppt!" mit Ton.
+  - Einen Eingangspin auf der Instanzkarte gibt es nicht, weil Koordinaten innerhalb der Instanz fehlen.
+  - Die Kartendaten (`maps`), Encounter-IDs (`enc`) und Schlüssel (`keys`) kommen über `tools/build_dungeons.py` in die Fakten. Die Schlüssel stehen in `tools/forever_dungeon_keys.json`. D-72.
+

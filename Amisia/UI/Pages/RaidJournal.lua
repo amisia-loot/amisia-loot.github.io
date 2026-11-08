@@ -12,6 +12,7 @@ local L = ns.L
 local W, T = ns.W, ns.Theme
 local K = ns.GearPageKit
 local J = ns.DungeonJournalKit
+local JP = ns.JournalParts   -- the detail's tabs, run, map and keys (D-72)
 local ICON = "Interface\\Icons\\INV_Misc_Head_Dragon_Black"
 -- at least 5 rows of the chosen one under its image (they fill the page down to its bottom)
 local DETAIL_ROWS = 5
@@ -87,7 +88,8 @@ local function create(parent)
     -- the "i"
     local B = W.Page(parent)
     page = B
-    B:Bands({ "row", "row", { "line", lines = 2 } })
+    -- the head row, the filter row (D-72), the next raid, why
+    B:Bands({ "row", "row", "row", { "line", lines = 2 } })
     B.back = W.Link(B, L["< Alle Raids"], function()
         view = "start"
         ns.Refresh()
@@ -95,44 +97,64 @@ local function create(parent)
     W.Tooltip(B.back, L["Alle Raids"], L["Zurück zu den Kacheln aller Raids."])
     B.spec = K.specPicker(B)
     B.next = W.Text(B, T.FONT.title)
-    B.why = B:Line(3)
+    B.why = B:Line(4)
     placeHead(B, false)
-    B:Place(2, { { B.next, fill = true } })
+    J.buildFilter(B, 2, { here = function(key) ns.ShowDungeon(key) end })
+    B:Place(3, { { B.next, fill = true } })
     B:Footer({ { "hint", lines = 2, help = true } })
     -- the start: the cards down to the page's bottom; a click chooses the raid and opens its detail
     B.grid = J.buildGrid(B, B.top, { texts = raidCardTexts, tip = raidTip, pick = function(e)
         state().raid = e.key
         view = "detail"
         ns.Refresh()
-    end })
+    end, badge = function(e) return J.runBadge(e, false) end })
+    B.emptyGrid = B:Empty(nil, B.grid)
     -- the detail: the image right under the head row, the bosses' header under it, then their list
     local G = T.LAYOUT
     local artTop = -(G.ROW_H + G.GAP)
     B.art = J.buildArt(B, artTop)
-    local headerTop = artTop - J.ART_H - G.GAP
+    -- the tabs under the image (D-72): Übersicht, Karte, Wunschliste, Zugang (only with a key; the
+    -- chosen one in settings.bis.rpart), the part's header under them
+    local tabTop = artTop - J.ART_H - G.GAP
+    local headerTop = tabTop - G.ROW_H - G.GAP
     B.header = W.SectionHeader(B, "", false)
     B.header:SetPoint("TOPLEFT", 0, headerTop)
     B.header:SetPoint("TOPRIGHT", -132, headerTop)
+    JP.BuildTabs(B, tabTop, { "bosses", "map", "wish", "access" }, "rpart")
     B.way = W.Link(B, L["Wegpunkt"], function()
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
-    -- the bosses' fold (F-144) left of the waypoint; the header ends before both
+    W.Tooltip(B.way, L["Wegpunkt zum Eingang"], L["Setzt das Kartenziel auf den nächsten Eingang des gewählten Raids."])
+    W.Row(B, { B.way }, 0, 0, tabTop - 1, { right = true })
+    -- the bosses' fold (F-144) and the run (D-72) at the right end of the header's line
     B.foldAll = J.foldLink(B)
-    B.partRow = { B.foldAll, { B.way, gap = G.ITEM_GAP } }
+    JP.BuildRun(B)
+    B.partRow = { B.runBar, { B.foldAll, gap = G.ITEM_GAP }, { B.resetRun, gap = G.ITEM_GAP } }
     function B:PlaceParts() J.placeParts(self, headerTop) end
     B:PlaceParts()
-    W.Tooltip(B.way, L["Wegpunkt zum Eingang"], L["Setzt das Kartenziel auf den nächsten Eingang des gewählten Raids."])
     B.detail = J.buildDetail(B, DETAIL_ROWS, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPLEFT", 0, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, headerTop - T.HEADER_H - G.GAP)
+    JP.BuildMap(B, headerTop - T.HEADER_H - G.GAP)
+    JP.BuildAccess(B, headerTop - T.HEADER_H - G.GAP)
     B.startParts = { B.next, B.why, B.grid }
-    B.detailParts = { B.back, B.header, B.foldAll, B.way, B.detail }
+    for _, f in ipairs(B.filterParts) do B.startParts[#B.startParts + 1] = f end
+    B.detailParts = { B.back, B.header, B.way }
+    for _, k in ipairs(B.partKeys) do B.detailParts[#B.detailParts + 1] = B.parts[k] end
+    -- shown by the part (refresh): the list, the map, the keys, the run, the fold link
+    B.partViews = { B.detail, B.mapView, B.accessView, B.runBar, B.resetRun, B.foldAll }
     return B
 end
 
 local function refresh(B)
     K.namesFresh()
     K.fillSpec(B.spec, ns.BisOpts())
+    -- in a raid (its first show there, or entered while open): its detail (D-72)
+    local here = J.newHere(B, true)
+    if here then
+        state().raid = here
+        view = "detail"
+    end
     local list = ns.RaidList()
     local nextE, why = ns.RaidNext()
     if nextE then
@@ -149,13 +171,17 @@ local function refresh(B)
     end
     e = e or nextE or list[1]
     B.chosen = e and e.key or nil
-    B.grid:SetEntries(list, B.chosen, nextE and nextE.key or nil)
+    B.grid.ctx.here = ns.Runs.Here()
+    local filtered = J.applyFilter(B, list, false)
+    B.grid:SetEntries(filtered, B.chosen, nextE and nextE.key or nil)
     B.entry = e
     local detail = view == "detail" and e ~= nil
     -- back on the start: the chosen card in view
     if not detail and B.wasDetail and B.chosen then B.grid:CardOf(B.chosen) end
     B.wasDetail = detail
     for _, f in ipairs(B.startParts) do f:SetShown(not detail) end
+    for _, f in ipairs(B.partViews) do f:Hide() end
+    B.emptyGrid:SetShown(not detail and #filtered == 0 and #list > 0)
     for _, f in ipairs(B.detailParts) do f:SetShown(detail) end
     placeHead(B, detail)
     if detail then
@@ -164,23 +190,48 @@ local function refresh(B)
     else
         B.art:Hide()
     end
+    local part = JP.PartOf(B, e)
     if e ~= B.detailEntry and (not e or not B.detailEntry or e.key ~= B.detailEntry.key) then B.detail.offset = 0 end
     B.detailEntry = e
-    if e then
-        B.header:SetHeaderText(e.name .. " · " .. L["Bosse"])
+    if detail then
+        B.parts.access:SetShown(JP.Keys(e.key) ~= nil)
+        JP.PlaceTabs(B)
+        B.detail:SetShown(part == "bosses" or part == "wish")
+        B.mapView:SetShown(part == "map")
+        B.accessView:SetShown(part == "access")
+    end
+    B.way:SetEnabled(e ~= nil and ns.DungeonEntrance(e.key) ~= nil)
+    if e and part == "wish" then
+        B.header:SetHeaderText(L["Wunschliste"])
+        B.foldEntry = nil
+        B.detail:SetItems(J.wishItems(e))
+    elseif e and part == "map" then
+        B.header:SetHeaderText(L["Karte"])
+        JP.FillMap(B, e)
+    elseif e and part == "access" then
+        B.header:SetHeaderText(L["Zugang"])
+        JP.FillAccess(B, e)
+    elseif e then
+        B.header:SetHeaderText(L["Bosse"])
         J.showBosses(B, e)
-        B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
     else
         B.header:SetHeaderText("")
         J.showBosses(B, nil)
-        B.way:SetEnabled(false)
     end
-    -- the fold link only for a raid with a boss that has items (F-144)
-    B.foldAll:SetShown(detail and e ~= nil and select(2, J.foldState(B, e)) and true or false)
+    -- the fold link only in the part Übersicht for a raid with a boss that has items (F-144)
+    B.foldAll:SetShown(detail and part == "bosses" and e ~= nil and select(2, J.foldState(B, e)) and true or false)
+    JP.FillRun(B, detail and e or nil, part == "bosses")
     B:PlaceParts()
     local hint = L["Je Lauf: Zuwachs der Upgrades mal Dropchance. Beute und Chance aus den Drop-Aufzeichnungen der Gilde."]
     if not detail then
         B.hint:SetText(L["Klick auf eine Kachel: Bild, Bosse und Beute des Raids. Grün markiert: der empfohlene."] .. " " .. hint)
+        return
+    end
+    if part == "wish" then
+        B.hint:SetText(J.WISH_HINT)
+        return
+    elseif part == "map" or part == "access" then
+        B.hint:SetText(part == "map" and J.MAP_HINT or J.ACCESS_HINT)
         return
     end
     if e and #B.detail.items == 0 then hint = L["Für diesen Raid kennt Amisia noch keine Beute."] .. " " .. hint end
@@ -196,6 +247,7 @@ end
 -- Returns true when the window shows.
 function ns.ShowRaid(key)
     if type(key) ~= "string" then return false end
+    J.holdHere(true)   -- asked for: no jump to the raid stood in (D-72)
     state().raid = key
     view = "detail"
     if ns.ShowPage then ns.ShowPage("raidjournal") end

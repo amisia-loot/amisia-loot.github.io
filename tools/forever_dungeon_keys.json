@@ -1,0 +1,44 @@
+{
+  "_comment": "Key and attunement items of the dungeons and raids of tools/forever_dungeons.json, kept by hand; tools/build_dungeons.py writes them as keys = { ... } into Amisia/Data/DungeonData.lua. Per dungeon key a list of items: item (item id), name (English, as ItemSparse names it; checked by the tests, not written), need (required: no entry or no boss without it; optional: a shortcut, a wing, an extra boss), why (door: opens the dungeon or its door; part: opens a part or wing; summon: summons a boss; attune: attunement to enter; boss: needed for a boss), quests (the quest ids that lead to the item, in order, only where the repo's quest data has them with that title; questsA/questsH where the factions differ), src (see sources), note (what it does). Dungeons without a key are left out; the Forever-only dungeons get a key only where the client or quest data shows one clearly.",
+  "checked": "2026-11-08",
+  "sources": {
+    "classic": "The key's role as the Classic game has it (which door, wing or boss), checked by hand; the item id and its English name are the client's own (ItemSparse 1.60.1.70862). Whether Forever changed the role is not verified in game.",
+    "classic+quests": "As classic; the quests are the chain of Amisia/Data/DungeonQuestData.lua (ids, titles and pre-quests as that file has them), whose last quest rewards the item there."
+  },
+  "dungeons": {
+    "gnomer": [
+      {"item": 6893, "name": "Workshop Key", "need": "optional", "why": "door", "quests": [], "src": "classic", "note": "opens the back door (the workshop entrance)"}
+    ],
+    "sm": [
+      {"item": 7146, "name": "The Scarlet Key", "need": "optional", "why": "part", "quests": [], "src": "classic", "note": "opens the doors of the Armory and the Cathedral"}
+    ],
+    "zf": [
+      {"item": 9240, "name": "Mallet of Zul'Farrak", "need": "optional", "why": "summon", "quests": [], "src": "classic", "note": "summons Gahz'rilla at the gong"}
+    ],
+    "mara": [
+      {"item": 17191, "name": "Scepter of Celebras", "need": "optional", "why": "part", "quests": [7044, 7046], "src": "classic+quests", "note": "opens the portal to the inner part"}
+    ],
+    "brd": [
+      {"item": 11000, "name": "Shadowforge Key", "need": "optional", "why": "part", "quests": [3801, 3802], "src": "classic+quests", "note": "opens the Shadowforge doors"},
+      {"item": 11140, "name": "Prison Cell Key", "need": "optional", "why": "part", "quests": [], "src": "classic", "note": "opens the prison cells"}
+    ],
+    "dire": [
+      {"item": 18249, "name": "Crescent Key", "need": "required", "why": "part", "quests": [], "src": "classic", "note": "opens the doors of the west and north wings"},
+      {"item": 18266, "name": "Gordok Courtyard Key", "need": "optional", "why": "part", "quests": [], "src": "classic", "note": "opens the courtyard door in the north wing"},
+      {"item": 18268, "name": "Gordok Inner Door Key", "need": "optional", "why": "part", "quests": [], "src": "classic", "note": "opens the inner door in the north wing"}
+    ],
+    "scholo": [
+      {"item": 13704, "name": "Skeleton Key", "need": "required", "why": "door", "quests": [], "src": "classic", "note": "opens the entrance door"},
+      {"item": 13873, "name": "Viewing Room Key", "need": "optional", "why": "part", "quests": [], "src": "classic", "note": "opens the viewing room"}
+    ],
+    "strat": [
+      {"item": 12382, "name": "Key to the City", "need": "optional", "why": "door", "quests": [], "src": "classic", "note": "opens the service entrance"}
+    ],
+    "onyxia": [
+      {"item": 16309, "name": "Drakefire Amulet", "need": "required", "why": "attune",
+       "questsA": [4182, 4183, 4184, 4185, 4186, 4223, 4224, 4241, 4242, 4264, 4282, 4322, 6402, 6403, 6501, 6502],
+       "questsH": [4903, 4941, 4974, 6566, 6567, 6568, 6569, 6570, 6582, 6583, 6584, 6585, 6601, 6602],
+       "src": "classic+quests", "note": "lets its bearer enter Onyxia's Lair"}
+    ]
+  }
+}

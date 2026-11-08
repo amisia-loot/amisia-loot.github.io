@@ -187,7 +187,8 @@ assert(D.foldAll:GetText() == "Alle aufklappen", "one open: still Alle aufklappe
 D.foldAll:Click()
 assert(itemRows(D) == 10 and D.foldAll:GetText() == "Alle zuklappen", "all open again")
 -- the header line holds header, tabs, the link and the waypoint without overlap
-Lay.row("bosses header line", D.header, D.parts.bosses, D.parts.quests, D.foldAll, D.way)
+Lay.row("bosses tabs", D.parts.bosses, D.parts.map, D.parts.quests, D.parts.wish, D.way)
+Lay.row("bosses header line", D.header, D.foldAll)
 
 -- folding shrinks the list: the offset clamps
 D.detail:Fit(5)
@@ -232,7 +233,7 @@ assert(not heads(D)["Plunder"].open, "and back")
 ---------------------------------------------------------------------------
 D.parts.quests:Click()
 assert(not D.foldAll:IsShown(), "no fold link in Quests")
-Lay.row("quests header line", D.header, D.parts.bosses, D.parts.quests, D.way)
+Lay.row("quests tabs", D.parts.bosses, D.parts.map, D.parts.quests, D.parts.wish, D.way)
 D.parts.bosses:Click()
 assert(D.foldAll:IsShown(), "back in Bosse")
 D.plan:Click()
@@ -277,7 +278,8 @@ local oh = heads(P)["Onyxia"]
 assert(oh and oh.open and itemRows(P) == 1, "Onyxia's upgrade: unfolded")
 assert(P.foldAll:IsShown() and P.foldAll:GetText() == "Alle zuklappen")
 local LP = dofile(ADDON_DIR .. "/../tests/layout.lua")(P, T.PAGE_W, T.PAGE_H)
-LP.row("raid header line", P.header, P.foldAll, P.way)
+LP.row("raid header line", P.header, P.foldAll)
+LP.row("raid tabs", P.parts.bosses, P.parts.map, P.parts.wish, P.way)
 local orow = headRow(P, "Onyxia")
 assert(orow.sign.texture == MINUS)
 orow:Click()

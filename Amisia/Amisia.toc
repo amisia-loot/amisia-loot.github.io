@@ -84,6 +84,7 @@ Gear\Model.lua [AllowLoadGameType camelot]
 Gear\GearFrame.lua [AllowLoadGameType camelot]
 Gear\Bis.lua [AllowLoadGameType camelot]
 Gear\Dungeons.lua [AllowLoadGameType camelot]
+Gear\Runs.lua [AllowLoadGameType camelot]
 Gear\Professions.lua [AllowLoadGameType camelot]
 Gear\ProfRoute.lua [AllowLoadGameType camelot]
 Gear\Crafters.lua [AllowLoadGameType camelot]
@@ -127,6 +128,7 @@ UI\Pages\Points.lua
 UI\Pages\SoftRes.lua
 UI\SoftResImport.lua
 UI\Pages\Gear.lua [AllowLoadGameType camelot]
+UI\Pages\JournalParts.lua [AllowLoadGameType camelot]
 UI\Pages\Dungeons.lua [AllowLoadGameType camelot]
 UI\Pages\RaidJournal.lua [AllowLoadGameType camelot]
 UI\GoalsWindow.lua [AllowLoadGameType camelot]

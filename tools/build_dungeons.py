@@ -4,7 +4,9 @@ WoW Forever for the addon's dungeon planner (Dungeons.lua).
 The JSON file is kept by hand and holds facts only (names, level ranges, sizes, bosses known so
 far, opening dates, instance ids), each entry with its source ("src", and "<field>_src" for a field
 that comes from elsewhere, as boss lists read from the repo's item data); see its "sources" block.
-Nothing is fetched. Run it after changing the JSON:
+tools/forever_dungeon_keys.json (kept by hand as well) adds the key and attunement items of a dungeon
+(keys: item id, required or optional, what it opens, the quests that lead to it). Nothing is fetched.
+Run it after changing either JSON file:
 
     python tools/build_dungeons.py [--wago [DIR ...]]
 
@@ -13,9 +15,11 @@ Nothing is fetched. Run it after changing the JSON:
 tools/forever_dungeons_client.json: per dungeon of the facts the level the client tunes it to
 (LFGDungeons -> ContentTuning; one level, the minimum of the range where the public facts give one),
 its instance id (AreaTable) and its bosses in the game's order (DungeonEncounter: the rows of the
-instance, by OrderIndex; F-139). Without --wago that file is read as it is. The hand facts win: the
+instance, by OrderIndex; F-139) with their encounter ids (enc, one per name of order, what ENCOUNTER_END
+and BOSS_KILL report) and the UI maps of its floors (UiMapAssignment: every uiMap of the instance's map
+id; maps). Without --wago that file is read as it is. The hand facts win: the
 client's values only fill what the JSON leaves open (lvl always; inst where the facts have none;
-order always: the planner sorts the bosses it knows by it).
+order, enc and maps always: the planner sorts the bosses it knows by order).
 
 The generated table is ns.DUNGEON_FACTS. Once tools/build_bis.py writes ns.BIS.DG (task 2 of the
 2.3 design: the same facts plus the level ranges of the client's LFGDungeons table and the bosses'
@@ -32,6 +36,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 FACTS = os.path.join(HERE, 'forever_dungeons.json')
 CLIENT = os.path.join(HERE, 'forever_dungeons_client.json')
+KEYS = os.path.join(HERE, 'forever_dungeon_keys.json')
 OUT = os.path.join(ROOT, 'Amisia', 'Data', 'DungeonData.lua')
 WAGO_DIRS = (os.path.expanduser('~/addons/_wago'), os.path.join(att_data.ATT_CACHE, '.config', '.wago'))
 
@@ -43,8 +48,14 @@ LFG_SKIP_TYPES = ('4', '5')
 # Field order in the Lua table; anything else in the JSON (src and the <field>_src labels) is not
 # written. part: the client's name of an instance that hosts several dungeons (Blackrock Spire).
 # lvl: the level the client tunes the dungeon to (forever_dungeons_client.json).
-# order: the bosses' English names in the game's order (DungeonEncounter, forever_dungeons_client.json).
-FIELDS = ('key', 'name', 'kind', 'min', 'max', 'lvl', 'size', 'inst', 'area', 'from', 'bosses', 'order', 'aliases', 'part')
+# order: the bosses' English names in the game's order (DungeonEncounter, forever_dungeons_client.json);
+# enc: their encounter ids, one per name of order. maps: the uiMap ids of the instance's floors.
+# keys: the key and attunement items (forever_dungeon_keys.json), each with the fields of KEY_FIELDS.
+FIELDS = ('key', 'name', 'kind', 'min', 'max', 'lvl', 'size', 'inst', 'area', 'from', 'bosses', 'order', 'enc',
+          'maps', 'aliases', 'part', 'keys')
+KEY_FIELDS = ('item', 'need', 'why', 'quests', 'questsA', 'questsH')
+KEY_NEED = ('required', 'optional')
+KEY_WHY = ('door', 'part', 'summon', 'attune', 'boss')
 
 
 def lua_str(s):
@@ -58,6 +69,10 @@ def lua_val(v):
         return str(v)
     if isinstance(v, list):
         return '{ ' + ', '.join(lua_val(x) for x in v) + ' }'
+    if isinstance(v, dict):
+        # the fields of a key item in KEY_FIELDS' order, empty lists left out
+        return '{ ' + ', '.join(lua_key(k) + ' = ' + lua_val(v[k]) for k in KEY_FIELDS
+                                if v.get(k) is not None and v.get(k) != []) + ' }'
     return lua_str(v)
 
 
@@ -102,7 +117,7 @@ def client_facts(facts, dirs=WAGO_DIRS):
     order: the DungeonEncounter rows of its instance (the facts' inst, else the client's) of the normal
     difficulty (0 and 1) by OrderIndex, each name once (only the first folder holding the table counts)."""
     tables = {}
-    for t in ('LFGDungeons', 'ContentTuning', 'AreaTable', 'DungeonEncounter'):
+    for t in ('LFGDungeons', 'ContentTuning', 'AreaTable', 'DungeonEncounter', 'UiMapAssignment'):
         for d in dirs:
             path = att_data.wago_csv(d, t)
             if path:
@@ -153,13 +168,49 @@ def client_facts(facts, dirs=WAGO_DIRS):
         by_map = {mid: g[0] if 0 in g else max(g.values(), key=len) for mid, g in groups.items()}
         for e in facts['dungeons']:
             inst = e.get('inst') or (out.get(e['key']) or {}).get('inst')
-            names = []
-            for _, _, name in sorted(by_map.get(inst, [])):
+            names, enc = [], []
+            for _, eid, name in sorted(by_map.get(inst, [])):
                 if name not in names:
                     names.append(name)
+                    enc.append(eid)
             if names:
                 out.setdefault(e['key'], {})['order'] = names
+                out[e['key']]['enc'] = enc
+    if tables.get('UiMapAssignment'):
+        out_maps = uimap_floors(next(d for d in dirs if att_data.wago_csv(d, 'UiMapAssignment')))
+        for e in facts['dungeons']:
+            inst = e.get('inst') or (out.get(e['key']) or {}).get('inst')
+            if out_maps.get(inst):
+                out.setdefault(e['key'], {})['maps'] = out_maps[inst]
     return {'tables': tables, 'dungeons': {k: out[k] for k in sorted(out)}, 'unmatched': sorted(set(unmatched))}
+
+
+def uimap_floors(folder):
+    """{map id: [uiMap id, ...]} from the UiMapAssignment table in folder: every uiMap assigned to the
+    map, in the order of its first assignment (smallest OrderIndex, then smallest row ID, then the uiMap
+    id). The client keeps a dungeon's floors in that order (OrderIndex 0 the first floor). The tables of
+    Forever 1.60.1 hold the outdoor zones and battlegrounds only (see att_data.read_uimap_instances), so
+    there no dungeon gets floors yet."""
+    first = {}
+    for row in att_data.wago_rows('UiMapAssignment', folder):
+        ui, mid = _int(row.get('UiMapID')), _int(row.get('MapID'))
+        if ui is None or mid is None:
+            continue
+        rank = (_int(row.get('OrderIndex')) or 0, _int(row.get('ID')) or 0)
+        if (mid, ui) not in first or rank < first[(mid, ui)]:
+            first[(mid, ui)] = rank
+    out = {}
+    for (mid, ui), rank in sorted(first.items(), key=lambda kv: (kv[0][0], kv[1], kv[0][1])):
+        out.setdefault(mid, []).append(ui)
+    return out
+
+
+def load_keys(path=KEYS):
+    """{dungeon key: [key item, ...]} of forever_dungeon_keys.json (empty without the file)."""
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding='utf-8') as fh:
+        return json.load(fh).get('dungeons') or {}
 
 
 def load_client(path=CLIENT):
@@ -169,10 +220,12 @@ def load_client(path=CLIENT):
         return json.load(fh)
 
 
-def merge(facts, client):
-    """The facts with the client's values filled in: lvl, and inst where the facts give none. The
-    hand facts never change."""
+def merge(facts, client, keys=None):
+    """The facts with the client's values filled in: lvl, and inst where the facts give none; order,
+    enc and maps; the key items of keys (forever_dungeon_keys.json's dungeons). The hand facts never
+    change. enc lines up with order: one encounter id per boss name."""
     cd = (client or {}).get('dungeons') or {}
+    keys = keys or {}
     out = []
     for e in facts['dungeons']:
         c = cd.get(e['key']) or {}
@@ -183,6 +236,14 @@ def merge(facts, client):
             m['inst'] = c['inst']
         if c.get('order') and m.get('order') is None:
             m['order'] = c['order']
+            if c.get('enc'):
+                m['enc'] = c['enc']
+        if m.get('enc') is not None and len(m['enc']) != len(m.get('order') or []):
+            raise ValueError('%s: %d encounter ids for %d bosses' % (e['key'], len(m['enc']), len(m.get('order') or [])))
+        if c.get('maps'):
+            m['maps'] = c['maps']
+        if keys.get(e['key']):
+            m['keys'] = [{k: v for k, v in item.items() if k in KEY_FIELDS} for item in keys[e['key']]]
         out.append(m)
     return out
 
@@ -200,26 +261,32 @@ def conflicts(facts, client):
     return out
 
 
-def render(facts, client=None):
-    """The Lua file for the facts (with the client's values, see merge()), always the same text for
-    the same input."""
+def render(facts, client=None, keys=None):
+    """The Lua file for the facts (with the client's values and the key items, see merge()), always
+    the same text for the same input."""
     if client is None:
         client = load_client()
+    if keys is None:
+        keys = load_keys()
     lines = [
         '-- GENERATED by tools/build_dungeons.py from tools/forever_dungeons.json and',
-        '-- tools/forever_dungeons_client.json. Do not edit; rebuild instead.',
+        '-- tools/forever_dungeons_client.json. The keys from tools/forever_dungeon_keys.json. Do not edit; rebuild instead.',
         '-- Facts only (names, level ranges, sizes, bosses known so far, opening dates), checked by hand on '
         + facts['checked'] + ';',
         '-- the sources of every entry are named in the JSON file. lvl is the level the client tunes a dungeon',
         "-- to (its LFGDungeons and ContentTuning tables), the low end of its range; dungeons without a fact",
-        '-- range take the high end from their items meanwhile.',
+        '-- range take the high end from their items meanwhile. order: the bosses in the game\'s order, enc their',
+        '-- encounter ids (DungeonEncounter, one per name of order); maps: the uiMap ids of the floors',
+        '-- (UiMapAssignment, empty in the Forever tables so far); keys: the key and attunement items, checked',
+        '-- by hand (item, need required/optional, why door/part/summon/attune/boss, quests or questsA/questsH',
+        '-- leading to it).',
         'local _, ns = ...',
         '',
         'ns.DUNGEON_FACTS = {',
         '    checked = ' + lua_str(facts['checked']) + ',',
         '    list = {',
     ]
-    for e in merge(facts, client):
+    for e in merge(facts, client, keys):
         parts = []
         for k in FIELDS:
             v = e.get(k)
@@ -235,7 +302,8 @@ def write_client(client, path=CLIENT):
     doc = {'_comment': 'GENERATED by tools/build_dungeons.py --wago from the WoW Forever client tables (wago.tools '
                        'CSV downloads, or the copies AllTheThings ships): per dungeon of tools/forever_dungeons.json '
                        'the level the client tunes it to (LFGDungeons, ContentTuning), its instance id '
-                       '(AreaTable) and its bosses in the game\'s order (DungeonEncounter). Game data, no loot. Do not edit; rebuild instead.',
+                       '(AreaTable), its bosses in the game\'s order with their encounter ids (DungeonEncounter) and '
+                       'the uiMaps of its floors (UiMapAssignment). Game data, no loot. Do not edit; rebuild instead.',
            **client}
     text = json.dumps(doc, indent=1, sort_keys=False, ensure_ascii=False) + '\n'
     old = None

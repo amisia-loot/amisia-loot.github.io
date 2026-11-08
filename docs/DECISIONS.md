@@ -1686,3 +1686,38 @@ Look des Clients); eine Bossliste mit allen Items war auf großen Dungeons und R
 
 **Durchgesetzt durch:** `tests/test_main_size.lua` (Ziehen, Grenzen, Merken, Zurücksetzen, Bänder, Leiste), `tests/test_dungeon_cards.lua` (Kacheln je Breite), die Layoutregeln in der Ansicht `wide` (`tools/ui_layout.py`).
 
+## D-72 Journal für Dungeons und Raids: Filter, Lauf, Reiter, Instanzkarte, Zugang
+
+**Datum:** 2026-11-08
+**Entscheidung:** Schritte 3 bis 5 der Spec `docs/specs/2026-11-07-hauptfenster-journal.md` (F-146).
+- **Start:**
+  - Unter der Kopfzeile kommt eine Filterzeile: das Suchfeld (Instanz, Bosse, Beutenamen, die der Client kennt, Questtitel; ab 2 Zeichen), die Reiter Alle/Passend/Quests (Raids ohne Quests) und "Wo bin ich". Der Filter liegt nur im Speicher.
+  - Jede Kachel hat oben links ein Abzeichen: Totenkopf mit "1/4" des Laufs, Questzeichen mit der Zahl offener Quests, bis zu zwei Schlüssel (grau, solange sie fehlen).
+  - Die Instanz, in der man steht, trägt "Hier bist du" und den vollen Goldrand.
+- **Öffnen:** In einer Instanz öffnet die Seite deren Detail, einmal je Betreten (`ns.Runs.entry`). Das gilt auch, wenn man bei offener Seite hineingeht.
+- **Lauf** (`Gear/Runs.lua`):
+  - Die Kills zählen nach Encounter-ID (ENCOUNTER_END mit Erfolg, BOSS_KILL) in der Instanz, in der man steht.
+  - Ein neuer Lauf beginnt in einer anderen Instanz. Im Dungeon beginnt er auch nach 30 Minuten draußen; das Ausloggen zählt als Verlassen. Im Raid hält er, solange die Raid-ID gilt.
+  - Die Meldung des Clients über das Zurücksetzen beendet den Lauf ihrer Instanz; steht man darin, beginnt ein frischer.
+  - Ein gezielt geöffneter Dungeon (Suche, Karte, Ziele) hat Vorrang vor dem Sprung in die Instanz, in der man steht.
+  - Ein Boss lässt sich von Hand markieren, aber nur in der Instanz oder für ihren laufenden Lauf.
+  - Gespeichert wird je Charakter in `bis.chars[name].run`.
+  - Die Encounter-IDs stehen in den Fakten (`enc`, aus DungeonEncounter, in der Reihenfolge von `order`).
+- **Detail:**
+  - Unter dem Bild stehen Reiter: Übersicht, Karte, Quests (nur Dungeons), Wunschliste, Zugang (nur mit Schlüssel). Der Reiter wird in `settings.bis.dpart` bzw. `rpart` gemerkt. Der Wegpunkt steht am rechten Ende.
+  - **Übersicht:** "1/4" mit Balken und "Lauf zurücksetzen". Ein getöteter Boss bekommt einen Haken und wird grau; Rechtsklick markiert.
+  - **Wunschliste:** Bosse mit gewünschten oder empfohlenen Items, nur diese. Die Meldung beim Drop ist der bestehende Hinweis "Wunsch droppt!" mit Ton.
+  - **Karte:** die Kartengrafik des Clients für die Ebenen der Instanz, Mausrad zoomt (1 bis 6), Ziehen verschiebt, Pfeile wechseln die Ebene, dazu der Pfeil des Spielers, wo der Client ihn verrät.
+    - Die Ebenen kommen aus den Fakten (`maps`, aus UiMapAssignment). Die Forever-Tabellen haben dort aber keine Dungeon-Ebenen, darum lernt Amisia sie in der Instanz selbst (`AmisiaDB.floors`: die Karte, auf der man steht, und ihre Kartengruppe).
+    - Ohne gelernte Ebenen steht dort, dass man die Instanz einmal betreten muss; ohne Grafik "Für diese Instanz hat das Spiel keine Karte."
+  - **Zugang:** je Schlüssel der Fakten (`keys`, aus `tools/forever_dungeon_keys.json`, Item-IDs gegen ItemSparse geprüft) Name, nötig/optional, wofür, vorhanden/fehlt und die Quests dahin. Ein Klick setzt den Wegpunkt.
+
+**Grund:** Nutzer 2026-11-07: Raid und Dungeons wie das Journal des Vorbilds nachbauen (Rückfrage), mit eigenem Code und eigenen Daten, denn dessen Lizenz verbietet die Übernahme. Spec freigegeben 2026-11-08; "mach alle schritte fertig".
+
+**Folge:**
+- Die Kartengrafiken und gezeichneten Karten des Vorbilds kommen nicht in Frage, nur die Grafik des Clients.
+- Bosspins und Eingangspins auf der Instanzkarte gibt es nicht. Dafür fehlen Koordinaten, und Amisia lernt sie noch nicht (Spec, Frage 3).
+- Bossfähigkeiten fehlen, weil Forever keine Encounter-Journal-Tabellen hat.
+
+**Durchgesetzt durch:** `tests/test_journal_start.lua` (Lauf, Abzeichen, Filter, Öffnen), `tests/test_journal_parts.lua` (Reiter, Lauf, Wunschliste, Karte, Zugang), die Layoutregeln.
+

@@ -50,7 +50,7 @@ assert(not toc:find("## AllowLoadGameType", 1, true), "no TOC-wide load conditio
 -- the Forever parts (D-57): exactly these load on Forever only, every other file on all three clients
 local FOREVER_FILES = { ["Core/Duels.lua"] = true, ["Raid/Handover.lua"] = true, ["UI/GoalsWindow.lua"] = true,
                         ["UI/SlotCard.lua"] = true, ["UI/DuelInfo.lua"] = true }
-for _, page in ipairs({ "Gear", "Dungeons", "RaidJournal", "Map", "Professions", "Quests", "Talents", "MageScrolls", "Duels",
+for _, page in ipairs({ "Gear", "JournalParts", "Dungeons", "RaidJournal", "Map", "Professions", "Quests", "Talents", "MageScrolls", "Duels",
                         "Tools", "Export" }) do
     FOREVER_FILES["UI/Pages/" .. page .. ".lua"] = true
 end

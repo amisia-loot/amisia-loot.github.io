@@ -27,7 +27,7 @@ read_globals = {
     "C_TooltipInfo", "C_TradeSkillUI", "ChatEdit_InsertLink", "ChatFontNormal", "ChatFrameUtil", "ChatFrame_OpenChat",
     "CreateColor", "CreateFrame", "CreateFromMixins", "CreateVector2D", "date", "debugprofilestop",
     "DEFAULT_CHAT_FRAME", "DressUpLink", "Enum", "GameFontNormal", "GameTooltip", "GetAddOnMetadata",
-    "GetBuildInfo", "GetClassInfo", "GetCombatRatingBonus", "GetCurrentGuildBankTab", "GetCursorPosition", "GetFileIDFromPath",
+    "GetBuildInfo", "GetClassInfo", "GetCombatRatingBonus", "GetCurrentGuildBankTab", "GetCursorPosition", "GetFileIDFromPath", "INSTANCE_RESET_SUCCESS",
     "geterrorhandler", "GetGuildBankItemInfo", "GetGuildBankItemLink", "GetGuildBankTabInfo", "GetGuildInfo",
     "GetGuildRosterInfo", "GetHitModifier", "GetInstanceInfo", "GetLocale", "AMISIA_LOCALE", "GetInventoryItemLink", "GetLootSlotInfo",
     "GetLootSlotLink", "GetLootSourceInfo", "GetMasterLootCandidate", "GetMaxPlayerLevel", "GetMerchantItemInfo",

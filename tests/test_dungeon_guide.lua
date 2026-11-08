@@ -215,7 +215,7 @@ assert(plain(card(3).name:GetText()) == "Ragefire Chasm" and plain(card(4).name:
     "the rest without a place")
 card(1):Click()
 B.parts.quests:Click()
-assert(B.header.ButtonText:GetText() == "Hall of Thanes · Quests")
+assert(B.header.ButtonText:GetText() == "Quests")
 local qrow
 for _, r in ipairs(B.detail.rows) do if r.item and r.item.kind == "quest" and r.item.qid == 99001 then qrow = r end end
 assert(qrow and plain(qrow.slot:GetText()) == "18 (ab 14)" and has(plain(qrow.rate:GetText()), "Thane Giver, Westfall 56, 48"),
@@ -237,7 +237,7 @@ NS.MapClearTarget()
 B.pathView.back:Click()
 assert(not B.pathView:IsShown() and B.detail:IsShown() and not B.grid:IsShown() and B.back:IsShown(), "back to the quests of the detail view")
 local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(B, 602, 478)
-Lay.row("parts", B.header, B.parts.bosses, B.parts.quests, B.way)
+Lay.row("parts", B.parts.bosses, B.parts.map, B.parts.quests, B.parts.wish, B.way)
 B.back:Click()
 Lay.row("head", B.spec, B.sorts.level, B.sorts.value, B.sorts.chain)
 B.sorts.level:Click()

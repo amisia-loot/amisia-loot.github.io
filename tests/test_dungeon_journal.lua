@@ -330,4 +330,4 @@ ctrl = false
 assert(has(B.hint:GetText(), "Strg-Klick"), B.hint:GetText())
 -- the layout at the main window's size
 local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(B, 602, 478)
-Lay.row("parts", B.header, B.parts.bosses, B.parts.quests, B.way)
+Lay.row("parts", B.parts.bosses, B.parts.map, B.parts.quests, B.parts.wish, B.way)

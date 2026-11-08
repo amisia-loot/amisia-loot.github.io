@@ -65,7 +65,7 @@ P.back:Click()
 rows = rowsOf(P)
 assert(rows.onyxia.chosen and not rows.barrow.chosen, "the chosen card")
 pick(P, "onyxia")
-assert(P.header.ButtonText:GetText() == "Onyxia's Lair · Bosse", P.header.ButtonText:GetText())
+assert(P.header.ButtonText:GetText() == "Bosse", P.header.ButtonText:GetText())
 assert(P.art.title:GetText() == "Onyxia's Lair" and has(P.art.info:GetText(), "Raid 40"), P.art.info:GetText())
 local names = {}
 for _, x in ipairs(P.detail.items) do names[#names + 1] = x.kind == "boss" and x.text or (x.id and tostring(x.id)) or "" end
@@ -98,7 +98,7 @@ NS.Dispatch("raids")
 assert(NS.CurrentPage() == "raidjournal")
 NS.ShowPage("dungeons")
 assert(NS.ShowDungeon("hyjal") ~= nil and NS.CurrentPage() == "raidjournal" and AmisiaDB.settings.bis.raid == "hyjal")
-assert(P.detail:IsShown() and P.header.ButtonText:GetText() == "Hyjal Summit · Bosse" and not P.grid:IsShown(), "the map's way in opens the detail")
+assert(P.detail:IsShown() and P.header.ButtonText:GetText() == "Bosse" and not P.grid:IsShown(), "the map's way in opens the detail")
 P.back:Click()
 assert(rowsOf(P).hyjal.chosen)
 

@@ -25,6 +25,7 @@ local DETAIL_ROWS = 5
 local state, cached, say, col, hideTip = K.state, K.cached, K.say, K.col, K.hideTip
 local itemText, marks, gainText = K.itemText, K.marks, K.gainText
 local itemTooltip, modifiedClick, menuEntries = K.itemTooltip, K.modifiedClick, K.menuEntries
+local JP = ns.JournalParts   -- the detail's tabs, run, map and keys (D-72)
 
 local page
 
@@ -33,6 +34,11 @@ local page
 ---------------------------------------------------------------------------
 
 local GOLD_TEXT = "|cffe3b857"
+local KILLED = "|TInterface\\RaidFrame\\ReadyCheck-Ready:12:12|t "
+-- the hints of the parts Wunschliste, Karte and Zugang (D-72)
+local WISH_HINT = L["Gewünscht und empfohlen, nach Boss. Wünsche setzt und streichst du mit Rechtsklick auf ein Item, auch hier."]
+local MAP_HINT = L["Die Karte kommt aus dem Spiel; fehlt sie dort, kann Amisia keine zeigen. Mausrad: zoomen, Ziehen: verschieben, Pfeile: Ebenen."]
+local ACCESS_HINT = L["Grün: du hast den Schlüssel. Klick auf einen Schritt: Wegpunkt zum Annehmen der Quest."]
 -- the texts of the journal parts (image, XP, marks, dressing room), in one place for the translation
 local DTEXT = {
     level = "Level %s · %s",
@@ -235,9 +241,26 @@ local function foldedItems(B, e)
     for _, row in ipairs(detailItems(e)) do
         if row.kind == "boss" then
             shown = open[row.text] and true or false
-            out[#out + 1] = { kind = "boss", text = row.text, b = row.b, items = row.items, open = shown }
+            out[#out + 1] = { kind = "boss", text = row.text, b = row.b, items = row.items, open = shown,
+                killed = JP.BossKilled(e.key, row.text) }
         elseif shown then
             out[#out + 1] = row
+        end
+    end
+    return out
+end
+
+-- The part Wunschliste of e (D-72): each boss with an item the character wishes or the plan
+-- recommends, unfolded, with only those items.
+local function wishItems(e)
+    local out, head = {}, nil
+    for _, row in ipairs(detailItems(e)) do
+        if row.kind == "boss" then
+            head = { kind = "boss", text = row.text, b = row.b, items = {}, open = true, killed = JP.BossKilled(e.key, row.text) }
+        elseif (row.wished or row.rec) and head then
+            if #head.items == 0 then out[#out + 1] = head end
+            out[#out + 1] = row
+            head.items[#head.items + 1] = row
         end
     end
     return out
@@ -415,7 +438,8 @@ local function fillDetailRow(r, e)
         r.sign:Hide()
     end
     if e.kind == "boss" then
-        r.name:SetText(GOLD_TEXT .. e.text .. "|r")
+        -- killed in the run (D-72): the ready check's tick, the name grey
+        r.name:SetText(e.killed and (KILLED .. GREY .. e.text .. "|r") or (GOLD_TEXT .. e.text .. "|r"))
         r.slot:SetText("")
         r.gain:SetText("")
         if e.b.tentative then
@@ -650,8 +674,12 @@ local function buildDetail(B, rows, top)
                 return
             end
             if e.kind == "boss" then
-                -- a boss with items folds or unfolds (F-144)
-                if button ~= "RightButton" and #(e.items or {}) > 0 then toggleBoss(B, e.text) end
+                -- a boss with items folds or unfolds (F-144); the right button: killed or not (D-72)
+                if button == "RightButton" then
+                    JP.BossMenu(B, self, e)
+                elseif #(e.items or {}) > 0 then
+                    toggleBoss(B, e.text)
+                end
                 return
             end
             itemClick(self, e, button)
@@ -1621,12 +1649,14 @@ end
 local C = T.DCARD
 local CARD_TEXT = {
     tag = L["Empfohlen"],
+    here = L["Hier bist du"],
     values = L["%d Upgrades · %s je Lauf · Wert %d"],
     soon = "|cffffd100",
 }
 
 -- A card of the grid: the image at its top, darkened towards its bottom, the name on its lower
--- left; two lines under it; the tag "Empfohlen" at the top right; a thin gold frame; the hover glow.
+-- left; two lines under it; the tag "Empfohlen" (or "Hier bist du") at the top right, the badge with
+-- the run's kills and the open quests at the top left (D-72); a thin gold frame; the hover glow.
 -- ctx.pick(e) runs on a click, ctx.tip(card) on the mouse (it reads card.item).
 local function buildGridCard(row, ctx)
     local c = CreateFrame("Button", nil, row)
@@ -1664,6 +1694,13 @@ local function buildGridCard(row, ctx)
     c.tag.text:SetTextColor(C.TAG_COLOR[1], C.TAG_COLOR[2], C.TAG_COLOR[3])
     c.tag:SetWidth(c.tag.text:GetStringWidth() + 2 * C.TAG_PAD)
     c.tag:Hide()
+    c.badge = CreateFrame("Frame", nil, c)
+    c.badge:SetHeight(C.TAG_H)
+    c.badge:SetPoint("TOPLEFT", -C.TAG_X, C.TAG_Y)
+    c.badge.bg = W.Flat(c.badge, C.TAG_BG[1], C.TAG_BG[2], C.TAG_BG[3], C.TAG_BG[4])
+    c.badge.text = W.Text(c.badge, T.FONT.text)
+    c.badge.text:SetPoint("CENTER")
+    c.badge:Hide()
     c.glow = c:CreateTexture(nil, "HIGHLIGHT")
     c.glow:SetAllPoints()
     c.glow:SetColorTexture(1, 1, 1, C.GLOW)
@@ -1693,8 +1730,27 @@ local function fillGridCard(c, e, ctx)
     c.tex:SetDesaturated(dim)
     if dim then c.name:SetTextColor(C.DIM[1], C.DIM[2], C.DIM[3]) else c.name:SetTextColor(W.GOLD[1], W.GOLD[2], W.GOLD[3]) end
     c.chosen = ctx.chosen == e.key
-    W.SetBorderColor(c.edges, W.GOLD[1], W.GOLD[2], W.GOLD[3], c.chosen and C.CHOSEN or C.EDGE)
-    c.tag:SetShown(ctx.recommended == e.key)
+    -- the instance the character stands in: the full gold frame and "Hier bist du" (D-72)
+    c.here = ctx.here ~= nil and ctx.here == e.key
+    W.SetBorderColor(c.edges, W.GOLD[1], W.GOLD[2], W.GOLD[3], c.here and 1 or c.chosen and C.CHOSEN or C.EDGE)
+    if c.here then
+        c.tag.text:SetText(CARD_TEXT.here)
+        c.tag.text:SetTextColor(W.GOLD[1], W.GOLD[2], W.GOLD[3])
+    else
+        c.tag.text:SetText(CARD_TEXT.tag)
+        c.tag.text:SetTextColor(C.TAG_COLOR[1], C.TAG_COLOR[2], C.TAG_COLOR[3])
+    end
+    c.tag:SetWidth(c.tag.text:GetStringWidth() + 2 * C.TAG_PAD)
+    c.tag:SetShown(c.here or ctx.recommended == e.key)
+    -- the badge: the run's kills and the open quests (ctx.badge answers its text, or nil)
+    local badge = ctx.badge and ctx.badge(e)
+    if badge and badge ~= "" then
+        c.badge.text:SetText(badge)
+        c.badge:SetWidth(c.badge.text:GetStringWidth() + 2 * C.TAG_PAD)
+        c.badge:Show()
+    else
+        c.badge:Hide()
+    end
 end
 
 -- How many cards a row of the grid holds: C.COLS at the page's own width, more as the window is
@@ -1780,6 +1836,156 @@ local function buildGrid(B, top, ctx)
     return grid
 end
 
+---------------------------------------------------------------------------
+-- The start's filter row and the cards' run (F-146, D-72): shared with the page Raids
+---------------------------------------------------------------------------
+local FTEXT = {
+    search = L["Instanz, Boss, Beute, Quest"],
+    all = L["Alle"], fit = L["Passend"], quests = "Quests",
+    allTip = L["Alle Kacheln."], fitTip = L["Nur, was zu deinem Level passt."],
+    questsTip = L["Nur Dungeons mit offenen, angenommenen oder abgabebereiten Quests."],
+    here = L["Wo bin ich"], hereTip = L["Öffnet die Instanz, in der du gerade stehst."],
+    nowhere = L["Du bist gerade in keiner Instanz, die Amisia kennt."],
+    emptyTitle = L["Nichts gefunden"], empty = L["Keine Kachel passt zu Suche und Auswahl."],
+}
+local SKULL_MARK = "|T" .. SKULL .. ":12:12|t"
+local QMARK = "|TInterface\\GossipFrame\\AvailableQuestIcon:12:12|t"
+
+-- The open quests of a dungeon: those to take, in the log or ready to hand in.
+local function openQuests(dkey)
+    local n = 0
+    for _, q in ipairs((ns.DungeonQuests(dkey))) do
+        local st = ns.Dungeons.QuestState(q)
+        if st == "open" or st == "active" or st == "ready" then n = n + 1 end
+    end
+    return n
+end
+
+-- A card's badge: the run's kills ("1/4" after the skull), the open quests (withQuests) and the keys.
+local function runBadge(e, withQuests)
+    local parts = {}
+    local _, n, m = ns.Runs.Of(e.key)
+    if n then parts[#parts + 1] = ("%s %d/%d"):format(SKULL_MARK, n, m) end
+    if withQuests then
+        local q = openQuests(e.key)
+        if q > 0 then parts[#parts + 1] = ("%s %d"):format(QMARK, q) end
+    end
+    -- up to two keys (D-72): their icons, grey while the character lacks them
+    local keys = JP.Keys(e.key)
+    for i = 1, math.min(2, keys and #keys or 0) do
+        local k = keys[i]
+        local icon = C_Item and C_Item.GetItemIconByID and C_Item.GetItemIconByID(k.item)
+        if icon then
+            parts[#parts + 1] = JP.HasItem(k.item) and ("|T%s:12:12|t"):format(icon)
+                or ("|T%s:12:12:0:0:64:64:4:60:4:60:110:110:110|t"):format(icon)
+        end
+    end
+    return table.concat(parts, "  ")
+end
+
+-- Whether entry e matches the search text q (lower case): its name, other names, its bosses, their
+-- loot (names the client has cached) and its quests' titles.
+local function lowerHas(text, q) return type(text) == "string" and text:lower():find(q, 1, true) ~= nil end
+local function matches(e, q, withQuests)
+    if lowerHas(e.name, q) then return true end
+    local f = ns.Runs.Fact(e.key)
+    for _, a in ipairs(f and type(f.aliases) == "table" and f.aliases or {}) do
+        if lowerHas(a, q) then return true end
+    end
+    for _, b in ipairs(f and type(f.order) == "table" and f.order or {}) do
+        if lowerHas(b, q) then return true end
+    end
+    local info = e.computed and e or ns.DungeonInfo(e.key) or e
+    for _, b in ipairs(info.bosses or {}) do
+        if lowerHas(b.name, q) then return true end
+        for _, it in ipairs(b.items or {}) do
+            local name = C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(it.id)
+            if lowerHas(name, q) then return true end
+        end
+    end
+    if withQuests then
+        for _, qn in ipairs((ns.DungeonQuests(e.key))) do
+            if lowerHas(qn.title, q) then return true end
+        end
+    end
+    return false
+end
+
+-- The entries the filter leaves (B.filter: mode "all"|"fit"|"quests", query from 2 characters).
+local function filterEntries(list, flt, withQuests)
+    local q = flt.query or ""
+    if flt.mode == "all" and #q < 2 then return list end
+    local out = {}
+    for _, e in ipairs(list) do
+        local ok = flt.mode ~= "fit" or e.fit == "fit"
+        if ok and flt.mode == "quests" then ok = openQuests(e.key) > 0 end
+        if ok and #q >= 2 then ok = matches(e, q, withQuests) end
+        if ok then out[#out + 1] = e end
+    end
+    return out
+end
+
+-- The filter row in band i of page B: the search box filling the band's left, the choice tabs and
+-- "Wo bin ich" at its right. opts.quests: the choice Quests too; opts.here(key): opens that key.
+-- B.filter (only in memory), B.search, B.filterTabs, B.hereLink, B.filterParts; B.emptyGrid the
+-- empty state under the grid.
+local function buildFilter(B, i, opts)
+    B.filter = { mode = "all", query = "" }
+    local function setQuery(text)
+        local q = (tostring(text or ""):match("^%s*(.-)%s*$") or ""):lower()
+        if q ~= B.filter.query then
+            B.filter.query = q
+            ns.Refresh()
+        end
+    end
+    B.search = W.SearchBox(B, nil, setQuery, FTEXT.search)
+    B.search:HookScript("OnTextChanged", function(self, user) if user then setQuery(self:GetText()) end end)
+    if B.search.clearButton then B.search.clearButton:HookScript("OnClick", function() setQuery("") end) end
+    local modes = { { "all", FTEXT.all, FTEXT.allTip }, { "fit", FTEXT.fit, FTEXT.fitTip } }
+    if opts.quests then modes[#modes + 1] = { "quests", FTEXT.quests, FTEXT.questsTip } end
+    B.filterTabs = {}
+    local right = {}
+    for _, m in ipairs(modes) do
+        local tab = W.Tab(B, m[2], function()
+            B.filter.mode = m[1]
+            ns.Refresh()
+        end)
+        W.Tooltip(tab, m[2], m[3])
+        B.filterTabs[m[1]] = tab
+        right[#right + 1] = tab
+    end
+    B.hereLink = W.Link(B, FTEXT.here, function()
+        local key = ns.Runs.Here()
+        if key then opts.here(key) else ns.msg(FTEXT.nowhere) end
+    end)
+    W.Tooltip(B.hereLink, FTEXT.here, FTEXT.hereTip)
+    right[#right + 1] = { B.hereLink, gap = T.LAYOUT.ITEM_GAP }
+    B:Place(i, { { B.search, fill = true } }, right)
+    B.filterParts = { B.search, B.hereLink }
+    for _, m in ipairs(modes) do B.filterParts[#B.filterParts + 1] = B.filterTabs[m[1]] end
+end
+
+-- The filter row's state on the screen and the entries it leaves (the page shows its empty state).
+local function applyFilter(B, list, withQuests)
+    for k, tab in pairs(B.filterTabs) do tab:SetOn(k == B.filter.mode) end
+    local out = filterEntries(list, B.filter, withQuests)
+    if B.emptyGrid then B.emptyGrid:Set(FTEXT.emptyTitle, FTEXT.empty) end
+    return out
+end
+
+-- The instance the character stands in, once per entry (D-72, ns.Runs.entry): its key the first
+-- time the page refreshes after the entry, else nil. The page opens its detail then: on its first
+-- show inside, and when the character enters while it is open.
+local held = {}   -- [isRaid] = the entry a ShowDungeon/ShowRaid used up (it chose another instance)
+local function holdHere(isRaid) held[isRaid] = ns.Runs.entry end
+local function newHere(B, isRaid)
+    if held[isRaid] == ns.Runs.entry then B.lastEntry = ns.Runs.entry end
+    local here = ns.Runs.Here()
+    if not here or ns.Dungeons.IsRaid(here) ~= isRaid or B.lastEntry == ns.Runs.entry then return nil end
+    B.lastEntry = ns.Runs.entry
+    return here
+end
+
 -- A dungeon's card: its place in the order ("1. "), level range and fit, upgrades, gain per run and
 -- value; dim when too high, too easy or later (as the table's rows were).
 local function dungeonCardTexts(c, e)
@@ -1835,7 +2041,8 @@ local function create(parent)
     -- (detail); the hint behind the "i"
     local B = W.Page(parent)
     page = B
-    B:Bands({ "row", "row", { "line", lines = 2 } })
+    -- the head row, the filter row (D-72), the recommendation, why
+    B:Bands({ "row", "row", "row", { "line", lines = 2 } })
     B.back = W.Link(B, L["< Alle Dungeons"], function()
         view = "start"
         ns.Refresh()
@@ -1843,7 +2050,7 @@ local function create(parent)
     W.Tooltip(B.back, L["Alle Dungeons"], L["Zurück zu den Kacheln aller Dungeons."])
     B.spec = K.specPicker(B)
     B.next = W.Text(B, T.FONT.title)
-    B.why = B:Line(3)
+    B.why = B:Line(4)
     -- the order of the list: by level, by value (the ranking), the chain
     B.sorts = {}
     local sortDefs = { { "level", "Level", L["Nach Level"], L["Die Dungeons nach ihrem Levelbereich."] },
@@ -1863,7 +2070,9 @@ local function create(parent)
     -- under them, as wide as the page
     B.sortRow = sortRow
     placeHead(B, "start")
-    B:Place(2, { { B.next, fill = true } })
+    -- the search, the choice and "Wo bin ich" over the recommendation (D-72)
+    buildFilter(B, 2, { quests = true, here = function(key) ns.ShowDungeon(key) end })
+    B:Place(3, { { B.next, fill = true } })
     B:Footer({ { "hint", lines = 2, help = true } })
     -- the start: the cards under the recommendation, down to the page's bottom; a click chooses
     -- the dungeon and opens its detail view
@@ -1871,13 +2080,16 @@ local function create(parent)
         state().dungeon = e.key
         view = "detail"
         ns.Refresh()
-    end })
+    end, badge = function(e) return runBadge(e, true) end })
+    B.emptyGrid = B:Empty(nil, B.grid)
     -- the detail: the image right under the head row, the bosses' or quests' header under it, then
     -- their list down to the page's bottom
     local G = T.LAYOUT
     local artTop = -(G.ROW_H + G.GAP)
     B.art = buildArt(B, artTop)
-    local headerTop = artTop - ART_H - G.GAP
+    -- the tabs under the image (D-72), the part's header under them
+    local tabTop = artTop - ART_H - G.GAP
+    local headerTop = tabTop - G.ROW_H - G.GAP
     B.mark = W.Link(B.art, DTEXT.mark, function()
         if not B.chosen then return end
         if ns.DungeonMarked() == B.chosen then
@@ -1894,7 +2106,7 @@ local function create(parent)
     -- the run planner of the chosen dungeon (F-139)
     B.plan = W.Button(B.art, RTEXT.plan, J.PLAN_W, function()
         if not B.chosen then return end
-        B.pathFor = { dungeon = B.chosen, key = "run", part = state().dpart == "quests" and "quests" or "bosses" }
+        B.pathFor = { dungeon = B.chosen, key = "run", part = JP.PartOf(B, B.entry) }
         B.detailKey = nil
         ns.Refresh()
     end)
@@ -1906,29 +2118,31 @@ local function create(parent)
     B.header = W.SectionHeader(B, "", false)
     B.header:SetPoint("TOPLEFT", 0, headerTop)
     B.header:SetPoint("TOPRIGHT", -244, headerTop)
-    -- the lower part: the bosses or the quests of the chosen dungeon
-    B.parts = {}
-    B.parts.bosses = W.Tab(B, L["Bosse"], function() state().dpart = "bosses"; ns.Refresh() end)
-    B.parts.quests = W.Tab(B, "Quests", function() state().dpart = "quests"; ns.Refresh() end)
-    W.Tooltip(B.parts.quests, "Quests", L["Die Quests des Dungeons mit Stufe, Weg (erledigte Schritte der Vorquests) und Start. Klick auf eine Quest zeigt ihren Questweg: jeden Schritt mit Annehmen, Abgeben, Voraussetzung und Karte."])
+    -- the parts of the detail as tabs under the image (D-72): Übersicht (the bosses and their loot),
+    -- Karte, Quests, Wunschliste, Zugang (only with a key); the last one stays in settings.bis.dpart
+    JP.BuildTabs(B, tabTop, { "bosses", "map", "quests", "wish", "access" }, "dpart")
     B.way = W.Link(B, L["Wegpunkt"], function()
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
-    -- the bosses' fold (F-144): "Alle aufklappen"/"Alle zuklappen", only in the part Bosse
-    B.foldAll = foldLink(B)
-    -- the two tabs, the fold link and the waypoint link at the right end of the header's line; the
-    -- header ends before them (the fold link comes and goes with the part)
-    B.partRow = { B.parts.bosses, B.parts.quests, { B.foldAll, gap = G.ITEM_GAP }, { B.way, gap = G.ITEM_GAP } }
-    function B:PlaceParts() placeParts(self, headerTop) end
-    B:PlaceParts()
     W.Tooltip(B.way, L["Wegpunkt zum Eingang"], L["Setzt das Kartenziel auf den nächsten Eingang des gewählten Dungeons."])
+    -- the bosses' fold (F-144) and the run (D-72): "1/4" with its bar and "Lauf zurücksetzen", only
+    -- in the part Übersicht, at the right end of the header's line; the waypoint at the tabs' right end
+    B.foldAll = foldLink(B)
+    JP.BuildRun(B)
+    B.partRow = { B.runBar, { B.foldAll, gap = G.ITEM_GAP }, { B.resetRun, gap = G.ITEM_GAP } }
+    function B:PlaceParts() placeParts(self, headerTop) end
+    W.Row(B, { B.way }, 0, 0, tabTop - 1, { right = true })
+    B:PlaceParts()
     B.detail = buildDetail(B, DETAIL_ROWS, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPLEFT", 0, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, headerTop - T.HEADER_H - G.GAP)
+    -- the parts that are no list: the instance map and the keys (D-72), where the list is
+    JP.BuildMap(B, headerTop - T.HEADER_H - G.GAP)
+    JP.BuildAccess(B, headerTop - T.HEADER_H - G.GAP)
     -- the quest path in place of the list, the image and the quests (F-135); only in memory
     B.pathView = buildPath(B)
     -- the journal remembers the part it was opened from (the planner's quests or bosses)
-    local function partNow() return state().dpart == "quests" and "quests" or "bosses" end
+    local function partNow() return JP.PartOf(B, B.entry) end
     function B:OpenPath(e)
         if e and e.kind == "run" then
             self.pathFor = { dungeon = state().dungeon, key = "run", part = partNow() }
@@ -1944,8 +2158,11 @@ local function create(parent)
     end
     -- the parts of the start and of the detail view; the quest journal covers them all (planParts)
     B.startParts = { B.next, B.why, B.grid }
-    B.detailParts = { B.back, B.art, B.header, B.parts.bosses, B.parts.quests, B.foldAll, B.way, B.detail }
-    B.planParts = {}
+    for _, f in ipairs(B.filterParts) do B.startParts[#B.startParts + 1] = f end
+    B.detailParts = { B.back, B.art, B.header, B.way, B.detail }
+    for _, k in ipairs(B.partKeys) do B.detailParts[#B.detailParts + 1] = B.parts[k] end
+    -- shown by the part (refresh): the run's parts, the fold link, the map and the keys
+    B.planParts = { B.emptyGrid, B.runBar, B.foldAll, B.resetRun, B.mapView, B.accessView }
     for _, f in ipairs(B.startParts) do B.planParts[#B.planParts + 1] = f end
     for _, f in ipairs(B.detailParts) do B.planParts[#B.planParts + 1] = f end
     for _, chip in ipairs(sortRow) do B.planParts[#B.planParts + 1] = chip end
@@ -1970,6 +2187,14 @@ end
 local function refresh(B)
     K.namesFresh()
     K.fillSpec(B.spec, ns.BisOpts())
+    -- in a dungeon (its first show there, or entered while open): its detail (D-72)
+    local here = newHere(B, false)
+    if here then
+        state().dungeon = here
+        asked = here
+        view = "detail"
+        B.pathFor = nil
+    end
     local list = ns.DungeonList()
     local nextE, why = ns.DungeonNext()
     local Dn = ns.Dungeons
@@ -1990,7 +2215,9 @@ local function refresh(B)
     end
     local e = chosenDungeon(list, nextE)
     B.chosen = e and e.key or nil
-    B.grid:SetEntries(shown, B.chosen, nextE and nextE.key or nil)
+    B.grid.ctx.here = ns.Runs.Here()
+    local filtered = applyFilter(B, shown, true)
+    B.grid:SetEntries(filtered, B.chosen, nextE and nextE.key or nil)
     if e and not e.computed then e = ns.DungeonInfo(e.key) or e end
     B.entry = e
     local detail = view == "detail" and e ~= nil
@@ -1998,8 +2225,7 @@ local function refresh(B)
     if not detail and B.wasDetail and B.chosen then B.grid:CardOf(B.chosen) end
     B.wasDetail = detail
     if detail then fillArt(B, e) else B.art:Hide() end
-    local part = state().dpart == "quests" and "quests" or "bosses"
-    for k, chip in pairs(B.parts) do chip:SetOn(k == part) end
+    local part = JP.PartOf(B, e)
     -- another dungeon or part starts at the top
     local detailKey = e and (e.key .. part) or nil
     if detailKey ~= B.detailKey then B.detail.offset = 0 end
@@ -2051,11 +2277,21 @@ local function refresh(B)
         end
         if not detail then
             for _, chip in ipairs(B.sortRow) do chip:Show() end
+            B.emptyGrid:SetShown(#filtered == 0 and #shown > 0)
         end
-        -- the fold link only in the part Bosse of a dungeon with a boss that has items (F-144)
+        -- the part's view (D-72): the list, the map or the keys; the tabs (Zugang only with a key)
+        if detail then
+            B.parts.access:SetShown(JP.Keys(e.key) ~= nil)
+            JP.PlaceTabs(B)
+            B.detail:SetShown(part == "bosses" or part == "quests" or part == "wish")
+            B.mapView:SetShown(part == "map")
+            B.accessView:SetShown(part == "access")
+        end
+        -- the fold link only in the part Übersicht of a dungeon with a boss that has items (F-144)
         local anyItems = false
         if detail and part == "bosses" then anyItems = select(2, foldState(B, e)) end
         B.foldAll:SetShown(anyItems)
+        JP.FillRun(B, detail and e or nil, part == "bosses")
         B:PlaceParts()
     else
         B.art:Hide()
@@ -2078,12 +2314,25 @@ local function refresh(B)
     if e and part == "quests" then
         local rows
         rows, status = questItems(e.key)
-        B.header:SetHeaderText(e.name .. " · Quests")
+        B.header:SetHeaderText("Quests")
         B.foldEntry = nil
         B.detail:SetItems(rows)
         B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
+    elseif e and part == "wish" then
+        B.header:SetHeaderText(L["Wunschliste"])
+        B.foldEntry = nil
+        B.detail:SetItems(wishItems(e))
+        B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
+    elseif e and part == "map" then
+        B.header:SetHeaderText(L["Karte"])
+        JP.FillMap(B, e)
+        B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
+    elseif e and part == "access" then
+        B.header:SetHeaderText(L["Zugang"])
+        JP.FillAccess(B, e)
+        B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
     elseif e then
-        B.header:SetHeaderText(e.name .. " · " .. L["Bosse"])
+        B.header:SetHeaderText(L["Bosse"])
         showBosses(B, e)
         B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
     else
@@ -2101,6 +2350,10 @@ local function refresh(B)
             if t ~= "" then parts[#parts + 1] = t end
         end
         hint = table.concat(parts, " ")
+    elseif part == "wish" then
+        hint = (#B.detail.items == 0 and (L["Aus dieser Instanz wünschst du dir nichts."] .. " ") or "") .. WISH_HINT
+    elseif part == "map" or part == "access" then
+        hint = part == "map" and MAP_HINT or ACCESS_HINT
     else
         hint = L["Je Lauf: Zuwachs der Upgrades mal Dropchance, ohne Mitbewerber in der Gruppe. Wert: offene Dungeon-Quests plus zwei Läufe."]
         if e and e.computed and #B.detail.items == 0 then hint = L["In diesem Dungeon gibt es nichts mehr für dich."] .. " " .. hint end
@@ -2124,6 +2377,7 @@ function ns.ShowDungeon(key)
     if type(key) ~= "string" then return false end
     -- a raid opens on the page Raids
     if ns.ShowRaid and ns.Dungeons.IsRaid(key) then return ns.ShowRaid(key) end
+    holdHere(false)   -- asked for: no jump to the instance stood in (D-72)
     state().dungeon = key
     asked = key
     view = "detail"
@@ -2140,6 +2394,7 @@ end
 -- the window shows.
 function ns.ShowDungeonQuest(key, qid)
     if type(key) ~= "string" then return false end
+    holdHere(false)
     state().dungeon = key
     state().dpart = "quests"
     asked = key
@@ -2154,9 +2409,13 @@ function ns.ShowDungeonQuest(key, qid)
     return main ~= nil and main:IsShown() and true or false
 end
 
+-- the own run changed (a kill, an entry, a reset; Gear/Runs.lua): the cards and the bosses (D-72)
+ns.Listen("RUN", function() if ns.RefreshSoon then ns.RefreshSoon() end end)
+
 -- the journal parts the page Raids shares (UI/Pages/RaidJournal.lua)
 ns.DungeonJournalKit = { buildArt = buildArt, fillArt = fillArt, buildDetail = buildDetail,
-    buildGrid = buildGrid, ART_H = ART_H, itemHint = DTEXT.itemHint, foldHint = DTEXT.foldHint, signed = signed,
+    buildGrid = buildGrid, wishItems = wishItems, WISH_HINT = WISH_HINT, MAP_HINT = MAP_HINT, ACCESS_HINT = ACCESS_HINT,
+    buildFilter = buildFilter, holdHere = holdHere, applyFilter = applyFilter, runBadge = runBadge, newHere = newHere, ART_H = ART_H, itemHint = DTEXT.itemHint, foldHint = DTEXT.foldHint, signed = signed,
     -- the bosses' fold (F-144)
     showBosses = showBosses, foldLink = foldLink, foldState = foldState, placeParts = placeParts }
 

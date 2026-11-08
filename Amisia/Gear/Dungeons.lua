@@ -1770,6 +1770,15 @@ function ns.DungeonQuestWaypoint(qid, open, what, dkey)
     return ok, why
 end
 
+-- A quest of the quest data as a node (title, done, active, level, start; D.QuestState reads it), or
+-- nil for a quest the data lacks (the keys' steps on the journal's part Zugang, D-72).
+function D.QuestNode(qid)
+    local dq = questData()
+    local r = dq and type(qid) == "number" and dq.Q[qid] or nil
+    if not r then return nil end
+    return questNode(qid, r)
+end
+
 -- Sets the map target to the next step of a quest path (D.QuestStepTarget) and shows it on the world
 -- map (outside instances and combat, D-62). true, or nil and why.
 function ns.DungeonPathWaypoint(path)

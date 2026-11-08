@@ -83,7 +83,20 @@ local function cleanWish(e)
     return e
 end
 
+-- The own run of a dungeon (Runs.lua, D-72): { inst, name, enc = { [encounter id] = true }, at,
+-- left, reset }; anything else falls away.
+local function cleanRun(r)
+    if type(r) ~= "table" or not numKey(r.inst) then return nil end
+    r.enc = fixSet(r.enc, numKey, trueVal)
+    r.at = tonumber(r.at)
+    r.left = tonumber(r.left)
+    r.reset = tonumber(r.reset)
+    if r.name ~= nil and type(r.name) ~= "string" then r.name = nil end
+    return r
+end
+
 local function cleanChar(c)
+    c.run = cleanRun(c.run)
     c.wish = fixSet(c.wish, numKey, cleanWish)
     -- more than 50: the oldest go
     local list = {}

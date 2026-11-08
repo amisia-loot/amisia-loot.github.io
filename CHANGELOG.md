@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(world): dungeon and raid journal with search, your run, instance maps, wishes and keys (F-146)
+
+  The Dungeons and Raids pages get a search box, the choices All / Fitting / Quests and "Where am I".
+  Cards show the bosses you killed in your current run, your open quests and the keys you have or
+  lack, and the instance you stand in is marked. Inside an instance the page opens it directly. The
+  detail has tabs: overview with your run (right-click a boss to mark it), the game's map of the
+  instance with its floors, quests, your wish list for this instance, and the keys with the quests
+  that lead to them.
+
 - feat(ui): the main window can be dragged wider and minimized to a small bar (F-145)
 
   The grip at the bottom right corner now changes the width as well as the height, up to 1440 pixels.
