@@ -41,7 +41,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ### F-158 Item-Anzeige verschieben und gestalten
 - Version: 2.71.0
-- Status: gebaut
+- Status: im Spiel geprüft (2026-11-09)
 - Prüfung: Wenn du unter Einstellungen den Abschnitt "Item-Anzeige" öffnest und "Anzeige verschieben" klickst, dann erscheint die Anzeige mit dunklem Rahmen und Beispielzeilen; du ziehst sie mit der Maus woanders hin, klickst "Fertig", und neue Beute erscheint dort, auch nach /reload.
 - Prüfung: Wenn du Schriftart (z. B. Morpheus), Umriss "Dick", Ausrichtung "Rechts" oder die Größe änderst und "Anzeige ausprobieren" klickst, dann sieht das Beispiel so aus.
 - Prüfung: Wenn du Anzeigedauer 6 s und Bewegung "Sinkt nach unten" wählst, dann bleiben die Zeilen länger und sinken beim Ausblenden.
