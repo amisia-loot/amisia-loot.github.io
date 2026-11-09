@@ -50,7 +50,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ### F-157 Quellensymbol im Ausrüstungsplaner öffnet Boss oder Rezept
 - Version: 2.70.0
-- Status: gebaut
+- Status: im Spiel geprüft (2026-11-09)
 - Prüfung: Wenn du im Ausrüstungsplaner bei einem Vorschlag aus einem Dungeon auf das Dungeon-Symbol rechts klickst, dann öffnet sich Dungeons mit diesem Dungeon (Teil Übersicht), links ist der Boss gewählt, der das Item fallen lässt, und rechts ist die Zeile des Items markiert.
 - Prüfung: Wenn du bei einem Vorschlag aus einem Raid auf das Raid-Symbol klickst, dann öffnet sich die Seite Raids genauso beim Boss.
 - Prüfung: Wenn du bei einem hergestellten Item auf das Berufssymbol klickst, dann öffnet sich Berufe mit dem Rezept, das das Item herstellt.
@@ -59,7 +59,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ### F-156 Offiziersansicht nur für Offiziere
 - Version: 2.69.0
-- Status: gebaut
+- Status: im Spiel geprüft (2026-11-09)
 - Braucht: Gilde
 - Prüfung: Wenn ein Gildenmitglied ohne Offiziersrang /amisia öffnet, dann steht unten "Raider-Ansicht", im Menü der Statuszeile fehlt "Zur Offiziersansicht", unter Einstellungen, Oberfläche fehlt "Ansicht", und `/amisia ansicht offizier` meldet "Die Offiziersansicht haben nur Offiziere der Gilde."
 - Prüfung: Wenn ein Offizier (Rang Offizier oder höher) /amisia öffnet, dann steht unten "Offiziersansicht", und das Menü wechselt zur Raider-Ansicht und zurück.
