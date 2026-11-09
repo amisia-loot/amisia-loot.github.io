@@ -1674,7 +1674,7 @@ Look des Clients); eine Bossliste mit allen Items war auf großen Dungeons und R
 **Nachtrag 2026-11-08:** Kopf mit Logo, Überschriften und die eine Leiste mit allen Gruppen ersetzt D-73: Logo und Name
 stehen im Kopf des Fensters, die Gruppen sind Reiter oben, die Leiste zeigt nur die Seiten des offenen Reiters.
 
-**Nachtrag 2026-11-09:** Das Logo im Kopf steht ohne schwarze Scheibe: nur ein dünner Goldring (`T.DBOSS.RING`) um das durchsichtige Logo, dahinter der Grund des Kopfes. Nutzer: "können wir beim A logo das schwarze hintergrund wegmachen".
+**Nachtrag 2026-11-09:** Das Logo im Kopf steht ohne schwarze Scheibe: nur ein dünner Goldring (`T.DBOSS.RING`) um das durchsichtige Logo, dahinter der Grund des Kopfes. Nutzer: "können wir beim A logo das schwarze hintergrund wegmachen". Der Grund des Kopfes ist an der Stelle sehr dunkel (`T.HUB.HEAD_BG`, das Bild beginnt erst bei `BANNER_X`); das Bild bis zum Logo ziehen oder den Grund aufhellen bleibt vorerst aus (Nutzer 2026-11-09: "lass das logo erstmal so").
 
 ## D-71 Hauptfenster in der Breite ziehbar und zu einer Leiste minimierbar
 
