@@ -283,14 +283,7 @@ local function firstSource(id, o)
     return Gear.Sources(id, o)[1] or Gear.Sources(id)[1]
 end
 
-local function setStar(b, on)
-    local tex = b.tex
-    if W.HasAtlas(PL.STAR_ATLAS) then tex:SetAtlas(PL.STAR_ATLAS, false) else tex:SetTexture(PL.STAR_FILE) end
-    if tex.SetDesaturated then tex:SetDesaturated(not on) end
-    local c = on and { 1, 1, 1 } or PL.STAR_OFF
-    tex:SetVertexColor(c[1], c[2], c[3])
-    b.on = on
-end
+local function setStar(b, on) W.WishStar(b, on) end
 
 -- The gain in percent of the worn item's score; with nothing worn in the slot "neu".
 local function gainOf(e)

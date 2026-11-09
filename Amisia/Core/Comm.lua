@@ -527,12 +527,7 @@ end
 -- The lockdown
 ---------------------------------------------------------------------------
 local function restricted()
-    local api = _G.C_RestrictedActions
-    local fn = type(api) == "table" and api.IsAddOnRestrictionActive
-    if type(fn) ~= "function" then return false end
-    local kind = _G.Enum and Enum.AddOnRestrictionType and Enum.AddOnRestrictionType.Chat or 5
-    local ok, on = pcall(fn, kind)
-    return ok and ns.Plain(on) == true
+    return ns.AddOnRestricted(_G.Enum and Enum.AddOnRestrictionType and Enum.AddOnRestrictionType.Chat or 5)
 end
 
 local function lockedNow()

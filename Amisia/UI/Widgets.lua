@@ -21,6 +21,17 @@ local function hasAtlas(name)
 end
 W.HasAtlas = hasAtlas
 
+-- The wish list star of a row (Planner, Dungeons): b.tex gold when on, grey when off; b.on keeps it.
+function W.WishStar(b, on)
+    local PL = T.PLANNER
+    local tex = b.tex
+    if hasAtlas(PL.STAR_ATLAS) then tex:SetAtlas(PL.STAR_ATLAS, false) else tex:SetTexture(PL.STAR_FILE) end
+    if tex.SetDesaturated then tex:SetDesaturated(not on) end
+    local c = on and { 1, 1, 1 } or PL.STAR_OFF
+    tex:SetVertexColor(c[1], c[2], c[3])
+    b.on = on
+end
+
 -- A frame that inherits a template of the client, or nil. probe(frame) checks the parts the caller
 -- needs: a client that only logs an unknown template would hand back a bare frame.
 local function inherit(kind, name, parent, template, probe)

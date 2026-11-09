@@ -68,13 +68,7 @@ end
 ---------------------------------------------------------------------------
 -- Who may, and when
 ---------------------------------------------------------------------------
-local function restrictionOn(kind)
-    local api = _G.C_RestrictedActions
-    local fn = type(api) == "table" and api.IsAddOnRestrictionActive
-    if type(fn) ~= "function" then return false end
-    local ok, on = pcall(fn, kind)
-    return ok and ns.Plain(on) == true
-end
+local restrictionOn = ns.AddOnRestricted
 
 local homeRaid = ns.HomeRaid
 IV.HomeRaid = homeRaid

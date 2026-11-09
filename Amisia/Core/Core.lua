@@ -16,6 +16,13 @@ function ns.ItemID(link)
     return type(link) == "string" and tonumber(link:match("item:(%d+)")) or nil
 end
 
+-- C_Item.GetItemInfo(x) as the client has it at the call (nothing without C_Item).
+function ns.ItemInfo(x)
+    local f = C_Item and C_Item.GetItemInfo
+    if f then return f(x) end
+    return nil
+end
+
 ---------------------------------------------------------------------------
 -- Item tooltips: one hook for every part of Amisia
 ---------------------------------------------------------------------------

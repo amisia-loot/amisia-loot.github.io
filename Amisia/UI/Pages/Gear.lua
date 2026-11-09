@@ -33,11 +33,7 @@ local guildResult        -- what the last import said
 local scrolledTo         -- the slot the targets list was last scrolled to
 local placeGone          -- the saved place of "Hier" was not in the data
 
-local function itemInfo(x)
-    local f = C_Item and C_Item.GetItemInfo
-    if f then return f(x) end
-    return nil
-end
+local itemInfo = ns.ItemInfo
 
 ---------------------------------------------------------------------------
 -- Helpers

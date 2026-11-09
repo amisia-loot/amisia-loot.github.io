@@ -7,11 +7,7 @@ local ADDON, ns = ...
 local L = ns.L
 local Gear = ns.Gear
 
-local function itemInfo(x)
-    local f = C_Item and C_Item.GetItemInfo
-    if f then return f(x) end
-    return nil
-end
+local itemInfo = ns.ItemInfo
 local function itemInstant(x)
     local f = C_Item and C_Item.GetItemInfoInstant
     if f then return f(x) end

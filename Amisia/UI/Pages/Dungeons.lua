@@ -726,15 +726,7 @@ fillBossView = function(B, h, n)
     V.none:SetShown(#(h.items or {}) == 0)
 end
 
-local function setWishStar(b, on)
-    local PL = T.PLANNER
-    local tex = b.tex
-    if W.HasAtlas(PL.STAR_ATLAS) then tex:SetAtlas(PL.STAR_ATLAS, false) else tex:SetTexture(PL.STAR_FILE) end
-    if tex.SetDesaturated then tex:SetDesaturated(not on) end
-    local c = on and { 1, 1, 1 } or PL.STAR_OFF
-    tex:SetVertexColor(c[1], c[2], c[3])
-    b.on = on
-end
+local setWishStar = W.WishStar
 
 local function fillLootRow(r, e)
     local it = e.it

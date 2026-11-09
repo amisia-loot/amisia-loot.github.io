@@ -41,6 +41,16 @@ function ns.ChatLocked()
     return (ok and locked) and true or false
 end
 
+-- Whether the client's addon restriction of kind (Enum.AddOnRestrictionType: 0 combat, 1 encounter,
+-- 5 chat) is on. Without the query (older client) nothing is restricted.
+function ns.AddOnRestricted(kind)
+    local api = _G.C_RestrictedActions
+    local fn = type(api) == "table" and api.IsAddOnRestrictionActive
+    if type(fn) ~= "function" then return false end
+    local ok, on = pcall(fn, kind)
+    return ok and ns.Plain(on) == true
+end
+
 function ns.ChatQueueSize() return #queue end
 
 -- One own chat message at most once a minute per kind.

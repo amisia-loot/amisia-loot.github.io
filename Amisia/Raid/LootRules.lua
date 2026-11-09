@@ -335,13 +335,7 @@ local function whyNot()
     return nil
 end
 
-local function restrictionOn(kind)
-    local api = _G.C_RestrictedActions
-    local fn = type(api) == "table" and api.IsAddOnRestrictionActive
-    if type(fn) ~= "function" then return false end
-    local ok, on = pcall(fn, kind)
-    return ok and ns.Plain(on) == true
-end
+local restrictionOn = ns.AddOnRestricted
 
 -- Combat or the addon restriction of combat or an encounter: GiveMasterLoot waits.
 local function blocked()

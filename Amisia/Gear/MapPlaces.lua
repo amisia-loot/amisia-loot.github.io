@@ -576,6 +576,3 @@ ns.OnEvent("LOADING_SCREEN_ENABLED", function() Map.SamplePlace() end)
 ns.OnEvent("PLAYER_LEAVING_WORLD", function() Map.SamplePlace() end)
 ns.OnEvent("CONFIRM_SUMMON", function() summonedAt = GetTime() end)
 ns.OnEvent("PLAYER_ENTERING_WORLD", function() Map.LearnEntrance() end)
-
--- Test hook: the sample and the summon forgotten.
-function Map._resetLearn() last, summonedAt = nil, nil end

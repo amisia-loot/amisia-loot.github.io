@@ -61,11 +61,7 @@ end
 function RC.Locked()
     if InCombatLockdown() then return "combat" end
     if ns.ChatLocked() then return "lock" end
-    local api = _G.C_RestrictedActions
-    if type(api) == "table" and type(api.IsAddOnRestrictionActive) == "function" then
-        local ok, on = pcall(api.IsAddOnRestrictionActive, 1)
-        if ok and ns.Plain(on) == true then return "lock" end
-    end
+    if ns.AddOnRestricted(1) then return "lock" end
     return nil
 end
 

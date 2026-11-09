@@ -33,6 +33,20 @@ function ns.SameName(a, b)
     return false
 end
 
+-- name (a secret value or nothing skipped) added to the list out, unless a spelling of the same
+-- character (ns.SameName) is in it already: then the longer spelling stays.
+function ns.AddName(out, name)
+    name = ns.FullName(ns.Plain(name))
+    if not name then return end
+    for i, o in ipairs(out) do
+        if ns.SameName(o, name) then
+            if #name > #o then out[i] = name end
+            return
+        end
+    end
+    out[#out + 1] = name
+end
+
 -- The group, read once per frame (every addon message, roll line and roll window refresh asks for
 -- it, often once per name): list = the plain names in roster order (secret ones left out), class[i]
 -- = the plain class token of list[i]; low[lower name] = its first spelling. Read again in the next

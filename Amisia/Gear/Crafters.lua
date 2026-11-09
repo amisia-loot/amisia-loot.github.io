@@ -1229,12 +1229,6 @@ function Cr.Professions()
     return map
 end
 
--- The professions of one name (Cr.Professions), or nil.
-function Cr.ProfessionsOf(name)
-    if type(name) ~= "string" then return nil end
-    return Cr.Professions()[name:lower()]
-end
-
 ---------------------------------------------------------------------------
 -- Settings and command
 ---------------------------------------------------------------------------

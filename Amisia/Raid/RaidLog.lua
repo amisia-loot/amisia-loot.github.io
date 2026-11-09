@@ -135,13 +135,7 @@ local function fallback(s, k)
     finish(k, membersAt(s, (k.start or k.t) - 60, k.t))
 end
 
-local function restricted()
-    local api = _G.C_RestrictedActions
-    local fn = type(api) == "table" and api.IsAddOnRestrictionActive
-    if type(fn) ~= "function" then return false end
-    local ok, on = pcall(fn, RESTRICTION_ENCOUNTER)
-    return ok and ns.Plain(on) == true
-end
+local function restricted() return ns.AddOnRestricted(RESTRICTION_ENCOUNTER) end
 
 local function tryRead()
     if #waiting == 0 then return end

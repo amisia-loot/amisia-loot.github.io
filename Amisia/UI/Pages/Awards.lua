@@ -105,17 +105,7 @@ end
 -- ns.SameName and sorted.
 local function winnerNames(s)
     local out = {}
-    local function add(name)
-        name = ns.FullName(ns.Plain(name))
-        if not name then return end
-        for i, o in ipairs(out) do
-            if ns.SameName(o, name) then
-                if #name > #o then out[i] = name end
-                return
-            end
-        end
-        out[#out + 1] = name
-    end
+    local function add(name) ns.AddName(out, name) end
     for name in pairs(s.members or {}) do add(name) end
     if s == ns.Active() then
         for i = 1, GetNumGroupMembers() or 0 do add((GetRaidRosterInfo(i))) end

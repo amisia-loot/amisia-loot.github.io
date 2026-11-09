@@ -41,11 +41,7 @@ local QUALITY = ns.Theme.QUALITY_HEX
 local GOLD = W.GOLD
 local GREEN = { 0.3, 0.85, 0.3 }
 
-local function itemInfo(x)
-    local f = C_Item and C_Item.GetItemInfo
-    if f then return f(x) end
-    return nil
-end
+local itemInfo = ns.ItemInfo
 local function itemIcon(id)
     local f = C_Item and C_Item.GetItemIconByID
     if not f then return nil end
