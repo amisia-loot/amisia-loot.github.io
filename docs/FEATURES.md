@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-160 Berufe: woher ein Reagenz kommt
-- Version: -
-- Status: geplant
+- Version: 2.72.0
+- Status: gebaut
 - Prüfung: Wenn du auf der Seite Berufe in einem Rezept auf ein Reagenz klickst (z. B. Kupfererz), dann öffnet sich "Woher kommt Kupfererz?" mit den Sammelzonen ("Sammeln (Bergbau): Dun Morogh" …), und ein Klick auf eine Zone öffnet ihre Weltkarte.
 - Prüfung: Wenn du auf ein Händler-Reagenz klickst (z. B. Grobes Garn) und im Menü auf "Händler: …", dann steht der Wegpunkt beim Händler; Händler mit Ort und Preis, der nächste zuerst.
 - Prüfung: Wenn du auf ein hergestelltes Reagenz klickst (z. B. Leinenstoffballen) und auf "Herstellen: …", dann öffnet sich dieses Rezept.
@@ -49,8 +49,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: D-90; Daten `PROFESSIONS.RS` aus AllTheThings. Etwa 120 Reagenzien (meist Raid-Drops) bleiben "Quelle unbekannt".
 
 ### F-159 Herstellliste mit Bank und Twinks, Herstellbar-Zahl
-- Version: -
-- Status: geplant
+- Version: 2.72.0
+- Status: gebaut
 - Prüfung: Wenn du ein bekanntes Rezept ansiehst, für das die Taschen reichen, dann steht in der Rezeptliste "(n)" in Grün hinter dem Namen und im Kopf der Reagenzien "herstellbar: n" (mit "(m mit Bank)", wenn die Bank mehr hergibt).
 - Prüfung: Wenn ein Twink (gleicher Realm, gleiche Fraktion, einmal eingeloggt) ein Reagenz hat und dir selbst etwas fehlt, dann steht bei dem Reagenz "4+6 / 10" in Orange, und der Tooltip nennt "Bei deinen Twinks:" mit Name und Anzahl (Bankanteil in Klammern).
 - Prüfung: Wenn du die Herstellliste öffnest, dann steht unter jedem Material "Twinks: n", sofern ein Twink etwas davon hat, und hinter jedem bekannten Rezept "(n)", grün, wenn es für die gewünschte Anzahl reicht.
