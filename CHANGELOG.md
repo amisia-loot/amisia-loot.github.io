@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.72.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.72.0) (2026-11-09)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.71.0...v2.72.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(professions): where a reagent comes from (F-160)
 
   Click a reagent on the Professions page (in a recipe, the crafting list or the route's shopping list)
