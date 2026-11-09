@@ -85,6 +85,9 @@ CERT = re.compile(r'^(.+) Certification$')
 MAX_SOURCES = 6     # sources per recipe item
 SOURCE_ORDER = {'F': 0, 'V': 1, 'Q': 2, 'D': 3, 'Z': 4, 'W': 5}
 MAX_VENDORS = 6     # vendors per item of the price list V
+MAX_REAGENT_SOURCES = 6   # sources per reagent in RS (besides V and the recipes that make it)
+MAX_GATHER_MAPS = 8       # zones of a gathered reagent in RS
+GATHER_SKILL = {'herbalism': 182, 'mining': 186, 'skinning': 393, 'fishing': 356}
 
 
 def log(*a):
@@ -329,12 +332,13 @@ def read_att(base, db=None):
                 trainers.setdefault(sl, []).append(nid)
     return {'commit': db.get('commit'), 'trainer': trainer, 'spec': spec, 'favor': favor, 'trainers': trainers,
             'profdb': read_profession_db(base),
-            'vendors': read_favor_vendors(base), 'sources': sources, 'npcs': npcs, 'quests': quests, 'sold': sold}
+            'vendors': read_favor_vendors(base), 'sources': sources, 'npcs': npcs, 'quests': quests, 'sold': sold,
+            'gathered': db.get('gathered') or {}}
 
 
 def empty_att():
     return {'commit': None, 'trainer': {}, 'spec': set(), 'favor': {}, 'trainers': {}, 'profdb': {}, 'vendors': {'A': [], 'H': []}, 'sources': {},
-            'npcs': {}, 'quests': {}, 'sold': {}}
+            'npcs': {}, 'quests': {}, 'sold': {}, 'gathered': {}}
 
 
 def read_seen_vendors(path):
@@ -591,6 +595,27 @@ def combine(client, att, seen=None, cooldowns=None, trainers=None):
         npcs_used.update(npcs)
         V[item] = f'{price}:{",".join(str(n) for n in npcs)}'
     report['prices'] = {'items': len(V), 'recipe items': len(set(V) & set(I)), 'reagents': len(set(V) & reagents)}
+    # where a reagent comes from besides vendors (V) and recipes (R): gathered (H<skill line>@<uiMapID>.<uiMapID>),
+    # dropped (D<npc> in N, Z<uiMapID>, W), a quest reward (Q<quest>)
+    RS = {}
+    for item in sorted(reagents):
+        toks = []
+        g = (att.get('gathered') or {}).get(item)
+        if g and GATHER_SKILL.get(g['skill']):
+            maps = [m for m in g['maps'] if isinstance(m, int) and m > 0][:MAX_GATHER_MAPS]
+            toks.append(f'H{GATHER_SKILL[g["skill"]]}' + ('@' + '.'.join(str(m) for m in maps) if maps else ''))
+        rest = [t for t in sorted(att['sources'].get(item, []), key=_source_key) if t[0] in 'DZWQ']
+        toks += rest[:MAX_REAGENT_SOURCES - len(toks)]
+        for t in toks:
+            if t[0] == 'D':
+                npcs_used.add(int(t[1:]))
+            elif t[0] == 'Q':
+                quests_used.add(int(t[1:]))
+        if toks:
+            RS[item] = ','.join(toks)
+    report['reagent sources'] = {'reagents': len(reagents), 'with a source': len(RS),
+                                 'gathered': sum(1 for v in RS.values() if v.startswith('H')),
+                                 'without any': len(reagents - set(RS) - set(V) - made_items(R))}
     # the route's estimate for a reagent no vendor sells: what a vendor pays for one
     S = {}
     for item in sorted(reagents - set(V)):
@@ -631,9 +656,14 @@ def combine(client, att, seen=None, cooldowns=None, trainers=None):
         N[nid] = f'{name}|{where}|{fac}'
     Q = {qid: att['quests'].get(qid, '') for qid in sorted(quests_used)}
 
-    return {'P': P, 'R': R, 'I': I, 'G': G, 'V': V, 'S': S, 'CD': CD, 'N': N, 'Q': Q, 'TR': TR, 'CAMP': camp_objects(client),
+    return {'P': P, 'R': R, 'I': I, 'G': G, 'V': V, 'RS': RS, 'S': S, 'CD': CD, 'N': N, 'Q': Q, 'TR': TR, 'CAMP': camp_objects(client),
             'FAVOR': favor_info(client, att, R), 'L': L, 'TD': TD, 'client': client['client'],
             'source': (att.get('commit') or '')[:10], 'report': report}
+
+
+def made_items(R):
+    """The items the recipes of R make."""
+    return {int(l.split(':')[1]) for lst in R.values() for l in lst if int(l.split(':')[1]) > 0}
 
 
 def camp_objects(client):
@@ -698,7 +728,7 @@ def favor_info(client, att, R):
 
 
 def empty():
-    return {'P': [], 'R': {}, 'I': {}, 'G': {}, 'V': {}, 'S': {}, 'CD': [], 'N': {}, 'Q': {}, 'TR': {}, 'CAMP': [],
+    return {'P': [], 'R': {}, 'I': {}, 'G': {}, 'V': {}, 'RS': {}, 'S': {}, 'CD': [], 'N': {}, 'Q': {}, 'TR': {}, 'CAMP': [],
             'FAVOR': {'currency': FAVOR_CURRENCY, 'cert': {}, 'writ': {}, 'vendor': {'A': [], 'H': []}},
             'L': {}, 'TD': {}, 'client': '', 'source': '', 'report': {}}
 
@@ -753,6 +783,9 @@ def render(data, built):
            '-- "item:n,..." reagents (only with the SpellReagents table). V: [item] = "copper:npc,..." a reagent or',
            '-- recipe item a vendor sells for gold: the price of one (BuyPrice / VendorStackCount, rounded up) and up',
            '-- to 6 vendors (known position first, both factions), each in N; an item without a vendor is not in V.',
+           '-- RS: [reagent] = where it comes from besides V and the recipes: H<skill line>@<uiMapID>.<uiMapID> gathered',
+           '-- (herbalism, mining, skinning, fishing; the zones), D<npc> drop (in N), Z<uiMapID> zone drop, W world drop,',
+           '-- Q<quest> quest reward.',
            '-- S: [item] = copper a vendor pays for one (SellPrice) of a reagent not in V (the route\'s estimate).',
            '-- CD: [spell] = 1 a recipe with a cooldown (SpellCooldowns, else tools/prof_cooldowns.json): no route step.',
            '-- N: [npc] = "Name|uiMapID:x:y|A/H/" (English).',
@@ -769,6 +802,7 @@ def render(data, built):
     out.append('    I = ' + _str_map(data['I']) + ',')
     out.append('    G = ' + _str_map(data['G']) + ',')
     out.append('    V = ' + _str_map(data['V']) + ',')
+    out.append('    RS = ' + _str_map(data.get('RS') or {}) + ',')
     out.append('    S = ' + _num_map(data['S'], per_line=10) + ',')
     out.append('    CD = ' + _num_map({sp: 1 for sp in data['CD']}, per_line=10) + ',')
     out.append('    N = ' + _str_map(data['N'], 3) + ',')

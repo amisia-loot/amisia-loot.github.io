@@ -5,6 +5,21 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(professions): where a reagent comes from (F-160)
+
+  Click a reagent on the Professions page (in a recipe, the crafting list or the route's shopping list)
+  and a menu "Where does ... come from?" lists its vendors with place and price (nearest first), the
+  recipes that make it, the zones where you gather it (herbs, ore, leather, fish), the mobs that drop
+  it, quest rewards and world drops. Click a line to set the waypoint, open the zone's world map or
+  open the recipe.
+
+- feat(professions): your alts' reagents and how often you can craft (F-159)
+
+  Reagents now show what your other characters of the same realm and faction hold: "4+6 / 10" in
+  orange when it is enough with them, and their names and counts in the tooltip. A known recipe shows
+  "(3)" behind its name when your bags hold enough for three, and the reagents' head says how many
+  you can craft with and without the bank.
+
 ## [v2.71.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.71.0) (2026-11-09)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.70.0...v2.71.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

@@ -1,7 +1,9 @@
 -- Amisia profession route (F-137, spec docs/specs/2026-11-06-berufsroute.md): the cheapest way from
 -- the own rank to the top of a crafting profession, step by step, with the trainer visits, the
 -- recipes to buy (switch "auch Händler") and a shopping list of the materials; and the reagents in
--- the bags and banks of the own characters for its column "Twinks".
+-- the bags and banks of the own characters for its column "Twinks" (all reagents of the data, the
+-- crafting list's alts and the craftable count "(n)", F-159); where a reagent comes from for the
+-- page's menu "Woher?" (vendors, recipes, gathering zones, mobs; PROFESSIONS.RS, F-160, D-90).
 --
 -- The route goes rank by rank: at each rank the allowed recipe with the smallest expected cost per
 -- skill point, equal recipes in a row merged into one step; ties: a known recipe first, then fewer
@@ -652,16 +654,20 @@ end
 ---------------------------------------------------------------------------
 -- Where a material comes from
 ---------------------------------------------------------------------------
-local srcIndex   -- { data, made = { [item] = { [skill] = true } }, first = { [item] = skill }, used = ... }
+local srcIndex   -- { data, made = { [item] = { [skill] = true } }, first = { [item] = skill }, used = ...,
+                 -- recipes = { [item] = { recipe, ... } } }
 local function sources()
     if srcIndex and srcIndex.data == data() then return srcIndex end
-    srcIndex = { data = data(), made = {}, first = {}, used = {} }
+    srcIndex = { data = data(), made = {}, first = {}, used = {}, recipes = {} }
     local d = data()
     for _, skill in ipairs(Pr.Skills()) do
         for _, r in ipairs(Pr.Recipes(skill)) do
             if r.item > 0 then
                 srcIndex.made[r.item] = srcIndex.made[r.item] or {}
                 srcIndex.made[r.item][skill] = true
+                local list = srcIndex.recipes[r.item] or {}
+                srcIndex.recipes[r.item] = list
+                list[#list + 1] = r
                 srcIndex.first[r.item] = srcIndex.first[r.item] or skill
             end
             local g = d and d.G and d.G[r.spell]
@@ -678,9 +684,20 @@ local function sources()
     return srcIndex
 end
 
+-- PROFESSIONS.RS[item] as its tokens ("H186@1439.1426", "D123", "Z1438", "W", "Q42").
+local function reagentTokens(item)
+    local d = data()
+    local s = d and d.RS and d.RS[tonumber(item)]
+    local out = {}
+    if type(s) ~= "string" then return out end
+    for tok in s:gmatch("[^,]+") do out[#out + 1] = tok end
+    return out
+end
+
 -- The source of a material for the shopping list: kind ("vendor" with a vendor of a known place,
--- "vendorx" a vendor price without such a vendor, "smelt", "mine", "craft", "disenchant", "farm")
--- and, for "craft", the skill line that makes it (the route's own first).
+-- "vendorx" a vendor price without such a vendor, "smelt", "craft", "gather" (with its skill line),
+-- "mine", "disenchant", "drop", "world", "quest", "farm") and, for "craft" and "gather", the skill
+-- line (for "craft" the route's own first).
 function R.Source(item, skill)
     local price, vendors = R.Price(item)
     if price then
@@ -694,14 +711,195 @@ function R.Source(item, skill)
     if made and made[skill] then return "craft", skill end
     if made and made[MINING] then return "smelt" end
     if made then return "craft", s.first[item] end
+    local toks = reagentTokens(item)
+    for _, tok in ipairs(toks) do
+        local gather = tok:match("^H(%d+)")
+        if gather then return "gather", num(gather) end
+    end
     local used = s.used[item] or {}
     if used[MINING] then return "mine" end
-    if skill == ENCHANTING then
-        local other = false
-        for k in pairs(used) do if k ~= ENCHANTING then other = true end end
-        if not other then return "disenchant" end
+    if skill == ENCHANTING or skill == nil then
+        local other, any = false, false
+        for k in pairs(used) do
+            any = true
+            if k ~= ENCHANTING then other = true end
+        end
+        if any and not other then return "disenchant" end
     end
+    local first = toks[1] and toks[1]:sub(1, 1)
+    if first == "D" or first == "Z" then return "drop" end
+    if first == "W" then return "world" end
+    if first == "Q" then return "quest" end
     return "farm"
+end
+
+---------------------------------------------------------------------------
+-- Where a reagent comes from (F-160): the lines of the menu "Woher?"
+---------------------------------------------------------------------------
+local WHERE_VENDORS, WHERE_RECIPES, WHERE_ZONES, WHERE_MOBS = 3, 3, 4, 3
+
+local function zoneName(map) return Pr.ZoneName(map) or ("Zone " .. tostring(map)) end
+
+-- "Westfall 42, 65" for a point, the zone's name for a zone, nil for nothing.
+local function placeText(point, zone)
+    if point then
+        return ("%s %d, %d"):format(zoneName(point.map), math.floor(point.x * 100 + 0.5), math.floor(point.y * 100 + 0.5))
+    end
+    return zone and zoneName(zone) or nil
+end
+
+-- A collector place "map:x:y" as a point (only the client's own sightings become one).
+local function seenPoint(pos)
+    local m, x, y = tostring(pos or ""):match("^(%d+):(%d+):(%d+)$")
+    if not m then return nil end
+    return { map = num(m), x = num(x) / 10000, y = num(y) / 10000 }
+end
+
+-- Sorts places nearest first (a place on another continent or without a point after them, by name).
+local function byDistance(list, me)
+    local Map = ns.Map
+    for _, e in ipairs(list) do
+        e.dist = e.point and Map and Map.Distance and Map.Distance(e.point, me) or nil
+    end
+    table.sort(list, function(a, b)
+        if (a.dist ~= nil) ~= (b.dist ~= nil) then return a.dist ~= nil end
+        if a.dist and b.dist and a.dist ~= b.dist then return a.dist < b.dist end
+        if (a.point ~= nil) ~= (b.point ~= nil) then return a.point ~= nil end
+        return (a.name or "") < (b.name or "")
+    end)
+end
+
+-- The sources of a reagent: { { kind, text, point (a waypoint), map (a zone for the world map),
+-- recipe (the recipe to open), tip } } in this order: vendors (nearest first), the recipes that make
+-- it (the own professions first), the gathering zones (the own zone first), mobs (nearest first),
+-- zone drops, quests, world drop, disenchanting; nothing known: one line without action. Vendors
+-- and mobs: the data's and what this client's collector saw (D-62: only an own sighting's place is
+-- a waypoint).
+function R.ReagentSources(item)
+    item = tonumber(item)
+    local out = {}
+    if not item then return out end
+    local Map = ns.Map
+    local me = Map and Map.PlayerPosition and Map.PlayerPosition() or nil
+    local function add(e)
+        out[#out + 1] = e
+        return e
+    end
+    -- vendors
+    local price, vendors = R.Price(item)
+    local list, seen = {}, {}
+    for _, npc in ipairs(vendors or {}) do
+        if npc.id and not seen[npc.id] then
+            seen[npc.id] = true
+            list[#list + 1] = { name = npc.name or ("NPC " .. npc.id), point = npc.point, zone = npc.zone, price = price }
+        end
+    end
+    local obs = Pr.Observed(item)
+    for _, v in ipairs(obs and obs.vendors or {}) do
+        if not seen[v.npc] then
+            seen[v.npc] = true
+            list[#list + 1] = { name = v.name ~= "" and v.name or ("NPC " .. v.npc), point = v.ownPos and seenPoint(v.pos) or nil,
+                zone = tonumber(tostring(v.pos or ""):match("^(%d+)")), price = v.price }
+        end
+    end
+    byDistance(list, me)
+    for i = 1, math.min(#list, WHERE_VENDORS) do
+        local v = list[i]
+        local where = placeText(v.point, v.zone)
+        add({ kind = "vendor", point = v.point, name = v.name,
+            text = L["Händler: %s"]:format(v.name) .. (where and (", " .. where) or "")
+                .. (v.price and (" · " .. Pr.Money(v.price)) or ""),
+            tip = v.point and L["Klick: Wegpunkt zum Händler."] or L["Ort des Händlers unbekannt"] })
+    end
+    if #list > WHERE_VENDORS then
+        add({ kind = "more", text = L["... und %d weitere Händler"]:format(#list - WHERE_VENDORS) })
+    end
+    -- the recipes that make it
+    local recipes = {}
+    for _, r in ipairs(sources().recipes[item] or {}) do
+        if not R.Cooldown(r.spell) or Pr.Known(r.spell, r.skill) == true then recipes[#recipes + 1] = r end
+    end
+    local function rank(r)
+        if Pr.Known(r.spell, r.skill) == true then return 0 end
+        return Pr.Rank(r.skill) and 1 or 2
+    end
+    table.sort(recipes, function(a, b)
+        local ra, rb = rank(a), rank(b)
+        if ra ~= rb then return ra < rb end
+        return a.spell < b.spell
+    end)
+    for i = 1, math.min(#recipes, WHERE_RECIPES) do
+        local r = recipes[i]
+        add({ kind = "craft", recipe = r, text = L["Herstellen: %s (%s)"]:format(Pr.RecipeName(r), Pr.Name(r.skill)),
+            tip = L["Klick: das Rezept."] })
+    end
+    -- gathered, dropped, quests
+    local mobs, zones, quests, world = {}, {}, {}, false
+    for _, tok in ipairs(reagentTokens(item)) do
+        local k, rest = tok:sub(1, 1), tok:sub(2)
+        if k == "H" then
+            local skill, maps = rest:match("^(%d+)@?(.*)$")
+            skill = num(skill)
+            local own = me and me.map
+            -- the own zone first, the others in the data's order
+            local zl = {}
+            for m in (maps or ""):gmatch("%d+") do
+                if num(m) == own then table.insert(zl, 1, num(m)) else zl[#zl + 1] = num(m) end
+            end
+            if #zl == 0 then
+                add({ kind = "gather", text = L["Sammeln: %s"]:format(Pr.Name(skill)), tip = L["Wo genau, sagen die Daten nicht."] })
+            end
+            for i = 1, math.min(#zl, WHERE_ZONES) do
+                add({ kind = "gather", map = zl[i], text = L["Sammeln (%s): %s"]:format(Pr.Name(skill), zoneName(zl[i])),
+                    tip = L["Klick: die Weltkarte dieser Zone."] })
+            end
+            if #zl > WHERE_ZONES then
+                add({ kind = "more", text = L["... und %d weitere Zonen"]:format(#zl - WHERE_ZONES) })
+            end
+        elseif k == "D" then
+            local npc = Pr.Npc(rest)
+            mobs[#mobs + 1] = { name = npc and npc.name or ("NPC " .. rest), point = npc and npc.point, zone = npc and npc.zone,
+                npc = num(rest) }
+        elseif k == "Z" then
+            zones[#zones + 1] = num(rest)
+        elseif k == "Q" then
+            local d = data()
+            local name = d and d.Q and d.Q[num(rest)]
+            quests[#quests + 1] = (name ~= nil and name ~= "") and name or ("Quest " .. rest)
+        elseif k == "W" then
+            world = true
+        end
+    end
+    local listed = {}
+    for _, m in ipairs(mobs) do listed[m.npc] = true end
+    for _, v in ipairs(obs and obs.drops or {}) do
+        if not listed[v.npc] then
+            listed[v.npc] = true
+            mobs[#mobs + 1] = { name = v.name ~= "" and v.name or ("NPC " .. v.npc), point = v.ownPos and seenPoint(v.pos) or nil,
+                zone = tonumber(tostring(v.pos or ""):match("^(%d+)")) }
+        end
+    end
+    byDistance(mobs, me)
+    for i = 1, math.min(#mobs, WHERE_MOBS) do
+        local m = mobs[i]
+        local where = placeText(m.point, m.zone)
+        add({ kind = "drop", point = m.point, map = not m.point and m.zone or nil, name = m.name,
+            text = L["Drop: %s"]:format(m.name) .. (where and (", " .. where) or ""),
+            tip = m.point and L["Klick: Wegpunkt zu dem Mob."] or (m.zone and L["Klick: die Weltkarte dieser Zone."]) or nil })
+    end
+    if #mobs > WHERE_MOBS then
+        add({ kind = "more", text = L["... und %d weitere Mobs"]:format(#mobs - WHERE_MOBS) })
+    end
+    for _, z in ipairs(zones) do
+        add({ kind = "zone", map = z, text = L["Zonendrop: %s"]:format(zoneName(z)), tip = L["Klick: die Weltkarte dieser Zone."] })
+    end
+    for _, q in ipairs(quests) do add({ kind = "quest", text = L["Questbelohnung: %s"]:format(q) }) end
+    if world then add({ kind = "world", text = L["Weltdrop (viele Mobs)"] }) end
+    if R.Source(item, nil) == "disenchant" then add({ kind = "disenchant", text = L["Entzaubern (Verzauberkunst)"] }) end
+    if #out == 0 then
+        add({ kind = "none", text = L["Quelle unbekannt: Auktionshaus, Handel oder ein Drop"] })
+    end
+    return out
 end
 
 ---------------------------------------------------------------------------
@@ -785,39 +983,41 @@ ns.OnEvent("ADDON_LOADED", function(name)
     if name == ADDON and AmisiaDB then ns.ProfBagsLoaded(AmisiaDB) end
 end)
 
--- The reagents worth counting: those of the own professions with a route (data reagents), as a
--- sorted list. Only while the profession data is built (ns.DataLoaded): nil otherwise, so that no
--- event builds it (D-28).
+-- The reagents worth counting: every reagent of the data (PROFESSIONS.G), so that an alt counts
+-- what the main crafts with (F-159), as a sorted list. Only while the profession data is built
+-- (ns.DataLoaded): nil otherwise, so that no event builds it (D-28).
 local trackCache
 local function trackedFromData()
     if not ns.DataLoaded("PROFESSIONS") then return nil end
-    local skills = {}
-    for _, p in ipairs(Pr.Own()) do
-        if R.SKILLS[p.skill] then skills[#skills + 1] = p.skill end
-    end
-    table.sort(skills)
     local d = data()
-    local sig = table.concat(skills, ",") .. "|" .. tostring(d)
-    if trackCache and trackCache.sig == sig then return trackCache.list end
+    if trackCache and trackCache.data == d then return trackCache.list end
     local set, list = {}, {}
-    for _, skill in ipairs(skills) do
-        for _, r in ipairs(Pr.Recipes(skill)) do
-            local g = d and d.G and d.G[r.spell]
-            if type(g) == "string" then
-                for item in g:gmatch("(%d+):%d+") do
-                    item = num(item)
-                    if not set[item] then
-                        set[item] = true
-                        list[#list + 1] = item
-                    end
+    for _, g in pairs(d and type(d.G) == "table" and d.G or {}) do
+        if type(g) == "string" then
+            for item in g:gmatch("(%d+):%d+") do
+                item = num(item)
+                if not set[item] then
+                    set[item] = true
+                    list[#list + 1] = item
                 end
             end
         end
     end
     table.sort(list)
     while #list > BAGS_ITEMS do table.remove(list) end
-    trackCache = { sig = sig, list = list }
+    trackCache = { data = d, list = list }
     return list
+end
+
+-- Without the data: the longest list another own character saved (a fresh alt counts at once).
+local function trackedFromOthers(root, me)
+    local best
+    for name, e in pairs(root or {}) do
+        if name ~= me and type(e) == "table" and type(e.track) == "table" and (not best or #e.track > #best) then
+            best = e.track
+        end
+    end
+    return best
 end
 
 local bankOpen = false
@@ -832,7 +1032,12 @@ function R.SaveBags()
     local key = charKey()
     local root = bagsRoot(false)
     local old = root and type(root[key]) == "table" and root[key] or {}
-    local list = trackedFromData() or old.track
+    local list = trackedFromData()
+    if not list then
+        -- the longer of the own list saved last time and another character's
+        local other = trackedFromOthers(root, key)
+        list = type(old.track) == "table" and (not other or #old.track >= #other) and old.track or other
+    end
     if type(list) ~= "table" or #list == 0 then return false end
     root = bagsRoot(true)
     local bank = type(old.bank) == "table" and old.bank or {}
@@ -857,17 +1062,31 @@ end
 -- the same realm and faction (an alt of the other faction cannot mail it); an entry saved before
 -- realm and faction were kept counts again once that character logged in.
 function R.Twinks(item)
+    local _, n = R.TwinksBy(item)
+    return n
+end
+
+-- The same per character: { { name, n, bank } } by n (most first), and the sum.
+function R.TwinksBy(item)
+    local out, sum = {}, 0
     local root = bagsRoot(false)
-    if not root then return 0 end
     local me, realm, fac = charKey(), myRealm(), myFaction()
-    if not realm or not fac then return 0 end
-    local n = 0
+    if not root or not realm or not fac then return out, 0 end
+    item = tonumber(item)
     for name, e in pairs(root) do
         if name ~= me and type(e) == "table" and e.realm == realm and e.faction == fac and type(e.items) == "table" then
-            n = n + (tonumber(e.items[item]) or 0)
+            local n = tonumber(e.items[item]) or 0
+            if n > 0 then
+                out[#out + 1] = { name = name, n = n, bank = type(e.bank) == "table" and tonumber(e.bank[item]) or 0 }
+                sum = sum + n
+            end
         end
     end
-    return n
+    table.sort(out, function(a, b)
+        if a.n ~= b.n then return a.n > b.n end
+        return a.name < b.name
+    end)
+    return out, sum
 end
 
 -- How many this character has: the client's count with the bank, or the bags and the last bank count.
@@ -882,6 +1101,22 @@ function R.Have(item)
         have = math.max(have, bags + bank)
     end
     return have
+end
+
+-- How often this character can craft a recipe now (F-159): from the bags (what the craft takes) and
+-- with the bank; nil when its reagents are unknown or it has none.
+function R.Craftable(spell)
+    local list = Pr.Reagents(spell)
+    if not list or #list == 0 then return nil end
+    local f = C_Item and C_Item.GetItemCount
+    if type(f) ~= "function" then return nil end
+    local bags, all = math.huge, math.huge
+    for _, g in ipairs(list) do
+        local n = math.max(1, g[2])
+        bags = math.min(bags, math.floor((tonumber((plainCall(f, g[1], false))) or 0) / n))
+        all = math.min(all, math.floor(R.Have(g[1]) / n))
+    end
+    return bags, math.max(bags, all)
 end
 
 local saveDue = false

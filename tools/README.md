@@ -380,8 +380,9 @@ the licence text ships in `Amisia/LICENSES/AllTheThings-MIT.txt`, approved by th
 - Out comes one neutral form (see `load()`): quests (minimum level, faction, classes, givers with
   points, start object or item, pre-quests, rewards, zone, dungeon), NPCs (name, title, points,
   zone, faction, kind: boss, rare, vendor, giver, mob), boss and rare drops, zone drops with their
-  mobs, vendor stock, world drops, PvP gear per faction, crafted items per profession, the items of
-  the export, instances (name, area id, uiMaps, entrance, instance map id), flight paths (`fp()`: the
+  mobs, vendor stock, world drops, PvP gear per faction, crafted items per profession, gathered items
+  (`gathered`: herbs, ore, gems, leather, fish with their zones; `appendAllGroups(...)` joins all its
+  lists, the nodes first), the items of the export, instances (name, area id, uiMaps, entrance, instance map id), flight paths (`fp()`: the
   place from the comment, the flight master's NPC id and name, points, faction), the names of NPCs,
   game objects and items from the comments (`npc_names`, `object_names`, `item_names`). A record of a
   Forever folder wins over the same quest or NPC in a zzOLD folder.
@@ -783,6 +784,14 @@ python tools/build_professions.py [--wago ~/addons/_wago] [--att ~/addons/_cache
   `L = { [spell] = copper }` what that trainer asks; `TD = { [npc] = epoch }` the readings the file
   holds; a trainer AllTheThings lacks goes into `N` with the client's name and the reading's place.
   Offers of recipes the data does not have are only counted ("offers not in the data").
+- `RS = { [reagent] = "tokens" }` (F-160, D-90): where a reagent of `G` comes from besides `V` and the
+  recipes, for the menu "Woher?" of the professions page. `H<skill line>@<uiMapID>.<uiMapID>`: gathered
+  (herbalism 182, mining 186, skinning 393, fishing 356) in up to 8 zones, from AllTheThings' gathering
+  part of `crafted items` (`att_data.load()['gathered']`: the item's `maps_disp`, its `providers`
+  objects and the node it lies under, with their `maps` and points; without zones only `H<skill>`);
+  then up to 6 in all of `D<npc>` (a mob, in `N`), `Z<uiMapID>` (a zone drop), `W` (a world drop) and
+  `Q<quest>` (a quest reward, in `Q`), in that order. The build reports how many reagents have no
+  source at all ("reagent sources").
 - `S = { [item] = copper }`: every reagent of `G` that is not in `V` and has a `SellPrice` in
   `ItemSparse` above 0: what a vendor pays for one. The route weighs such a material by it (times
   4, at least 20 copper; `Gear/ProfRoute.lua`), it is never shown as a cost.

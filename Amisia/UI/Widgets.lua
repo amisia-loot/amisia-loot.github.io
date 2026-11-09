@@ -1497,9 +1497,12 @@ local function levelAbove(w)
 end
 
 -- A small popup menu under owner; a click runs the entry and closes it. Leaving it for two seconds
--- or Escape closes it too.
+-- or Escape closes it too. entries: { text, fn, tip = "...", tipTitle = "..." }; without fn a line
+-- only (grey, no click), with head = true a gold head line. opts.width: wider than T.MENU.W.
 local menu
-function W.Menu(owner, entries)
+function W.Menu(owner, entries, opts)
+    local M = T.MENU
+    local width = math.max(M.W, opts and tonumber(opts.width) or 0)
     if menu and menu:IsShown() and menu.owner == owner then
         menu:Hide()
         return menu
@@ -1526,10 +1529,8 @@ function W.Menu(owner, entries)
     menu.away = 0
     for i, e in ipairs(entries) do
         local b = menu.buttons[i]
-        local M = T.MENU
         if not b then
             b = CreateFrame("Button", nil, menu)
-            b:SetSize(M.ROW_W, M.ROW_H)
             b:SetPoint("TOPLEFT", M.PAD, -M.PAD - (i - 1) * M.ROW_H)
             b.label = W.Text(b, T.FONT.text, M.LABEL_W)
             b.label:SetPoint("LEFT", M.PAD, 0)
@@ -1540,11 +1541,15 @@ function W.Menu(owner, entries)
             b.hl:SetBlendMode("ADD")
             menu.buttons[i] = b
         end
-        b.label:SetText(e[1])
-        b:SetScript("OnClick", function()
+        b:SetSize(width - (M.W - M.ROW_W), M.ROW_H)
+        b.label:SetWidth(width - (M.W - M.LABEL_W))
+        local fn = e[2]
+        b.label:SetText(e.head and (T.LABEL .. e[1] .. "|r") or (fn and e[1]) or (T.GREY .. e[1] .. "|r"))
+        b.hl:SetShown(fn ~= nil)
+        b:SetScript("OnClick", fn and function()
             menu:Hide()
-            e[2]()
-        end)
+            fn()
+        end or nil)
         -- e.tip: a line of explanation on hover
         b:SetScript("OnEnter", e.tip and function(self)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -1556,7 +1561,7 @@ function W.Menu(owner, entries)
         b:Show()
     end
     for i = #entries + 1, #menu.buttons do menu.buttons[i]:Hide() end
-    menu:SetSize(T.MENU.W, 2 * T.MENU.PAD + #entries * T.MENU.ROW_H)
+    menu:SetSize(width, 2 * M.PAD + #entries * M.ROW_H)
     menu:ClearAllPoints()
     if owner == UIParent and GetCursorPosition then
         -- no button to hang it on (the compartment entry with the minimap button hidden): at the cursor

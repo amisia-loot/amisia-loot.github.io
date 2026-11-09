@@ -305,3 +305,35 @@ def test_trainers_in_the_data():
     assert P.L[1252229] == 150 and P.TD[90001] == 1000
     E = lua_load(bp.render(bp.empty(), '2026-11-08'))
     assert E.L is not None and E.TD is not None
+
+
+def test_reagent_sources():
+    att = bp.read_att(ATT)
+    att['gathered'] = {2840: {'skill': 'mining', 'maps': [1426, 1429]}, 3371: {'skill': 'herbalism', 'maps': []}}
+    att['sources'] = dict(att['sources'])
+    att['sources'][2880] = ['W', 'V5', 'D90001']
+    att['npcs'] = dict(att['npcs'])
+    att['npcs'][90001] = ('Test Mob', '1426:100:200', '')
+    d = bp.combine(bp.read_client(REAGENTS, WAGO), att)
+    # gathered with its zones, a mob before the world drop, never the vendor (that is V)
+    assert d['RS'] == {2840: 'H186@1426.1429', 2880: 'D90001,W', 3371: 'H182'}
+    assert d['N'][90001] == 'Test Mob|1426:100:200|', 'the mob goes into N'
+    assert lua_load(bp.render(d, '2026-01-01')).RS[2840] == 'H186@1426.1429'
+
+
+def test_shipped_reagent_sources():
+    path = os.path.join(ADDON, 'Data', 'ProfessionData.lua')
+    with open(path, encoding='utf-8') as fh:
+        P = lua_load(fh.read())
+    reagents = {int(x.split(':')[0]) for _, g in P.G.items() for x in g.split(',')}
+    n = 0
+    for item, line in P.RS.items():
+        assert item in reagents, f'RS[{item}] is no reagent'
+        for tok in line.split(','):
+            assert re.fullmatch(r'H(182|186|393|356)(@\d+(\.\d+){0,7})?|D\d+|Z\d+|W|Q\d+', tok), f'RS[{item}]: {tok}'
+            if tok[0] == 'D':
+                assert P.N[int(tok[1:])] is not None, f'mob {tok} of {item} has no N entry'
+        n += 1
+    assert n > 200
+    assert P.RS[2770].startswith('H186@'), 'Copper Ore: mined'
+    assert P.RS[2447].startswith('H182@'), 'Peacebloom: a herb'

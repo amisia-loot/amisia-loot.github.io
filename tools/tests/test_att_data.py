@@ -87,6 +87,15 @@ def test_drops_vendors_and_the_rest(db):
     assert db['world'] == [61015] and db['pvp'] == [(61016, 'A')] and db['crafted'] == [(61017, 'tailoring')]
 
 
+def test_gathered_items_with_their_zones(db):
+    g = db['gathered']
+    # the ore under its node: the node's zone; the gem: its own zones and its provider node's
+    assert g[61018] == {'skill': 'mining', 'maps': [1426]}
+    assert g[61019]['skill'] == 'mining' and sorted(g[61019]['maps']) == [1426, 1455]
+    assert g[61020] == {'skill': 'herbalism', 'maps': []}
+    assert all(item not in g for item, _ in db['crafted']), 'gathered items are not crafted'
+
+
 def test_instances_and_their_map_ids(db):
     i = db['instances']
     assert i[9001]['name'] == 'Test Halls' and i[9001]['area'] == 99001 and i[9001]['mapID'] == 4001

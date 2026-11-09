@@ -143,7 +143,8 @@ assert(mine.items[2589] == 8 and mine.bank[2589] == 5 and mine.items[2320] == 1,
 assert(mine.realm == realm and mine.faction == "A", "realm and faction of the entry")
 local listed = {}
 for _, item in ipairs(mine.track) do listed[item] = true end
-assert(listed[2589] and listed[2320] and listed[2324] and not listed[2447], "the tailoring reagents, not alchemy's")
+assert(listed[2589] and listed[2320] and listed[2324] and listed[2447] and listed[2770],
+    "every reagent of the data, also alchemy's and mining's (an alt counts for the main, F-159)")
 STUB.bank[2589] = nil   -- the client forgot the bank: the last bank count stays
 R.SaveBags()
 assert(AmisiaDB.prof.bags[me].items[2589] == 8, "the bank part kept")
@@ -225,7 +226,7 @@ for _, s in ipairs(f.route.steps) do if s.kind == "buy" then hasBuy = true end e
 assert(hasBuy, "the vendor recipe with its buy step")
 f.vendorT:Click()
 assert(AmisiaDB.settings.professions.routeVendor == nil)
--- the shopping list: green when enough, a click on a vendor material sets the waypoint
+-- the shopping list: green when enough, a click opens "Woher?", its vendor line sets the waypoint
 f.tabShop:Click()
 assert(f.shopView:IsShown() and not f.stepsView:IsShown())
 local threadRow, linenRow
@@ -236,6 +237,10 @@ end
 assert(threadRow and has(threadRow.name:GetText(), "|cff40bf40") and threadRow.src:GetText() == "Händler", "green, from the vendor")
 assert(linenRow and linenRow.twinks:GetText() == "30" and linenRow.src:GetText() == "farmen oder Auktionshaus")
 threadRow:Click()
+local menu = _G.AmisiaMenu
+assert(menu and menu:IsShown() and has(menu.buttons[1].label:GetText(), "Woher kommt"), "the menu of the material")
+assert(has(menu.buttons[2].label:GetText(), "Händler: ") and menu.buttons[2]:GetScript("OnClick"), "a vendor first")
+menu.buttons[2]:Click()
 local target = NS.MapTarget and NS.MapTarget()
 assert(target and ((target.map == 1429 and math.abs(target.x - 0.125) < 1e-6) or (target.map == 1453 and math.abs(target.x - 0.5) < 1e-6)),
     "a vendor of the thread with a place")

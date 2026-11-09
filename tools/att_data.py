@@ -229,6 +229,15 @@ env.lvlsquish = function(a) return a end
 env.bubbleDown = function(_, t) return t end
 env.bubbleDownSelf = function(_, t) return t end
 env.sharedData = function(_, t) return t end
+-- appendAllGroups(a, b, ...): one list of the groups of all (the mining and herb nodes come first)
+env.appendAllGroups = function(...)
+    local out = {}
+    for i = 1, select("#", ...) do
+        local v = select(i, ...)
+        if plain(v) then for _, x in ipairs(v) do out[#out + 1] = x end end
+    end
+    return out
+end
 
 local MAPS = {}
 local RACE = { HUMAN = 1, ORC = 2, DWARF = 3, NIGHTELF = 4, UNDEAD = 5, SCOURGE = 5, TAUREN = 6, GNOME = 7, TROLL = 8 }
@@ -496,14 +505,23 @@ local function walk(v, ctx, depth)
     elseif kind == "prof" then
         c.prof = NAMED[id] or ctx.prof
     elseif kind == "o" and type(id) == "number" then
-        emit("objs", { id = id, file = ctx.file, zone = ctx.zone, pts = points(t) })
+        emit("objs", { id = id, file = ctx.file, zone = ctx.zone, pts = points(t), maps = mapList(t.maps) })
         c.obj = id
     elseif kind == "i" and type(id) == "number" then
         local crs = ids(t.crs)
         for _, x in ipairs(ids(t.cr)) do crs[#crs + 1] = x end
+        -- the objects that give it (a herb, a vein, a fish school) and the zones the data shows it in
+        local provObjs = {}
+        local provs = plain(t.providers) and t.providers or { t.provider }
+        for _, p in ipairs(provs) do
+            if plain(p) and p[1] == "o" and type(p[2]) == "number" then provObjs[#provObjs + 1] = p[2] end
+        end
+        local maps = mapList(t.maps_disp)
+        for _, m in ipairs(mapList(t.maps)) do maps[#maps + 1] = m end
         emit("items", { id = id, file = ctx.file, root = ctx.root, zone = ctx.zone, inst = ctx.inst, hdr = ctx.hdr,
                         quest = ctx.quest, npc = ctx.npc, npcKind = ctx.npcKind, enc = ctx.enc, obj = ctx.obj, prof = ctx.prof,
-                        races = c.races, crs = crs, pts = points(t), cost = costOf(t.cost) })
+                        races = c.races, crs = crs, pts = points(t), cost = costOf(t.cost), maps = maps,
+                        provObjs = provObjs })
     end
     walk(t.groups, c, depth + 1)
     for _, x in ipairs(t) do walk(x, c, depth + 1) end
@@ -669,6 +687,8 @@ def comment_names(src):
 PROFESSIONS = {'ALCHEMY': 'alchemy', 'BLACKSMITHING': 'blacksmithing', 'LEATHERWORKING': 'leatherworking',
                'TAILORING': 'tailoring', 'ENGINEERING': 'engineering', 'ENCHANTING': 'enchanting',
                'COOKING': 'cooking', 'FIRST_AID': 'firstaid', 'JEWELCRAFTING': 'jewelcrafting'}
+# The gathering professions of the data's Craftables part: their items are gathered (zones, objects).
+GATHERING = {'HERBALISM': 'herbalism', 'MINING': 'mining', 'SKINNING': 'skinning', 'FISHING': 'fishing'}
 # Client inventory types (Enum.InventoryType) as the INVTYPE_ tokens the scan gives.
 INVTYPE = {1: 'INVTYPE_HEAD', 2: 'INVTYPE_NECK', 3: 'INVTYPE_SHOULDER', 4: 'INVTYPE_BODY', 5: 'INVTYPE_CHEST',
            6: 'INVTYPE_WAIST', 7: 'INVTYPE_LEGS', 8: 'INVTYPE_FEET', 9: 'INVTYPE_WRIST', 10: 'INVTYPE_HAND',
@@ -817,7 +837,8 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
                    'profs' (only a trainer: the set of ATT profession names it stands under, 'ALCHEMY')}},
      'drops': [(item, npc id or None, kind, ATT instance id or None, zone uiMapID or None, old, encounter name)],
      'zone_drops': [(item, [npc ids], ATT instance id or None, zone, old)],
-     'sold': [(item, vendor id, old)], 'sold_cost': {(item, vendor id): copper or 'x' (another currency or
+     'sold': [(item, vendor id, old)], 'gathered': {item: {'skill' (herbalism, mining, skinning, fishing),
+     'maps' (uiMapIDs of the item, its objects and their points)}}, 'sold_cost': {(item, vendor id): copper or 'x' (another currency or
      items), only where the data names a cost}, 'world': [item], 'pvp': [(item, faction)],
      'crafted': [(item, profession key)], 'items': {id: item dict (read_itemdb)}, 'uimap_instance': {},
      'item_names': {id: English name from the comments}, 'npc_names': {id: name}, 'object_names': {id: name}
@@ -949,7 +970,15 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
         if not rec['name']:
             rec['name'] = (names.get(('n', nid)) or (None,))[0]
 
+    # the zones of the gathering objects (herbs, veins, fish schools): their own list and their points
+    obj_maps = {}
+    for r in raw.get('objs') or []:
+        ms = obj_maps.setdefault(int(r['id']), [])
+        for m in [int(x) for x in r.get('maps') or []] + [p[0] for p in pts(r.get('pts'))]:
+            if m not in ms:
+                ms.append(m)
     drops, zone_drops, sold, world, pvp, crafted = [], [], [], [], [], []
+    gathered = {}      # item -> {'skill': key, 'maps': [uiMapID]} herbs, ore, gems, leather, fish
     sold_cost = {}      # (item, vendor) -> copper or 'x' (another currency or items), where the data names it
     drop_points = {}   # item -> where the data says it drops
     for r in raw['items'] or []:
@@ -961,6 +990,15 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
             q = quests.get(quest)
             if q is not None and q['old'] == o and item not in q['rewards']:
                 q['rewards'].append(item)
+            continue
+        if root == 'Craftables' and (r.get('prof') or '') in GATHERING:
+            g = gathered.setdefault(item, {'skill': GATHERING[r['prof']], 'maps': []})
+            ms = [int(x) for x in r.get('maps') or []] + [p[0] for p in pts(r.get('pts'))]
+            for ob in [int(x) for x in r.get('provObjs') or []] + ([_int(r.get('obj'))] if r.get('obj') else []):
+                ms += obj_maps.get(ob, [])
+            for m in ms:
+                if m not in g['maps']:
+                    g['maps'].append(m)
             continue
         if root == 'Craftables':
             prof = PROFESSIONS.get(r.get('prof') or '')
@@ -1010,7 +1048,7 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
                         'old': old(r['file'])}
     db = {'commit': commit_of(base), 'files': files, 'errors': errors, 'maps': _py(S.mapNames()),
           'instances': instances, 'quests': quests, 'npcs': npcs, 'drops': drops, 'zone_drops': zone_drops,
-          'sold': sold, 'sold_cost': sold_cost, 'world': sorted(set(world)), 'pvp': sorted(set(pvp)), 'crafted': sorted(set(crafted)),
+          'sold': sold, 'sold_cost': sold_cost, 'gathered': gathered, 'world': sorted(set(world)), 'pvp': sorted(set(pvp)), 'crafted': sorted(set(crafted)),
           'items': read_itemdb(base, S) if items else {}, 'uimap_instance': uimap_instance,
           'item_names': {i: v[0] for (k, i), v in names.items() if k == 'i'}, 'flights': flights,
           'npc_names': {i: v[0] for (k, i), v in names.items() if k == 'n'},
@@ -1021,5 +1059,5 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
 def empty_db():
     """The neutral form without any data (tests, or a build without a download)."""
     return {'commit': None, 'files': [], 'errors': {}, 'maps': {}, 'instances': {}, 'quests': {}, 'npcs': {},
-            'drops': [], 'zone_drops': [], 'sold': [], 'sold_cost': {}, 'world': [], 'pvp': [], 'crafted': [], 'items': {},
+            'drops': [], 'zone_drops': [], 'sold': [], 'sold_cost': {}, 'gathered': {}, 'world': [], 'pvp': [], 'crafted': [], 'items': {},
             'uimap_instance': {}, 'item_names': {}, 'flights': {}, 'npc_names': {}, 'object_names': {}}

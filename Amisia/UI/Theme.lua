@@ -483,10 +483,12 @@ T.PROFPAGE = {
     RD_PAD = 8, RD_ICON = 32, RD_TITLE_X = 46, RD_TITLE_Y = -9, RD_SUB_Y = -28, RD_BODY_Y = 46,
     STAR = 18, STAR_ICON = "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\prof_star", STAR_OFF = 0.3,
     RD_BOX_GAP = 6, RD_BOX_PAD = 6, RD_HEAD_H = 16, RD_LINE_H = 12, RD_CTRL_H = 22, RD_REAG_H = 18, RD_REAG_ICON = 16,
-    RD_COUNT_W = 70, RD_HAVE_W = 50, RD_BOX_BG = { 0, 0, 0, 0.3 }, RD_GUILD_BG = { 0.25, 0.75, 0.25, 0.1 },
+    RD_COUNT_W = 70, RD_HAVE_W = 64, RD_BOX_BG = { 0, 0, 0, 0.3 }, RD_GUILD_BG = { 0.25, 0.75, 0.25, 0.1 },
     -- the crafting list: its list LIST_W wide (QUEUE_DEL_W for "Entfernen"), the reagents beside it
     -- (two lines each, NEED_H high: name and have/need, the source under it)
     NEED_H = 34, NEED_HAVE_W = 70, QUEUE_N_W = 40,
+    -- the menu "Woher?" of a reagent (F-160): wide enough for "Händler: name, zone 42, 65 · 1g 20s"
+    WHERE_W = 360,
     ICON_COORDS = { 0.07, 0.93, 0.07, 0.93 },   -- a profession's icon without the client's icon frame
     CARD_BG = { 0, 0, 0, 0.45 }, CARD_EDGE = { 0.45, 0.4, 0.3, 0.6 }, CARD_HOVER = 0.08,
     SEC_H = 22, SEC_GAP = 10, SEC_LINE_GAP = 8, SEC_LINE_A = 0.6,

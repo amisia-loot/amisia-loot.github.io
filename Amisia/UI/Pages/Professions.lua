@@ -264,7 +264,14 @@ local function fillRow(r, e)
         local rec = e.recipe
         col = Pr.COLORS[e.color] or Pr.COLORS.none
         local name = e.name
-        if e.known == true then name = name .. " " .. GREY .. L["(bekannt)"] .. "|r" end
+        if e.known == true then
+            local now = Route.Craftable(rec.spell)
+            if now and now > 0 then
+                name = name .. " " .. GREEN .. ("(%d)"):format(now) .. "|r"
+            else
+                name = name .. " " .. GREY .. L["(bekannt)"] .. "|r"
+            end
+        end
         r.name:SetText(color(col, name))
         r.mark:SetText(upgradeMark(rec.item) or (GREY .. sourceTag(rec) .. "|r"))
         if e.price then
@@ -425,11 +432,77 @@ local function newBox(parent, title)
     return b
 end
 
+local function itemName(id)
+    local name = Pr.ItemInfo(id)
+    if not name then nameMissing = true end
+    return name or ("Item " .. tostring(id))
+end
+
+-- "have / need" in green (enough in the bags and bank), orange (enough with the alts) or red (F-159).
+local function haveText(have, twinks, need)
+    local c = have >= need and GREEN or (have + twinks >= need and T.ORANGE) or T.RED
+    local own = tostring(have)
+    if twinks > 0 and have < need then own = own .. "+" .. twinks end
+    return c .. ("%s / %d"):format(own, need) .. "|r"
+end
+
+-- The tooltip lines of the own characters holding an item (F-159).
+local function addHolders(item)
+    local list = Route.TwinksBy(item)
+    if #list == 0 then return end
+    GameTooltip:AddLine(L["Bei deinen Twinks:"], 1, 0.82, 0)
+    for i, c in ipairs(list) do
+        if i > 6 then
+            GameTooltip:AddLine(L["... und %d weitere"]:format(#list - 6), 0.6, 0.6, 0.6)
+            break
+        end
+        local name = c.name
+        GameTooltip:AddDoubleLine(name, c.bank > 0 and L["%d (Bank %d)"]:format(c.n, c.bank) or tostring(c.n), 1, 1, 1, 1, 1, 1)
+    end
+end
+
+-- The menu "Woher?" of a reagent (F-160): vendors, recipes, gathering zones, mobs; a click on a line
+-- sets the waypoint, opens the zone's world map or the recipe.
+local function whereMenu(owner, item)
+    if not item then return end
+    if GameTooltip then GameTooltip:Hide() end
+    local entries = { { L["Woher kommt %s?"]:format(itemName(item)), nil, head = true } }
+    for _, src in ipairs(Route.ReagentSources(item)) do
+        local fn
+        if src.point then
+            fn = function()
+                local ok, why = ns.MapSetPoint(src.point, src.name or itemName(item), nil, item)
+                if not ok and why then ns.msg(why) end
+            end
+        elseif src.map then
+            fn = function() ns.MapShowOnWorldMap({ map = src.map }) end
+        elseif src.recipe then
+            fn = function() if ns.ShowRecipe then ns.ShowRecipe(src.recipe.skill, src.recipe.spell) end end
+        end
+        entries[#entries + 1] = { src.text, fn, tip = fn and src.tip or nil }
+    end
+    W.Menu(owner, entries, { width = P.WHERE_W })
+end
+
 local function reagentRow(box, i)
     local row = box.rows[i]
     if row then return row end
-    row = CreateFrame("Frame", nil, box)
+    row = CreateFrame("Button", nil, box)
     row:SetHeight(P.RD_REAG_H)
+    row:RegisterForClicks("LeftButtonUp")
+    row.hl = row:CreateTexture(nil, "HIGHLIGHT")
+    row.hl:SetAllPoints()
+    row.hl:SetColorTexture(1, 1, 1, P.CARD_HOVER)
+    row:SetScript("OnClick", function(self) whereMenu(self, self.item) end)
+    row:SetScript("OnEnter", function(self)
+        if not (self.item and GameTooltip) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        if GameTooltip.SetItemByID then GameTooltip:SetItemByID(self.item) else GameTooltip:SetText(itemName(self.item)) end
+        addHolders(self.item)
+        GameTooltip:AddLine(L["Klick: woher es kommt (Händler, Sammeln, Drop, Rezept)."], 0.6, 0.6, 0.6, true)
+        GameTooltip:Show()
+    end)
+    row:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     row.icon = row:CreateTexture(nil, "ARTWORK")
     row.icon:SetSize(P.RD_REAG_ICON, P.RD_REAG_ICON)
     row.icon:SetPoint("LEFT", 0, 0)
@@ -542,16 +615,26 @@ local function showRecipe(f, e)
         layoutRecipe(rd)
         return
     end
-    -- the reagents with the own count (bags and bank)
+    -- the reagents with the own count (bags and bank) and the alts' (F-159); the head with how often
+    -- a known recipe can be crafted now
     local list = Pr.Reagents(r.spell)
     for i, g in ipairs(list or {}) do
         local row = reagentRow(rd.reag, i)
-        local have = Route.Have(g[1])
+        row.item = g[1]
         row.icon:SetTexture(entryIcon(g[1]))
         row.name:SetText(itemText(g[1]))
-        row.have:SetText((have >= g[2] and GREEN or T.RED) .. ("%d / %d"):format(have, g[2]) .. "|r")
+        row.have:SetText(haveText(Route.Have(g[1]), Route.Twinks(g[1]), g[2]))
         row:Show()
     end
+    local head = L["Reagenzien"]
+    if Pr.Known(r.spell, r.skill) == true then
+        local now, bank = Route.Craftable(r.spell)
+        if now then
+            head = head .. " " .. GREY .. L["· herstellbar: %d"]:format(now)
+                .. (bank > now and (" " .. L["(%d mit Bank)"]:format(bank)) or "") .. "|r"
+        end
+    end
+    rd.reag.head:SetText(head)
     for i = #(list or {}) + 1, #rd.reag.rows do rd.reag.rows[i]:Hide() end
     rd.reag.note:SetShown(list == nil or #list == 0)
     rd.reag.note:SetText(GREY .. (list and L["Keine Reagenzien."] or L["Reagenzien: noch unbekannt (Client antwortet nicht)"]) .. "|r")
@@ -682,12 +765,6 @@ local function routeShown(v) return mode() == ROUTE and type(v) == "number" and 
 local function money(c) return Pr.Money(math.floor((c or 0) + 0.5)) end
 local function times(n) return math.max(0, math.ceil((n or 0) - 1e-6)) end
 local function colorWord(c) return color(Pr.COLORS[c] or Pr.COLORS.none, COLOR_WORDS[c] or "?") end
-
-local function itemName(id)
-    local name = Pr.ItemInfo(id)
-    if not name then nameMissing = true end
-    return name or ("Item " .. tostring(id))
-end
 
 -- The vendor of a list nearest to the player with a known place (and that place), else the first.
 local function nearestVendor(vendors)
@@ -829,10 +906,11 @@ local function clickStep(s)
 end
 
 local SOURCE_TEXT = { vendor = L["Händler"], vendorx = L["Händler (Ort unbekannt)"], smelt = L["Bergbau: verhütten"],
-    mine = L["sammeln: Bergbau"],
+    mine = L["sammeln: Bergbau"], drop = "Drop", world = L["Weltdrop"], quest = L["Questbelohnung"],
     disenchant = L["entzaubern"], farm = L["farmen oder Auktionshaus"] }
 local function sourceText(e)
     if e.kind == "craft" then return L["herstellen: %s"]:format(Pr.Name(e.from)) end
+    if e.kind == "gather" then return L["sammeln: %s"]:format(Pr.Name(e.from)) end
     return SOURCE_TEXT[e.kind] or SOURCE_TEXT.farm
 end
 
@@ -855,7 +933,8 @@ local function shopTooltip(owner, e)
     GameTooltip:AddLine(" ")
     GameTooltip:AddLine(L["Bedarf %d, hast %d, bei Twinks %d, fehlt %d"]:format(e.need, e.have, e.twinks, e.missing), 1, 1, 1)
     GameTooltip:AddLine(sourceText(e), 1, 1, 1)
-    if e.kind == "vendor" then GameTooltip:AddLine(L["Klick: Wegpunkt zum nächsten Händler."], 0.6, 0.6, 0.6) end
+    addHolders(e.item)
+    GameTooltip:AddLine(L["Klick: woher es kommt (Händler, Sammeln, Drop, Rezept)."], 0.6, 0.6, 0.6, true)
     GameTooltip:Show()
 end
 
@@ -1352,20 +1431,24 @@ end
 local function fillQueue(r, e)
     r.iconFrame.icon:SetTexture(entryIcon(e.recipe.item, e.recipe.spell))
     ringColor(r.iconFrame, e.recipe.item)
-    r.name:SetText(e.recipe.item > 0 and itemText(e.recipe.item, Pr.RecipeName(e.recipe)) or Pr.RecipeName(e.recipe))
+    local name = e.recipe.item > 0 and itemText(e.recipe.item, Pr.RecipeName(e.recipe)) or Pr.RecipeName(e.recipe)
+    local now = Pr.Known(e.recipe.spell, e.recipe.skill) == true and Route.Craftable(e.recipe.spell) or nil
+    if now then name = name .. " " .. (now >= e.n and GREEN or GREY) .. ("(%d)"):format(now) .. "|r" end
+    r.name:SetText(name)
     r.n:SetText(("%dx"):format(e.n))
 end
 
 local function fillNeed(r, e)
     r.icon:SetTexture(entryIcon(e.item))
     r.name:SetText(itemText(e.item))
-    r.have:SetText((e.enough and GREEN or T.RED) .. ("%d / %d"):format(e.have, e.need) .. "|r")
+    r.have:SetText(haveText(e.have, e.twinks, e.need))
     local where = sourceText(e)
     if e.kind == "vendor" then
         local npc = nearestVendor(e.vendors)
         if npc and npc.name then where = L["Händler: %s"]:format(npc.name) end
         if e.price then where = where .. " · " .. money(e.price) end
     end
+    if e.twinks > 0 then where = where .. " · " .. L["Twinks: %d"]:format(e.twinks) end
     r.src:SetText(GREY .. where .. "|r")
 end
 
@@ -1429,10 +1512,7 @@ local function buildQueue(f, top)
         r.src:SetPoint("TOPLEFT", T.LAYOUT.TEXT_X + P.RD_REAG_ICON + 4, P.LINE2_Y)
         r.src:SetPoint("RIGHT", -T.LAYOUT.TEXT_X, 0)
         r:RegisterForClicks("LeftButtonUp")
-        r:SetScript("OnClick", function(self)
-            local e = self.item
-            if e and e.kind == "vendor" then goToVendor(e.vendors, itemName(e.item)) end
-        end)
+        r:SetScript("OnClick", function(self) if self.item then whereMenu(self, self.item.item) end end)
         r:SetScript("OnEnter", function(self) shopTooltip(self, self.item) end)
         r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     end, fillNeed, { fill = true, x = P.DETAIL_X })
@@ -1843,10 +1923,7 @@ local function create(parent)
     f.shop = f.shopView:List(P.SHOP_ROWS, P.SHOP_H, function(r)
         W.Cells(r, P.SHOP_COLS)
         r:RegisterForClicks("LeftButtonUp")
-        r:SetScript("OnClick", function(self)
-            local e = self.item
-            if e and e.kind == "vendor" then goToVendor(e.vendors, itemName(e.item)) end
-        end)
+        r:SetScript("OnClick", function(self) if self.item then whereMenu(self, self.item.item) end end)
         r:SetScript("OnEnter", function(self) shopTooltip(self, self.item) end)
         r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
     end, fillShop, { fill = true })
