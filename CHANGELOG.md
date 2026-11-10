@@ -5,6 +5,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(scan): long quest texts are no longer cut inside a letter (F-172)
+
+  The quest scan cut a long objective text after a fixed number of bytes, which could split an umlaut
+  and leave a broken character in the saved file. Texts are now cut between characters.
+
+- feat(ui): the author's Twitch and Discord in the footer (F-176)
+
+  Two small symbols at the right end of the main window's footer. A click shows the link in a small
+  window, already marked, to copy with Ctrl+C (the game cannot open a browser).
+
 - feat(gear): the planner can show gear without a known source (F-175)
 
   Amisia knows the stats of about 1,700 items from the item scan but not where they come from, among them loot

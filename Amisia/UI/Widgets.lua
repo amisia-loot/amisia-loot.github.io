@@ -1916,6 +1916,41 @@ function W.Confirm(title, text, okLabel, onOk, onCancel)
 end
 
 ---------------------------------------------------------------------------
+-- A link to copy (D-108): the client opens no browser, so the link stands in a field, marked for
+-- Ctrl+C; typing puts it back. Enter and Escape close the window. One at a time.
+---------------------------------------------------------------------------
+local linkWin
+function W.ShowLink(title, url)
+    local C = T.LINKWIN
+    if not linkWin then
+        linkWin = W.Window("AmisiaLinkFrame", C.W, C.H, { strata = "FULLSCREEN_DIALOG" })
+        linkWin:SetPoint("CENTER", UIParent, "CENTER", 0, 120)
+        linkWin.text = W.Text(linkWin, T.FONT.body, C.W - 2 * T.WINDOW_PAD)
+        linkWin.text:SetPoint("TOPLEFT", T.WINDOW_PAD, -C.TEXT_Y)
+        linkWin.text:SetText(L["Kopiere den Link mit Strg+C:"])
+        local box = W.LineEdit(linkWin, C.W - 2 * T.WINDOW_PAD)
+        box:SetPoint("TOPLEFT", T.WINDOW_PAD, -C.BOX_Y)
+        box:HookScript("OnTextChanged", function(self, user)
+            if user and self:GetText() ~= (linkWin.url or "") then
+                self:SetText(linkWin.url or "")
+                self:HighlightText()
+            end
+        end)
+        box:HookScript("OnEnterPressed", function() linkWin:Hide() end)
+        box:HookScript("OnEscapePressed", function() linkWin:Hide() end)
+        linkWin.box = box
+    end
+    linkWin.url = type(url) == "string" and url or ""
+    linkWin:SetTitle(title or "")
+    linkWin.box:SetText(linkWin.url)
+    linkWin:Show()
+    if linkWin.Raise then linkWin:Raise() end
+    linkWin.box:SetFocus()
+    linkWin.box:HighlightText()
+    return linkWin
+end
+
+---------------------------------------------------------------------------
 -- The page scaffold
 ---------------------------------------------------------------------------
 -- W.Page(parent) makes a page (it fills the content inset, 602 x 478) whose shared parts are all

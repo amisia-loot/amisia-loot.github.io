@@ -39,6 +39,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-176 Twitch und Discord in der Fußzeile
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du das Amisia-Fenster öffnest, dann stehen unten rechts neben "Offiziersansicht · Version ..." zwei kleine Symbole, Twitch und Discord; die Maus darauf nennt den Namen und "Klick: zeigt den Link zum Kopieren.".
+- Prüfung: Wenn du auf das Discord-Symbol klickst, dann öffnet sich ein kleines Fenster "Discord" mit dem Link https://discord.gg/mxhvFBSXSf, schon markiert; Strg+C kopiert ihn, Tippen ändert ihn nicht, Escape schließt das Fenster. Das Twitch-Symbol zeigt https://www.twitch.tv/mrvulo.
+- Notiz: DECISIONS D-108. Neue Texturen: nach dem Release WoW ganz neu starten.
+
 ### F-175 Ausrüstungsplaner: Items ohne bekannte Quelle zuschaltbar
 - Version: -
 - Status: geplant

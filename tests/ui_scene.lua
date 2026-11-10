@@ -1015,6 +1015,10 @@ S.WINDOWS = {
     end },
     -- the quest items to clear away (F-173)
     { key = "questitems", view = "raider", open = function() return S.questItems() end },
+    -- the link to copy (F-176): the author's Discord
+    { key = "linkwindow", view = "raider", open = function()
+        return NS.W.ShowLink(NS.Theme.LINKS[2].name, NS.Theme.LINKS[2].url)
+    end },
     -- the dungeon bar (F-168), last (it stands in a dungeon): every segment, then each list open
     { key = "dungeonbar", view = "raider", open = function() return S.dungeonBar() end },
     { key = "dungeonbar-bosses", view = "raider", open = function() return S.dungeonBar("bosses") end },

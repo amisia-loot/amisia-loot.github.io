@@ -268,3 +268,12 @@ def test_boss_npcs_by_the_encounter_name_in_the_scan_language(tmp_path):
     # an empty scan changes nothing
     d4 = copy.deepcopy(dungeons)
     assert bdn.boss_npcs_from_scan(d4, sa.id_scans(None, []), {}) == [] and d4 == dungeons
+
+
+def test_a_line_cut_inside_a_character_loses_only_the_mark():
+    """The quest scan of 2.74.0 cut a text inside "ü"; read with errors='replace' the line ends in the
+    replacement mark, which the archive drops."""
+    arch = sa.empty()
+    db = {'scan': {'quests': {'loc': 'deDE', 'list': {7: 'Titel\t20\t0\t\t0\tBringt es zur\ufffd'}}}}
+    sa.absorb(arch, db)
+    assert arch['quests']['deDE'][7] == 'Titel\t20\t0\t\t0\tBringt es zur'

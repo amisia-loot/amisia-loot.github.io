@@ -659,3 +659,7 @@ L["Dafür Spieler unter der Maus ansehen"] = "Inspect the player under the mouse
 L["Kennt Amisia die Ausrüstung eines Spielers unter der Maus noch nicht, betrachtet es ihn wie \"Betrachten\": höchstens einmal pro Sekunde, nur in Reichweite, nicht im Kampf und nicht bei offenem Betrachten-Fenster. Aus: nur dein Charakter und Spieler, die Amisia in den letzten zehn Minuten schon betrachtet hat."] = "When Amisia does not know the gear of a player under the mouse yet, it inspects him like \"Inspect\" does: at most once a second, only in range, not in combat and not while the inspect window is open. Off: only your character and players Amisia inspected in the last ten minutes."
 L["Berufe im Spieler-Tooltip"] = "Professions in the player tooltip"
 L["Eine Reihe Berufssymbole im Tooltip deiner Charaktere und der Gildenmitglieder, deren Berufe Amisia kennt (Rezeptaustausch, Gildennotiz). Nichts wird dafür gesendet."] = "A row of profession icons in the tooltip of your characters and of the guild members whose professions Amisia knows (recipe exchange, guild note). Nothing is sent for it."
+
+-- UI/Widgets.lua, UI/MainFrame.lua (D-108: the author's channels in the footer)
+L["Kopiere den Link mit Strg+C:"] = "Copy the link with Ctrl+C:"
+L["Klick: zeigt den Link zum Kopieren."] = "Click: shows the link to copy."

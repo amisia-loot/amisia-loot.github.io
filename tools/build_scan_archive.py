@@ -212,6 +212,10 @@ def absorb(arch, db):
         have = arch[lines].setdefault(loc, {})
         for k, line in _pairs(part.get('list')):
             k = _id(k)
+            # a text the addon cut inside a character (2.74.0) arrives with the reader's replacement
+            # mark: dropped, the rest of the line is good
+            if isinstance(line, str):
+                line = line.replace('\ufffd', '').rstrip(' ')
             if not k or not isinstance(line, str) or not line or '\n' in line:
                 continue
             if have.get(k) != line:

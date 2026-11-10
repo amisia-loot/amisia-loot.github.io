@@ -1260,8 +1260,22 @@ local function build()
     bar:SetScript("OnLeave", function() GameTooltip:Hide() end)
     menuBtn:HookScript("OnEnter", statusTip)
     menuBtn:HookScript("OnLeave", function() GameTooltip:Hide() end)
+    -- the author's channels (D-108) at the right end, the last of T.LINKS outermost: a click shows the
+    -- link to copy; the view and the version stand left of them
+    local linksW = 0
+    F.links = {}
+    for i = #T.LINKS, 1, -1 do
+        local l = T.LINKS[i]
+        local b = W.IconButton(F, M.LINK, { file = l.icon }, function() W.ShowLink(l.name, l.url) end, l.name:sub(1, 1))
+        b:SetPoint("BOTTOMRIGHT", -(M.GRIP + 2 * M.MARGIN + linksW), M.FRAME_BOTTOM + math.floor((M.FOOT_H - M.LINK) / 2))
+        b.icon:SetVertexColor(T.LINK_TINT[1], T.LINK_TINT[2], T.LINK_TINT[3])
+        W.Tooltip(b, l.name, L["Klick: zeigt den Link zum Kopieren."])
+        b:Show()
+        F.links[l.key] = b
+        linksW = linksW + M.LINK + M.LINK_GAP
+    end
     viewText = W.Text(F, T.FONT.hint)
-    viewText:SetPoint("BOTTOMRIGHT", -(M.GRIP + 2 * M.MARGIN), M.FRAME_BOTTOM + math.floor((M.FOOT_H - 10) / 2))
+    viewText:SetPoint("BOTTOMRIGHT", -(M.GRIP + 2 * M.MARGIN + linksW - M.LINK_GAP + M.LINK_TEXT_GAP), M.FRAME_BOTTOM + math.floor((M.FOOT_H - 10) / 2))
     viewText:SetJustifyH("RIGHT")
     local footLine = F:CreateTexture(nil, "BORDER")
     footLine:SetHeight(1)

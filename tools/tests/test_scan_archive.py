@@ -189,7 +189,7 @@ def test_a_build_after_the_trim_gives_the_same_data(tmp_path):
     import att_data
     import build_bis
     import build_gear
-    with open(REAL_SV, encoding='utf-8') as fh:
+    with open(REAL_SV, encoding='utf-8', errors='replace') as fh:
         text = fh.read()
     full = build_scan.load_sv(REAL_SV)
     trimmed_path = tmp_path / 'Amisia.lua'

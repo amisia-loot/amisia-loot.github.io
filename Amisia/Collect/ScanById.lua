@@ -122,6 +122,20 @@ local function levelLine(s)
     return s:sub(1, 6) == "Stufe " or s:sub(1, 6) == "Level "   -- l10n-ok: the client's own words, compared, never shown
 end
 
+-- s cut to at most n bytes without splitting a UTF-8 character (a cut inside "ü" left a lone lead
+-- byte in the SavedVariables, which the builders could not read; found 2026-11-10).
+function SB.Cut(s, n)
+    if type(s) ~= "string" or #s <= n then return s end
+    s = s:sub(1, n)
+    local tail = s:match("[\192-\255][\128-\191]*$")
+    if tail then
+        local lead = tail:byte(1)
+        local need = lead >= 240 and 4 or lead >= 224 and 3 or 2
+        if #tail < need then s = s:sub(1, #s - #tail) end
+    end
+    return s
+end
+
 -- A field of a saved scan line: no tab, no line break, not endless.
 local function field(s)
     if type(s) ~= "string" then return nil end

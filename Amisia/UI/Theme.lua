@@ -164,6 +164,9 @@ T.MAIN = {
     -- the footer (D-73), BOTTOM high: the recording state from FOOT_X (a click opens the menu with the
     -- recording and the view, its arrow MENU_SIZE), the view and the version at the right end
     FOOT_X = 10, MENU_SIZE = 16,
+    -- the author's channels (T.LINKS, D-108) at the footer's right end: symbols LINK square, LINK_GAP
+    -- apart, the view and the version LINK_TEXT_GAP left of them
+    LINK = 16, LINK_GAP = 6, LINK_TEXT_GAP = 10,
     -- the page head (D-69, D-73) at the top of the page's field, PAGE_HEAD high: the page's symbol
     -- (PAGE_ICON square), its name (T.FONT.big, gold) PAGE_ICON_GAP right of it at TITLE_Y, its one line
     -- (T.FONT.hint) at SUB_Y, the gold line fading to both ends at RULE_Y (RULE_ALPHA at its middle); at
@@ -901,6 +904,19 @@ T.FEEDBACK = {
     -- the inbox (T.LAYOUT.SPLIT_LIST_W wide): kind, sender, date, the text's start
     IN_COLS = { { "kind", 6, 44 }, { "from", 52, 100 }, { "at", 154, 42 }, { "text", 198, 88 } },
 }
+
+-- The author's channels (D-108): the symbols in the main window's footer; a click shows the link to
+-- copy (W.ShowLink), since the client opens no browser. The symbols are white glyphs, tinted here.
+T.LINKS = {
+    { key = "twitch", name = "Twitch", url = "https://www.twitch.tv/mrvulo",
+      icon = "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\twitch" },
+    { key = "discord", name = "Discord", url = "https://discord.gg/mxhvFBSXSf",
+      icon = "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\discord" },
+}
+T.LINK_TINT = { 0.78, 0.74, 0.62 }
+-- the link window (W.ShowLink, AmisiaLinkFrame): a line of text under the title bar, the link in a
+-- field BOX_Y below the top
+T.LINKWIN = { W = 380, H = 104, TEXT_Y = 34, BOX_Y = 58 }
 
 -- the question window (W.Confirm, AmisiaConfirmFrame): the text under the title bar, wrapped, the
 -- two red buttons at the bottom right; its height follows the text.

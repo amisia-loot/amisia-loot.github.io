@@ -2731,3 +2731,16 @@ Funktionen), `tests/test_scan_quests.lua` (Layout 2, alte Zeilen neu, ohne Urtei
 EP nur in Lücken), `tools/tests/test_build_gear.py::test_scanned_rewards_become_quest_sources_where_none_is_known`,
 `::test_an_empty_scan_part_changes_nothing`, `::test_no_source_rules`,
 `::test_an_item_that_gets_a_source_leaves_the_no_source_file`, `tools/tests/test_scan_ids.py`.
+
+## D-108 Twitch und Discord des Autors in der Fußzeile, Link zum Kopieren
+
+**Datum:** 2026-11-10
+**Entscheidung:** In der Fußzeile des Hauptfensters stehen rechts zwei kleine Symbole, Twitch und Discord des Autors (`T.LINKS`: `https://www.twitch.tv/mrvulo`, `https://discord.gg/mxhvFBSXSf`), links davon wie bisher Ansicht und Version. Ein Klick öffnet das kleine Fenster `AmisiaLinkFrame` (`W.ShowLink`) mit dem Link in einem Feld, markiert für Strg+C; Tippen stellt den Link wieder her, Enter und Escape schließen. Der Client öffnet keinen Browser, deshalb das Kopieren.
+- Die Symbole (`Media/Icons/ui/twitch.tga`, `discord.tga`, 64 x 64, weiß, hier getönt) und die Links stammen aus dem eigenen Addon des Autors; sie sind nicht von `tools/make_ui_icons.py` erzeugt.
+- Das ändert nichts an der Regel "keine Links zu Fanseiten oder fremden Datenseiten" (Nutzer 2026-10-05): es sind die eigenen Kanäle des Autors.
+
+**Grund:** Nutzer 2026-11-10 mit einem Bild der beiden Symbole: "können wir discord und twitch symbole und links wie in VuloForeverUI adden".
+
+**Folge:** Eine neue Textur braucht nach dem Release einen ganzen Neustart des Spiels. Annahme (nicht gefragt): die Fußzeile des Hauptfensters als Ort (wie im anderen eigenen Addon), nicht die Seite "Über und Befehle".
+
+**Durchgesetzt durch:** `tests/test_links.lua` (beide Symbole rechts in der Fußzeile, Reihenfolge, Klick zeigt den Link, Tippen stellt ihn wieder her, Enter und Escape schließen), `tests/ui_scene.lua` (`linkwindow`), `tools/tests/test_contracts.py::test_no_links_to_fan_sites` (genau diese zwei Links, nur in `T.LINKS`; sonst weiter nur die erlaubten Hosts).

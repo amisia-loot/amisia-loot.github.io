@@ -246,3 +246,18 @@ f.buttons[6]:Click()
 assert(not QS.Running(), "Anhalten stops it")
 NS.Reset("ui.expert")
 print("quest scan: batches, answers, placeholders, timeouts, resume, pause, the 50-stop, combat, instance")
+
+-- a long text is cut on a character boundary: never a lone lead byte of "ü" (the builders could not
+-- read the SavedVariables of 2.74.0)
+do
+    local SBy = NS.ScanById
+    assert(SBy.Cut("abc", 10) == "abc")
+    assert(SBy.Cut("zurück", 4) == "zur", "the cut inside ü drops its first byte: " .. SBy.Cut("zurück", 4))
+    assert(SBy.Cut("zurück", 5) == "zurü")
+    assert(SBy.Cut("a€b", 3) == "a", "a three-byte character cut after two bytes")
+    assert(SBy.Cut("a€b", 4) == "a€")
+    local long = ("ä"):rep(400)
+    local cut = SBy.Cut(long, 301)
+    assert(#cut == 300 and cut == ("ä"):rep(150))
+end
+print("scan cut ok")

@@ -151,7 +151,9 @@ def run_sv(text, name, budget=SV_BUDGET):
 
 
 def load_sv(path):
-    with open(path, encoding='utf-8') as fh:
+    # errors='replace': a text the addon cut inside a character (the quest scan of 2.74.0 did) must not
+    # stop the build; the archive drops the replacement mark (build_scan_archive)
+    with open(path, encoding='utf-8', errors='replace') as fh:
         env, err = run_sv(fh.read(), os.path.basename(path))
     if env is None:
         raise SystemExit(f'{path}: {err}')

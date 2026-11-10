@@ -166,7 +166,7 @@ local function objectives(qid)
         if lines[i] ~= "" then parts[#parts + 1] = lines[i] end
     end
     local text = table.concat(parts, " / "):gsub("\t", " ")
-    if #text > QS.MAX_OBJ then text = text:sub(1, QS.MAX_OBJ) end
+    text = SB.Cut(text, QS.MAX_OBJ)
     return text
 end
 

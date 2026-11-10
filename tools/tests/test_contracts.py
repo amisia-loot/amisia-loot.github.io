@@ -342,11 +342,20 @@ ALLOWED_HOSTS = ('wowhead.com', 'zamimg.com', 'supabase.co', 'jsdelivr.net', 'fo
 LICENCE_HOSTS = ('fsf.org', 'gnu.org')
 
 
+# the author's own channels, shown in the main window's footer as a link to copy (D-108): exactly these
+# two, and only in the theme's T.LINKS
+AUTHOR_LINKS = ('https://www.twitch.tv/mrvulo', 'https://discord.gg/mxhvFBSXSf')
+
+
 def test_no_links_to_fan_sites():
     texts = [('index.html', read(SITE))] + addon_files(exts=('.lua', '.toc', '.xml', '.txt'))
     for rel, text in texts:
         assert 'foreverchanges' not in text.lower(), f'{rel} names foreverchanges (no links to fan sites)'
         allowed = ALLOWED_HOSTS + (LICENCE_HOSTS if rel.startswith('LICENSES/') else ())
+        if rel.replace('\\', '/').endswith('UI/Theme.lua'):
+            for url in AUTHOR_LINKS:
+                assert text.count(url) == 1, f'{rel}: the author\'s link {url} stands once in T.LINKS (D-108)'
+                text = text.replace(url, '')
         for host in re.findall(r'https?://([A-Za-z0-9.-]+)', text):
             assert host.endswith(allowed), f'{rel} links to {host}: only Wowhead and the site\'s own services'
 
