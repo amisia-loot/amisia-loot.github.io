@@ -2732,6 +2732,13 @@ EP nur in Lücken), `tools/tests/test_build_gear.py::test_scanned_rewards_become
 `::test_an_empty_scan_part_changes_nothing`, `::test_no_source_rules`,
 `::test_an_item_that_gets_a_source_leaves_the_no_source_file`, `tools/tests/test_scan_ids.py`.
 
+Nachtrag 2026-11-10 (Datenprüfung des Nutzers mit 2.75.0, Client 1.60.1.70862, deDE, 23:54):
+- **Questbelohnungen per Nummer gehen.** Die globalen `GetNumQuestLogRewards`, `GetQuestLogRewardInfo`, `GetNumQuestLogChoices`, `GetQuestLogChoiceInfo`, `GetQuestLogItemLink`, `GetQuestLogRewardMoney` und `GetQuestLogRewardXP` sind da und nehmen die Quest-Nummer an. Für Quest 153 nannten sie die drei Auswahl-Items 3511, 5944 und 12295, genau wie unsere Daten; das Item steht als sechster Wert von `GetQuestLogChoiceInfo`.
+- **Quest-EP per Nummer geht** (65: 1350, 132: 675, 95775: 8450, 153: 1050).
+- `GetNumQuestLogRewardSpells`/`GetQuestLogRewardSpell` gibt es nicht; `C_QuestInfoSystem.GetQuestRewardSpells` und die Währungsfunktionen sind da und liefern für die Proben nichts. Der Quest-Tooltip nennt unter "Anforderungen:" nur die Anzahl, keinen Itemnamen und keine Belohnung.
+- **Modell per Nummer:** auch für nie gesehene Kreaturen (`GetDisplayInfo` 142144 für 260042).
+- Der Quest-Scan im Layout 2 lief danach an: beim Speichern um 23:55 waren 1083 Quests gefragt, 190 mit Belohnung, 1076 mit EP.
+
 ## D-108 Twitch und Discord des Autors in der Fußzeile, Link zum Kopieren
 
 **Datum:** 2026-11-10
