@@ -29,6 +29,9 @@ local GROUP_SIZE = 5
 local SIZES = { [10] = true, [20] = true, [40] = true }
 local SAME_CLICK = 120      -- Amisia and the calendar within this many seconds: one click, Amisia counts
 local MAX_GONE = 80         -- names removed by the officer, remembered per night
+local MAX_SETS = 12         -- saved templates (F-161)
+local SET_NAME_MAX = 30     -- bytes of a template's name
+ns.LINEUP_MAX_SETS = MAX_SETS
 local DAYS_AHEAD = 14       -- sign-ups from Amisia: tonight up to this many days ahead
 -- statuses (st, d, ks): A signed up, B confirmed, V tentative, E standby, X declined or absent,
 -- I invited, O no answer, G no longer in the calendar; Amisia's own: A, V, X
@@ -231,8 +234,9 @@ end
 
 -- Reads the block of the website or one written by hand:
 --   #AMISIA-RAID 1 forever <yyyy-mm-dd> [<title ...>]
---   S <name with _> <T/H/M/R/-> [<class token or ->] [<B bench / ? maybe / ->]
+--   S <name with _> <T/H/M/R/-> [<class token or ->] [<B bench / ? maybe / ->] [<group 1-8 or ->]
 --   #END
+-- The group (pg) is what ns.LineupExport writes; the site's blocks have none.
 local function parseBlock(text)
     local res = { list = {}, skipped = 0, block = true }
     local head, read = false, 0
@@ -254,14 +258,16 @@ local function parseBlock(text)
                 res.skipped = res.skipped + 1
             else
                 read = read + 1
-                local name, role, class, flag = line:match("^S%s+(%S+)%s+(%S+)%s*(%S*)%s*(%S*)%s*$")
+                local name, role, class, flag, grp = line:match("^S%s+(%S+)%s+(%S+)%s*(%S*)%s*(%S*)%s*(%S*)%s*$")
                 name = name and cleanName(name)
                 if not name or not (IS_ROLE[role] or role == "-") or (class ~= "" and class ~= "-" and not CLASSES[class])
-                    or (flag ~= "" and flag ~= "-" and flag ~= "B" and flag ~= "?") then
+                    or (flag ~= "" and flag ~= "-" and flag ~= "B" and flag ~= "?")
+                    or (grp ~= "" and grp ~= "-" and not grp:match("^[1-8]$")) then
                     res.skipped = res.skipped + 1
                 else
                     res.list[#res.list + 1] = { n = name, r = IS_ROLE[role] and role or nil,
-                        c = CLASSES[class] and class or nil, b = flag == "B" or nil, m = flag == "?" or nil }
+                        c = CLASSES[class] and class or nil, b = flag == "B" or nil, m = flag == "?" or nil,
+                        pg = flag ~= "B" and tonumber(grp) or nil }
                 end
             end
         end
@@ -467,7 +473,8 @@ local function matchEntry(k, e)
 end
 
 ---------------------------------------------------------------------------
--- Storage: AmisiaDB.lineup = { v = 1, nights = { [yyyy-mm-dd] = { at, by, title, size, list } } }
+-- Storage: AmisiaDB.lineup = { v = 1, nights = { [yyyy-mm-dd] = { at, by, title, size, list } },
+-- sets = { { name, at, by, size, list } } (the saved templates, F-161) }
 ---------------------------------------------------------------------------
 local function db(create)
     local DB = AmisiaDB
@@ -650,6 +657,43 @@ local function cleanGone(g)
     return next(out) and out or nil
 end
 
+-- A template entry: who stands where, nothing of a night's statements.
+local SET_FIELDS = { "n", "r", "c", "g", "b", "k", "q" }
+local function setEntry(e)
+    local c = cleanEntry(e)
+    if not c or c.a then return nil end
+    local out = {}
+    for _, f in ipairs(SET_FIELDS) do out[f] = c[f] end
+    -- the overflow bench is a bench in a template
+    if c.v then out.b = true end
+    return out
+end
+
+-- The saved templates (F-161): { { name (30), at, by, size, list = { setEntry } } }, 12 at most, one
+-- per name (the first), 80 names each.
+local function cleanSets(sets)
+    local out, seen = {}, {}
+    for _, s in ipairs(type(sets) == "table" and sets or {}) do
+        local name = type(s) == "table" and type(s.name) == "string" and ns.CleanNote(stripCodes(s.name), SET_NAME_MAX) or ""
+        name = name:match("^%s*(.-)%s*$")
+        if name ~= "" and not seen[name:lower()] and #out < MAX_SETS and type(s.list) == "table" then
+            local list, taken = {}, {}
+            for _, e in ipairs(s.list) do
+                local c = setEntry(e)
+                if c and not taken[c.n:lower()] and #list < MAX_SIGNUPS then
+                    taken[c.n:lower()] = true
+                    list[#list + 1] = c
+                end
+            end
+            local size = tonumber(s.size)
+            seen[name:lower()] = true
+            out[#out + 1] = { name = name, at = posNum(s.at) or 0, by = type(s.by) == "string" and cleanName(s.by) or nil,
+                              size = SIZES[size] and size or 40, list = list }
+        end
+    end
+    return #out > 0 and out or nil
+end
+
 -- Core, ADDON_LOADED: every field checked, 8 nights (the newest), 80 names per night.
 function ns.LineupLoaded(root)
     if type(root) ~= "table" or root.lineup == nil then return end
@@ -675,7 +719,7 @@ function ns.LineupLoaded(root)
                               cal = cleanCal(n.cal), gone = cleanGone(n.gone) }
         end
     end
-    root.lineup = { v = 1, nights = nights }
+    root.lineup = { v = 1, nights = nights, sets = cleanSets(d.sets) }
     local all = {}
     for night in pairs(nights) do all[#all + 1] = night end
     table.sort(all, function(a, b) return a > b end)
@@ -748,6 +792,33 @@ local function summary(list, over, guildOk)
     return text, c
 end
 
+-- A night whose groups came from outside (an exported block, a template, the raid): the size grows
+-- to the highest group named (grow), then whoever is past the size or the sixth of a group is not
+-- placed.
+local function fitGroups(n, grow)
+    local top = 0
+    for _, e in ipairs(n.list) do
+        if e.g and e.g > top then top = e.g end
+    end
+    local size = SIZES[tonumber(n.size)] and tonumber(n.size) or 40
+    if grow then
+        for _, s in ipairs({ 10, 20, 40 }) do
+            if top * GROUP_SIZE <= s then
+                if s > size then size = s end
+                break
+            end
+        end
+    end
+    n.size = size
+    local count, max = {}, size / GROUP_SIZE
+    for _, e in ipairs(n.list) do
+        if e.g then
+            count[e.g] = (count[e.g] or 0) + 1
+            if e.g > max or count[e.g] > GROUP_SIZE then e.g, e.k = nil, nil end
+        end
+    end
+end
+
 -- Takes a pasted list into a night (the block's date, else night, else tonight): parse, match,
 -- roles. A night that had a list keeps the groups, holds and the bench of the names that stay.
 -- Returns the night key and the chat line, or nil and the reason (nothing is changed then).
@@ -762,6 +833,7 @@ function ns.SetLineupText(text, night)
     local before = {}
     for _, e in ipairs(old and old.list or {}) do before[e.n:lower()] = e end
     local list, kept, taken = {}, {}, {}
+    local grouped = false
     for _, e in ipairs(res.list) do
         matchEntry(k, e)
         local low = e.n:lower()
@@ -789,6 +861,11 @@ function ns.SetLineupText(text, night)
             end
             settle(e)
             settleRole(e, night)
+            -- the group an exported block names (F-161) goes before the one of the night
+            if e.pg and not e.b then
+                e.g, e.v, grouped = e.pg, nil, true
+            end
+            e.pg = nil
             if e.a then e.g, e.b, e.v, e.k = nil, nil, nil, nil end
             local c = cleanEntry(e)
             list[#list + 1] = c
@@ -810,6 +887,7 @@ function ns.SetLineupText(text, night)
     if not n then return nil, full end
     n.list, n.at, n.by = list, time(), ns.UnitFullName("player")
     if res.title then n.title = res.title end
+    if grouped then fitGroups(n, true) end
     local line = summary({ unpack(list, 1, pasted) }, res.over or 0, k.guild)
     changed()
     return night, line
@@ -1063,6 +1141,248 @@ function ns.LineupCopy(from, night)
     dst.size, dst.title = src.size, src.title
     changed()
     return #dst.list
+end
+
+---------------------------------------------------------------------------
+-- F-161 (D-91): a player by hand, the groups of the raid, templates, clear, the block to copy
+---------------------------------------------------------------------------
+-- A new entry of a known name at the end of n.list: the class and the guest mark from the roster,
+-- the role as every entry gets it. Returns the entry and its index, or nil and the reason.
+local function addEntry(n, night, k, name, class)
+    name = cleanName(name)
+    if not name then return nil, L["Name fehlt."] end
+    if #n.list >= MAX_SIGNUPS then return nil, L["Höchstens %d Namen pro Nacht."]:format(MAX_SIGNUPS) end
+    local p = k.lower[name:lower()]
+    local e = { n = p and p.name or name, c = (p and p.class) or (CLASSES[class] and class) or nil }
+    if not p then
+        e.x = "u"
+    elseif k.guild and not p.guild then
+        e.x = "g"
+    end
+    settleRole(e, night)
+    local c = cleanEntry(e)
+    if n.gone then n.gone[c.n:lower()] = nil end
+    n.list[#n.list + 1] = c
+    return c, #n.list
+end
+
+-- Adds a player by hand (the planner's player list): not placed yet. Returns the index of the entry
+-- (the one that was there when the name is on the list already), or nil and the reason.
+function ns.LineupAdd(night, name, class)
+    if not AmisiaDB then return nil, L["Amisia ist noch nicht geladen."] end
+    name = cleanName(name)
+    if not name then return nil, L["Name fehlt."] end
+    night = night or tonight()
+    local n, full = ns.LineupNight(night, true)
+    if not n then return nil, full end
+    for i, e in ipairs(n.list) do
+        if e.n:lower() == name:lower() then return i end
+    end
+    local e, i = addEntry(n, night, knownPeople(), name, class)
+    if not e then return nil, i end
+    changed()
+    return i
+end
+
+-- Puts a plan over a night: plan = { { n, c, r, q, g, b, k } }. Who is named gets the plan's place
+-- (a group with room, the bench, else none); who is missing on the list joins it; who is on the
+-- list but not in the plan loses the group (the bench stays). The statements, sources and notes of
+-- the night stay. An absent player stays out unless the plan holds him or opts.force (the raid: he
+-- is there, so he is held). opts.same(e, p): another test than the same spelling. Returns the
+-- numbers placed, added, left out (past 80 names) and absent, or nil and the reason.
+local function applyPlan(night, plan, opts)
+    if not AmisiaDB then return nil, L["Amisia ist noch nicht geladen."] end
+    night = night or tonight()
+    local n, full = ns.LineupNight(night, true)
+    if not n then return nil, full end
+    local k = knownPeople()
+    local size = SIZES[tonumber(opts.size)] and tonumber(opts.size) or nil
+    if size then n.size = size end
+    local byLow = {}
+    for _, e in ipairs(n.list) do
+        byLow[e.n:lower()] = e
+        e.g, e.v, e.k = nil, nil, nil
+    end
+    local used = {}
+    local function find(p)
+        local e = byLow[p.n:lower()]
+        if e or not opts.same then return e end
+        for _, x in ipairs(n.list) do
+            if not used[x] and opts.same(x, p) then return x end
+        end
+        return nil
+    end
+    local count, placed, added, over, absent = {}, 0, 0, 0, 0
+    for _, p in ipairs(plan) do
+        local e = find(p)
+        if not e then
+            e = addEntry(n, night, k, p.n, p.c)
+            if e then
+                added = added + 1
+                byLow[e.n:lower()] = e
+            else
+                over = over + 1
+            end
+        end
+        if e and not used[e] then
+            used[e] = true
+            -- the plan's role only where the night knows none (a guess is none)
+            if IS_ROLE[p.r] and not p.q and not e.h and (e.q or not e.r) then e.r, e.q = p.r, nil end
+            if e.a and (opts.force or p.k) then e.a, e.k = nil, true end
+            if e.a then
+                absent = absent + 1
+            elseif p.b then
+                e.b, e.k = true, nil
+            elseif not opts.force and not ns.LineupPlaceable(e) then
+                -- a guest goes into a group only with "Gäste einladen" (D-41); in the raid he is there
+                e.b = nil
+            else
+                local g = tonumber(p.g)
+                e.b = nil
+                if g and g >= 1 and g % 1 == 0 and (count[g] or 0) < GROUP_SIZE then
+                    count[g] = (count[g] or 0) + 1
+                    e.g, placed = g, placed + 1
+                    if p.k then e.k = true end
+                end
+            end
+        end
+    end
+    fitGroups(n, opts.grow)
+    n.at, n.by = time(), ns.UnitFullName("player")
+    changed()
+    return placed, added, over, absent
+end
+
+-- The raid as the planner reads it: { { name, sub, class, online } }; secret values skipped. Empty
+-- outside a raid.
+function ns.LineupRaidRows()
+    local out = {}
+    if not ns.HomeRaid() then return out end
+    for i = 1, tonumber(ns.Plain(GetNumGroupMembers())) or 0 do
+        local name, _, sub, _, _, class, _, online = GetRaidRosterInfo(i)
+        name, sub, class, online = ns.FullName(ns.Plain(name)), tonumber(ns.Plain(sub)), ns.Plain(class), ns.Plain(online)
+        if name and sub then
+            out[#out + 1] = { name = name, sub = sub, class = CLASSES[class] and class or nil, online = online and true or false }
+        end
+    end
+    return out
+end
+
+-- Takes the groups of the raid into the night: every raider into the group he stands in.
+function ns.LineupFromRaid(night)
+    local rows = ns.LineupRaidRows()
+    if #rows == 0 then return nil, L["Nur im Raid."] end
+    local plan, inRaid = {}, {}
+    for _, r in ipairs(rows) do
+        inRaid[#inRaid + 1] = r.name
+        plan[#plan + 1] = { n = r.name, c = r.class, g = r.sub }
+    end
+    return applyPlan(night, plan, { grow = true, force = true,
+        same = function(e, p) return ns.SameNameIn(e.n, p.n, inRaid) end })
+end
+
+local function sets(create)
+    local d = db(create)
+    if not d then return nil end
+    if type(d.sets) ~= "table" then
+        if not create then return nil end
+        d.sets = {}
+    end
+    return d.sets
+end
+
+local function setIndex(list, name)
+    for i, s in ipairs(list or {}) do
+        if s.name:lower() == name:lower() then return i end
+    end
+    return nil
+end
+
+-- The saved templates by name: { { name, at, by, size, count } }.
+function ns.LineupSets()
+    local out = {}
+    for _, s in ipairs(sets(false) or {}) do
+        out[#out + 1] = { name = s.name, at = s.at, by = s.by, size = s.size, count = #s.list }
+    end
+    table.sort(out, function(a, b) return a.name:lower() < b.name:lower() end)
+    return out
+end
+
+-- Saves the night's lineup as a template (the same name: replaced). Returns the number of players
+-- kept, or nil and the reason.
+function ns.LineupSaveSet(night, name)
+    if not AmisiaDB then return nil, L["Amisia ist noch nicht geladen."] end
+    name = (type(name) == "string" and ns.CleanNote(stripCodes(name), SET_NAME_MAX) or ""):match("^%s*(.-)%s*$")
+    if name == "" then return nil, L["Die Vorlage braucht einen Namen."] end
+    local n = ns.LineupNight(night, false)
+    local list = {}
+    for _, e in ipairs(n and n.list or {}) do
+        local c = setEntry(e)
+        if c then list[#list + 1] = c end
+    end
+    if #list == 0 then return nil, L["Diese Nacht hat keine Aufstellung zum Speichern."] end
+    local all = sets(true)
+    local i = setIndex(all, name)
+    if not i and #all >= MAX_SETS then return nil, L["Höchstens %d Vorlagen: lösche erst eine."]:format(MAX_SETS) end
+    local set = { name = name, at = math.floor(time()), by = ns.UnitFullName("player"),
+                  size = SIZES[tonumber(n.size)] and tonumber(n.size) or 40, list = list }
+    all[i or (#all + 1)] = set
+    changed()
+    return #list
+end
+
+-- Loads a template into the night (applyPlan). Returns placed, added, left out, absent.
+function ns.LineupLoadSet(name, night)
+    local all = sets(false)
+    local i = type(name) == "string" and setIndex(all, name)
+    if not i then return nil, L["Diese Vorlage gibt es nicht mehr."] end
+    return applyPlan(night, all[i].list, { size = all[i].size })
+end
+
+function ns.LineupDeleteSet(name)
+    local all = sets(false)
+    local i = type(name) == "string" and setIndex(all, name)
+    if not i then return false end
+    table.remove(all, i)
+    changed()
+    return true
+end
+
+-- Takes everyone out of the groups and off the bench (the list stays). Returns how many moved.
+function ns.LineupClear(night)
+    local n = ns.LineupNight(night, false)
+    local moved = 0
+    for _, e in ipairs(n and n.list or {}) do
+        if e.g or e.b or e.v then moved = moved + 1 end
+        e.g, e.b, e.v, e.k = nil, nil, nil, nil
+    end
+    if moved > 0 then changed() end
+    return moved
+end
+
+-- The night as the block "Einfügen" reads (#AMISIA-RAID, with the groups), or nil when it is empty.
+-- The absent are left out; a guessed role is "-".
+function ns.LineupExport(night)
+    night = night or tonight()
+    local n = ns.LineupNight(night, false)
+    local rows = {}
+    for i, e in ipairs(n and n.list or {}) do
+        if not e.a then rows[#rows + 1] = { e = e, i = i, o = e.g or ((e.b or e.v) and 10 or 9) } end
+    end
+    if #rows == 0 then return nil end
+    table.sort(rows, function(a, b)
+        if a.o ~= b.o then return a.o < b.o end
+        return a.i < b.i
+    end)
+    local title = n.title and n.title ~= "" and (" " .. n.title) or ""
+    local out = { ("#AMISIA-RAID 1 %s %s%s"):format(OWN_GAME, night, title) }
+    for _, r in ipairs(rows) do
+        local e = r.e
+        out[#out + 1] = ("S %s %s %s %s %s"):format((e.n:gsub(" ", "_")), (e.r and not e.q) and e.r or "-", e.c or "-",
+            (e.b or e.v) and "B" or (e.m and "?" or "-"), e.g and tostring(e.g) or "-")
+    end
+    out[#out + 1] = "#END"
+    return table.concat(out, "\n")
 end
 
 ---------------------------------------------------------------------------

@@ -13,6 +13,11 @@
 -- players with their invite status and tries, "Alle einladen" and "Nochmal einladen (N)" (the
 -- reason on the button when it may not: combat, no lead); the planner has "Gruppen sortieren"
 -- (Raid/LineupSort.lua, "Sortieren fortsetzen" after a fight).
+-- F-161 (D-91): the planner also opens on a night without a list; "Spieler" swaps the two lists under
+-- the groups for the player list (the raid or the guild, online only, a class, a search; a click
+-- chooses a name, the next click on a place puts it there; a name not on the list joins it then);
+-- the view "Vorlagen" (the saved templates: load, save under a name, delete); "Mehr": the groups of
+-- the raid, clear the groups, the night as the block to copy (the view "export").
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -41,17 +46,33 @@ local INV_ROWS, INV_ROW_H = 15, 22
 local INV_COLS = { { "g", 6, 20, justify = "RIGHT" }, { "r", 34, 32 }, { "name", 70, 162 }, { "st", 236, 138 },
                    { "tries", 378, 54, justify = "RIGHT" }, { "act", 440, 150 } }
 local INV_ACT_X, INV_CHIP_MAX = 440, 140
+-- the player list of the planner (F-161): a row of filters, then the names in four columns
+local GRID_COLS, GRID_ROWS, GRID_ROW_H, GRID_GAP, GRID_BAR_H = 4, 5, 20, 6, 24
+local GRID_W = RIGHT_X + RIGHT_W
+local CELL_W = math.floor((GRID_W - (GRID_COLS - 1) * GRID_GAP) / GRID_COLS)
+local GRID_INFO_W = 22
+-- the view "Vorlagen": one row per template
+local SET_ROWS, SET_ROW_H, SET_NAME_W = 15, 22, 170
+local SET_COLS = { { "name", 6, 220 }, { "size", 230, 50, justify = "RIGHT" }, { "count", 290, 60, justify = "RIGHT" },
+                   { "at", 366, 80 }, { "by", 450, 140 } }
 local RELOAD_GAP = 5       -- the calendar is read again at most this often while the page is open
 local POLL = 30            -- and every this many seconds (the client does not tell every change)
 
 local page
-local view = "match"      -- "match", "planner", "invite", "paste" or "calendar"
+local view = "match"      -- "match", "planner", "invite", "paste", "calendar", "sets" or "export"
 local night               -- the night shown (nil: tonight)
 -- the entry a click chose (swap and move), by its lower-case name: a list index would point at
 -- another player once the list changes between the two clicks (a sync, a sign-up, a removal)
 local selName
 local calList             -- the guild events of the calendar view (ns.Cal.Events()), nil while read
 local calPick             -- the id (else the index) of the event chosen in the calendar view
+-- a name of the player list that is chosen but not on the list yet: { n, c }; selName is its
+-- lower-case name meanwhile
+local pending
+-- the player list: shown instead of the two lists, its source ("raid" or "guild") and filters
+local grid = { on = false, src = "guild", online = true, class = "all", search = "" }
+local setPick             -- the template chosen in the view "Vorlagen" (its lower-case name)
+local exportText          -- the block of the view "export"
 
 local function curNight() return night or ns.LineupTonight() end
 
@@ -70,6 +91,19 @@ local function selIndex()
         if e.n:lower() == selName then return i end
     end
     return nil
+end
+
+-- The chosen name as an entry: a name of the player list joins the list now. Its index, or nil.
+local function selEntry()
+    local cur = selIndex()
+    if cur or not pending then return cur end
+    local i, why = ns.LineupAdd(curNight(), pending.n, pending.c)
+    pending = nil
+    if not i then
+        selName = nil
+        if why then ns.msg(why) end
+    end
+    return i
 end
 
 local ROLE_SHORT = { T = L["T##Rolle"], H = L["H##Rolle"], M = L["N##Rolle"], R = L["F##Rolle"] }
@@ -161,7 +195,7 @@ local function say(ok, why) if not ok and why then ns.msg(why) end end
 
 -- target: { i = entry } or { g = group } (a free place) or { to = "open" / "bench" } (a list head)
 local function act(from, target)
-    selName = nil
+    selName, pending = nil, nil
     if target.i then
         say(ns.LineupSwap(curNight(), from, target.i))
     elseif target.g then
@@ -176,6 +210,14 @@ end
 
 local function click(target)
     local cur = selIndex()
+    if not cur and pending then
+        -- a name of the player list: it joins the list with this click on a place
+        cur = selEntry()
+        if not cur then
+            ns.Refresh()
+            return
+        end
+    end
     if target.i then
         if not cur then
             selName = nameAt(target.i)
@@ -268,14 +310,20 @@ end
 -- Every frame a drag may end on, with its target.
 local dropTargets = {}
 local function dragStop()
-    local from = page and page.drag
-    if page then page.drag = nil end
-    if not from then return end
+    local from, new = page and page.drag, page and page.dragNew
+    if page then page.drag, page.dragNew = nil, nil end
+    if not from and not new then return end
     for _, d in ipairs(dropTargets) do
         local f = d.frame
         if f:IsVisible() and f:IsMouseOver() then
             local target = d.target(f)
-            if target and target.i ~= from then act(from, target) end
+            if target and not from then
+                -- a name of the player list joins the list where it is dropped
+                local why
+                from, why = ns.LineupAdd(curNight(), new.n, new.c)
+                if not from and why then ns.msg(why) end
+            end
+            if target and from and target.i ~= from then act(from, target) end
             return
         end
     end
@@ -362,7 +410,8 @@ local function buildGroups(f, top)
 end
 
 local function fillGroups(f, n, counts)
-    local G = n and ns.LineupGroups(n) or 0
+    -- a night without a list: the groups of the raid size set
+    local G = n and ns.LineupGroups(n) or math.floor((tonumber(ns.Get("lineup.size")) or 40) / 5)
     local members = {}
     for g = 1, 8 do members[g] = {} end
     for i, e in ipairs(n and n.list or {}) do
@@ -377,7 +426,7 @@ local function fillGroups(f, n, counts)
         for _, edge in ipairs(box.alarm) do edge:SetShown(noHeal[g] == true) end
         for s, b in ipairs(box.slots) do
             local i = members[g][s]
-            local e = i and n.list[i]
+            local e = i and n and n.list[i]
             b.entry = i
             if e then
                 local p = f.people[e.n:lower()]
@@ -413,14 +462,15 @@ end
 
 -- the heads of the two lists take a chosen name: "Nicht eingeteilt" and "Ersatz"
 local function sideHeads(f, top)
-    local _, a = f:Columns({ { "a", 6, LEFT_W - 12, "" } }, { top = top, x = 0, width = LEFT_W, sort = function()
-        local cur = selIndex()
+    local fa, a = f:Columns({ { "a", 6, LEFT_W - 12, "" } }, { top = top, x = 0, width = LEFT_W, sort = function()
+        local cur = selEntry()
         if cur then act(cur, { to = "open" }) end
     end })
-    local _, b = f:Columns({ { "b", 6, RIGHT_W - 12, "" } }, { top = top, x = RIGHT_X, width = RIGHT_W, sort = function()
-        local cur = selIndex()
+    local fb, b = f:Columns({ { "b", 6, RIGHT_W - 12, "" } }, { top = top, x = RIGHT_X, width = RIGHT_W, sort = function()
+        local cur = selEntry()
         if cur then act(cur, { to = "bench" }) end
     end })
+    f.sideHeads = { fa, fb }
     -- with sort the heads are buttons; their labels carry the text
     f.openHead, f.benchHead = a.a.label, b.b.label
     f.openBtn, f.benchBtn = a.a, b.b
@@ -428,6 +478,213 @@ local function sideHeads(f, top)
         dropTargets[#dropTargets + 1] = { frame = h[1], target = function() return { to = h[2] } end }
     end
     return top - T.LAYOUT.COLHEAD_H
+end
+
+---------------------------------------------------------------------------
+-- The player list of the planner (F-161)
+---------------------------------------------------------------------------
+local function className(token)
+    local names = _G.LOCALIZED_CLASS_NAMES_MALE
+    return type(names) == "table" and type(names[token]) == "string" and names[token] or token
+end
+
+-- The players of the chosen source that pass the filters, by name: { name, low, class, online,
+-- i = the index on the night's list (nil: not on it) }.
+local function gridPlayers(list)
+    local index = {}
+    for i, e in ipairs(list or {}) do index[e.n:lower()] = i end
+    local rows = {}
+    if grid.src == "raid" then
+        for _, r in ipairs(ns.LineupRaidRows()) do rows[#rows + 1] = { name = r.name, class = r.class, online = r.online } end
+    else
+        for _, m in ipairs(ns.GuildRoster and ns.GuildRoster() or {}) do
+            local name = ns.FullName(m.name)
+            if name then rows[#rows + 1] = { name = name, class = m.class ~= "" and m.class or nil, online = m.online and true or false } end
+        end
+    end
+    local want = ns.Fold(grid.search or "")
+    local out, classes = {}, {}
+    for _, p in ipairs(rows) do
+        if p.class then classes[p.class] = true end
+        if (not grid.online or p.online) and (grid.class == "all" or p.class == grid.class)
+            and (want == "" or ns.Fold(p.name):find(want, 1, true)) then
+            p.low = p.name:lower()
+            p.i = index[p.low]
+            out[#out + 1] = p
+        end
+    end
+    table.sort(out, function(a, b) return ns.Fold(a.name) < ns.Fold(b.name) end)
+    return out, classes
+end
+
+local function gridClick(self, button)
+    local p = self.p
+    if not p then return end
+    if button == "RightButton" then
+        if p.i then menuFor(self, p.i) end
+        return
+    end
+    if p.i then
+        -- on the list: as a name of the planner (choose, or swap with the chosen one)
+        if pending then selName, pending = nil, nil end
+        click({ i = p.i })
+        return
+    end
+    if pending and selName == p.low then
+        selName, pending = nil, nil
+    else
+        selName, pending = p.low, { n = p.name, c = p.class }
+    end
+    ns.Refresh()
+end
+
+local function gridTooltip(self)
+    local p = self.p
+    if not p or not page then return end
+    if p.i then return tooltip(self, page.list and page.list[p.i]) end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(p.name, 1, 0.82, 0)
+    local bits = {}
+    if p.class then bits[#bits + 1] = className(p.class) end
+    bits[#bits + 1] = p.online and (GREEN .. L["online"] .. "|r") or (GREY .. L["offline"] .. "|r")
+    GameTooltip:AddLine(table.concat(bits, " · "), 0.85, 0.85, 0.85)
+    GameTooltip:AddLine(L["Klick: wählen, dann auf einen Platz klicken (Ziehen geht auch)."], 0.6, 0.6, 0.6, true)
+    GameTooltip:Show()
+end
+
+local function buildGridRow(row)
+    -- the cells take the mouse, not the row
+    row:EnableMouse(false)
+    row.hover:SetAlpha(0)
+    row.cells = {}
+    for c = 1, GRID_COLS do
+        local b = CreateFrame("Button", nil, row)
+        b:SetSize(CELL_W, GRID_ROW_H - 1)
+        b:SetPoint("LEFT", (c - 1) * (CELL_W + GRID_GAP), 0)
+        b.hover = b:CreateTexture(nil, "HIGHLIGHT")
+        b.hover:SetAllPoints()
+        b.hover:SetColorTexture(1, 1, 1, 0.08)
+        b.sel = W.SelectBar(b)
+        b.name = W.Text(b, T.FONT.text, CELL_W - GRID_INFO_W - 8)
+        b.name:SetPoint("LEFT", 4, 0)
+        b.info = W.Text(b, T.FONT.hint, GRID_INFO_W)
+        b.info:SetPoint("RIGHT", -3, 0)
+        b.info:SetJustifyH("RIGHT")
+        b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        b:RegisterForDrag("LeftButton")
+        b:SetScript("OnClick", gridClick)
+        b:SetScript("OnDragStart", function(self)
+            local p = self.p
+            if not p or not page then return end
+            if p.i then page.drag = p.i else page.dragNew = { n = p.name, c = p.class } end
+        end)
+        b:SetScript("OnDragStop", dragStop)
+        b:SetScript("OnEnter", gridTooltip)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        row.cells[c] = b
+    end
+end
+
+-- item: up to four players of one row
+local function fillGridRow(row, item)
+    for c, b in ipairs(row.cells) do
+        local p = item[c]
+        b.p = p
+        if p then
+            local e = p.i and page.list and page.list[p.i]
+            local where = e and (e.g and tostring(e.g) or ((e.b or e.v) and L["E##Ersatz"]) or nil)
+            -- grey: placed already (its group beside it), or offline
+            b.name:SetText(classColored(p.name, p.class, where ~= nil or not p.online))
+            b.info:SetText(where or (e and (GREY .. "+|r")) or "")
+            b.sel:SetShown(selName ~= nil and selName == p.low)
+            b:Show()
+        else
+            b:Hide()
+        end
+    end
+end
+
+---------------------------------------------------------------------------
+-- The view "Vorlagen" (F-161)
+---------------------------------------------------------------------------
+local function setChosen()
+    for _, s in ipairs(ns.LineupSets()) do
+        if s.name:lower() == setPick then return s end
+    end
+    return nil
+end
+
+-- "Stamm: 38 eingeteilt, 2 neu in der Liste." and what was left out
+local function planLine(head, placed, added, over, absent)
+    local parts = { L["%d eingeteilt"]:format(placed) }
+    if added > 0 then parts[#parts + 1] = L["%d neu in der Liste"]:format(added) end
+    if absent > 0 then parts[#parts + 1] = L["%d abgemeldet (nicht eingeteilt)"]:format(absent) end
+    if over > 0 then parts[#parts + 1] = L["%d ohne Platz in der Liste"]:format(over) end
+    return head .. ": " .. table.concat(parts, ", ") .. "."
+end
+
+-- Runs fn at once on a night without groups, else after a question: the groups are replaced.
+local function overGroups(title, fn)
+    if ns.LineupCounts(curNight()).placed == 0 then return fn() end
+    W.Confirm(title, L["Die Gruppen dieser Nacht werden ersetzt. Die Liste, die Anmeldungen und der Ersatz bleiben."], L["Ersetzen"], fn)
+end
+
+local function loadSet()
+    local s = setChosen()
+    if not s then return end
+    overGroups(L["Vorlage laden"], function()
+        local placed, added, over, absent = ns.LineupLoadSet(s.name, curNight())
+        if not placed then
+            ns.msg(added)
+            return
+        end
+        ns.msg(planLine(L["Vorlage %s"]:format(s.name), placed, added, over, absent))
+        view, selName, pending = "planner", nil, nil
+        ns.Refresh()
+    end)
+end
+
+local function fromRaid()
+    overGroups(L["Aus dem Raid übernehmen"], function()
+        local placed, added, over, absent = ns.LineupFromRaid(curNight())
+        if not placed then
+            ns.msg(added)
+            return
+        end
+        ns.msg(planLine(L["Aus dem Raid"], placed, added, over, absent))
+        view, selName, pending = "planner", nil, nil
+        ns.Refresh()
+    end)
+end
+
+local function buildSet(row)
+    W.Cells(row, SET_COLS)
+    row.size:SetJustifyH("RIGHT")
+    row.count:SetJustifyH("RIGHT")
+    row.sel = W.SelectBar(row)
+    row:SetScript("OnClick", function(self)
+        if self.item then
+            setPick = self.item.name:lower()
+            -- the name in the field: "Speichern" replaces this template
+            if page then page.setName:SetText(self.item.name) end
+            ns.Refresh()
+        end
+    end)
+    row:SetScript("OnDoubleClick", function(self)
+        if self.item then
+            setPick = self.item.name:lower()
+            loadSet()
+        end
+    end)
+end
+
+local function fillSet(row, s)
+    row.name:SetText(s.name)
+    row.size:SetText(tostring(s.size))
+    row.count:SetText(tostring(s.count))
+    row.at:SetText(s.at and s.at > 0 and ns.FmtDay(s.at) or "")
+    row.by:SetText(s.by or "")
+    row.sel:SetShown(s.name:lower() == setPick)
 end
 
 ---------------------------------------------------------------------------
@@ -587,9 +844,18 @@ end
 ---------------------------------------------------------------------------
 -- The page
 ---------------------------------------------------------------------------
--- Opens the page (the officers only), in a view when given ("match", "planner", "paste").
+-- the snapshots: the player list on or off
+ns._lineupPlayers = function(on) grid.on = on and true or false end
+
+-- Opens the page (the officers only), in a view when given ("match", "planner", "paste", "invite",
+-- "sets", "export").
 function ns.ShowLineup(which, key)
-    if which == "match" or which == "planner" or which == "paste" or which == "invite" then view = which end
+    if which == "match" or which == "planner" or which == "paste" or which == "invite" or which == "sets" then view = which end
+    if which == "export" then
+        -- the block of the night to copy (nothing to show: the view stays)
+        exportText = ns.LineupExport(key or curNight())
+        if exportText then view = "export" end
+    end
     if which == "calendar" then return ns.LineupShowCalendar() end
     if key then night = key end
     ns.ShowPage("lineup")
@@ -705,6 +971,121 @@ local function previousNight()
     return nil
 end
 
+---------------------------------------------------------------------------
+-- The parts of F-161 (functions of their own: the page's create holds 60 upvalues at most)
+---------------------------------------------------------------------------
+-- "Vorlagen" and "Mehr" of the head row.
+local function buildTools(f)
+    -- F-161: the templates, and what else fills or empties the groups
+    f.setsBtn = W.Link(f, L["Vorlagen"], function()
+        view = view == "sets" and "planner" or "sets"
+        ns.Refresh()
+    end)
+    W.FitChip(f.setsBtn)
+    W.Tooltip(f.setsBtn, L["Vorlagen"], L["Gespeicherte Aufstellungen: die Gruppen einer Nacht unter einem Namen ablegen und an einem anderen Abend wieder laden."])
+    f.moreBtn = W.Link(f, L["Mehr"], function(self)
+        local c = ns.LineupCounts(curNight())
+        local inRaid = #ns.LineupRaidRows() > 0
+        W.Menu(self, {
+            { L["Aus dem Raid übernehmen"], inRaid and fromRaid or nil,
+              tip = L["Setzt jeden Raider in die Gruppe, in der er im Raid steht. Wer in der Liste fehlt, kommt dazu. Im Spiel ändert das nichts."] },
+            { L["Gruppen leeren"], (c.placed + c.bench > 0) and function()
+                W.Confirm(L["Gruppen leeren"], L["Alle aus den Gruppen und vom Ersatz nehmen? Die Liste bleibt."], L["Leeren"], function()
+                    local key = curNight()
+                    ns.msg(L["Gruppen geleert: %d Spieler stehen jetzt unter \"Nicht eingeteilt\"."]:format(ns.LineupClear(key)))
+                    selName, pending = nil, nil
+                    ns.Refresh()
+                end)
+            end or nil },
+            { L["Als Text exportieren"], (#(f.list or {}) > 0) and function()
+                ns.ShowLineup("export")
+                if view ~= "export" then return end
+                f.export.box:SetFocus()
+                f.export.box:HighlightText()
+            end or nil,
+              tip = L["Die Aufstellung dieser Nacht als Block zum Kopieren. Ein anderer Offizier fügt ihn unter \"Einfügen\" ein und hat dieselben Gruppen."] },
+        }, { width = T.LINEUP_MORE_W })
+    end)
+    W.FitChip(f.moreBtn)
+end
+
+-- The planner's "Spieler"; the name field and the buttons of the view "Vorlagen".
+local function buildSetTools(f)
+    -- F-161: the planner's player list; the view "Vorlagen"
+    f.gridBtn = W.TabCheck(f, L["Spieler"], function()
+        grid.on = not grid.on
+        if not grid.on and pending then selName, pending = nil, nil end
+        ns.Refresh()
+    end)
+    W.FitChip(f.gridBtn)
+    W.Tooltip(f.gridBtn, L["Spieler"], L["Zeigt statt \"Nicht eingeteilt\" und \"Ersatz\" die Spieler aus Raid oder Gilde. Ein Klick wählt einen Namen, der nächste Klick auf einen Platz setzt ihn dorthin."])
+    f.setName = W.LineEdit(f, SET_NAME_W)
+    f.setSave = W.Link(f, L["Speichern"], function()
+        local name = f.setName:GetText() or ""
+        local count, why = ns.LineupSaveSet(curNight(), name)
+        if not count then
+            ns.msg(why)
+            return
+        end
+        name = name:match("^%s*(.-)%s*$")
+        setPick = name:lower()
+        f.setName:ClearFocus()
+        ns.msg(L["Vorlage %s gespeichert: %d Spieler."]:format(name, count))
+        ns.Refresh()
+    end)
+    W.Tooltip(f.setSave, L["Speichern"], L["Legt die Gruppen der gezeigten Nacht unter dem Namen im Feld ab. Derselbe Name ersetzt die alte Vorlage."])
+    f.setLoad = W.Button(f, L["Laden##Vorlage"], 110, loadSet)
+    W.Tooltip(f.setLoad, L["Laden##Vorlage"], L["Setzt die gewählte Vorlage in die gezeigte Nacht: wer darin steht, bekommt ihre Gruppe; wer in der Liste fehlt, kommt dazu. Anmeldungen und Ersatz bleiben."])
+    f.setDelete = W.Link(f, L["Löschen##Vorlage"], function()
+        local s = setChosen()
+        if not s then return end
+        W.Confirm(L["Vorlage löschen"], L["Die Vorlage \"%s\" löschen?"]:format(s.name), L["Löschen##Vorlage"], function()
+            ns.LineupDeleteSet(s.name)
+            setPick = nil
+            ns.Refresh()
+        end)
+    end)
+    for _, b in ipairs({ f.setSave, f.setLoad, f.setDelete }) do W.FitChip(b, 80) end
+end
+
+-- The player list under the groups, the view "Vorlagen" and the block to copy.
+local function buildGridAndSets(f, top, sideTop)
+    -- the player list in the place of the two lists (F-161): its filters, then the names
+    local P = f.plan
+    P.srcRaid = W.Tab(P, L["Raid##Spielerliste"], function() grid.src = "raid" ns.Refresh() end)
+    P.srcGuild = W.Tab(P, L["Gilde"], function() grid.src = "guild" ns.Refresh() end)
+    P.online = W.TabCheck(P, L["nur online"], function() grid.online = not grid.online ns.Refresh() end)
+    for _, b in ipairs({ P.srcRaid, P.srcGuild, P.online }) do W.FitChip(b) end
+    P.classPick = W.Picker(P, 130, function(v)
+        grid.class = v
+        ns.Refresh()
+    end)
+    P.search = W.SearchBox(P, 140, function(text)
+        grid.search = (text or ""):match("^%s*(.-)%s*$")
+        ns.Refresh()
+    end)
+    W.Row(P, { P.srcRaid, P.srcGuild, P.online }, T.TAB_GAP, T.LAYOUT.TEXT_X, sideTop + T.LAYOUT.COLHEAD_H - 1)
+    W.Row(P, { P.classPick, P.search }, T.LAYOUT.ITEM_GAP, GRID_W - 130 - 140 - T.LAYOUT.ITEM_GAP, sideTop + T.LAYOUT.COLHEAD_H)
+    P.gridBar = { P.srcRaid, P.srcGuild, P.online, P.classPick, P.search }
+    f.gridList = P:List(GRID_ROWS, GRID_ROW_H, buildGridRow, fillGridRow,
+        { top = sideTop + T.LAYOUT.COLHEAD_H - GRID_BAR_H, x = 0, width = GRID_W })
+    P.gridEmpty = W.Text(P, T.FONT.hint, GRID_W - 12)
+    P.gridEmpty:SetPoint("TOPLEFT", T.LAYOUT.TEXT_X, sideTop + T.LAYOUT.COLHEAD_H - GRID_BAR_H - 6)
+    -- the view "Vorlagen"
+    f.sets = W.Page(f, { view = true, top = top })
+    local _, sheads = f.sets:Columns(SET_COLS)
+    sheads.name:SetText(L["Vorlage"])
+    sheads.size:SetText(L["Größe##Raid"])
+    sheads.count:SetText(L["Spieler"])
+    sheads.at:SetText(L["Gespeichert"])
+    sheads.by:SetText(L["Von##Offizier"])
+    f.setRows = f.sets:List(SET_ROWS, SET_ROW_H, buildSet, fillSet)
+    -- the block to copy
+    f.export = W.ReadOnlyArea(f, function() return exportText or "" end)
+    f.export:SetPoint("TOPLEFT", 0, top)
+    f.export:SetPoint("BOTTOMRIGHT", 0, f:Bottom())
+end
+
 ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Raid kommt, wer fehlt und wer eingeladen wird."], icon = "Interface\\Icons\\INV_Misc_GroupNeedMore", order = 12, group = "raid",
     officer = true, available = function() return ns.LineupAllowed() end,
     create = function(parent)
@@ -744,7 +1125,8 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         W.FitChip(f.pasteBtn)
         W.FitChip(f.auto)
         W.Tooltip(f.auto, L["Automatisch einteilen"], L["Tanks ab Gruppe 1, ein Heiler pro Gruppe, Nahkampf zusammen mit einem Schamanen oder Krieger, Fernkampf zusammen. Festgehaltene bleiben stehen."])
-        f:Place(1, { f.night }, { f.calBtn, f.pasteBtn, f.auto })
+        buildTools(f)
+        f:Place(1, { f.night }, { f.setsBtn, f.calBtn, f.pasteBtn, f.moreBtn, f.auto })
         f.counts = f:Line(2)
         f.calLine = f:Line(3)
         f.views = {
@@ -799,6 +1181,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
             ns.Refresh()
         end)
         W.Tooltip(f.sortBtn, L["Gruppen sortieren"], L["Schiebt jeden Raider in die Gruppe aus dem Planer; wer nicht auf der Liste steht, bleibt. Nur im Raid als Leiter oder Assistent, nicht im Kampf. Sortiert gerade nur dein Client: sprecht euch ab, wer sortiert."])
+        buildSetTools(f)
         f.calTake = W.Button(f, L["Übernehmen"], 110, takeCalendar)
         W.Tooltip(f.calTake, L["Übernehmen"], L["Liest die Teilnehmerliste des gewählten Ereignisses in die Aufstellung seiner Nacht. Bleibt die Seite offen, liest Amisia sie bei Änderungen neu."])
         for _, b in ipairs({ f.rematch, f.bench, f.take, f.cancel, f.calTake, f.inviteAll, f.again, f.sortBtn }) do W.FitChip(b, 100) end
@@ -826,6 +1209,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.benchList = f.plan:List(LIST_ROWS, LIST_ROW_H, buildSide, fillSide, { top = sideTop, x = RIGHT_X, width = RIGHT_W })
         f.plan.people = f.people
         f.openHead, f.benchHead = f.plan.openHead, f.plan.benchHead
+        buildGridAndSets(f, top, sideTop)
         -- the calendar view
         f.cal = W.Page(f, { view = true, top = top })
         local _, cheads = f.cal:Columns(CAL_COLS)
@@ -864,7 +1248,8 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.plan.people = f.people
         f.list = n and n.list or {}
         f.calLost = n and n.cal and n.cal.lost or false
-        if selName and not selIndex() then selName = nil end
+        if pending and (not selName or selName ~= pending.n:lower() or selIndex()) then pending = nil end
+        if selName and not selIndex() and not pending then selName = nil end
         -- the night picker: tonight, then the saved nights
         local values, seen = {}, {}
         local function add(k)
@@ -879,8 +1264,13 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.night:SetValue(key)
         local has = #f.list > 0
         local paste, calendar = view == "paste", view == "calendar"
-        local other = paste or calendar
+        local setsView, export = view == "sets", view == "export"
+        local other = paste or calendar or setsView or export
         local shown = view
+        -- the planner's player list: on a night without a list it opens by itself (there is nothing
+        -- else to show) and stays until "Spieler" is clicked off
+        if shown == "planner" and not has then grid.on = true end
+        local gridOn = shown == "planner" and grid.on
         f.views.match:SetOn(shown == "match")
         f.views.planner:SetOn(shown == "planner")
         f.views.invite:SetOn(shown == "invite")
@@ -890,6 +1280,9 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         W.FitChip(f.calBtn)
         f.calBtn:SetEnabled(calendar or ns.Cal.CanReadInvites())
         f.auto:SetEnabled(has and not other)
+        f.setsBtn:SetText(setsView and L["Zurück"] or L["Vorlagen"])
+        W.FitChip(f.setsBtn)
+        f.moreBtn:SetEnabled(not other)
         -- the counts
         local c = ns.LineupCounts(key)
         if has then
@@ -948,6 +1341,19 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.take:SetShown(paste)
         f.cancel:SetShown(other)
         f.calTake:SetShown(calendar)
+        -- the view "Vorlagen": the name and "Speichern" on the left, the chosen template on the right
+        local sets = setsView and ns.LineupSets() or {}
+        local picked = setsView and setChosen() or nil
+        f.setName:SetShown(setsView)
+        f.setSave:SetShown(setsView)
+        f.setSave:SetEnabled(has)
+        f.setLoad:SetShown(setsView)
+        f.setLoad:SetEnabled(picked ~= nil)
+        f.setDelete:SetShown(setsView)
+        f.setDelete:SetEnabled(picked ~= nil)
+        f.gridBtn:SetShown(shown == "planner")
+        f.gridBtn:SetOn(gridOn)
+        f.gridBtn:SetEnabled(has)
         -- invite and sort: the reason on the button when they may not
         local isInv, isPlan = has and shown == "invite", has and shown == "planner"
         f.inviteAll:SetShown(isInv)
@@ -979,11 +1385,18 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.raidId = (#insts > 0 and not f.raidIdOff) and ns.RaidIDsChosen() or nil
         f.raidIdPick:SetValue(f.raidId or 0)
         f.raidIdPick:SetShown(shown == "match" and has and #insts > 0)
-        f:Place(4, { f.views.match, f.views.planner, f.views.invite, f.raidIdPick },
-            { f.copy, f.rematch, f.sortBtn, f.bench, f.cancel, f.take, f.calTake, f.again, f.inviteAll }, { shown = true })
+        f:Place(4, { f.views.match, f.views.planner, f.views.invite, f.raidIdPick, f.setName, f.setSave },
+            { f.copy, f.rematch, f.gridBtn, f.sortBtn, f.bench, f.cancel, f.setDelete, f.setLoad, f.take, f.calTake, f.again, f.inviteAll }, { shown = true })
         f.paste:SetShown(paste)
+        f.export:SetShown(export)
+        if export then
+            f.export.box:SetText(exportText or "")
+            f.export.box:SetCursorPosition(0)
+        end
+        f.sets:SetShown(setsView and #sets > 0)
+        if setsView then f.setRows:SetItems(sets) end
         f.match:SetShown(shown == "match" and has)
-        f.plan:SetShown(shown == "planner" and has)
+        f.plan:SetShown(shown == "planner")
         f.inv:SetShown(shown == "invite" and has)
         f.cal:SetShown(calendar and calList ~= nil and #calList > 0)
         if calendar then
@@ -994,15 +1407,24 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
             else
                 f.calRows:SetItems(calList)
             end
+        elseif setsView then
+            f.empty:Set(L["Noch keine Vorlagen"], L["Tippe oben links einen Namen ein und klicke \"Speichern\": die Gruppen der gezeigten Nacht liegen dann als Vorlage hier."])
         elseif not has and not paste then
-            f.empty:Set(L["Noch keine Anmeldungen"], prev and L["\"Einfügen\" nimmt die Anmeldeliste, oder übernimm die Aufstellung einer früheren Nacht."]
-                or L["\"Einfügen\" nimmt den Text eines Anmelde-Bots aus Discord, Zeilen wie \"Anna Tank\" oder den Block #AMISIA-RAID."])
+            f.empty:Set(L["Noch keine Anmeldungen"], prev and L["\"Einfügen\" nimmt die Anmeldeliste, oder übernimm die Aufstellung einer früheren Nacht. Ohne Liste: im \"Planer\" von Hand, aus einer Vorlage oder aus dem Raid (\"Mehr\")."]
+                or L["\"Einfügen\" nimmt den Text eines Anmelde-Bots aus Discord, Zeilen wie \"Anna Tank\" oder den Block #AMISIA-RAID. Ohne Liste: im \"Planer\" von Hand, aus einer Vorlage oder aus dem Raid (\"Mehr\")."])
         end
-        f.empty:SetShown((calendar and (not calList or #calList == 0)) or (not has and not other))
+        f.empty:SetShown((calendar and (not calList or #calList == 0)) or (setsView and #sets == 0)
+            or (not has and not other and shown ~= "planner"))
         if paste then
             f.hint:SetText(L["Discord-Text eines Anmelde-Bots (Überschriften wie \"Tanks\", \"Heiler\", \"Ersatz\", \"Abgemeldet\"), Zeilen wie \"Anna Tank\" oder \"Bob, Nahkampf\", oder der Block #AMISIA-RAID. Dann \"Übernehmen\"."])
         elseif calendar then
             f.hint:SetText(L["Gildenereignisse der nächsten 14 Tage, Schlachtzug zuerst gewählt. \"Übernehmen\" liest die Teilnehmerliste in die Aufstellung der Nacht des Ereignisses; im Kalender ändert Amisia nichts."])
+        elseif setsView then
+            f.hint:SetText(L["Eine Vorlage merkt sich, wer in welcher Gruppe und auf Ersatz steht, mit Rolle und Festhalten. \"Laden\" setzt sie in die gezeigte Nacht; Doppelklick lädt auch. Höchstens %d Vorlagen."]:format(ns.LINEUP_MAX_SETS))
+        elseif export then
+            f.hint:SetText(L["Strg+C kopiert den Block. Ein anderer Offizier fügt ihn auf seiner Seite Aufstellung unter \"Einfügen\" ein."])
+        elseif gridOn then
+            f.hint:SetText(L["Klick auf einen Namen, dann auf einen Platz: der Spieler steht dort (Ziehen geht auch). Grau mit Zahl: schon in dieser Gruppe. Rechtsklick auf einen Namen der Liste: Rolle, Ersatz, Festhalten, Entfernen."])
         elseif shown == "invite" then
             f.hint:SetText(L["Status aus den Meldungen des Spiels; ohne Antwort nach 90 Sekunden \"keine Antwort\". Offline wird nicht eingeladen, Gäste nur mit der Einstellung. Höchstens 3 Einladungen pro Name und Abend."])
         elseif shown == "planner" then
@@ -1010,7 +1432,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         else
             f.hint:SetText(has and L["Gelb: ein Klick bestätigt. Orange: den Richtigen wählen. Rot: den Namen eintippen (Amisia merkt ihn sich). Rechtsklick: Rolle, Ersatz, Festhalten, Entfernen."] or "")
         end
-        if not has or calendar then return end
+        if calendar or setsView or export or (not has and shown ~= "planner") then return end
         -- the rows of both views
         local matchItems, open, bench, absent = {}, {}, {}, {}
         for i, e in ipairs(f.list) do
@@ -1051,6 +1473,40 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
             f.benchHead:SetText(L["Ersatz (%d)"]:format(#bench))
             f.openList:SetItems(open)
             f.benchList:SetItems(bench)
+            -- the two lists, or the player list in their place
+            local P = f.plan
+            for _, h in ipairs(P.sideHeads) do h:SetShown(not gridOn) end
+            f.openList:SetShown(not gridOn)
+            f.benchList:SetShown(not gridOn)
+            for _, w in ipairs(P.gridBar) do w:SetShown(gridOn) end
+            f.gridList:SetShown(gridOn)
+            P.gridEmpty:SetShown(false)
+            if gridOn then
+                local players, classes = gridPlayers(f.list)
+                local classValues = { { value = "all", text = L["Alle Klassen"] } }
+                for token in pairs(classes) do classValues[#classValues + 1] = { value = token, text = className(token) } end
+                table.sort(classValues, function(a, b)
+                    if a.value == "all" or b.value == "all" then return a.value == "all" end
+                    return a.text < b.text
+                end)
+                P.classPick:SetValues(classValues)
+                P.classPick:SetValue(grid.class)
+                P.srcRaid:SetOn(grid.src == "raid")
+                P.srcGuild:SetOn(grid.src == "guild")
+                P.online:SetOn(grid.online)
+                local items = {}
+                for i, p in ipairs(players) do
+                    local r = math.floor((i - 1) / GRID_COLS) + 1
+                    items[r] = items[r] or {}
+                    items[r][#items[r] + 1] = p
+                end
+                f.gridList:SetItems(items)
+                if #players == 0 then
+                    P.gridEmpty:SetText(GREY .. (grid.src == "raid" and #ns.LineupRaidRows() == 0 and L["Du bist in keinem Raid."]
+                        or L["Niemand passt zu diesen Filtern."]) .. "|r")
+                    P.gridEmpty:Show()
+                end
+            end
         end
     end }
 

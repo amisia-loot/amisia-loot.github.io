@@ -550,6 +550,7 @@ T.SLOTCARD = { W = 300, PAD = 10, TITLE_H = 24, ROWS = 5, ROW_H = 34, ICON = 26,
 T.EMPTY = { W = 420, H = 120, ICON = 56, ALPHA = 0.35, TITLE_GAP = 10, TEXT_GAP = 6, BUTTON_GAP = 10 }
 -- the shared popup menu and the picker's panel
 T.MENU = { W = 182, ROW_W = 170, ROW_H = 20, PAD = 6, LABEL_W = 160, GROUND_X = 10, GROUND_Y = 3, ALPHA = 0.925 }
+T.LINEUP_MORE_W = 210   -- the menu "Mehr" of the page Aufstellung (F-161)
 T.PICKER = { ROWS = 8, ROW_H = 20, MIN_W = 180, FILTER_Y = 6, LIST_Y = 30, ARROW_ROOM = 26 }
 -- the talent calculator (Pages/Talents.lua) in the look of the game's classic three-tree talent
 -- window: three dark panels side by side, a centred head (name over points), square icons with a

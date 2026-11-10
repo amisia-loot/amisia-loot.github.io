@@ -553,6 +553,23 @@ S.STATES = {
         S.lineupCalendar()
         NS.ShowLineup("planner", NS.Cal.Events()[1].night)
     end },
+    -- F-161: the planner's player list, the saved templates, the block to copy
+    { page = "lineup", name = "lineup-players", open = function()
+        S.lineup()
+        NS._lineupPlayers(true)
+        NS.ShowLineup("planner", NS.LineupTonight())
+    end },
+    { page = "lineup", name = "lineup-sets", open = function()
+        S.lineup()
+        NS._lineupPlayers(false)
+        NS.LineupSaveSet(NS.LineupTonight(), "Geschmolzener Kern Stamm")
+        NS.LineupSaveSet(NS.LineupTonight(), "Zehner")
+        NS.ShowLineup("sets", NS.LineupTonight())
+    end },
+    { page = "lineup", name = "lineup-export", open = function()
+        S.lineup()
+        NS.ShowLineup("export", NS.LineupTonight())
+    end },
     -- the raid check: buffs, gear, raid IDs; the lineup with the "ID" marks of Molten Core
     { page = "raidcheck", name = "raidcheck-buffs", open = function() S.raidCheck(); NS.ShowRaidCheck("buffs") end },
     { page = "raidcheck", name = "raidcheck-gear", open = function() S.raidCheck(); NS.ShowRaidCheck("gear") end },

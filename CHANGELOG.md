@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(lineup): build a raid lineup without a sign-up list (F-161)
+
+  The Lineup page (officers) now works from scratch: the planner opens on an empty night and
+  "Players" lists the raid or the guild with an online filter, a class filter and a search; click a
+  name, then a place. "Templates" keeps a lineup under a name and loads it on another night. Under
+  "More" you can take the groups of the current raid, clear the groups, or export the night as text
+  that another officer pastes to get the same groups.
+
 ## [v2.72.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.72.0) (2026-11-09)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.71.0...v2.72.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

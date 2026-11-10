@@ -39,6 +39,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-161 Raid-Aufstellung: Vorlagen, aus dem Raid, Spielerliste, Leeren, Export
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du als Offizier unter Aufstellung in einer Nacht ohne Liste "Planer" klickst, dann siehst du die leeren Gruppen und darunter die Spieler der Gilde; klickst du einen Namen an und dann einen freien Platz, steht der Spieler dort und im Raster grau mit der Gruppennummer.
+- Prüfung: Wenn du "Vorlagen" klickst, oben links "Stamm" eintippst und "Speichern" klickst, dann steht "Stamm" mit Größe und Spielerzahl in der Liste, auch nach /reload; wählst du eine andere Nacht, die Zeile "Stamm" und "Laden", dann zeigt der Planer dieselben Gruppen.
+- Prüfung: Wenn du "Mehr" > "Als Text exportieren" klickst, dann steht ein Block, der mit "#AMISIA-RAID 1 forever" beginnt; kopierst du ihn, wählst eine leere Nacht (oder leerst die Gruppen) und fügst ihn unter "Einfügen" ein, dann stehen alle wieder in ihren Gruppen.
+- Prüfung: Wenn du "Mehr" > "Gruppen leeren" klickst und "Leeren" bestätigst, dann sind alle Gruppen frei, und im Planer (ohne "Spieler") stehen alle unter "Nicht eingeteilt".
+- Prüfung: Wenn du allein bist und "Mehr" klickst, dann ist "Aus dem Raid übernehmen" grau; im Planer mit "Spieler" und der Quelle "Raid" steht "Du bist in keinem Raid.".
+- Notiz: Braucht: Raid: Wenn du in einem Raid "Mehr" > "Aus dem Raid übernehmen" klickst, dann steht jeder Raider im Planer in seiner Raidgruppe, und der Chat sagt "Aus dem Raid: N eingeteilt, ...".
+- Notiz: Spec docs/specs/2026-11-10-aufstellung-vorlagen.md; DECISIONS D-91. Höchstens 12 Vorlagen. Nichts davon lädt ein oder verschiebt im Spiel; das tun weiter "Alle einladen" und "Gruppen sortieren" (F-084).
+
 ### F-160 Berufe: woher ein Reagenz kommt
 - Version: 2.72.0
 - Status: gebaut
