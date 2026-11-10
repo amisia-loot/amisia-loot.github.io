@@ -78,7 +78,8 @@ def test_shipped_data_file_in_toc_and_valid():
 
 @pytest.mark.skipif(not os.path.isdir(build_enchants.WAGO), reason='needs the client tables')
 def test_shipped_file_is_current():
-    dirs = [build_enchants.WAGO]
+    import client_tables  # the newest copy of each table, as build.py data reads them (D-101)
+    dirs = [client_tables.default_dir()]
     if any(build_enchants.find_table(dirs, t) is None for t in build_enchants.REQUIRED):
         pytest.skip('no client tables')
     with open(OUT, encoding='utf-8') as fh:

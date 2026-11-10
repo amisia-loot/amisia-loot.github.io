@@ -16,7 +16,8 @@ docs/specs/2026-10-31-verzauberungen.md), from the client's own tables only (D-0
   weapon's speed), 3 (an equip spell: its auras through build_bis.aura_stats). Anything else (a proc,
   a use spell, a resistance) marks the enchantment as "has an effect the scoring does not count".
 
-Reads <Table>.csv or <Table>.<build>.csv from the folders given with --wago (default ~/addons/_wago).
+Reads <Table>.csv or <Table>.<build>.csv from the folders given with --wago (default: the newest copy of each
+table, tools/client_tables.py).
 Writes Amisia/Data/EnchantData.lua (ns.ENCHANT, lazy).
 """
 import argparse
@@ -233,14 +234,17 @@ def render_lua(data, built=None):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    ap.add_argument('--wago', action='append', default=None, help=f'client tables (default {WAGO}); may repeat')
+    ap.add_argument('--wago', action='append', default=None, help='client tables (default: the newest copy of each table, tools/client_tables.py); may repeat')
     ap.add_argument('--empty', action='store_true', help='write the file without data')
     ap.add_argument('--out', default=OUT)
     args = ap.parse_args(argv)
     if args.empty:
         data = empty_data()
     else:
-        data = build([os.path.expanduser(d) for d in (args.wago or [WAGO])])
+        if not args.wago:
+            import client_tables
+            args.wago = [client_tables.default_dir()]
+        data = build([os.path.expanduser(d) for d in args.wago])
     with open(args.out, 'w', encoding='utf-8', newline='\n') as fh:
         fh.write(render_lua(data))
     kinds = {k: sum(1 for s in data['sources'] if s['kind'] == k) for k in ('r', 'i')}

@@ -1,9 +1,17 @@
 {
- "build": "1.60.1.70862",
+ "build": "1.60.1.70888",
  "dungeons": {
+  "alcaz": [
+   7963734,
+   "w"
+  ],
   "bfd": [
    131823,
    "n"
+  ],
+  "blackmaw": [
+   7963784,
+   "w"
   ],
   "brd": [
    131824,
@@ -21,6 +29,10 @@
    131835,
    "n"
   ],
+  "drowned": [
+   7963741,
+   "w"
+  ],
   "excavation": [
    7963777,
    "w"
@@ -28,6 +40,10 @@
   "gnomer": [
    131841,
    "n"
+  ],
+  "kroldok": [
+   7963780,
+   "w"
   ],
   "lbrs": [
    131825,
@@ -64,6 +80,10 @@
   "sfk": [
    131869,
    "n"
+  ],
+  "shaper": [
+   7963783,
+   "w"
   ],
   "sm": [
    131852,
@@ -107,7 +127,7 @@
   "n"
  ],
  "tables": {
-  "LoadingScreens": "LoadingScreens.1.60.1.70862.csv",
-  "Map": "Map.1.60.1.70862.csv"
+  "LoadingScreens": "LoadingScreens.1.60.1.70888.csv",
+  "Map": "Map.1.60.1.70888.csv"
  }
 }

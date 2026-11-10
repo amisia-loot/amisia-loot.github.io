@@ -23,7 +23,8 @@ rank is written as {1}, {2}, ... with the values per rank beside it. The addon s
 own (German) text where it gets one (C_Traits.GetTraitDescription) and this one otherwise.
 
 Reads <Table>.csv or <Table>.<build>.csv (tools/export_db2.ps1 on the PC, or wago.tools) from the
-folders given with --wago (default ~/addons/_wago); the first folder with a table wins.
+folders given with --wago (default: the newest copy of each table, tools/client_tables.py); the first
+folder with a table wins.
 Writes Amisia/Data/TalentData.lua (ns.TALENTS).
 """
 import argparse
@@ -672,10 +673,13 @@ def render_lua(data):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--wago', action='append', default=None,
-                    help='folder of the client table CSVs (repeatable; default ~/addons/_wago)')
+                    help='folder of the client table CSVs (repeatable; default: the newest copy of each table, tools/client_tables.py)')
     ap.add_argument('--out', default=OUT, help='output Lua file (default Amisia/Data/TalentData.lua)')
     args = ap.parse_args(argv)
-    dirs = args.wago or [WAGO]
+    if not args.wago:
+        import client_tables
+        args.wago = [client_tables.default_dir()]
+    dirs = args.wago
     data = build(dirs, log=lambda m: print('  ' + m))
     with open(args.out, 'w', encoding='utf-8', newline='\n') as fh:
         fh.write(render_lua(data))

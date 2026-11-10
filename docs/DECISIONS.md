@@ -59,6 +59,9 @@ abfragen: die Icon-Suche in
 `tools/build_scan.py` (seit 2026-10-08 auf Wunsch des Nutzers standardmäßig aus, nur noch mit `--wowhead`); sie ist im Test als Ausnahme benannt und
 wird nicht erweitert. wowsrc.com ist eine vom Nutzer akzeptierte Eingabe (D-04), keine dieser Ausnahmen. Das frühere Skript fill_quality (Qualitäten des TBC-Archivs per Wowhead) ist seit 2026-10-08 gelöscht: Forever hat die Qualität aus Scan und `ItemSparse`, das Archiv ist fertig.
 **Durchgesetzt durch:** `tools/tests/test_contracts.py::test_no_tool_fetches_from_the_forbidden_sites`.
+**Nachtrag 2026-11-10 (D-101):** Für wago.tools gilt seit 2026-11-10 D-101: `tools/fetch_tables.py` (nur dieses
+Skript) lädt dort die CSV-Exporte der Client-Tabellen über die beiden Wege, die robots.txt und llms.txt der Seite
+Programmen jetzt erlauben. Wowhead und foreverchanges bleiben verboten wie oben.
 
 ## D-04 Lizenzen der Datenquellen
 
@@ -2311,3 +2314,64 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 **Folge:** 231 von 232 Bossen der Reihenfolgen haben ein NPC (ohne: Lady Illucia Barov, Scholomance), 275 statt 210 NPCs in `ns.BIS.DG`. Bosse ohne Reihenfolge-Eintrag aus den Item-Daten ohne NPC bei ATT: Deathsworn Captain (Lordaeron), Scorn (Kloster), Balzaphon (Stratholme); die namenlosen "NPC n" tragen ihre ID im Namen. Barrow Deeps und Hyjal Summit haben bei ATT noch keine Bosse, King Op (Shaper's Terrace, 3504) steht dort nur als Kommentar ohne Kreatur. Manor Mistmantle (ATT 3109, nicht auf Blizzards Liste) bleibt aus den Fakten. Etagenkarten hat keine Tabelle (UiMapAssignment kennt nur Außenzonen). Die Modelle zeigt das Spiel nur für Kreaturen, die der Client kennt (`SetCreature`); Anzeige-IDs (`JournalEncounterCreature`) exportiert `tools/export_db2.ps1` schon, die Tabelle ist in Forever 1.60.1 leer. Die Zeilen der neuen Dungeons fehlen dem Export des Nutzers (`Map`, `AreaTable`, `DungeonEncounter`, wohl verschlüsselte Abschnitte des Builds): ein Export mit `-Hotfixes -Force` nach dem Einloggen bringt sie vielleicht; dann nimmt die Reihenfolge des Spiels die von ATT ab.
 
 **Durchgesetzt durch:** `tools/tests/test_att_data.py` (Begegnungen, Flügel, `find_boss` mit ID, Name, NPC, Kurzname, Teilnamen), `tools/tests/test_build_dungeons.py` (ATTs Reihenfolge ohne Client-Zeilen, `npcs`, Alias, andere Hälfte; jeder Boss der Reihenfolge sein NPC bis auf Lady Illucia Barov; die Drowned City), `tools/tests/test_build_bis.py` (`more_boss_npcs`; kein NPC von vorher verloren: `tools/tests/fixtures/boss_npcs_2026-11-10.json`), `tests/test_boss_portraits.lua`, `tests/test_boss_view.lua` (alle Bosse, Porträt aus der Reihenfolge, "nichts für dich").
+
+## D-101 Client-Tabellen auch von wago.tools: nur die API und die CSV-Exporte, die neueste und vollste Kopie gewinnt
+
+**Datum:** 2026-11-10
+**Entscheidung:** Neben dem eigenen Export des PCs (`tools/export_db2.ps1`, `~/addons/_wago`) und den Kopien, die
+AllTheThings mitbringt, lädt `tools/fetch_tables.py` (`python3 tools/build.py tables [--version V]`) die
+Client-Tabellen als CSV-Export von wago.tools nach `~/addons/_cache/wago/<Table>.<build>.csv`. Das ändert D-03 für
+wago.tools; sonst bleibt D-03.
+- **Nur zwei Wege der Seite**, die robots.txt und llms.txt von wago.tools am 2026-11-10 Programmen (auch
+  KI-Agenten) erlauben: die API unter `/api/` (hier `/api/builds/wowf/latest`, der neueste Build des
+  Forever-Clients, Produkt `wowf`) und der CSV-Export `/db2/<Table>/csv?version=<voller Build>` (wahlweise
+  `&locale=`). Alles andere der Seite (Tabellen-Browser, Diffs, jede HTML-Seite) bleibt verboten. `check_url`
+  prüft jede Adresse gegen diese Muster, bevor sie gefragt wird; nur `fetch_tables.py` nennt eine Adresse der Seite.
+- **Wie das Skript die Regeln der Seite hält:** nur GET, eine Anfrage nach der anderen mit 2 Sekunden Pause, ein
+  ehrlicher User-Agent (`Amisia-build-tool/1.0 (tools/fetch_tables.py ...)`), eine Zeitgrenze, ein genauer Build
+  aus `/api/builds` (oder `--version`), Produkt und Build im Manifest `_fetch.<product>.<build>.json` (Datum, je
+  Tabelle Zeilen und Bytes, die Tabellen, die die Seite nicht hat). Eine Datei, die da und keine Fehlerantwort ist,
+  wird nie wieder geladen; "Table not found" steht im Manifest und wird nicht wieder gefragt (`--retry-missing`).
+  Eine Fehlerantwort (JSON mit `errors`, HTML, leer, ein anderer Status) wird nie als Tabelle gespeichert.
+- **Englisch:** die Builds lesen nur englische Namen aus den Tabellen (auch der Export des PCs ist enUS); deutsche
+  Namen kommen aus dem Spiel selbst. Darum nur enUS; `--locale deDE` gibt es, wird aber nicht gebraucht.
+- **Welche Kopie die Builds lesen** (`tools/client_tables.py`): je Tabelle die Datei mit dem höchsten Build, bei
+  gleichem Build die mit mehr Zeilen, eine Datei ohne Zeilen nur, wenn keine Zeilen hat; ein letzter Gleichstand
+  geht an den Export. `chosen_dir()` legt die Wahl als Verknüpfungen in `~/addons/_cache/wago_chosen` ab, jeder
+  Build liest sie ohne `--wago`, ein ausdrücklicher Ordner gewinnt; `build.py data` druckt je Tabelle Build, Zeilen
+  und Herkunft und warnt, wenn eine ältere Kopie mehr Zeilen hat. `build.py data` fragt das Netz nie: dieselben
+  Dateien geben dieselben Daten. Die Liste der Tabellen steht nur in `tools/export_db2.ps1`
+  (`client_tables.TABLES` liest sie).
+- **Weiter verboten:** kein Skript und kein Agent lädt von wowhead.com oder foreverchanges (ihre Bedingungen
+  verbieten es; die Icon-Suche in `tools/build_scan.py` bleibt die benannte Ausnahme von D-03); keine Daten und kein
+  Code anderer Addons (D-04, D-05); nichts unter Copyleft. AllTheThings (MIT) und wowsrc.com bleiben wie in D-04.
+
+**Grund:** Der Nutzer am 2026-11-10 auf "Die Daten kommen nur aus AllTheThings, deinen exportierten Client-Tabellen
+und deinem eigenen Scan": "nimm alle Quellen die du bekommen kannst um es genau und aktuell zumachen". D-03 hatte
+wago.tools verboten, weil dessen robots.txt Bots verbot; robots.txt und llms.txt erlauben Programmen am 2026-11-10
+genau die API und die CSV-Exporte. Dem Export des PCs (1.60.1.70862) fehlen Zeilen (wohl verschlüsselte Abschnitte):
+`Map` und `DungeonEncounter` haben die neuen Dungeons 2970, 2974, 2994, 3001, 3039 nicht, die Exporte der Seite
+(1.60.1.70888) haben sie.
+
+**Folge:** Am 2026-11-10 geladen: `wowf` 1.60.1.70888, 56 Tabellen (54 neu, `Map` und `DungeonEncounter` hatte der
+Nutzer von Hand geholt), 316890 Zeilen, 21 MB, 59 Anfragen. Die Seite hat nicht: `JournalInstance`,
+`JournalEncounter`, `JournalEncounterItem`, `JournalEncounterCreature`, `ItemRandomProperties`, `ItemRandomSuffix`,
+`SkillTiers`, `TraitNodeXTraitCond` (diese nimmt der Build weiter aus dem Export 1.60.1.70755). Keine Tabelle der
+Seite hat weniger Zeilen als der Export. Mit den Daten neu gebaut: die neuen Forever-Dungeons haben die Reihenfolge
+und die Begegnungen des Spiels statt der Handreihenfolge (Drowned City: Captain Dreadrise vor Deathless Guardians)
+und statt der von AllTheThings (`order_src` "att" entfällt; Alcaz Prison bekommt Overseer Wrex 3403 an erster
+Stelle, Shaper's Terrace King Op 3504, beide noch ohne NPC: keine erlaubte Quelle nennt es), ihre Stufe aus
+`LFGDungeons` (Drowned City 35, Krol'dok 40, Alcaz 48, Blackmaw 55, Shaper's Terrace 60 gegen 58 der Fakten: die
+Spanne bleibt die der Fakten) und ihr Ladebildschirm (`DungeonArt.lua` 29 statt 24 Dungeons); `BisData.lua` `EN`
+250 statt 218 Begegnungen. 231 von 234 Bossen der Reihenfolgen haben ein NPC (vorher 231 von 232). Items und Werte
+unverändert (6587 Items); drei Schmuckstücke (272437, 272438, 272439) haben im neuen Build weniger Werte als der
+Scan sah, darum rechnet `build_bis.py` für Schmuckstücke keine Werte mehr (vorher auch nur 1 gerechnetes Item).
+Etagenkarten gibt es weiter nicht (`UiMapAssignment` 61 Zeilen, nur Außenzonen). Der Export des PCs bleibt möglich
+und läuft weiter; `tools/auto_data.py` (D-51) baut mit der Wahl, startet aber nur auf einen neuen Export des PCs und
+lädt selbst nichts. Vorher (D-03, 2026-10-07): Client-Tabellen nur aus dem Export des PCs.
+
+**Durchgesetzt durch:** `tools/tests/test_contracts.py::test_no_tool_fetches_from_the_forbidden_sites` (wago.tools
+nur in `tools/fetch_tables.py` und nur API und CSV, wowhead und foreverchanges nirgends bis auf die Icon-Suche),
+`tools/tests/test_fetch_tables.py` (die Wege, Fehlerantworten, keine zweite Anfrage, Manifest, Build aus der API,
+Pause), `tools/tests/test_client_tables.py` (höchster Build, dann mehr Zeilen, ein ausdrücklicher Ordner gewinnt, die
+eine Liste), `tools/tests/test_auto_data.py::test_the_data_build_takes_the_newest_copy_of_each_table`.

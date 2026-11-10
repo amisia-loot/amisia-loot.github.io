@@ -17,7 +17,7 @@ Sources (named with their licence in tools/README.md and in the header of the ge
     A place inside a dungeon stands for its entrance.
   - The generated gear data (GearData.lua): which places are needed at all.
   - Instance ids (I:<id> keys) are matched to the data's instances through the client's
-    UiMapAssignment and AreaTable tables in --wago (default ~/addons/_wago, downloaded by hand from wago.tools)
+    UiMapAssignment and AreaTable tables in --wago (default: the newest copy of each table, tools/client_tables.py)
     and tools/forever_dungeons.json; without them those keys stay without a place and the
     dungeon is found by its name (N:<name>).
 
@@ -739,13 +739,16 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--att', default=att_data.ATT_CACHE, help=f'AllTheThings download (default {att_data.ATT_CACHE})')
     ap.add_argument('--refresh-att', action='store_true', help='download the AllTheThings Forever files first')
-    ap.add_argument('--wago', default=build_gear.WAGO, help='folder with the client tables (Map, UiMapAssignment, AreaTable)')
+    ap.add_argument('--wago', default=None, help='folder with the client tables (Map, UiMapAssignment, AreaTable; default: the newest copy of each table, tools/client_tables.py)')
     ap.add_argument('--sv', nargs='*', help='Amisia SavedVariables with learned entrances (default: '
                                             '~/addons/_SavedVariables/Amisia.lua and an installed Forever client\'s)')
     ap.add_argument('--entrances', default=ENTRANCES, help='the archive of learned entrances')
     ap.add_argument('--gear', default=GEAR)
     ap.add_argument('--out', default=OUT)
     args = ap.parse_args(argv)
+    if args.wago is None:
+        import client_tables
+        args.wago = client_tables.default_dir()
 
     recs, has_game = load_gear(args.gear)
     needed = needed_keys(recs, has_game)

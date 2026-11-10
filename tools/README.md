@@ -8,6 +8,7 @@ the Python that starts it has no `lupa`, it starts again in `~/.venvs/amisia`, s
 
 ```
 python3 tools/build.py data [--sv FILE] [--wago DIR] [--att DIR] [--refresh-att]
+python3 tools/build.py tables [--version V] [--tables T ...]
 python3 tools/build.py check
 python3 tools/build.py tocs
 python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
@@ -20,15 +21,19 @@ python3 tools/build.py errors [--sv FILE] [--all]
 - `data` runs the data builds in dependency order: `build_scan_archive.py update`, `build_dungeons.py --wago`, `build_gear.py`,
   `build_map.py`, `build_dungeonquests.py`, `build_quests.py`, `build_professions.py`,
   `build_talents.py`, `build_magescrolls.py`, `build_raidcheck.py`, `build_enchants.py`, `build_dungeonart.py --wago`, `build_bis.py`. It stops at the first build
-  that fails and ends with `git diff --stat` of `Amisia/Data` and `tools`. `--wago` is the
-  folder of the client tables (default `~/addons/_wago`); professions, talents, mage scrolls and the raid check are skipped with a
-  note naming the missing tables (export them on the PC with `tools/export_db2.ps1 -Tables ...`),
+  that fails and ends with `git diff --stat` of `Amisia/Data` and `tools`. Without `--wago` it first
+  chooses the newest, fullest copy of every client table (`client_tables.py`, below) and prints per table
+  the file it took (version, rows, source); `--wago DIR` reads only that folder instead. Professions, talents, mage scrolls and the raid check are skipped with a
+  note naming the missing tables (`build.py tables`, or export them on the PC with `tools/export_db2.ps1 -Tables ...`),
   dungeons and dungeon art fall back to their kept snapshots. `--sv` goes to `build_gear.py`,
   `build_map.py` (learned entrances), `build_professions.py` (trainers read in the game), `build_dungeonquests.py` (the collector's own quest observations),
   `build_bis.py` and `build_scan_archive.py` (default: what each finds, e.g. `~/addons/_SavedVariables/Amisia.lua`);
   `--att DIR` builds every step from another AllTheThings download (it sets `AMISIA_ATT_CACHE`, see
   `att_data.py`; e.g. a fresh download in `~/addons/_cache/att_<date>` to compare before it replaces the
-  cache); `--refresh-att` downloads the AllTheThings data first. Nothing is ever downloaded from wago.tools.
+  cache); `--refresh-att` downloads the AllTheThings data first. `data` never asks wago.tools: it builds
+  from what is on disk, so the same files give the same data.
+- `tables` downloads the client tables from wago.tools (`fetch_tables.py`, below): the newest `wowf` build
+  or `--version`, every table of `client_tables.TABLES` or only `--tables`. The one step that asks the site.
 - `check` runs `tests/syntax.cjs`, `tests/run.py`, the layout rules of every page and
   window (`tools/ui_layout.py rules`, see below), `pytest tools/tests` (which holds the
   "generated file is current" checks), a UTF-8 check of every addon text file (no byte order mark),
@@ -75,6 +80,8 @@ python3 tools/build.py errors [--sv FILE] [--all]
   `~/addons/_auto/amisia-data.txt`; it never pushes, merges or releases. `--dry-run`, `--force`, `--base`.
   On the PC `tools/install_export_task.ps1` (once, as administrator) sets up the task that runs
   `export_db2.ps1` after logon and every two hours.
+- `auto_data.py` runs `build.py data` without `--wago`, so the automatic build also takes the newest copy of
+  each table; it still starts only on a new complete export of the PC and fetches nothing itself (D-101).
 - Before the test list `release` says what to do in the game: a full restart of WoW when the TOC's file
   list changed or a file under `Amisia/Media` is new since the last release (the client reads both only
   at start), otherwise `/reload`.
@@ -249,6 +256,47 @@ for the officer view).
   (`state.bankNeeds`) and merges the log by the same rule (`state.bankLog`, 1000 entries); the Mats
   tab shows a need line per material and the log under the requests.
 
+## client_tables.py and fetch_tables.py: where the client tables come from (D-101)
+
+```
+python3 tools/build.py tables [--version 1.60.1.70888] [--tables T ...]    # = tools/fetch_tables.py
+python3 tools/fetch_tables.py [--version V] [--product wowf] [--tables T ...] [--locale deDE] [--retry-missing]
+python3 tools/client_tables.py [--out DIR]                                   # show the choice
+```
+
+- Three folders hold client tables, each file `<Table>.<build>.csv` (wago.tools' name; `<Table>.csv`
+  counts as the oldest): `~/addons/_wago` (the PC's export, `export_db2.ps1`, Syncthing), `~/addons/_cache/wago`
+  (wago.tools' CSV exports, `fetch_tables.py`) and AllTheThings' copies in `~/addons/_cache/att/.config/.wago`
+  (four tables). None of them is committed.
+- `client_tables.choose(table)` takes the file of the highest build; at the same build the one with more rows
+  (the PC's export lacks the rows of sections the client keeps encrypted: `Map`, `DungeonEncounter`,
+  `AreaTable` of the new dungeons); a file without rows only when no file of the table has rows; a last tie
+  goes to the export. `chosen_dir()` lays the choice out as links in `~/addons/_cache/wago_chosen` (one
+  `<Table>.<build>.csv` per table, `chosen.txt` with the report, `.rows.json` the row counts it keeps), and
+  every builder reads that folder when it gets no `--wago`; `--wago DIR` still wins. A line `WARNING` in the
+  report means an older copy has more rows than the newest: look before the data ships.
+- `client_tables.TABLES` is the one list of tables: read from `$RequiredTables`, `$OptionalTables` and
+  `$TalentTables` of `export_db2.ps1`, so the PC's export and the fetch ask for the same tables
+  (`tools/tests/test_client_tables.py` checks that every builder's tables are in it).
+- `fetch_tables.py` is the only tool that may talk to wago.tools, and only along the two routes the site's
+  robots.txt and llms.txt allow programs (read 2026-11-10): `/api/builds/<product>/latest` for the newest
+  build and `/db2/<Table>/csv?version=<build>` (`&locale=` optional). `check_url` refuses every other URL
+  before it is asked for. GET only, one request at a time with 2 seconds between, a timeout, the User-Agent
+  `Amisia-build-tool/1.0 (tools/fetch_tables.py ...)`. A table file that is there and no error answer is
+  never asked for again; an error answer (JSON with `errors`, an HTML page, an empty body, another status)
+  is never saved and is reported; "Table not found" goes into the manifest and is not asked for again
+  (`--retry-missing`). The manifest `_fetch.<product>.<build>.json` in the folder holds product, build,
+  date, per table rows and bytes, and the tables the site does not have (for `wowf` 1.60.1.70888:
+  `JournalInstance`, `JournalEncounter`, `JournalEncounterItem`, `JournalEncounterCreature`,
+  `ItemRandomProperties`, `ItemRandomSuffix`, `SkillTiers`, `TraitNodeXTraitCond`).
+- English only: the string columns the builders read are English names (`Name_lang`, `Display_lang`, ...);
+  the PC's export is English too, and no builder reads a German name from a table (German names come from
+  the game itself). `--locale deDE` would write `<Table>.<build>.deDE.csv`, which the chooser leaves out.
+- Never from wowhead.com or foreverchanges, never data of other addons (D-03, D-04).
+
+Tests: `tools/tests/test_client_tables.py`, `tools/tests/test_fetch_tables.py` (no network: the URL guard,
+error answers, no second download, the manifest, the build from a canned `/api/builds` answer, the pause).
+
 ## build_scan_archive.py: the scan archive and the trim marker
 
 ```
@@ -371,7 +419,7 @@ the licence text ships in `Amisia/LICENSES/AllTheThings-MIT.txt`, approved by th
   (Molten Core, Blackwing Lair, Zul'Gurub, Ahn'Qiraj, Naxxramas in the 2026-11-05 data) are not read.
 - Client tables (wago.tools CSV downloads) are read as `<Table>.csv` or `<Table>.<build>.csv`, the name
   wago.tools gives them (`UiMapAssignment.1.60.1.70235.csv`); of several builds in one folder the newest
-  counts (`wago_csv()`). The user's folder `~/addons/_wago` comes first, ATT's copies second.
+  counts (`wago_csv()`). Which folder a build reads: `client_tables.py` (the newest copy of each table).
 - The files are a Lua builder language. They run in a sandbox (lupa without its python bridge, an
   environment of a few safe functions, no `io`, `os`, `load`, `require`, `debug`) with stand-ins
   that only record what they are given. ATT's preprocessor (`-- #if SEASON_OF_DISCOVERY` ...) is
@@ -460,7 +508,7 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
   map points by it.
 - Dungeon sources carry the instance id and area id, so the gear page can find "here" through
   `GetInstanceInfo()`. The area id is ATT's; the instance id comes from the `UiMapAssignment` and
-  `AreaTable` client tables (`--wago`, default `~/addons/_wago`, then ATT's copies),
+  `AreaTable` client tables (`--wago`, default the newest copy of each table, `client_tables.py`),
   `tools/forever_dungeons.json` with `tools/forever_dungeons_client.json`, or the collector's drop
   notes. Without one the dungeon is found by its English name only.
 - `--itemsparse` takes the CSV or a folder with `ItemSparse[.<build>].csv` and rewrites
@@ -544,8 +592,7 @@ entry names its source in `src`, explained in the file's `sources` block with th
 python tools/build_dungeons.py [--wago [DIR ...]] [--no-att]
 ```
 
-- `--wago` reads the client tables (default `~/addons/_wago`, then ATT's copies in
-  `~/addons/_cache/att/.config/.wago`) and rewrites `tools/forever_dungeons_client.json`: per dungeon of
+- `--wago` reads the client tables (default the newest copy of each table, `client_tables.py`) and rewrites `tools/forever_dungeons_client.json`: per dungeon of
   the facts the level the client tunes it to (`LFGDungeons` -> `ContentTuningID` -> `ContentTuning`
   `MinLevelSquish`, read by `tuning_levels`, which `build_bis.py` uses too) and its instance id
   (`AreaTable`). Forever's `LFGDungeons` (1.60.1.70235) has no level range, map or group size of its own; the tuning level is one number, the low end of the range
@@ -584,7 +631,7 @@ Builds `Amisia/Data/GearWeights.lua` (Amisia's own weights, `ns.GEAR_WEIGHTS`) a
 install, no network:
 
 ```
-python tools/build_bis.py [--wago ~/addons/_wago] [--measured tools/bis_measured.json]
+python tools/build_bis.py [--wago DIR] [--measured tools/bis_measured.json]
                           [--werte "AMISIA-WERTE level=60 class=ROGUE agi=300 crit=10.3 cr_CRIT=28:2"]
                           [--sv ~/addons/_SavedVariables/Amisia.lua] [--att DIR] [--no-att]
                           [--picks tools/bis_picks.json]
@@ -593,8 +640,9 @@ python tools/build_bis.py [--wago ~/addons/_wago] [--measured tools/bis_measured
 Inputs:
 
 - **Client tables** (CSV in wago.tools' format: `tools/export_db2.ps1` exports them from the WoW
-  install on the PC, or they are downloaded by hand from wago.tools; Syncthing brings them to
-  `~/addons/_wago`, files `<Table>.<build>.csv`; never committed). Read when present: `ItemSparse`,
+  install on the PC (Syncthing brings them to `~/addons/_wago`), `build.py tables` loads wago.tools' CSV
+  exports into `~/addons/_cache/wago`; files `<Table>.<build>.csv`, the newest copy of each table chosen by
+  `client_tables.py`; never committed). Read when present: `ItemSparse`,
   `Item`, `RandPropPoints`, `ItemSet`, `ItemSetSpell`, `SpellEffect`, `SpellItemEnchantment`,
   `LFGDungeons`, `ContentTuning`, `DungeonEncounter`, the damage tables `ItemDamageOneHand(Caster)` and
   `ItemDamageTwoHand(Caster)`, the armour tables `ItemArmorQuality`, `ItemArmorTotal`, `ItemArmorShield`
@@ -766,7 +814,7 @@ route (F-137). Specs: `docs/superpowers/specs/2026-10-06-amisia-professions-desi
 `docs/specs/2026-11-06-berufsroute.md`.
 
 ```
-python tools/build_professions.py [--wago ~/addons/_wago] [--att ~/addons/_cache/att] [--scan-archive FILE] [--sv FILE...]
+python tools/build_professions.py [--wago DIR] [--att ~/addons/_cache/att] [--scan-archive FILE] [--sv FILE...]
                                   [--trainers tools/trainer_archive.json] [--out FILE] [--empty]
 ```
 
@@ -855,7 +903,7 @@ python tools/build_talents.py [--wago DIR ...] [--out FILE]
   three node groups. The old `Talent`/`TalentTab` tables still hold Classic's talents and are not
   read. Points: the tree's currency (`SourcedMax` 51, one per level 10-60); the legacy perk
   "Talented" only gives them earlier (rank k from level 10-k), never more.
-- Client tables read (CSV in wago.tools' format, `--wago`, default `~/addons/_wago`; the first
+- Client tables read (CSV in wago.tools' format, `--wago`, default the newest copy of each table, `client_tables.py`; the first
   folder with a table wins): `TraitNode`, `TraitNodeEntry`, `TraitNodeXTraitNodeEntry`,
   `TraitDefinition`, `TraitDefinitionEffectPoints`, `CurvePoint`, `TraitEdge`, `TraitNodeGroup`,
   `TraitNodeGroupXTraitNode`, `TraitNodeGroupXTraitCond`, `TraitCond`, `TraitNodeGroupDisplayInfo`,
@@ -877,7 +925,7 @@ Runs on the N100. Tests: `tools/tests/test_build_talents.py` on hand-made fixtur
 Builds `Amisia/Data/MageScrollData.lua` (`ns.MAGESCROLLS`, lazy) for the scrolls page
 (`/amisia schriftrollen`, under Ausrüstung for mages): WoW Forever's mage scrolls and the
 Comprehension skill line ("Arkanes Verständnis"). From the client tables (`--wago`, default
-`~/addons/_wago`; ItemSparse, Item, SkillLine, SkillLineAbility, Spell, SpellName, SpellMisc,
+the newest copy of each table, `client_tables.py`; ItemSparse, Item, SkillLine, SkillLineAbility, Spell, SpellName, SpellMisc,
 SpellEffect, ItemEffect, ItemXItemEffect, optional SpellDuration/SpellRadius/SpellAuraOptions):
 the untranslated scrolls (`RequiredSkill` = Comprehension) with their rank, the tiers (the distinct
 ranks) with the yellow/grey steps of the "Comprehend Scroll" abilities matched in rank order, the
@@ -893,7 +941,7 @@ after the talents (skipped without the tables).
 
 Builds `Amisia/Data/RaidCheckData.lua` (`ns.RAIDCHECK`, lazy) for the raid check (F-098,
 `Raid/RaidCheck.lua`): which buff is a flask, an elixir or food and which spells are the class
-buffs, from the client tables only (`--wago`, default `~/addons/_wago`; Item, ItemEffect,
+buffs, from the client tables only (`--wago`, default the newest copy of each table, `client_tables.py`; Item, ItemEffect,
 ItemXItemEffect, SpellEffect, SpellMisc, SpellDuration, SpellName; optional SpellEquippedItems with
 SkillLineAbility). Flasks: the use spells of consumables of subclass 3. Elixirs: subclass 2, only an
 aura of 10 minutes or more. Food: subclass 5, the auras of 10 minutes or more the use spell triggers
@@ -909,7 +957,7 @@ SpellEquippedItems`) the fixed list back, chest, wrist, hands, feet, main hand, 
 ## build_enchants.py
 
 Builds `Amisia/Data/EnchantData.lua` (`ns.ENCHANT`, lazy) for the enchant suggestions (F-128,
-`Gear/Enchants.lua`) from the client tables only (`--wago`, default `~/addons/_wago`; SpellEffect,
+`Gear/Enchants.lua`) from the client tables only (`--wago`, default the newest copy of each table, `client_tables.py`; SpellEffect,
 SpellItemEnchantment, SpellEquippedItems, SkillLineAbility, ItemEffect, ItemXItemEffect, Item,
 ItemSparse). An enchantment is what a spell with effect 53 ("enchant item", permanent; 54, the
 temporary oils and stones, stays out) puts on an item. Its sources: Enchanting (333) and Engineering
@@ -991,8 +1039,10 @@ powershell -ExecutionPolicy Bypass -File tools\export_db2.ps1
 It starts WTL in the background on port 5077, waits until the build is loaded (minutes on the first
 start), switches to the installed build if WTL picked a newer one from the patch server, writes
 `<Table>.<build>.csv` (for example `ItemSparse.1.60.1.70235.csv`) into `%USERPROFILE%\VuloSync\wago`
-and stops WTL again. Syncthing (folder `amisia-wago`) brings the files to `~/addons/_wago`, where
-`build_bis.py`, `build_dungeons.py`, `build_gear.py` and `build_map.py` pick the newest build.
+and stops WTL again. Syncthing (folder `amisia-wago`) brings the files to `~/addons/_wago`; the builders
+take per table the newest, fullest copy of this export, wago.tools' CSV exports and AllTheThings' copies
+(`client_tables.py`, D-101). The export stays the way for tables the site does not have, and for a build
+the site does not have yet.
 
 - Array columns are renamed from `Name[0]` to `Name_0`, the form wago.tools uses, so the files are
   drop-in replacements. String columns are `enUS` (`-Locale`).

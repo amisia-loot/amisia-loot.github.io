@@ -341,10 +341,13 @@ def main(argv=None):
     ap.add_argument('what', nargs='?', default='update', choices=('update', 'marker'))
     ap.add_argument('--sv', nargs='*', help='Amisia SavedVariables files (default: ~/addons/_SavedVariables/Amisia.lua '
                                             'and an installed Forever client\'s)')
-    ap.add_argument('--wago', default=WAGO, help='folder with the client table ItemSparse (default ~/addons/_wago)')
+    ap.add_argument('--wago', default=None, help='folder with the client table ItemSparse (default: the newest copy of each table, tools/client_tables.py)')
     ap.add_argument('--archive', default=ARCHIVE)
     ap.add_argument('--marker', default=MARKER)
     args = ap.parse_args(argv)
+    if args.wago is None:
+        import client_tables
+        args.wago = client_tables.default_dir()
     if args.what == 'marker':
         wrote = write_marker(args.marker, load(args.archive))
         print(f'marker: {args.marker}' + ('' if wrote else ' (unchanged)'))

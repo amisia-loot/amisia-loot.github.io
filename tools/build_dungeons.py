@@ -10,8 +10,8 @@ Run it after changing either JSON file:
 
     python tools/build_dungeons.py [--wago [DIR ...]]
 
---wago reads the client tables (wago.tools CSV downloads, <Table>.csv or <Table>.<build>.csv, in
-~/addons/_wago, then the copies ATT ships in ~/addons/_cache/att/.config/.wago) and rewrites
+--wago reads the client tables (<Table>.csv or <Table>.<build>.csv; default the newest copy of each
+table of the export, wago.tools' CSV exports and the copies ATT ships, tools/client_tables.py) and rewrites
 tools/forever_dungeons_client.json: per dungeon of the facts the level the client tunes it to
 (LFGDungeons -> ContentTuning; one level, the minimum of the range where the public facts give one),
 its instance id (AreaTable) and its bosses in the game's order (DungeonEncounter: the rows of the
@@ -390,7 +390,7 @@ def write_client(client, path=CLIENT):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--wago', nargs='*', default=None,
-                    help='read the client tables first (default folders: ~/addons/_wago, then ATT\'s copies)')
+                    help='read the client tables first (default: the newest copy of each table, tools/client_tables.py)')
     ap.add_argument('--no-att', action='store_true',
                     help='with --wago: without AllTheThings\' encounters and NPCs (default: its cache, see tools/att_data.py)')
     args = ap.parse_args(argv)
@@ -401,9 +401,12 @@ def main(argv=None):
         if not args.no_att and att_data.commit_of(att_data.ATT_CACHE):
             att = att_data.load(att_data.ATT_CACHE, items=False)
             print('AllTheThings %s: %d encounters' % ((att.get('commit') or '?')[:10], len(att.get('encounters') or {})))
-        client = client_facts(facts, args.wago or WAGO_DIRS, att)
+        if not args.wago:
+            import client_tables
+            args.wago = [client_tables.default_dir()]
+        client = client_facts(facts, args.wago, att)
         if not client['tables'].get('LFGDungeons') and not client['tables'].get('AreaTable'):
-            raise SystemExit('no LFGDungeons or AreaTable CSV in ' + ', '.join(args.wago or WAGO_DIRS))
+            raise SystemExit('no LFGDungeons or AreaTable CSV in ' + ', '.join(args.wago))
         print('client tables: ' + ', '.join(f'{t} {n}' for t, n in sorted(client['tables'].items())))
         print('client: %d dungeons with a level, %d with an instance id; LFGDungeons names without facts: %s' % (
             sum(1 for c in client['dungeons'].values() if c.get('lvl')),

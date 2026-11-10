@@ -233,9 +233,12 @@ def test_the_client_levels_and_instance_ids():
             assert len(v['npcs']) == len(order), (k, v)
         assert v.get('lvl') is None or 1 <= v['lvl'] <= 60, (k, v)
     by = {e['key']: e for e in entries()}
-    # the client's level is the low end of the public range wherever both are known
+    # the client's level is the low end of the public range wherever both are known; Shaper's Terrace
+    # alone is tuned to the top of its range (60 of 58-60, build 1.60.1.70888; the range stays the facts', D-101)
     both = [k for k, v in c['dungeons'].items() if v.get('lvl') and by[k].get('min') is not None and by[k]['kind'] == 'party']
-    assert len(both) >= 4 and all(c['dungeons'][k]['lvl'] == by[k]['min'] for k in both), both
+    assert len(both) >= 9, both
+    assert [k for k in both if c['dungeons'][k]['lvl'] != by[k]['min']] == ['shaper'], both
+    assert c['dungeons']['shaper']['lvl'] == by['shaper']['max'] == 60
     assert c['dungeons']['deadmines'] == {'lvl': 16, 'lfg': ['Deadmines'], 'inst': 36, 'order': [
         "Rhahk'Zor", 'Sneed', 'Miner Johnson', 'Gilnid', 'Captain Greenskin', 'Mr. Smite', 'Cookie', 'Edwin VanCleef'],
         'enc': [2741, 2742, 3676, 2743, 2744, 2745, 2746, 2747],
@@ -243,7 +246,7 @@ def test_the_client_levels_and_instance_ids():
         "the bosses in the game's order (F-139)"
     assert c['dungeons']['dire']['lfg'] == ['Dire Maul - East', 'Dire Maul - West', 'Dire Maul - North']
     assert c['dungeons']['lbrs']['inst'] == c['dungeons']['ubrs']['inst'] == 229, 'one instance, two dungeons'
-    assert build_dungeons.conflicts(facts(), c) == []
+    assert build_dungeons.conflicts(facts(), c) == ["Shaper's Terrace: level 60 in the client, 58 in the facts"]
 
 
 def test_reading_the_client_tables():
@@ -329,9 +332,19 @@ def test_every_boss_of_the_order_has_its_npc():
     for k, v in c.items():
         order = v.get('order') or by[k].get('order') or []
         missing += [f'{k}: {n}' for n, npc in zip(order, v.get('npcs') or []) if npc is not False and npc == 0]
-    assert missing == ['scholo: Lady Illucia Barov'], missing
+    # Overseer Wrex (Alcaz Prison, 3403) and King Op (Shaper's Terrace, 3504) stand in the client's order since
+    # build 1.60.1.70888 (D-101); AllTheThings has their encounters only as comments, without a creature
+    assert missing == ['alcaz: Overseer Wrex', 'scholo: Lady Illucia Barov', 'shaper: King Op'], missing
+    # the new Forever dungeons: the game's own order and encounters from the client table (DungeonEncounter of
+    # build 1.60.1.70888, D-101), no hand order and no order of AllTheThings any more
     drowned = c['drowned']
-    assert by['drowned']['order'][0] == "Zul'Alai" and drowned['inst'] == 2970
-    assert drowned['npcs'] == [258905, 258924, 260213, 260042, 273738, 260243]
-    for k in ('kroldok', 'alcaz', 'blackmaw', 'shaper'):
-        assert c[k].get('order_src') == 'att' and all(n > 0 for n in c[k]['npcs']), k
+    assert 'order' not in by['drowned'] and drowned['inst'] == 2970 and drowned['lvl'] == 35
+    assert drowned['order'] == ["Zul'Alai", "Var'Taka", 'Captain Dreadrise', 'Deathless Guardians', 'Primeval Elemental',
+                                "Min'loth the Serpent"]
+    assert drowned['enc'] == [3474, 3475, 3476, 3478, 3511, 3479]
+    assert drowned['npcs'] == [258905, 258924, 260042, 260213, 273738, 260243]
+    for k, inst in (('kroldok', 3039), ('alcaz', 2994), ('blackmaw', 2974), ('shaper', 3001)):
+        assert 'order_src' not in c[k] and c[k]['inst'] == inst and c[k]['lvl'], k
+        assert all(npc > 0 for name, npc in zip(c[k]['order'], c[k]['npcs']) if name not in ('Overseer Wrex', 'King Op')), k
+    assert c['alcaz']['order'][0] == 'Overseer Wrex' and c['alcaz']['enc'][0] == 3403
+    assert c['shaper']['order'][6] == 'King Op' and c['shaper']['enc'][6] == 3504

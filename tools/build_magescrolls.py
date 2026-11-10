@@ -20,8 +20,8 @@ are world drops ("world drops/"), and the library books ("expansion features/lib
 books found in the world that a librarian (Stormwind, Undercity) takes for a Comprehension Charm,
 and the "Friend of the Library" quests for N books.
 
-Reads <Table>.csv or <Table>.<build>.csv from the folders given with --wago (default ~/addons/_wago;
-tools/export_db2.ps1 on the PC). Writes Amisia/Data/MageScrollData.lua (ns.MAGESCROLLS, lazy).
+Reads <Table>.csv or <Table>.<build>.csv from the folders given with --wago (default: the newest copy
+of each table, tools/client_tables.py). Writes Amisia/Data/MageScrollData.lua (ns.MAGESCROLLS, lazy).
 """
 import argparse
 import csv
@@ -281,7 +281,7 @@ def empty_data():
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    ap.add_argument('--wago', action='append', default=None, help=f'client tables (default {WAGO}); may repeat')
+    ap.add_argument('--wago', action='append', default=None, help='client tables (default: the newest copy of each table, tools/client_tables.py); may repeat')
     ap.add_argument('--att', default=None, help=f'AllTheThings download (default {att_data.ATT_CACHE} when it exists)')
     ap.add_argument('--refresh-att', action='store_true', help='download the AllTheThings Forever folder first')
     ap.add_argument('--no-att', action='store_true', help='without AllTheThings (no sources, no library books)')
@@ -291,7 +291,10 @@ def main(argv=None):
     if args.empty:
         data = empty_data()
     else:
-        dirs = [os.path.expanduser(d) for d in (args.wago or [WAGO])]
+        if not args.wago:
+            import client_tables
+            args.wago = [client_tables.default_dir()]
+        dirs = [os.path.expanduser(d) for d in args.wago]
         att = None
         if not args.no_att:
             base = os.path.expanduser(args.att or att_data.ATT_CACHE)

@@ -1,6 +1,7 @@
 """One entry point for Amisia's builds, checks and releases.
 
     python3 tools/build.py data [--sv FILE] [--wago DIR] [--att DIR] [--refresh-att]
+    python3 tools/build.py tables [--version V] [--tables T ...]
     python3 tools/build.py check
     python3 tools/build.py tocs
     python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
@@ -11,8 +12,14 @@
 
 data     rebuilds every generated file in Amisia/Data in dependency order (dungeons, gear, map,
          dungeon quests, quests, professions, talents, mage scrolls, raid check, enchants, dungeon art, BiS), stops at the first error
-         and shows what changed. A step whose client tables are missing in --wago is skipped with a
-         note (the tables come only from the user's own tools/export_db2.ps1 run, never downloaded).
+         and shows what changed. Without --wago it first chooses per client table the newest, fullest
+         copy of the user's export (~/addons/_wago), the wago.tools exports (~/addons/_cache/wago) and
+         AllTheThings' copies (tools/client_tables.py, D-101) and prints which file it took; an explicit
+         --wago folder wins. A step whose client tables are missing is skipped with a note. data never
+         touches the network for the tables: only `tables` does.
+tables   downloads the client tables the builders read from wago.tools' CSV exports for the newest
+         wowf build (or --version) into ~/addons/_cache/wago (tools/fetch_tables.py, D-101): its two
+         allowed routes only, one request at a time, a table already there is never asked for again.
 check    the syntax check, the addon tests (German, then English), the translation check
          (tools/l10n.py), the layout rules of every page and window in both locales
          (tools/ui_layout.py), the tool tests (they include the "generated file is current" checks),
@@ -243,7 +250,6 @@ def missing_tables(needs, wago):
 def cmd_data(args):
     if args.sv and not os.path.exists(args.sv):
         raise SystemExit('no SavedVariables file ' + args.sv)
-    wago = os.path.abspath(os.path.expanduser(args.wago))
     if getattr(args, 'att', None):
         att = os.path.abspath(os.path.expanduser(args.att))
         if not os.path.isdir(os.path.join(att, 'dungeons & raids')):
@@ -251,6 +257,17 @@ def cmd_data(args):
         # every builder reads att_data.ATT_CACHE, which honours this
         os.environ['AMISIA_ATT_CACHE'] = att
         say(f'AllTheThings download: {att}')
+    if args.wago:
+        wago = os.path.abspath(os.path.expanduser(args.wago))
+        say(f'client tables: {wago} (given)')
+    else:
+        # the newest, fullest copy of each table (tools/client_tables.py); after the ATT choice above
+        tools = os.path.join(ROOT, 'tools')
+        if tools not in sys.path:
+            sys.path.insert(0, tools)
+        import client_tables
+        say('client tables (table, version, rows, source; tools/client_tables.py):')
+        wago = client_tables.chosen_dir(log=lambda line: say('  ' + line))
     py = sys.executable
     done, skipped = [], []
     for name, script, sargs, needs, without in data_steps(args.sv, wago, args.refresh_att):
@@ -258,7 +275,7 @@ def cmd_data(args):
             miss = missing_tables(needs, wago)
             if miss:
                 note = (f'client tables missing in {wago}: {", ".join(miss)} '
-                        f'(export them on the PC: tools/export_db2.ps1 -Tables {",".join(miss)})')
+                        f'(build.py tables, or export them on the PC: tools/export_db2.ps1 -Tables {",".join(miss)})')
                 if without == 'skip':
                     say(f'skip  {name}: {note}')
                     skipped.append(name)
@@ -277,6 +294,17 @@ def cmd_data(args):
     stat = git(ROOT, 'diff', '--stat', '--', ADDON_REL + '/Data', 'tools').rstrip()
     say('changed:\n' + stat if stat else 'changed: nothing (every generated file is current)')
     return 0
+
+
+def cmd_tables(args):
+    """The client tables from wago.tools (tools/fetch_tables.py); the only network step of the data."""
+    cmd = [sys.executable, os.path.join(ROOT, 'tools', 'fetch_tables.py')]
+    if args.version:
+        cmd += ['--version', args.version]
+    if args.tables:
+        cmd += ['--tables'] + list(args.tables)
+    rc, _ = run(cmd)
+    return rc
 
 
 # ---------------------------------------------------------------- check
@@ -771,10 +799,14 @@ def main(argv=None):
     d = sub.add_parser('data', help='rebuild the generated data files')
     d.add_argument('--sv', default=None, help='Amisia SavedVariables for build_gear and build_bis '
                                               '(default: what each build finds, e.g. ~/addons/_SavedVariables/Amisia.lua)')
-    d.add_argument('--wago', default=WAGO, help=f'folder of the client table CSVs (default {WAGO})')
+    d.add_argument('--wago', default=None, help='folder of the client table CSVs (default: the newest copy of each '
+                                                'table, tools/client_tables.py)')
     d.add_argument('--att', default=None, help='AllTheThings download to build from (default $AMISIA_ATT_CACHE or '
                                                '~/addons/_cache/att); sets AMISIA_ATT_CACHE for every step')
     d.add_argument('--refresh-att', action='store_true', help='download the AllTheThings Forever data first')
+    tb = sub.add_parser('tables', help='download the client tables from wago.tools (tools/fetch_tables.py, D-101)')
+    tb.add_argument('--version', default=None, help='the client build, e.g. 1.60.1.70888 (default: the newest wowf build)')
+    tb.add_argument('--tables', nargs='*', default=None, help='only these tables (default: every table the builders read)')
     sub.add_parser('check', help='every test and check; exit 1 on a failure')
     sub.add_parser('tocs', help='write Amisia_TBC.toc and Amisia_Vanilla.toc from Amisia.toc (D-57)')
     sn = sub.add_parser('snapshots', help='PNGs of every page and window with an index.html (tools/ui_layout.py)')
@@ -808,7 +840,7 @@ def main(argv=None):
         os.environ['AMISIA_BUILD_VENV'] = '1'
         rest = sys.argv[1:] if argv is None else list(argv)
         os.execv(VENV_PY, [VENV_PY, os.path.abspath(__file__)] + rest)
-    return {'data': cmd_data, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release,
+    return {'data': cmd_data, 'tables': cmd_tables, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release,
             'github-release': cmd_github_release,
             'testlist': cmd_testlist, 'tested': cmd_tested, 'errors': cmd_errors, 'tocs': cmd_tocs}[args.cmd](args)
 

@@ -200,7 +200,10 @@ Scan/Collect/Collector/Drops/QuestXP ->  AmisiaDB (SavedVariables)
                                             -> tools/build_*.py (archive + file) -> Amisia/Data/*.lua (next release)
 ScanTrim.lua (login) <- Data/ScanDone.lua: takes what the archive holds out of AmisiaDB.scan
                                             -> tools/build_scan.py -> Amisia-Website/data/forever.js, tools/drop_obs.json
-client tables (export_db2.ps1 on the PC) -> ~/addons/_wago -> build_bis/talents/professions/...
+client tables (export_db2.ps1 on the PC) -> ~/addons/_wago --------------+
+wago.tools CSV exports (build.py tables)  -> ~/addons/_cache/wago --------+-> tools/client_tables.py: per table the
+AllTheThings' copies (4 tables)           -> ~/addons/_cache/att/.config/.wago   newest build, then more rows
+                                             -> ~/addons/_cache/wago_chosen (links) -> build_bis/talents/professions/...
 AllTheThings (MIT, --refresh-att)        -> ~/addons/_cache/att ($AMISIA_ATT_CACHE, build.py data --att) -> build_gear/map/quests/...
 client tables SkillLineAbility, SpellEffect, ItemSparse -> build_gear.client_crafts -> Data/GearData.lua (C, recipe skill)
 tools/forever_transports.json (by hand) -> build_map.py -> Data/MapData.lua (T docks, F the flight masters ATT lacks)
@@ -218,9 +221,11 @@ Amisia clients  <--- addon messages (Comm: sync, exchanges) --->  Amisia clients
 ```
 
 - Build inputs: own data first (scan, collector, drop records of the guild, SavedVariables), the
-  user's client table export, AllTheThings (MIT), the user-accepted input wowsrc.com and the hand
-  list `tools/forever_transports.json`. No copyleft data (D-04). Nothing is fetched from wago.tools, Wowhead or foreverchanges by
-  script (see DECISIONS).
+  user's client table export, the CSV exports of wago.tools (D-101), AllTheThings (MIT), the user-accepted
+  input wowsrc.com and the hand list `tools/forever_transports.json`. No copyleft data (D-04). Only
+  `tools/fetch_tables.py` (`build.py tables`) asks wago.tools, and only its API and CSV routes (D-101);
+  nothing is fetched from Wowhead or foreverchanges by script (D-03). `build.py data` never touches the
+  network: it builds from the files on disk, per client table the copy `tools/client_tables.py` chooses.
 - The scan data (`AmisiaDB.scan`: item lines, collector notes, suffixes) lives for good in
   `tools/scan_archive.json` (committed, about 2.5 MB; git keeps it compressed). `build.py data` joins
   the SavedVariables into it first and writes the marker `Data/ScanDone.lua`; `build_gear.py`,
@@ -591,7 +596,8 @@ The loot toast's settings (F-152) were `ui.lootToast*` until 2.71.0; since then 
 
 | Command | Does |
 |---|---|
-| `data [--sv FILE] [--wago DIR] [--refresh-att]` | every generator in order: scan archive (and its marker), dungeons, gear, map, dungeon quests, quests, professions, talents, mage scrolls, raid check, dungeon art, BiS; a step without its client tables is skipped or uses its kept snapshot; ends with `git diff --stat` |
+| `data [--sv FILE] [--wago DIR] [--refresh-att]` | first, without `--wago`, the choice of the client tables (`tools/client_tables.py`, printed per table: build, rows, source); then every generator in order: scan archive (and its marker), dungeons, gear, map, dungeon quests, quests, professions, talents, mage scrolls, raid check, dungeon art, BiS; a step without its client tables is skipped or uses its kept snapshot; ends with `git diff --stat`; no network |
+| `tables [--version V] [--tables T ...]` | the client tables from wago.tools' CSV exports for the newest `wowf` build (or V) into `~/addons/_cache/wago` (`tools/fetch_tables.py`, D-101); a table already there is never asked for again |
 | `check` | luaparse syntax, addon tests (deDE, then enUS), `tools/l10n.py check`, layout rules (`tools/ui_layout.py rules`, both locales), `pytest tools/tests` (incl. generated-file-current and `test_contracts.py`), UTF-8 without BOM, TOC against the folder, luacheck |
 | `snapshots [--out DIR] [--compare DIR] [--locale enUS]` | PNG of every page and window from the test stub, an index.html contact sheet, changed layouts |
 | `tocs` | writes `Amisia_TBC.toc` and `Amisia_Vanilla.toc` from `Amisia.toc` (D-57) |
@@ -612,8 +618,10 @@ Actions (`.github/workflows/check.yml`) runs the checks on push.
 | `~/addons/_SavedVariables/Amisia.lua` | receive-only copy of the PC's SavedVariables (folder `vfui-savedvariables`); read only; its scan part goes into `tools/scan_archive.json` with every `build.py data`, after which the addon trims it |
 | `~/.config/amisia/curseforge.token` | the CurseForge API token for `tools/curseforge.py` (D-58); only on the N100, never in the repository; the project is `## X-Curse-Project-ID` in `Amisia.toc` |
 | `~/addons/_SavedVariables/!BugGrabber.lua` | receive-only copy of the PC's error catcher SavedVariables (same Syncthing folder); read only by `build.py errors`, `check` and `release` |
-| `~/addons/_wago` | receive-only client tables (folder `amisia-wago`), exported on the PC by `tools/export_db2.ps1`, run by the Windows task "Amisia Client-Tabellen" (`tools/install_export_task.ps1`, D-51) |
-| `~/addons/_auto/amisia-data.txt` | outcome of `tools/auto_data.py` (systemd user timer `amisia-auto-data.timer`, `tools/systemd/install.sh`): a new build's data built and checked on branch `auto/data-<build>` in the worktree `~/addons/.amisia-auto`, never released (D-51) |
+| `~/addons/_wago` | receive-only client tables (folder `amisia-wago`), exported on the PC by `tools/export_db2.ps1`, run by the Windows task "Amisia Client-Tabellen" (`tools/install_export_task.ps1`, D-51); still possible, no longer the only source of the tables (D-101) |
+| `~/addons/_cache/wago` | the client tables from wago.tools' CSV exports (`build.py tables`, `tools/fetch_tables.py`, D-101) with the manifest `_fetch.<product>.<build>.json`; only on the N100, never committed |
+| `~/addons/_cache/wago_chosen` | links to the copy of each client table the builders read (`tools/client_tables.py`: newest build, then more rows), `chosen.txt` the choice; rewritten by every `build.py data` |
+| `~/addons/_auto/amisia-data.txt` | outcome of `tools/auto_data.py` (systemd user timer `amisia-auto-data.timer`, `tools/systemd/install.sh`): a new build's data built and checked on branch `auto/data-<build>` in the worktree `~/addons/.amisia-auto`, never released (D-51); it starts on a new complete export of the PC, builds with the choice of `tools/client_tables.py` and fetches nothing itself (D-101) |
 | `~/addons/_cache/att` | AllTheThings cache (MIT), read only through the sandboxed `tools/att_data.py` |
 | `~/.venvs/amisia` | Python with lupa and pytest for the tests |
 

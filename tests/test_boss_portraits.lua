@@ -30,15 +30,16 @@ local function names(list)
     return table.concat(out, ",")
 end
 local function find(list, name) for _, b in ipairs(list) do if b.name == name then return b end end end
--- the Drowned City without loot for the character: its six bosses in the order, each with its NPC
+-- the Drowned City without loot for the character: its six bosses in the game's order (DungeonEncounter, D-101),
+-- each with its NPC
 local dr = Dn.JournalBosses("drowned", {})
-assert(names(dr) == "Zul'Alai,Var'Taka,Deathless Guardians,Captain Dreadrise,Primeval Elemental,Min'loth the Serpent", names(dr))
+assert(names(dr) == "Zul'Alai,Var'Taka,Captain Dreadrise,Deathless Guardians,Primeval Elemental,Min'loth the Serpent", names(dr))
 for _, b in ipairs(dr) do assert(type(b.npc) == "number" and b.npc > 0 and b.b.npc == b.npc and #b.b.items == 0, b.name) end
 -- a given boss at its place by name, another by its NPC, an unknown one after the order
 local given = { { name = "Captain Dreadrise", npc = 260042, items = { {} } }, { name = "Odd One", items = {} },
     { name = "Serpent of the Depths", npc = 260243, items = {} } }
 dr = Dn.JournalBosses("drowned", given)
-assert(names(dr) == "Zul'Alai,Var'Taka,Deathless Guardians,Captain Dreadrise,Primeval Elemental,Serpent of the Depths,Odd One",
+assert(names(dr) == "Zul'Alai,Var'Taka,Captain Dreadrise,Deathless Guardians,Primeval Elemental,Serpent of the Depths,Odd One",
     names(dr))
 assert(find(dr, "Captain Dreadrise").b == given[1], "the given boss itself")
 -- Blackrock Spire: each half only its own bosses of the shared order

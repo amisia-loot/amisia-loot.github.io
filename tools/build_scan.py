@@ -1446,9 +1446,12 @@ def main(argv=None):
     ap.add_argument('--wowhead', action='store_true', help='ask Wowhead for icon names the listfile and the cache lack '
                     '(off by default: no scripted fetches from Wowhead, docs/DECISIONS.md D-03)')
     ap.add_argument('--no-wowhead', action='store_true', help='(the default; kept for old command lines)')
-    ap.add_argument('--wago', default=WAGO, help='folder with the client tables ItemSparse and Item from wago.tools (default '
-                                                 '~/addons/_wago): item ids of the source collector they lack are left out')
+    ap.add_argument('--wago', default=None, help='folder with the client tables ItemSparse and Item (default: '
+                                                 'the newest copy of each table, tools/client_tables.py): item ids of the source collector they lack are left out')
     args = ap.parse_args(argv)
+    if args.wago is None:
+        import client_tables
+        args.wago = client_tables.default_dir()
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     zones_cfg = load_json(ZONES_CFG, {})

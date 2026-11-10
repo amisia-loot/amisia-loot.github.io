@@ -11,7 +11,7 @@
   `Amisia-Website/` the site (`index.html`, `data/*.js`, `Amisia.zip`, `supabase/` not deployed; GitHub
   Pages via `.github/workflows/pages.yml`, the only live copy; the claude.ai twin is unmaintained);
   `tests/` the addon's Lua tests; `tools/` builders and tool tests; `docs/` the documents.
-- One entry point: `python3 tools/build.py check` (must stay green), `data [--sv FILE] [--wago DIR]`,
+- One entry point: `python3 tools/build.py check` (must stay green), `tables`, `data [--sv FILE] [--wago DIR]`,
   `snapshots [--out DIR] [--compare DIR]`, `release X.Y.Z -m "summary"`. Details in `tools/README.md`.
 - Every user-visible change adds an English note under `## Unreleased` in `CHANGELOG.md`
   (`- type(scope): summary (F-xxx)`, a blank line, an indented paragraph); the release stops without one (D-60).
@@ -33,6 +33,9 @@
 - New client build: the PC exports the tables by itself and the N100 builds and checks them on branch
   `auto/data-<build>` (D-51). At the start of a session read `~/addons/_auto/amisia-data.txt` and tell the
   user when data is ready or red; release only when the user asks.
-- Never download from wago.tools, Wowhead or foreverchanges by script (DECISIONS D-03): a missing client
-  table goes into `tools/export_db2.ps1` and the user runs it on the PC.
+- Client tables may be fetched from wago.tools, but only by `python3 tools/build.py tables`
+  (`tools/fetch_tables.py`: its API and CSV exports of product `wowf`, one request at a time, nothing twice;
+  DECISIONS D-101, which changed D-03). `build.py data` never touches the network; it takes per table the
+  newest and fullest copy on disk (`tools/client_tables.py`). Never download from Wowhead or foreverchanges
+  by script, and never use another addon's code or data (D-03, D-04).
 - Subagents only `opus-medium` or `sonnet-medium`, never Fable, no nested agents (DECISIONS D-31).

@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- data(dungeons): the game's own boss order, levels and loading screens for the new Forever dungeons (F-170)
+
+  The data is now built from the newest and most complete copy of every client table (client build 1.60.1.70888).
+  The Drowned City, Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold and Shaper's Terrace show their bosses in the
+  game's own order with the game's encounters (the Drowned City: Captain Dreadrise before the Deathless Guardians;
+  Alcaz Prison gains Overseer Wrex, Shaper's Terrace King Op, both still without a portrait), their own loading
+  screen at the top of the page and the level the game tunes them to. Items and their stats are unchanged.
+
 - feat(dungeons): a portrait for every boss, every boss in the game's order, the Drowned City (F-170)
 
   The overview of Dungeons and Raids now lists every boss of the game's order, also those without loot for you

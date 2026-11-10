@@ -7,8 +7,8 @@ the guild's drop base stock and the effort per source kind.
 
 Runs on the N100; needs no WoW install. Inputs:
 
-  - the client tables as CSV in wago.tools' format (tools/export_db2.ps1 on the PC, or downloaded
-    by hand; files named <Table>.<build>.csv; default ~/addons/_wago). Read when present (TABLES):
+  - the client tables as CSV in wago.tools' format (tools/export_db2.ps1 on the PC, or build.py tables;
+    files named <Table>.<build>.csv; default: the newest copy of each table, tools/client_tables.py). Read when present (TABLES):
     ItemSparse, Item, ItemSet, ItemSetSpell, SpellEffect, SpellItemEnchantment, RandPropPoints,
     LFGDungeons, ContentTuning, DungeonEncounter, the weapon damage tables (ItemDamage*), the armour
     tables (ItemArmorQuality, ItemArmorTotal, ItemArmorShield, ArmorLocation) and the item effects
@@ -2757,7 +2757,7 @@ def run(wago=WAGO, gamedata_path=GAMEDATA, measured_path=MEASURED, gear_path=GEA
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
-    ap.add_argument('--wago', default=WAGO, help='folder of wago.tools CSVs (default ~/addons/_wago)')
+    ap.add_argument('--wago', default=None, help='folder of the client table CSVs (default: the newest copy of each table, tools/client_tables.py)')
     ap.add_argument('--measured', default=MEASURED, help='in-game measurements (default tools/bis_measured.json)')
     ap.add_argument('--werte', action='append', default=[],
                     help='an AMISIA-WERTE line from the self-test; added to the samples of --measured')
@@ -2768,6 +2768,9 @@ def main(argv=None):
     ap.add_argument('--picks', default=PICKS, help='hand-kept BiS picks (default tools/bis_picks.json)')
     ap.add_argument('--no-att', action='store_true', help='build without AllTheThings (no boss NPC ids)')
     args = ap.parse_args(argv)
+    if args.wago is None:
+        import client_tables
+        args.wago = client_tables.default_dir()
     if args.werte:
         # every line is checked before the file is touched: a bad line saved would break every build
         parsed = []

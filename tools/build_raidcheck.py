@@ -20,7 +20,8 @@ enchanter enchants. From the client's own tables only (D-03), never from the net
   item") target; without it the fixed list of the spec (back, chest, wrist, hands, feet, main hand,
   shield). Head, shoulders and legs never count (their enchants come from reputation and quests).
 
-Reads <Table>.csv or <Table>.<build>.csv from the folders given with --wago (default ~/addons/_wago).
+Reads <Table>.csv or <Table>.<build>.csv from the folders given with --wago (default: the newest copy of each
+table, tools/client_tables.py).
 Writes Amisia/Data/RaidCheckData.lua (ns.RAIDCHECK, lazy).
 """
 import argparse
@@ -256,14 +257,17 @@ def render_lua(data, built=None):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    ap.add_argument('--wago', action='append', default=None, help=f'client tables (default {WAGO}); may repeat')
+    ap.add_argument('--wago', action='append', default=None, help='client tables (default: the newest copy of each table, tools/client_tables.py); may repeat')
     ap.add_argument('--empty', action='store_true', help='write the file without data')
     ap.add_argument('--out', default=OUT)
     args = ap.parse_args(argv)
     if args.empty:
         data = empty_data()
     else:
-        dirs = [os.path.expanduser(d) for d in (args.wago or [WAGO])]
+        if not args.wago:
+            import client_tables
+            args.wago = [client_tables.default_dir()]
+        dirs = [os.path.expanduser(d) for d in args.wago]
         data = build(dirs)
         if data['slotsFrom'] == 'list':
             print('build_raidcheck: no SpellEquippedItems in the client tables: the fixed slot list '

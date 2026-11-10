@@ -48,3 +48,9 @@ def test_data_build_reads_the_talent_data_line():
 def test_the_repo_talent_data_has_a_build():
     with open(os.path.join(auto_data.ROOT, 'Amisia', 'Data', 'TalentData.lua'), encoding='utf-8') as fh:
         assert auto_data.data_build(fh.read())
+
+
+def test_the_data_build_takes_the_newest_copy_of_each_table():
+    """Without a folder of its own the data build chooses per table (tools/client_tables.py, D-101)."""
+    assert auto_data.data_args(auto_data.WAGO) == []
+    assert auto_data.data_args('/elsewhere') == ['--wago', '/elsewhere']

@@ -353,14 +353,30 @@ def test_no_links_to_fan_sites():
 
 # fetchers kept from the TBC ledger and the first Forever builds; see DECISIONS.md D-03
 WOWHEAD_FETCH_KNOWN = {'build_scan.py'}
+# the one tool that may ask wago.tools, and only along its API and CSV routes (DECISIONS.md D-101)
+WAGO_FETCHER = 'fetch_tables.py'
 
 
 def test_no_tool_fetches_from_the_forbidden_sites():
     for name, text in tool_files():
-        assert not re.search(r'https?://[^\s\'"]*wago\.tools', text), f'tools/{name} has a wago.tools URL (client tables come only from export_db2.ps1)'
+        if name != WAGO_FETCHER:
+            assert not re.search(r'https?://[^\s\'"]*wago\.tools', text), \
+                f'tools/{name} has a wago.tools URL (only tools/{WAGO_FETCHER} may ask the site, D-101)'
+            assert not re.search(r'^\s*(import|from)\s+fetch_tables\b', text, re.M), \
+                f'tools/{name} imports the fetcher (build.py tables runs it as its own program)'
         assert 'foreverchanges' not in text.lower(), f'tools/{name} names foreverchanges'
         if name not in WOWHEAD_FETCH_KNOWN:
             assert not re.search(r'https?://[^\s\'"]*wowhead\.com', text), f'tools/{name} fetches from Wowhead'
+    # the fetcher: every wago.tools URL it names is one of the two allowed routes, it asks nothing else
+    # (one urlopen, in http_get, behind check_url) and no other site
+    text = read(os.path.join(TOOLS, WAGO_FETCHER))
+    for url in re.findall(r'https?://[^\s\'"\)\]]+', text):
+        assert re.match(r'^https://wago\.tools/(api/builds|db2/)', url), f'tools/{WAGO_FETCHER} names {url}'
+    assert text.count('urlopen(') == 1, f'tools/{WAGO_FETCHER}: one place that asks the network'
+    body = text[text.index('def http_get('):]
+    body = body[:body.index('\ndef ')]
+    assert body.index('check_url(url)') < body.index('urlopen('), 'http_get checks the URL before it asks'
+    assert not re.search(r'method=[\'"](?!GET)', text), 'GET only'
 
 
 def test_no_questie_data_left():

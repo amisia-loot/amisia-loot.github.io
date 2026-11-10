@@ -119,7 +119,8 @@ def test_shipped_data_file_in_toc_and_valid():
 @pytest.mark.skipif(not (os.path.isdir(build_magescrolls.WAGO) and os.path.exists(os.path.join(att_data.ATT_CACHE, 'COMMIT'))),
                     reason='needs the client tables and the AllTheThings download')
 def test_shipped_file_is_current():
-    dirs = [build_magescrolls.WAGO]
+    import client_tables  # the newest copy of each table, as build.py data reads them (D-101)
+    dirs = [client_tables.default_dir()]
     if build_magescrolls.find_table(dirs, 'ItemSparse') is None:
         pytest.skip('no client tables')
     att = att_data.load(att_data.ATT_CACHE, items=False, dirs=build_magescrolls.ATT_DIRS)

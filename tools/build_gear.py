@@ -34,8 +34,8 @@ Where an item comes from (tools/att_data.py reads all of it, MIT licence, see LI
     --refresh-wowsrc downloads them again, --no-wowsrc leaves them out.
 
 Instance ids (what GetInstanceInfo reports) come from the client tables UiMapAssignment and
-AreaTable (<Table>[.<build>].csv in --wago, default ~/addons/_wago, downloaded by hand from
-wago.tools, then the copies ATT ships), from tools/forever_dungeons.json (with
+AreaTable (<Table>[.<build>].csv in --wago, default the newest copy of each table of the export,
+wago.tools' CSV exports and the copies ATT ships, tools/client_tables.py), from tools/forever_dungeons.json (with
 forever_dungeons_client.json) and from the collector's drop notes; a dungeon without one is placed
 by its name.
 
@@ -259,7 +259,7 @@ def refresh_itemsparse(csv_path, scan_items, path=ITEMSPARSE_JSON):
     profession an item needs to be worn (engineering goggles).
 
     The export is the user's own: tools/export_db2.ps1 on the PC (product wow_classic_beta, with
-    hotfixes), or wago.tools' ItemSparse CSV downloaded by hand in the browser. Never by script."""
+    hotfixes), or wago.tools' ItemSparse CSV export (tools/fetch_tables.py, D-101)."""
     import csv
     classes, delay, skill = {}, {}, {}
     with open(csv_path, encoding='utf-8') as fh:
@@ -1077,7 +1077,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--att', default=att_data.ATT_CACHE, help=f'AllTheThings download (default {att_data.ATT_CACHE})')
     ap.add_argument('--refresh-att', action='store_true', help='download the AllTheThings Forever files first')
-    ap.add_argument('--wago', default=WAGO, help='folder with client tables from wago.tools (UiMapAssignment, AreaTable; default ~/addons/_wago)')
+    ap.add_argument('--wago', default=None, help='folder with the client tables (ItemSparse, UiMapAssignment, AreaTable, ...; default: the newest copy of each table, tools/client_tables.py)')
     ap.add_argument('--sv', nargs='*', help='Amisia SavedVariables files with item scans (default: repo dumps, '
                                             '~/addons/_SavedVariables/Amisia.lua, installed Forever client)')
     ap.add_argument('--scan-archive', default=build_scan_archive.ARCHIVE,
@@ -1089,6 +1089,9 @@ def main(argv=None):
     ap.add_argument('--itemsparse', help='ItemSparse CSV export of the Forever client (wago.tools, with hotfixes), or a '
                                          'folder holding ItemSparse[.<build>].csv; refreshes tools/gear_itemsparse.json')
     args = ap.parse_args(argv)
+    if args.wago is None:
+        import client_tables
+        args.wago = client_tables.default_dir()
 
     if args.refresh_att:
         att_data.refresh(args.att)

@@ -9,7 +9,8 @@ there, Forever's camp objects and Merchant's Favor. Runs without a WoW install (
 Inputs:
 
 - Client tables (CSV, wago.tools format, `<Table>.<build>.csv`; tools/export_db2.ps1 exports them on
-  the PC, Syncthing brings them to ~/addons/_wago): SkillLineAbility (recipe -> profession,
+  the PC, Syncthing brings them to ~/addons/_wago; or wago.tools' CSV exports; the newest copy of each
+  table, tools/client_tables.py): SkillLineAbility (recipe -> profession,
   difficulty), SpellEffect (the item a recipe makes, enchants, camp placement), ItemSparse,
   ItemXItemEffect and ItemEffect (recipe item -> recipe, required rank and reputation, camp objects,
   certifications, writs), SpellName and Spell (only to recognise camp objects and writs; no text
@@ -825,7 +826,7 @@ def render(data, built):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    ap.add_argument('--wago', default=WAGO, help=f'client tables (default {WAGO})')
+    ap.add_argument('--wago', default=None, help='client tables (default: the newest copy of each table, tools/client_tables.py)')
     ap.add_argument('--att', default=ATT_CACHE, help=f'AllTheThings download (default {ATT_CACHE})')
     ap.add_argument('--scan-archive', default=build_scan_archive.ARCHIVE,
                     help='the scan archive whose merchant notes add vendors to V (default tools/scan_archive.json; "" for none)')
@@ -835,6 +836,9 @@ def main(argv=None):
     ap.add_argument('--out', default=OUT)
     ap.add_argument('--empty', action='store_true', help='write the file without data')
     args = ap.parse_args(argv)
+    if args.wago is None:
+        import client_tables
+        args.wago = client_tables.default_dir()
     if args.empty:
         data = empty()
     else:

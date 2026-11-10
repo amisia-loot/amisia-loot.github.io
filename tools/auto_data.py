@@ -9,7 +9,8 @@ Run every 15 minutes by the systemd user timer amisia-auto-data.timer (tools/sys
 2. stops when the data on main is already of that build (the build line of Data/TalentData.lua) or
    this build was tried already (the state file);
 3. otherwise, in its own worktree (~/addons/.amisia-auto) on branch auto/data-<build> from main:
-   `build.py data`, then `build.py check`, and commits the result on that branch;
+   `build.py data` (the newest copy of each client table, tools/client_tables.py; it fetches nothing),
+   then `build.py check`, and commits the result on that branch;
 4. writes the outcome to ~/addons/_auto/amisia-data.txt (read by Claude at the start of a session,
    CLAUDE.md) and removes the worktree again (the branch stays).
 
@@ -70,6 +71,13 @@ def complete_builds(wago, now=None, settle=SETTLE):
             continue
         out.append(b)
     return sorted(out, key=build_key)
+
+
+def data_args(wago):
+    """The --wago of `build.py data`: none for the export folder, so the build takes the newest copy of each
+    table (tools/client_tables.py, D-101: the export, the wago.tools exports, AllTheThings' copies); a
+    folder given to this script is handed on."""
+    return [] if os.path.abspath(os.path.expanduser(wago)) == os.path.abspath(WAGO) else ['--wago', wago]
 
 
 def data_build(text):
@@ -158,7 +166,7 @@ def main(argv=None):
     py = sys.executable
     result, lines, commit = 'failed', [], None
     try:
-        rc, out = run([py, 'tools/build.py', 'data', '--wago', args.wago], args.worktree)
+        rc, out = run([py, 'tools/build.py', 'data'] + data_args(args.wago), args.worktree)
         if rc != 0:
             lines = ['build.py data ist fehlgeschlagen:'] + tail(out)
         else:

@@ -10,10 +10,10 @@ client values of tools/forever_dungeons_client.json, as build_dungeons.py merges
 without an instance id or a file takes the general screen of its kind at runtime (party: the
 client's general dungeon screen, raid: its raid screen, both used by rows of its Map table).
 
-With --wago the tables are read (default folders ~/addons/_wago, then ~/addons/_cache/wago; of
-each table the first folder that has one counts) and the result is kept in
+With --wago the tables are read (default: the newest copy of each table, tools/client_tables.py; of
+each table the first folder given that has one counts) and the result is kept in
 tools/forever_dungeon_art.json; without it that file is rendered as it is. The tables come from
-wago.tools (CSV of the Forever build) or tools/export_db2.ps1 -Tables Map,LoadingScreens.
+wago.tools (build.py tables, D-101) or tools/export_db2.ps1 -Tables Map,LoadingScreens.
 """
 import argparse
 import csv
@@ -131,10 +131,13 @@ def load_facts():
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--wago', nargs='*', default=None,
-                    help='read the client tables first (default folders: ~/addons/_wago, then ~/addons/_cache/wago)')
+                    help='read the client tables first (default: the newest copy of each table, tools/client_tables.py)')
     args = ap.parse_args(argv)
     if args.wago is not None:
-        dirs = args.wago or WAGO_DIRS
+        if not args.wago:
+            import client_tables
+            args.wago = [client_tables.default_dir()]
+        dirs = args.wago
         art = client_art(load_facts(), dirs)
         if set(art['tables']) != {'Map', 'LoadingScreens'}:
             raise SystemExit('need the Map and LoadingScreens CSV in ' + ', '.join(dirs))
