@@ -39,7 +39,7 @@ NS.MAP = { game = "forever", built = "t-places", G = {}, P = {
     ["I:249"] = "1413:9000:9000",
     ["N:Hall of Thanes"] = "1413:1000:1000",
 }, E = { ["I:43"] = "c", ["N:Hall of Thanes"] = "l" }, F = {
-    { 1413, 5150, 3030, "H", "Devrak" },
+    { 1413, 5150, 3030, "H", "Devrak", "Crossroads, The Barrens" },
     { 1413, 6310, 3720, "N", "Bragok" },
     { 1413, 2000, 2000, "A", "Allianzflieger" },
 }, T = {
@@ -191,6 +191,11 @@ assert(has(table.concat(lines, "|"), "Ort beim Betreten gemerkt") and has(table.
 lines = {}
 enter(pinOf("flight", "Bragok"))
 assert(lines[1] == "Bragok" and lines[2] == "Flugmeister · beide Fraktionen", table.concat(lines, "|"))
+-- the client's name of the flight point under the flight master's (F-171)
+lines = {}
+enter(pinOf("flight", "Devrak"))
+assert(lines[1] == "Devrak" and lines[2] == "Crossroads, The Barrens" and lines[3] == "Flugmeister · Horde",
+    table.concat(lines, "|"))
 GameTooltip.AddLine = addLine
 
 -- a click opens the dungeon on the page Dungeons; the world map stays in front

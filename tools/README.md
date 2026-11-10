@@ -81,7 +81,35 @@ python3 tools/build.py errors [--sv FILE] [--all]
   On the PC `tools/install_export_task.ps1` (once, as administrator) sets up the task that runs
   `export_db2.ps1` after logon and every two hours.
 - `auto_data.py` runs `build.py data` without `--wago`, so the automatic build also takes the newest copy of
-  each table; it still starts only on a new complete export of the PC and fetches nothing itself (D-101).
+  each table (D-101).
+- Its second trigger (D-103): when the PC's export has nothing to build, at most once a day (the time and
+  answer of the last look in `~/addons/_auto/amisia-wago.json`) it runs `tools/fetch_tables.py --latest`,
+  one request to the site's API for the newest `wowf` build. Newer than main's data, not on a branch and
+  not tried: `tools/fetch_tables.py --version <build>` fetches its tables (the tool's rules; a table already
+  there is not asked for again), then the same build and check on `auto/data-<build>`. A fetch with errors
+  in its manifest or without a table the last fetched build had builds nothing; that, a network failure or
+  an answer the tool does not expect is one line `wago.tools (täglich, <time>): ...` in
+  `~/addons/_auto/amisia-data.txt` (the line stays there under the next build report). Off: the file
+  `~/addons/_auto/amisia-wago.off`, or `AMISIA_AUTO_WAGO=0` in the service's environment. `--look-now`
+  looks inside the day. auto_data.py names no address of the site and does not import the fetcher: it
+  runs it as a program, like `build.py tables`.
+- After every automatic build `tools/build_diff.py` compares main's build with the new one: its first lines
+  ("new in this build") go to the end of `amisia-data.txt`, the whole report to
+  `~/addons/_auto/amisia-data-diff.txt`. Not into the branch: the report is rebuilt any time with
+  `build.py diff OLD NEW` from the tables on disk, and the branch is merged into main, where a report per
+  build would only pile up.
+- `diff [OLD NEW] [--out FILE]` (`tools/build_diff.py`, D-103): the client tables of two builds on disk (each
+  table the file of exactly that build with the most rows of the three places; default: the build of the
+  data on main against the newest on disk), rows matched by ID; a field counts as changed only when both
+  builds have the column and the values differ, numbers within a relative 1e-5 (ItemSparse 1.60.1.70862
+  against 70888: 8760 rows differ as text, 16 as numbers). Sections: items (new by quality and slot, the
+  best 25 listed, removed, changed with the fields and old -> new), quests (QuestV2 ids, names where
+  `Data/QuestData.lua` knows them), dungeons and raids (`Map` InstanceType 1/2), bosses
+  (`DungeonEncounter` with their map), the dungeon finder (`LFGDungeons`), flight points (`TaxiNodes`),
+  the spells of professions (`SkillLineAbility` of `SkillLine` categories 9 and 11) and of talents
+  (`TraitDefinition`) that are new or whose rows in Spell, SpellName, SpellMisc or SpellEffect changed
+  (the first 15 listed), and every table's counts. A table only one build has is named, not compared.
+  `--short` prints the head only.
 - Before the test list `release` says what to do in the game: a full restart of WoW when the TOC's file
   list changed or a file under `Amisia/Media` is new since the last release (the client reads both only
   at start), otherwise `/reload`.
@@ -261,6 +289,7 @@ for the officer view).
 ```
 python3 tools/build.py tables [--version 1.60.1.70888] [--tables T ...]    # = tools/fetch_tables.py
 python3 tools/fetch_tables.py [--version V] [--product wowf] [--tables T ...] [--locale deDE] [--retry-missing]
+python3 tools/fetch_tables.py --latest                                       # only print the newest build (one request)
 python3 tools/client_tables.py [--out DIR]                                   # show the choice
 ```
 
@@ -289,13 +318,19 @@ python3 tools/client_tables.py [--out DIR]                                   # s
   date, per table rows and bytes, and the tables the site does not have (for `wowf` 1.60.1.70888:
   `JournalInstance`, `JournalEncounter`, `JournalEncounterItem`, `JournalEncounterCreature`,
   `ItemRandomProperties`, `ItemRandomSuffix`, `SkillTiers`, `TraitNodeXTraitCond`).
+- `--latest` asks only `/api/builds/<product>/latest` and prints the build (exit 1 with the reason when the
+  answer holds no build); `tools/auto_data.py`'s daily look runs it (D-103).
+- `TaxiNodes` (flight points, `build_map.py`) and `QuestV2` (quest ids, `build_diff.py`) joined the list on
+  2026-11-10; for 1.60.1.70888 they came from a probe fetched by hand the same way (same manifest form) and
+  were taken over into `~/addons/_cache/wago` without a new request.
 - English only: the string columns the builders read are English names (`Name_lang`, `Display_lang`, ...);
   the PC's export is English too, and no builder reads a German name from a table (German names come from
   the game itself). `--locale deDE` would write `<Table>.<build>.deDE.csv`, which the chooser leaves out.
 - Never from wowhead.com or foreverchanges, never data of other addons (D-03, D-04).
 
 Tests: `tools/tests/test_client_tables.py`, `tools/tests/test_fetch_tables.py` (no network: the URL guard,
-error answers, no second download, the manifest, the build from a canned `/api/builds` answer, the pause).
+error answers, no second download, the manifest, the build from a canned `/api/builds` answer, the pause,
+`--latest`).
 
 ## build_scan_archive.py: the scan archive and the trim marker
 
@@ -561,11 +596,22 @@ python tools/build_map.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE...
   - Learned entrances: `AmisiaDB.entrances` of the SavedVariables (`--sv`, default as
     `build_scan_archive.py`) join `tools/entrance_archive.json` (committed; a newer sighting replaces
     the older), matched to the facts by instance id or the client's instance name (`Map`).
-  - Flight masters (`F`): AllTheThings' `fp()` records with their flight master (a path without one is
-    left out), then the `flights` of `tools/forever_transports.json` they lack (neither the NPC's name
-    nor a point within 2 %).
+  - Flight points (`F`, F-171, D-102): the client table `TaxiNodes` (every flight point with its world
+    position `Pos_0/1`, turned into a zone's x/y through `UiMapAssignment` like an entrance; of
+    overlapping zones the one its name ends in, else the deepest). Side from `Flags` (0x1 Alliance,
+    0x2 Horde, both: neutral). Left out, each named in the report with its reason: the client's `zzOLD`
+    copies, other continents (Alterac Valley, a scenario), nodes no side's flight map shows (neither bit:
+    quest paths, transports, test places), nodes no character learns (`CharacterBitNumber` 0: the druids'
+    Nighthaven flights, the Plaguelands towers). The name is the flight master's from AllTheThings where
+    one of the same side stands within 3 % (closest pairs first; else one with the same id and side
+    further away, the place moved), on AllTheThings' zone (a city rather than the zone around it); else
+    the node's own name. Field 6 is always the node's name (the tooltip shows it under the flight
+    master's). The report counts per continent and side, the matches, the side disagreements, the
+    flight masters no node took. Without `TaxiNodes`: AllTheThings' `fp()` records with their flight
+    master as before. The `flights` of `tools/forever_transports.json` join only where no node stands
+    (neither the name nor a point within 2 % of the same side); since 2026-11-10 the list is empty.
   - Docks (`T`): the `docks` of `tools/forever_transports.json` (by hand, a source per entry, the known
-    Classic positions to be checked in game). Destinations carry the client's area id (`AreaTable`), so
+    Classic positions to be checked in game; zeppelins and ships are no taxi nodes). Destinations carry the client's area id (`AreaTable`), so
     the addon shows the client's own name ("Beutebucht").
   - The report lists the winning source per dungeon and the flight masters and docks per source.
 - Which keys are needed comes from `GearData.lua`: quests by their quest id (quests started by an

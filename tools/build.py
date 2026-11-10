@@ -2,6 +2,7 @@
 
     python3 tools/build.py data [--sv FILE] [--wago DIR] [--att DIR] [--refresh-att]
     python3 tools/build.py tables [--version V] [--tables T ...]
+    python3 tools/build.py diff [OLD NEW] [--out FILE]
     python3 tools/build.py check
     python3 tools/build.py tocs
     python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
@@ -20,6 +21,10 @@ data     rebuilds every generated file in Amisia/Data in dependency order (dunge
 tables   downloads the client tables the builders read from wago.tools' CSV exports for the newest
          wowf build (or --version) into ~/addons/_cache/wago (tools/fetch_tables.py, D-101): its two
          allowed routes only, one request at a time, a table already there is never asked for again.
+diff     what a new client build brings (tools/build_diff.py, D-103): the client tables of two builds on
+         disk compared (default: the build of the data on main against the newest on disk), new,
+         removed and changed rows of items, quests, dungeons, bosses, flight points and the spells of
+         talents and professions; floats compared as numbers. Touches no network.
 check    the syntax check, the addon tests (German, then English), the translation check
          (tools/l10n.py), the layout rules of every page and window in both locales
          (tools/ui_layout.py), the tool tests (they include the "generated file is current" checks),
@@ -303,6 +308,15 @@ def cmd_tables(args):
         cmd += ['--version', args.version]
     if args.tables:
         cmd += ['--tables'] + list(args.tables)
+    rc, _ = run(cmd)
+    return rc
+
+
+def cmd_diff(args):
+    """What a new client build brings (tools/build_diff.py, D-103); reads only the tables on disk."""
+    cmd = [sys.executable, os.path.join(ROOT, 'tools', 'build_diff.py')] + list(args.builds)
+    if args.out:
+        cmd += ['--out', args.out]
     rc, _ = run(cmd)
     return rc
 
@@ -807,6 +821,9 @@ def main(argv=None):
     tb = sub.add_parser('tables', help='download the client tables from wago.tools (tools/fetch_tables.py, D-101)')
     tb.add_argument('--version', default=None, help='the client build, e.g. 1.60.1.70888 (default: the newest wowf build)')
     tb.add_argument('--tables', nargs='*', default=None, help='only these tables (default: every table the builders read)')
+    df = sub.add_parser('diff', help='what a new client build brings: the tables of two builds compared (tools/build_diff.py)')
+    df.add_argument('builds', nargs='*', help='OLD NEW (default: the build of the data on main, the newest on disk)')
+    df.add_argument('--out', default=None, help='also write the full report into this file')
     sub.add_parser('check', help='every test and check; exit 1 on a failure')
     sub.add_parser('tocs', help='write Amisia_TBC.toc and Amisia_Vanilla.toc from Amisia.toc (D-57)')
     sn = sub.add_parser('snapshots', help='PNGs of every page and window with an index.html (tools/ui_layout.py)')
@@ -840,7 +857,7 @@ def main(argv=None):
         os.environ['AMISIA_BUILD_VENV'] = '1'
         rest = sys.argv[1:] if argv is None else list(argv)
         os.execv(VENV_PY, [VENV_PY, os.path.abspath(__file__)] + rest)
-    return {'data': cmd_data, 'tables': cmd_tables, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release,
+    return {'data': cmd_data, 'tables': cmd_tables, 'diff': cmd_diff, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release,
             'github-release': cmd_github_release,
             'testlist': cmd_testlist, 'tested': cmd_tested, 'errors': cmd_errors, 'tocs': cmd_tocs}[args.cmd](args)
 

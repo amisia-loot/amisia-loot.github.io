@@ -1,6 +1,6 @@
 {
- "checked": "2026-11-04",
- "note": "Zeppelin towers, ship docks and the flight masters AllTheThings lacks, kept by hand (tools/build_map.py reads them). A dock: map (uiMapID), x, y (0-100), kind zeppelin/ship, faction A/H/AH, to (destinations, English, 'Place, Zone'), src. A flight master: map, x, y, faction A/H/AH, name (English), src. Positions are the known Classic ones, to be checked in game; new Forever routes go here when the user reports them (spec 2026-10-16-karte-orte, decision 5).",
+ "checked": "2026-11-10",
+ "note": "Zeppelin towers, ship docks and flight masters no flight point of the client table TaxiNodes stands for, kept by hand (tools/build_map.py reads them; the six Classic flight masters entered here until 2026-11-10 are all TaxiNodes nodes now, F-171). A dock: map (uiMapID), x, y (0-100), kind zeppelin/ship, faction A/H/AH, to (destinations, English, 'Place, Zone'), src. A flight master (only where TaxiNodes has no node): map, x, y, faction A/H/AH, name (English), src. Positions are the known Classic ones, to be checked in game; new Forever routes go here when the user reports them (spec 2026-10-16-karte-orte, decision 5).",
  "docks": [
   {"map": 1411, "x": 50.8, "y": 13.5, "kind": "zeppelin", "faction": "H", "to": ["Grom'gol Base Camp, Stranglethorn Vale", "Undercity, Tirisfal Glades"], "src": "hand: zeppelin tower north of Orgrimmar"},
   {"map": 1420, "x": 61.8, "y": 59.2, "kind": "zeppelin", "faction": "H", "to": ["Grom'gol Base Camp, Stranglethorn Vale", "Orgrimmar, Durotar"], "src": "hand: zeppelin tower west of Brill"},
@@ -14,12 +14,5 @@
   {"map": 1438, "x": 54.9, "y": 96.8, "kind": "ship", "faction": "A", "to": ["Auberdine, Darkshore"], "src": "hand: Rut'theran Village"},
   {"map": 1445, "x": 71.6, "y": 56.4, "kind": "ship", "faction": "A", "to": ["Menethil Harbor, Wetlands"], "src": "hand: Theramore Isle"}
  ],
- "flights": [
-  {"map": 1434, "x": 27.5, "y": 77.8, "faction": "A", "name": "Gyll", "src": "hand: Booty Bay"},
-  {"map": 1441, "x": 45.1, "y": 49.1, "faction": "H", "name": "Nyse", "src": "hand: Freewind Post"},
-  {"map": 1444, "x": 30.2, "y": 43.3, "faction": "A", "name": "Fyldren Moonfeather", "src": "hand: Feathermoon Stronghold"},
-  {"map": 1444, "x": 75.5, "y": 44.4, "faction": "H", "name": "Shyn", "src": "hand: Camp Mojache"},
-  {"map": 1444, "x": 89.5, "y": 45.9, "faction": "A", "name": "Thyssiana", "src": "hand: Thalanaar"},
-  {"map": 1452, "x": 60.5, "y": 36.3, "faction": "H", "name": "Yugrek", "src": "hand: Everlook"}
- ]
+ "flights": []
 }

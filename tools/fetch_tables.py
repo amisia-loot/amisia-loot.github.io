@@ -1,6 +1,7 @@
 """Downloads the client tables Amisia's builders read from the CSV exports of wago.tools (D-101).
 
     python3 tools/fetch_tables.py [--version 1.60.1.70888] [--tables T ...] [--out DIR] [--retry-missing]
+    python3 tools/fetch_tables.py --latest          only prints the newest wowf build (one request)
     python3 tools/build.py tables [--version V] [--tables T ...]
 
 The only script that talks to wago.tools, and only along the two routes the site's robots.txt and
@@ -301,7 +302,12 @@ def main(argv=None):
     ap.add_argument('--locale', default=None, choices=LOCALES, help='string columns in this language (default enUS)')
     ap.add_argument('--out', default=OUT, help=f'the folder (default {OUT})')
     ap.add_argument('--retry-missing', action='store_true', help='ask again for tables the site did not have')
+    ap.add_argument('--latest', action='store_true',
+                    help='only print the newest build of --product (one request) and stop; tools/auto_data.py asks so')
     args = ap.parse_args(argv)
+    if args.latest:
+        print(latest_version(Client(), args.product))
+        return 0
     tables = args.tables or client_tables.TABLES
     if not tables:
         raise SystemExit('no tables: tools/export_db2.ps1 not readable')

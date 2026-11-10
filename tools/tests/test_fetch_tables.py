@@ -158,3 +158,22 @@ def test_it_asks_for_every_table_the_builders_read():
     import client_tables
     assert ft.OUT == client_tables.FETCHED
     assert 'DungeonEncounter' in client_tables.TABLES and 'ItemSparse' in client_tables.TABLES
+
+
+def test_latest_only_prints_the_newest_build(monkeypatch, capsys):
+    """--latest (tools/auto_data.py's daily look, D-103): one request to the API route, the build on stdout;
+    an answer that is no build ends with an error and prints no build."""
+    real, asked = ft.Client, []
+
+    def answering(status, ctype, body):
+        def get(url):
+            asked.append(url)
+            return status, ctype, body
+        return lambda: real(get=get, sleep=lambda s: None)
+    monkeypatch.setattr(ft, 'Client', answering(200, 'application/json', LATEST))
+    assert ft.main(['--latest']) == 0
+    assert capsys.readouterr().out.strip() == V and asked == ['https://wago.tools/api/builds/wowf/latest']
+    monkeypatch.setattr(ft, 'Client', answering(200, 'text/html', b'<html>'))
+    with pytest.raises(SystemExit):
+        ft.main(['--latest'])
+    assert capsys.readouterr().out == ''

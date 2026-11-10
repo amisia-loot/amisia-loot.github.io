@@ -89,7 +89,9 @@ local function flightsOf(data)
     for _, r in ipairs(type(data.F) == "table" and data.F or {}) do
         if type(r) == "table" and type(r[1]) == "number" and type(r[5]) == "string" then
             local p = pt(r[1], r[2] or 0, r[3] or 0)
-            if p then out[#out + 1] = { kind = "flight", point = p, side = r[4], name = r[5] } end
+            -- r[6]: the client's name of the flight point (F-171), missing for one by hand
+            local place = type(r[6]) == "string" and r[6] ~= r[5] and r[6] or nil
+            if p then out[#out + 1] = { kind = "flight", point = p, side = r[4], name = r[5], place = place } end
         end
     end
     return out
@@ -354,6 +356,7 @@ local function tooltip(owner, e)
         GameTooltip:AddLine(TEXT.placeHint, 0.6, 0.6, 0.6)
     else
         GameTooltip:AddLine(p.name, 1, 0.82, 0)
+        if p.place then GameTooltip:AddLine(p.place, 1, 1, 1) end
         GameTooltip:AddLine(L["Flugmeister"] .. " · " .. (SIDE_TEXT[p.side] or SIDE_TEXT.N), 1, 1, 1)
         GameTooltip:AddLine(where(e), 0.7, 0.7, 0.7)
         GameTooltip:AddLine(TEXT.placeHint, 0.6, 0.6, 0.6)

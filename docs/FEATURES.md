@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-171 Flugpunkte aus den Daten des Spiels
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du unter Einstellungen > Karte und Wegpunkt "Flugmeister auf der Karte" einschaltest und als Horde die Weltkarte von Riverglades öffnest, dann steht dort ein Flugpunkt-Symbol bei Rog'mar (etwa 59.6, 45.1) mit dem Tooltip "Rog'mar, Riverglades" und "Flugmeister · Horde" (vorher fehlte er); als Allianz steht dort stattdessen nur Farholde Keep (Gretchen Mayberry).
+- Prüfung: Wenn du die Karte der Östlichen Pestländer öffnest, dann steht der Flugpunkt von Light's Hope Chapel deiner Fraktion (Allianz Khaelyn Steelwing etwa 71.7, 49.6; Horde Georgia etwa 70.5, 47.6) im Tooltip mit dem Namen des Flugmeisters und darunter "Light's Hope Chapel, Eastern Plaguelands"; bitte melden, ob das Symbol beim echten Flugmeister steht (vorher stand es bei 81.6, 59.2 und 80.2, 57.0, wo der Flugmeister in Classic steht).
+- Prüfung: Wenn du die Karte von Mount Hyjal öffnest, dann stehen dort für beide Fraktionen die Flugpunkte Summit of Eternity und Tainted Foothills; die Karte von Moonglade zeigt nur noch die normalen Flugmeister (Sindrayl für die Allianz, Faustron für die Horde), nicht mehr die der Druiden.
+- Prüfung: Wenn du die Maus auf die Flugpunkte von Freewind Post, Thalanaar, Feathermoon oder Camp Mojache hältst, dann steht oben der Ortsname ("Freewind Post, Thousand Needles") statt eines Flugmeisters; die Zeppeline und Schiffe (Einstellung "Zeppeline und Schiffe auf der Karte") sind unverändert.
+- Notiz: DECISIONS D-102. Keine Spec (neue Daten aus einer Client-Tabelle, die Form von `F` bleibt, ein sechstes Feld kommt dazu). Für 1.60.1.70888: 65 Flugpunkte statt 64, von den 101 Zeilen der Tabelle 36 weggelassen (Questflüge, Transporte, Testorte, die zzOLD-Kopien, Alterac Valley, die Druiden-Flüge von Nighthaven, die Türme der Pestländer; Powderfuse Port und Tidegear Coast zeigt der Client keiner Seite: bitte melden, wenn es dort einen Flugmeister gibt). Die sechs Flugmeister von Hand fallen weg, die Tabelle hat sie alle.
+- Notiz: DECISIONS D-103, nur auf dem N100 (nichts davon im Spiel): `tools/auto_data.py` schaut zusätzlich höchstens einmal am Tag bei wago.tools nach einem neuen `wowf`-Build, lädt dessen Tabellen und baut ihn wie einen Export des PCs auf `auto/data-<build>`; aus mit `~/addons/_auto/amisia-wago.off`. Wenn ein neuer Build gebaut wurde, dann stehen am Ende von `~/addons/_auto/amisia-data.txt` die ersten Zeilen von "Neu in diesem Build" (Items, Quests, Dungeons, Bosse, Flugpunkte, Zauber) und der ganze Bericht in `~/addons/_auto/amisia-data-diff.txt`; wenn der Blick nichts Neues fand oder scheiterte, dann steht dort eine Zeile "wago.tools (täglich, ...)". Von Hand: `python3 tools/build.py diff [ALT NEU]`.
+
 ### F-170 Boss-Porträts für alle Dungeons, Drowned City
 - Version: -
 - Status: geplant

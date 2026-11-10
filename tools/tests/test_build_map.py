@@ -272,7 +272,8 @@ def test_flight_masters_and_docks(tmp_path):
                  (1434, 3140, 2990, 'Z', 'H', ((0, 'Orgrimmar'), (0, 'Undercity'))),
                  (1437, 500, 6340, 'S', 'A', ((0, 'Theramore Isle'),))], 'one dock per place and kind'
     kept = build_map.load_transports()
-    assert len(kept['docks']) >= 11 and len(kept['flights']) >= 6, 'the classic docks and the flight masters ATT lacks'
+    assert len(kept['docks']) >= 11, 'the classic docks'
+    assert kept['flights'] == [], 'the six flight masters by hand are all TaxiNodes nodes now (F-171)'
     for d in kept['docks']:
         assert d['src'] and d['kind'] in ('zeppelin', 'ship') and d['to'], d
     for f in kept['flights']:
@@ -280,18 +281,65 @@ def test_flight_masters_and_docks(tmp_path):
     assert build_map.load_transports(str(tmp_path / 'none')) == {'docks': [], 'flights': []}
 
 
+TAXI = ('Name_lang,Pos_0,Pos_1,Pos_2,ID,ContinentID,ConditionID,CharacterBitNumber,Flags,MountCreatureID_0,MountCreatureID_1\n'
+        '"Crossroads, The Barrens",-1000,-1500,0,25,1,0,25,1026,2224,0\n'
+        '"Ratchet, The Barrens",-2000,-2600,0,80,1,0,80,1027,2224,541\n'
+        '"Camp Taurajo, The Barrens",-3000,-1000,0,77,1,0,77,1026,2224,0\n'
+        '"Nighthaven, Moonglade",-1000,-1400,0,62,1,0,0,1025,0,3837\n'
+        '"Transport, Booty Bay - Ratchet",-1200,-1500,0,34,1,0,0,1024,0,0\n'
+        '"zzOLDPowderfuse Port, Riverglades",-2000,-2600,0,3208,1,0,34,1027,2224,541\n'
+        '"Dun Baldar, Alterac Valley",574,-46,0,59,30,0,0,1025,0,541\n'
+        '"Far Away",50000,50000,0,90,1,0,90,1025,0,541\n')
+
+
+def test_flight_points_from_taxinodes(tmp_path):
+    """F-171, D-102: the client's flight points with side and place; AllTheThings' flight master names by
+    side and distance, by id further away; the unusable nodes left out with their reason."""
+    folder = client_tables(tmp_path / 'wago')
+    (tmp_path / 'wago' / 'TaxiNodes.1.60.1.1.csv').write_text(TAXI, encoding='utf-8')
+    c = build_map.Client(folder)
+    nodes = build_map.taxi_nodes(folder)
+    assert [n['id'] for n in nodes] == [25, 34, 59, 62, 77, 80, 90, 3208]
+    assert build_map.taxi_nodes(str(tmp_path / 'none')) == []
+    why = {n['id']: build_map.node_unusable(n) for n in nodes}
+    assert why[25] is None and why[80] is None and why[77] is None and why[90] is None
+    assert 'zzOLD' in why[3208] and 'continent 30' in why[59] and 'flags 0x400' in why[34] and 'learns' in why[62]
+    assert [build_map.node_side(n) for n in nodes if n['id'] in (25, 62, 80)] == ['H', 'A', 'N']
+    assert build_map.node_points(c, nodes[0]) == [(1413, 6250, 2500), (1411, 7500, 5000)], 'the zone of its name first'
+    att = {'flights': {
+        25: {'npc': 3615, 'name': 'Devrak', 'points': [(1413, 6200, 2550)], 'faction': 'H'},
+        80: {'npc': 16227, 'name': 'Bragok', 'points': [(1413, 2000, 2000)], 'faction': ''},
+        62: {'npc': 11798, 'name': 'Bunthen Plainswind', 'points': [(1413, 100, 100)], 'faction': 'H'},
+        99: {'npc': 1, 'name': 'Other Side', 'points': [(1413, 6250, 2500)], 'faction': 'A'},
+        84: {'npc': None, 'name': None, 'points': [(1423, 1, 1)], 'faction': ''}}}
+    hand = [{'map': 1413, 'x': 62.4, 'y': 25.1, 'faction': 'H', 'name': 'Devrak', 'src': 'x'},
+            {'map': 1444, 'x': 75.5, 'y': 44.4, 'faction': 'H', 'name': 'Shyn', 'src': 'x'}]
+    F, rep = build_map.table_flights(c, nodes, att, hand)
+    assert F == [(1413, 5000, 7500, 'H', 'Camp Taurajo, The Barrens', 'Camp Taurajo, The Barrens'),
+                 (1413, 6250, 2500, 'H', 'Devrak', 'Crossroads, The Barrens'),
+                 (1413, 9000, 5000, 'N', 'Bragok', 'Ratchet, The Barrens'),
+                 (1444, 7550, 4440, 'H', 'Shyn', '')], F
+    assert rep['matched'] == [(25, 'Devrak', 71)] and rep['far'] == [(80, 'Bragok', 7616)]
+    assert rep['side'] == [(62, 'Nighthaven, Moonglade', 'A', 'H')], 'the table and AllTheThings disagree'
+    assert rep['att_only'] == [(62, 'Bunthen Plainswind', 'H'), (99, 'Other Side', 'A')], 'not the other side\'s node'
+    assert rep['no_zone'] == [(90, 'Far Away')] and rep['hand'] == ['Shyn']
+    assert sorted(i for i, _, _ in rep['excluded']) == [34, 59, 62, 3208]
+
+
 def test_places_in_the_output(tmp_path):
     out = tmp_path / 'MapData.lua'
     P = {'I:43': [(1413, 4769, 3498)]}
     build_map.write_lua(str(out), P, {}, 'abc', '2026-10-16', {'I:43': 'c', 'I:9': 'a'},
-                        [(1413, 5150, 3030, 'H', 'Devrak')], [(1434, 3140, 2990, 'Z', 'H', ((1637, 'Orgrimmar'),))],
+                        [(1413, 5150, 3030, 'H', 'Devrak', 'Crossroads, The Barrens'), (1413, 1, 1, 'A', 'By Hand', '')],
+                        [(1434, 3140, 2990, 'Z', 'H', ((1637, 'Orgrimmar'),))],
                         ['OneForAll 5.6.2 (GPL-3.0-or-later; see LICENSES/) at x: flight masters.'])
     text = out.read_text(encoding='utf-8')
     lines = text.split('\n')
     assert lines[2].startswith('-- OneForAll') and lines[3] == 'local _, ns = ...'
     ns = lua_data.load(text, 'MapData.lua')
     assert ns.MAP.E['I:43'] == 'c' and ns.MAP.E['I:9'] is None, 'sources only of keys with points'
-    assert ns.MAP.F[1][5] == 'Devrak' and ns.MAP.F[1][4] == 'H'
+    assert ns.MAP.F[1][5] == 'Devrak' and ns.MAP.F[1][4] == 'H' and ns.MAP.F[1][6] == 'Crossroads, The Barrens'
+    assert ns.MAP.F[2][5] == 'By Hand' and ns.MAP.F[2][6] is None, 'no place for one by hand'
     assert ns.MAP.T[1][4] == 'Z' and ns.MAP.T[1][6][1][1] == 1637 and ns.MAP.T[1][6][1][2] == 'Orgrimmar'
 
 
@@ -304,6 +352,9 @@ def test_the_shipped_map_data_has_its_places():
     head = text.split('local _, ns')[0]
     assert 'Client tables' in head and 'forever_transports.json' in head and 'GPL' not in head
     assert len(build_map.seq(build_map.py(m.T))) >= 11 and len(build_map.seq(build_map.py(m.F))) >= 60, 'the docks by hand, the flight masters'
+    assert 'TaxiNodes' in head, 'the flight points from the client table (F-171)'
+    places = [f.get(6) for f in build_map.seq(build_map.py(m.F))]
+    assert all(places) and "Rog'mar, Riverglades" in places, 'every flight point with its place; a new Forever one'
 
 
 def test_there_is_no_game_switch():

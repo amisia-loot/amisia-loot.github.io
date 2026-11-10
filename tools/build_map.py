@@ -5,9 +5,9 @@ data gives them, raids and dungeons from their entrances. Runs without a WoW ins
     python tools/build_map.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE...]
 
 F-105 adds the places on the world map: the entrance of every dungeon and raid of the facts (client
-table Map, AllTheThings, the learned ones), flight masters (F) from AllTheThings and docks (T), both
-with the hand list tools/forever_transports.json; see the block "places on the map" below and
-tools/README.md.
+table Map, AllTheThings, the learned ones), flight points (F) from the client table TaxiNodes with
+the flight masters' names of AllTheThings (F-171), and docks (T) from the hand list
+tools/forever_transports.json; see the block "places on the map" below and tools/README.md.
 
 Sources (named with their licence in tools/README.md and in the header of the generated file):
   - AllTheThings' hand-kept Forever data (tools/att_data.py; MIT, the licence ships in
@@ -346,7 +346,9 @@ def resolve(att, needed, facts=()):
 #               at the instance portal; turned into a zone map's x/y through UiMapAssignment),
 #               AllTheThings, then the entrances the addon learned when a player entered
 #               (tools/entrance_archive.json).
-#   flights:    AllTheThings' fp() records with their flight master, then the hand list's it lacks.
+#   flights:    the client table TaxiNodes (position, side, place; F-171, D-102) with the names of
+#               AllTheThings' flight masters, then the hand list's it lacks; without the table
+#               AllTheThings' fp() records with their flight master, then the hand list's.
 #   docks:      the hand list tools/forever_transports.json.
 ENTRANCES = os.path.join(HERE, 'entrance_archive.json')
 TRANSPORTS = os.path.join(HERE, 'forever_transports.json')
@@ -636,6 +638,164 @@ def flights(att, hand=()):
     return sorted(out), from_att
 
 
+# ---------------------------------------------------------------- flight points of the client (F-171)
+# TaxiNodes holds every flight point of the client with its world position (Pos_0 the world's x, Pos_1
+# its y, as Map's Corpse_0/1). Its Flags bit 0x1 shows a node on the Alliance's flight map, 0x2 on the
+# Horde's; CharacterBitNumber is the node's bit in what a character has learned (0: nobody learns it).
+# Read from the data of 1.60.1.70888 against the 60 flight masters AllTheThings knows (D-102): 58 stand
+# on a node with one of the two bits and a bit number, of the same side as AllTheThings' races; the
+# other two are the druids' Nighthaven nodes (no bit number, sides swapped against AllTheThings). The
+# nodes without either bit are quest paths, transports, "Generic" targets, test places.
+TAXI_ALLIANCE, TAXI_HORDE = 0x1, 0x2
+TAXI_CONTINENTS = (0, 1)        # Eastern Kingdoms, Kalimdor: the continents UiMapAssignment places
+MATCH = 300                     # a flight master of AllTheThings within 3 % of a node is that node's
+
+
+def taxi_nodes(wago):
+    """The rows of TaxiNodes in wago as [{'id', 'name', 'cont', 'x', 'y', 'flags', 'bit', 'cond'}]
+    (empty without the table)."""
+    out = []
+    for r in att_data.wago_rows('TaxiNodes', wago):
+        try:
+            out.append({'id': int(r['ID']), 'name': (r.get('Name_lang') or '').strip(),
+                        'cont': int(r['ContinentID']), 'x': float(r['Pos_0']), 'y': float(r['Pos_1']),
+                        'flags': int(r.get('Flags') or 0), 'bit': int(r.get('CharacterBitNumber') or 0),
+                        'cond': int(r.get('ConditionID') or 0)})
+        except (KeyError, ValueError):
+            continue
+    return sorted(out, key=lambda n: n['id'])
+
+
+def node_side(n):
+    """A, H or N (both) by the node's flags; None when neither side's flight map shows it."""
+    a, h = bool(n['flags'] & TAXI_ALLIANCE), bool(n['flags'] & TAXI_HORDE)
+    return 'N' if a and h else 'A' if a else 'H' if h else None
+
+
+def node_unusable(n):
+    """Why a player never flies from this node (a short English reason), or None when it is a flight
+    point: the client's own "zzOLD" names (old copies, each on the spot of a live node), another
+    continent than the two the map places (Alterac Valley, a scenario's quest path), no side's flight
+    map shows it (quest paths, transports, test places; Powderfuse Port and Tidegear Coast too), no
+    character learns it (the druids' Nighthaven flights, the Plaguelands towers)."""
+    if n['name'].lower().startswith('zzold'):
+        return 'an old copy (the client names it zzOLD)'
+    if n['cont'] not in TAXI_CONTINENTS:
+        return f'continent {n["cont"]} (not Eastern Kingdoms or Kalimdor)'
+    if node_side(n) is None:
+        return f'no side\'s flight map shows it (flags 0x{n["flags"]:x})'
+    if n['bit'] <= 0:
+        return 'no character learns it (no CharacterBitNumber)'
+    return None
+
+
+def node_points(client, n):
+    """Every zone point (uiMap, x, y) that holds the node, the best first: the zone its name ends in
+    ("Gadgetzan, Tanaris") when that zone holds it, then by how deep inside; empty when none does."""
+    cands = client.on_zones(n['cont'], n['x'], n['y'])
+    zone = client.zone(n['name'].split(',')[-1].strip())
+    cands.sort(key=lambda c: (c[0] != zone, -c[3], c[0]))
+    return [c[:3] for c in cands]
+
+
+def _dist(pts, q):
+    """The distance of q from the point of pts on q's zone (inf when none is on it) and that point."""
+    for p in pts:
+        if p[0] == q[0]:
+            return math.hypot(p[1] - q[1], p[2] - q[2]), p
+    return math.inf, None
+
+
+def table_flights(client, nodes, att, hand=()):
+    """[(map, x, y, side, name, place)] of the client's flight points and a report. Position, side and
+    place name (field 6) come from TaxiNodes; name is the flight master's from AllTheThings where one of
+    the same side stands within 3 % of the node (each one used once, the closest pairs first), else one
+    of the same id and side further away (the place moved), else the node's name. A flight master of
+    the hand list joins only where no node stands (neither its name nor a point within 2 % of the same
+    side). Report: 'excluded' [(id, name, why)], 'matched' [(id, npc name, distance)], 'far' (matched
+    by id only), 'side' [(id, name, table side, ATT side)] where both know the id, 'att_only' (ATT
+    flight masters no node took), 'no_zone' (nodes no zone holds), 'hand' (hand entries kept)."""
+    rep = {'excluded': [], 'matched': [], 'far': [], 'side': [], 'att_only': [], 'no_zone': [], 'hand': []}
+    att_fl = {fid: r for fid, r in sorted(((att or {}).get('flights') or {}).items())
+              if r.get('npc') and r.get('points')}
+    live = []
+    for n in nodes:
+        why = node_unusable(n)
+        if why:
+            rep['excluded'].append((n['id'], n['name'], why))
+            continue
+        pts = node_points(client, n)
+        if not pts:
+            rep['no_zone'].append((n['id'], n['name']))
+            continue
+        live.append((n, pts, node_side(n)))
+    by_id = {n['id']: n for n in nodes}
+    for fid, r in att_fl.items():
+        if fid in by_id and node_side(by_id[fid]) and (r.get('faction') or 'N') != node_side(by_id[fid]):
+            rep['side'].append((fid, by_id[fid]['name'], node_side(by_id[fid]), r.get('faction') or 'N'))
+    # the flight masters: closest pairs of the same side first
+    pairs = sorted((_dist(pts, r['points'][0])[0], n['id'], fid) for n, pts, side in live
+                   for fid, r in att_fl.items() if (r.get('faction') or 'N') == side
+                   and _dist(pts, r['points'][0])[0] <= MATCH)
+    npc_of, used = {}, set()
+    for d, nid, fid in pairs:
+        if nid in npc_of or fid in used:
+            continue
+        npc_of[nid] = fid
+        used.add(fid)
+        rep['matched'].append((nid, att_fl[fid].get('name') or '?', round(d)))
+    for n, pts, side in live:
+        fid = n['id']
+        if fid not in npc_of and fid in att_fl and fid not in used and (att_fl[fid].get('faction') or 'N') == side:
+            npc_of[fid] = fid
+            used.add(fid)
+            d = _dist(pts, att_fl[fid]['points'][0])[0]
+            rep['far'].append((fid, att_fl[fid].get('name') or '?', None if d == math.inf else round(d)))
+    rep['att_only'] = [(fid, r.get('name') or '?', r.get('faction') or 'N') for fid, r in att_fl.items()
+                       if fid not in used]
+    out = []
+    for n, pts, side in live:
+        fid = npc_of.get(n['id'])
+        # on the zone AllTheThings puts its flight master (a city rather than the zone around it)
+        p = (_dist(pts, att_fl[fid]['points'][0])[1] if fid is not None else None) or pts[0]
+        name = (att_fl[fid].get('name') if fid is not None else None) or n['name']
+        out.append((p[0], p[1], p[2], side, name, n['name']))
+    for f in hand or []:
+        p = (int(f['map']), hundredths(f['x']), hundredths(f['y']))
+        side = {'A': 'A', 'H': 'H'}.get(f.get('faction'), 'N')
+        rivals = [o[:3] for o in out if 'N' in (o[3], side) or o[3] == side]
+        if f['name'] in {o[4] for o in out} or _near(p, rivals, MERGE):
+            continue
+        out.append(p + (side, f['name'], ''))
+        rep['hand'].append(f['name'])
+    return sorted(out), rep
+
+
+def report_flights(F, rep, client):
+    """The report of the client's flight points (build_map.py's output and D-102)."""
+    cont_of = {ui: mid for mid, ui, _, _ in client.rects}
+    sides = {}
+    for f in F:
+        cont = {0: 'Eastern Kingdoms', 1: 'Kalimdor'}.get(cont_of.get(f[0]), 'elsewhere')
+        sides[(cont, f[3])] = sides.get((cont, f[3]), 0) + 1
+    log(f'flight points from TaxiNodes: {len(F)} ('
+        + ', '.join(f'{c} {s} {k}' for (c, s), k in sorted(sides.items())) + ')')
+    log(f'  flight masters of AllTheThings matched: {len(rep["matched"])} within 3 %, {len(rep["far"])} by id further away'
+        + (': ' + ', '.join(f'{i} {nm} ({d / 100 if d is not None else "?"} %)' for i, nm, d in rep['far']) if rep['far'] else ''))
+    if rep['side']:
+        log('  side of TaxiNodes against AllTheThings (same id): '
+            + ', '.join(f'{i} {nm} table {a} ATT {b}' for i, nm, a, b in rep['side']))
+    if rep['att_only']:
+        log('  flight masters of AllTheThings no node took: ' + ', '.join(f'{i} {nm} ({s})' for i, nm, s in rep['att_only']))
+    if rep['no_zone']:
+        log('  nodes no zone holds: ' + ', '.join(f'{i} {nm}' for i, nm in rep['no_zone']))
+    if rep['hand']:
+        log('  by hand (no node there): ' + ', '.join(rep['hand']))
+    log(f'  left out: {len(rep["excluded"])}')
+    for i, nm, why in rep['excluded']:
+        log(f'    {i} {nm}: {why}')
+
+
 def load_transports(path=TRANSPORTS):
     """The hand list: {'docks': [...], 'flights': [...]} (empty lists without the file)."""
     data = {}
@@ -681,7 +841,8 @@ def write_lua(out, P, G, commit, built, E=None, F=(), T=(), sources=()):
         '-- G: [source key] = who stands there (the quest giver), English.',
         '-- E: [entrance key] = where its points come from: c client table, a AllTheThings, l learned when a',
         '-- player entered.',
-        '-- F: flight masters { uiMapID, x, y, faction A/H/N (both), name (English) }.',
+        '-- F: flight points { uiMapID, x, y, faction A/H/N (both), name (English: the flight master, else the',
+        '-- place), place (English, the client\'s name of the flight point; missing for one by hand) }.',
         '-- T: docks { uiMapID, x, y, kind Z (zeppelin) / S (ship), faction A/H/N, { { area id, English name }, ... } }.',
         'ns.MAP = {',
         f'    game = "forever", built = {lua_str(built)}, source = {lua_str(commit or "none")},',
@@ -703,8 +864,9 @@ def write_lua(out, P, G, commit, built, E=None, F=(), T=(), sources=()):
                 lines.append(f'        [{lua_str(key)}] = {lua_str(E[key])},')
         lines.append('    },')
         lines.append('    F = {')
-        for m, x, y, side, name in F:
-            lines.append(f'        {{ {m}, {x}, {y}, {lua_str(side)}, {lua_str(name)} }},')
+        for m, x, y, side, name, *place in F:
+            more = f', {lua_str(place[0])}' if place and place[0] else ''
+            lines.append(f'        {{ {m}, {x}, {y}, {lua_str(side)}, {lua_str(name)}{more} }},')
         lines.append('    },')
         lines.append('    T = {')
         for m, x, y, kind, side, dests in T:
@@ -731,7 +893,9 @@ def report_places(facts, ent, F, att_flights, T):
     log('entrances per winning source: ' + ', '.join(f'{k} {len(v)}' for k, v in sorted(won.items())))
     for k, v in sorted(won.items()):
         log(f'  {k}: {" ".join(v)}')
-    log(f'flight masters: {len(F)} ({att_flights} AllTheThings, {len(F) - att_flights} by hand); '
+    fl = (f'{att_flights} AllTheThings, {len(F) - att_flights} by hand' if att_flights is not None
+          else f'client table TaxiNodes, {sum(1 for f in F if len(f) < 6 or not f[5])} by hand')
+    log(f'flight masters: {len(F)} ({fl}); '
         f'docks: {len(T)} ({sum(1 for t in T if t[3] == "Z")} zeppelin towers, {sum(1 for t in T if t[3] == "S")} ships)')
 
 
@@ -739,7 +903,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--att', default=att_data.ATT_CACHE, help=f'AllTheThings download (default {att_data.ATT_CACHE})')
     ap.add_argument('--refresh-att', action='store_true', help='download the AllTheThings Forever files first')
-    ap.add_argument('--wago', default=None, help='folder with the client tables (Map, UiMapAssignment, AreaTable; default: the newest copy of each table, tools/client_tables.py)')
+    ap.add_argument('--wago', default=None, help='folder with the client tables (Map, UiMapAssignment, AreaTable, TaxiNodes; default: the newest copy of each table, tools/client_tables.py)')
     ap.add_argument('--sv', nargs='*', help='Amisia SavedVariables with learned entrances (default: '
                                             '~/addons/_SavedVariables/Amisia.lua and an installed Forever client\'s)')
     ap.add_argument('--entrances', default=ENTRANCES, help='the archive of learned entrances')
@@ -769,13 +933,24 @@ def main(argv=None):
     ent = entrances(facts, att, client, learned)
     E = apply_entrances(P, facts, ent)
     hand = load_transports()
-    F, att_flights = flights(att, hand['flights'])
+    nodes = taxi_nodes(args.wago) if client.rects else []
+    if nodes:
+        F, flight_rep = table_flights(client, nodes, att, hand['flights'])
+        att_flights = None
+    else:
+        log(f'no client table TaxiNodes in {args.wago}: flight masters from AllTheThings and the hand list '
+            '(build.py tables, or export it on the PC: tools/export_db2.ps1 -Tables TaxiNodes)')
+        F, att_flights = flights(att, hand['flights'])
     T = transports(client, hand['docks'])
     sources = []
     if client.instances:
         sources.append('Client tables Map, UiMapAssignment, AreaTable (Blizzard game data): entrances, area ids. '
                        'Learned entrances: tools/entrance_archive.json.')
-    sources.append('Docks and the flight masters AllTheThings lacks by hand: tools/forever_transports.json.')
+    if nodes:
+        sources.append('Client table TaxiNodes (Blizzard game data): flight points, their side and place; '
+                       'the flight masters\' names from AllTheThings.')
+    sources.append('Docks by hand: tools/forever_transports.json.' if nodes else
+                   'Docks and the flight masters AllTheThings lacks by hand: tools/forever_transports.json.')
     n = write_lua(args.out, P, G, att.get('commit'), time.strftime('%Y-%m-%d'), E, F, T, sources)
     log('places per source kind (with / without): '
         + ', '.join(f'{k} {w}/{wo}' for k, (w, wo) in sorted(report['kinds'].items())))
@@ -791,6 +966,8 @@ def main(argv=None):
     log(f'  quests started by an item: {report["quest item start"]}, without a place: '
         f'{report["quest without place"]}, unknown: {report["unknown quests"]}')
     report_places(facts, ent, F, att_flights, T)
+    if nodes:
+        report_flights(F, flight_rep, client)
     log(f'{os.path.relpath(args.out, ROOT)}: {n} keys with a place, {os.path.getsize(args.out) // 1024} KB')
 
 

@@ -2375,3 +2375,96 @@ nur in `tools/fetch_tables.py` und nur API und CSV, wowhead und foreverchanges n
 `tools/tests/test_fetch_tables.py` (die Wege, Fehlerantworten, keine zweite Anfrage, Manifest, Build aus der API,
 Pause), `tools/tests/test_client_tables.py` (höchster Build, dann mehr Zeilen, ein ausdrücklicher Ordner gewinnt, die
 eine Liste), `tools/tests/test_auto_data.py::test_the_data_build_takes_the_newest_copy_of_each_table`.
+
+## D-102 Flugpunkte aus der Client-Tabelle TaxiNodes, die Namen der Flugmeister aus AllTheThings
+
+**Datum:** 2026-11-10
+**Entscheidung:** Die Flugpunkte der Weltkarte (`F` in `Data/MapData.lua`, F-105, F-171) kommen aus der
+Client-Tabelle `TaxiNodes` (neu in den Listen von `tools/export_db2.ps1`, also im Export des PCs und in
+`build.py tables`); `tools/build_map.py` `table_flights`.
+- **Ort:** die Weltposition `Pos_0/1` über die Rechtecke von `UiMapAssignment` auf eine Zone, wie die Eingänge
+  aus `Map`; von mehreren Zonen die, auf die der Name endet ("Gadgetzan, Tanaris"), sonst die, die ihn am
+  tiefsten enthält; hat AllTheThings den Flugmeister, dessen Zone (die Stadt statt der Zone darum).
+- **Seite:** aus `Flags` (0x1 Allianz, 0x2 Horde, beide: neutral). Geprüft an den 60 Flugmeistern von
+  AllTheThings: 58 stehen auf einem Knoten mit Bit und Lernnummer und derselben Seite wie dort; die beiden
+  Druiden-Knoten von Nighthaven haben keine Lernnummer und bei AllTheThings die vertauschte Seite. Die
+  Reittier-Spalten (`MountCreatureID_0/1`) sagen dasselbe, werden aber nicht gebraucht.
+- **Weggelassen** (der Bau nennt jeden mit Grund): Kopien mit dem Namen "zzOLD..." des Clients (jede auf dem
+  Platz eines echten Knotens), andere Kontinente (Alterac Valley, ein Szenario), Knoten ohne Bit einer Seite
+  (Questflüge, Transporte, "Generic", Programmer Isle, Naxxramas; auch Powderfuse Port und Tidegear Coast,
+  die eine Lernnummer haben: im Spiel zu prüfen), Knoten ohne Lernnummer (`CharacterBitNumber` 0: die
+  Druiden-Flüge von Nighthaven, die Türme der Östlichen Pestländer). 36 von 101 Zeilen.
+- **Name:** der Flugmeister von AllTheThings, der auf derselben Seite höchstens 3 % entfernt steht (die
+  nächsten Paare zuerst, jeder einmal), sonst einer mit derselben ID und Seite weiter weg (der Platz ist
+  umgezogen), sonst der Name des Knotens; das neue sechste Feld ist immer der Name des Knotens (der Tooltip
+  zeigt ihn unter dem Flugmeister). Die NPC-ID zeigt die Seite nicht: sie bleibt weg. Ohne `TaxiNodes` baut
+  `build_map.py` wie vorher aus AllTheThings.
+- **Handliste:** die sechs Flugmeister von Hand in `tools/forever_transports.json` (Gyll, Nyse, Fyldren
+  Moonfeather, Shyn, Thyssiana, Yugrek) sind alle Knoten der Tabelle und fallen weg; die Liste nimmt nur
+  noch Flugmeister auf, wo kein Knoten steht. Zeppeline und Schiffe bleiben von Hand (keine Taxi-Knoten).
+
+**Grund:** Nutzer 2026-11-10 auf acht Vorschläge, wie andere Werkzeuge ihre Daten sammeln (Empfehlung 1, 2, 3, 6
+und 7): "ja mach deine empfehling". Vorschlag 6: die Flugpunkte aus `TaxiNodes` statt der Handliste.
+
+**Folge:** Für 1.60.1.70888: 65 Flugpunkte statt 64 (Östliche Königreiche Allianz 17, Horde 13 statt 12;
+Kalimdor Allianz 14 statt 15, Horde 17 statt 18, neutral 4 statt 2). Neu: Rog'mar, Riverglades (Horde),
+Summit of Eternity und Tainted Foothills, Mount Hyjal (beide Seiten). Weg: die Druiden-Flugmeister von
+Nighthaven (Silva Fil'naveth, Bunthen Plainswind). Versetzt: Light's Hope Chapel, beide Seiten, um gut 13 %
+(die Tabelle steht bei 71,7/49,6 und 70,5/47,6, AllTheThings bei 81,6/59,2 und 80,2/57,0), Gadgetzan (Horde)
+um 1 %. Nyse, Fyldren Moonfeather, Shyn und Thyssiana heißen jetzt nach ihrem Ort (AllTheThings nennt dort
+keinen Flugmeister). Im Spiel zu prüfen: Light's Hope Chapel, Rog'mar, die beiden Hyjal-Punkte.
+
+**Durchgesetzt durch:** `tools/tests/test_build_map.py::test_flight_points_from_taxinodes` (Seite, die
+weggelassenen Knoten mit Grund, Zuordnung nach Seite und Abstand, dann nach ID, die Handliste nur ohne Knoten),
+`::test_the_shipped_map_data_has_its_places` (jeder Flugpunkt mit Ort, Rog'mar dabei),
+`tests/test_map_places.lua` (der Ort im Tooltip).
+
+## D-103 Der N100 holt neue Client-Builds auch selbst, und ein Bericht "Neu in diesem Build"
+
+**Datum:** 2026-11-10
+**Entscheidung:** Ändert D-51: `tools/auto_data.py` hat einen zweiten Auslöser neben dem Export des PCs; wer den
+neuen Build zuerst sieht, gewinnt (der andere findet den Branch oder den Versuch und baut nichts).
+- **Der tägliche Blick:** hat der Export nichts zu bauen, fragt der Lauf höchstens einmal am Tag (Zeit, Antwort
+  und Ergebnis in `~/addons/_auto/amisia-wago.json`) mit `tools/fetch_tables.py --latest` die API von
+  wago.tools einmal nach dem neuesten `wowf`-Build. Ist er neuer als der Build der Daten auf main, auf keinem
+  Branch und nicht versucht, lädt `tools/fetch_tables.py --version <build>` seine Tabellen (mit den Regeln
+  von D-101: eine Anfrage nach der anderen, nichts doppelt), dann baut und prüft der Lauf genau wie beim
+  Export. `auto_data.py` nennt keine Adresse der Seite und importiert den Lader nicht: er ruft ihn als
+  Programm auf, wie `build.py tables`.
+- **Nur vollständig:** steht im Manifest ein Fehler, oder fehlt eine Tabelle, die der letzte geladene Build
+  hatte, oder gibt es kein Manifest, wird nichts gebaut. Das, ein Fehler im Netz und eine Antwort, die das
+  Werkzeug nicht erwartet, enden still mit einer Zeile `wago.tools (täglich, <Zeit>): ...` in
+  `~/addons/_auto/amisia-data.txt` (die Zeile bleibt unter dem nächsten Baubericht stehen); nie ein halb
+  gebauter Branch. Der nächste Blick am nächsten Tag versucht es wieder; schon geladene Tabellen werden nicht
+  wieder gefragt.
+- **Ausschalten:** die Datei `~/addons/_auto/amisia-wago.off`, oder `AMISIA_AUTO_WAGO=0` in der Umgebung des
+  Dienstes. `--look-now` schaut innerhalb des Tages.
+- **Bericht "Neu in diesem Build":** `tools/build_diff.py` (`python3 tools/build.py diff [ALT NEU]`) vergleicht
+  die Tabellen zweier Builds auf der Platte (Standard: der Build der Daten auf main gegen den neuesten), Zeilen
+  nach ID, Zahlen als Zahlen mit Toleranz (ItemSparse 70862 gegen 70888: 8760 Zeilen anders als Text, 16 als
+  Zahl), Spalten nur eines Builds nur genannt: Items (neu nach Qualität und Platz, geändert mit den Feldern),
+  Quests (neu in `QuestV2`, jetzt in der Tabellenliste; Namen nur, wo Amisias Questdaten sie kennen),
+  Dungeons, Bosse, der Dungeonfinder, Flugpunkte, die Zauber von Berufen und Talenten (Zählung und die ersten
+  Einträge), jede Tabelle mit ihren Zahlen. Nach jedem automatischen Bau stehen seine ersten Zeilen am Ende von
+  `amisia-data.txt`, der ganze Bericht in `~/addons/_auto/amisia-data-diff.txt`.
+- **Nicht ins Repository:** der Bericht entsteht jederzeit neu aus den Tabellen auf der Platte, und der Branch
+  wird nach main gemergt, wo sich ein Bericht pro Build nur anhäufen würde.
+- Weiter gilt D-51: nichts wird automatisch gepusht, gemergt oder veröffentlicht.
+
+**Grund:** Nutzer 2026-11-10 (wie D-102): "ja mach deine empfehling"; Vorschlag 7: der N100 holt neue Builds
+selbst, und ein Bericht, was ein neuer Build bringt.
+
+**Folge:** Der Timer `amisia-auto-data.timer` (systemd-Benutzertimer, alle 15 Minuten, Dienst mit
+`/usr/bin/python3 tools/auto_data.py` aus dieser Arbeitskopie) bleibt unverändert. Ein Lauf mit Laden, Bau und
+Prüfung dauert geschätzt 15 bis 20 Minuten (Laden gut 2 s je Tabelle, die Prüfung etwa 11 Minuten; Grenze des
+Dienstes 45 Minuten). Der Bericht 1.60.1.70862 gegen 1.60.1.70888: 27 neue
+Items (6 episch, 14 selten, 1 ungewöhnlich), 16 geändert (drei Schmuckstücke mit anderen Werten, Berdun's
+Trusty Rifle Stufe 45), 5 neue Dungeons mit 34 Bossen, 2 geänderte Talentzauber; `QuestV2` und `TaxiNodes`
+gab es im Export 70862 noch nicht.
+
+**Durchgesetzt durch:** `tools/tests/test_auto_data.py` (höchstens einmal am Tag, neuer und nicht neuer, schon
+gebaut, Fehler im Netz und beim Laden, fehlende Tabelle, kein Manifest, der Schalter, die Zeile im Statusbericht,
+der Bericht neben der Statusdatei, nur über `fetch_tables.py`), `tools/tests/test_build_diff.py` (neu, entfernt,
+geändert, Zahlen mit Toleranz, eine Tabelle nur in einem Build, Berufe ohne Klassenzauber),
+`tools/tests/test_fetch_tables.py::test_latest_only_prints_the_newest_build`,
+`tools/tests/test_contracts.py::test_no_tool_fetches_from_the_forbidden_sites`.

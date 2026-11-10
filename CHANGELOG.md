@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- data(map): flight points from the game's own data, with the place in the tooltip (F-171)
+
+  The flight points on the world map (shown with "Flight masters on the map") now come from the game's own list
+  of flight points: their position, their faction and their name. New are Rog'mar in the Riverglades (Horde) and
+  Summit of Eternity and Tainted Foothills on Mount Hyjal (both factions); Light's Hope Chapel moved to where the
+  game puts it; the druids-only flights of Nighthaven are gone. The tooltip shows the place under the flight
+  master's name ("Crossroads, The Barrens"); where no flight master is known, the place is the name.
+
 - data(dungeons): the game's own boss order, levels and loading screens for the new Forever dungeons (F-170)
 
   The data is now built from the newest and most complete copy of every client table (client build 1.60.1.70888).
