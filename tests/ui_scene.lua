@@ -432,6 +432,18 @@ end
 -- The dungeon bar (F-168): in the Hall of Thanes after the first fight (the clock runs) and the first
 -- boss, following a route of three stops on its second; list: the segment whose list is open (the
 -- list's frame is the shot).
+-- The bar in the Scarlet Monastery before the first kill (F-174): the map's name and the bosses of all
+-- four wings, each under its wing's name.
+function S.dungeonBarWings()
+    STUB.areas[796] = "Scharlachrotes Kloster"
+    STUB.instance = { name = "Scharlachrotes Kloster", type = "party", id = 189 }
+    STUB.fire("PLAYER_LEAVING_WORLD")
+    STUB.fire("PLAYER_ENTERING_WORLD")
+    NS.DungeonBar.Update()
+    NS.DungeonBar.Toggle("bosses")
+    return AmisiaDungeonBarList
+end
+
 function S.dungeonBar(list)
     if not (NS.DungeonBar.Shown() == "thanes") then
         STUB.instance = { name = "Halle der Thane", type = "party", id = 3065 }
@@ -1002,6 +1014,7 @@ S.WINDOWS = {
     { key = "dungeonbar", view = "raider", open = function() return S.dungeonBar() end },
     { key = "dungeonbar-bosses", view = "raider", open = function() return S.dungeonBar("bosses") end },
     { key = "dungeonbar-quests", view = "raider", open = function() return S.dungeonBar("quests") end },
+    { key = "dungeonbar-wings", view = "raider", open = function() return S.dungeonBarWings() end },
 }
 
 return S

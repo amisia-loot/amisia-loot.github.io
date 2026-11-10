@@ -690,11 +690,20 @@ python tools/build_dungeons.py [--wago [DIR ...]] [--no-att]
   the rows of the new dungeons: Drowned City, Krol'dok, Alcaz, Blackmaw, Shaper's Terrace); an instance
   without `DungeonEncounter` rows takes ATT's encounters in its file's order (`order`, `enc`,
   `order_src: "att"`); and every boss of the order gets its NPC (`npcs`, lined up with `order`: 0
-  unknown, `false` a boss of the other half of the same instance) through `att_data.find_boss` (the
+  unknown) through `att_data.find_boss` (the
   encounter with the client's id in the same instance, an encounter or NPC of that name, a shortened
   name) and the facts' `boss_alias` (a name of the order -> the name ATT lists the boss under; group
-  encounters: The Lost Dwarves -> Baelog). `att_wing` splits Blackrock Spire's shared order by ATT's
-  wing headers. The facts may give `order`/`enc` by hand (the Drowned City, from the user's screenshot
+  encounters: The Lost Dwarves -> Baelog). A dungeon of one wing of a map of several (`part` and
+  `att_wing`: the halves of Blackrock Spire, the Scarlet Monastery's four wings `smgy`, `smlib`, `smarm`,
+  `smcath`; F-174, D-106) keeps only the bosses whose NPC stands under its ATT wing header (order, enc,
+  npcs); the map's one `LFGDungeons` row gives every wing its `lvl` (the wings' ranges are hand facts, no
+  "differs"). `wing` (the wing's English name) and `part_area` (the client's area of the part's name) go
+  into `DungeonData.lua` and `ns.BIS.DG` for the name the addon shows ("Scharlachrotes Kloster: Friedhof").
+- The same rule in the other builders (`build_gear.Places`): `split()` gives a source of such an instance
+  (an ATT drop, a wing page of the drop chances, a drop the collector saw) the wing of its NPC or boss name,
+  else the first wing; `quest_wings()` gives a quest its ATT wing header, else every wing whose boss an
+  objective names (`att_data` quests' `targets`), else the first wing. `build_dungeonquests.py` lists a quest
+  in each of its wings (field 11 the first); `build_gear.py` names the first in the quest's source. The facts may give `order`/`enc` by hand (the Drowned City, from the user's screenshot
   where ATT confirms the boss); then the client's order does not replace it.
 - The hand facts win: the client's values fill only what `forever_dungeons.json` leaves open (`lvl`, and
   `inst` where the facts have none); differences are printed. The addon takes `lvl` as the low end of a

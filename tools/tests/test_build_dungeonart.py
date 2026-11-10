@@ -96,12 +96,14 @@ def test_the_snapshot_covers_the_dungeons_the_client_has():
     s = snapshot()
     d = s['dungeons']
     for key in ('rfc', 'wc', 'deadmines', 'thanes', 'sfk', 'lordaeron', 'bfd', 'stockade', 'gnomer', 'rfk',
-                'excavation', 'dalaran', 'sm', 'rfd', 'ulda', 'zf', 'mara', 'brd', 'lbrs', 'ubrs', 'dire', 'scholo',
+                'excavation', 'dalaran', 'smgy', 'smlib', 'smarm', 'smcath', 'rfd', 'ulda', 'zf', 'mara', 'brd', 'lbrs', 'ubrs', 'dire', 'scholo',
                 'strat', 'onyxia'):
         assert key in d, key
         fid, kind = d[key]
         assert isinstance(fid, int) and fid > 0 and kind in ('n', 'w'), (key, d[key])
     assert d['thanes'][1] == 'w' and d['deadmines'] == [131833, 'n']
+    # the Scarlet Monastery's four wings are one map: one loading screen for all four (F-174)
+    assert d['smgy'] == d['smlib'] == d['smarm'] == d['smcath'] and 'sm' not in d
     assert s['party'][0] > 0 and s['raid'][0] > 0
 
 

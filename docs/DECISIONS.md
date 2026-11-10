@@ -2261,7 +2261,7 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 
 **Durchgesetzt durch:** `tests/test_routes.lua` (Modus, Leiste, Stopps per Klick, Zeichnen mit Vereinfachung und Grenzen, Rückgängig, Leeren, andere Karte, Stopp-Menü und Beschriftung, Speichern, Umbenennen, Laden, Löschen mit Nachfrage, 40 Routen, Bereinigung beim Laden, Folgen mit Ankunft, von Hand und in der Instanz, Kampf, Teilen und Punkt mit Grenzen, jede Ablehnung beim Empfang, Angebote, nichts in die Karte geschrieben, Punkte statt Linien), `tests/test_routes_share.lua` (zwei Clients: Route in Stücken über PARTY, Angebot, Annehmen, Speichern, Punkt, RAID im Raid, Fremder bekommt nichts), `tests/test_comm.lua` (PARTY nur in eigener Gruppe), `tests/test_map_layer_safe.lua`, `tools/tests/test_contracts.py::test_two_prefixes_and_one_sender`, `tests/ui_scene.lua` (Fenster `routebar`, `routebar-off`).
 
-Nachtrag 2026-11-11: Den Kanal `PARTY` hat der Nutzer bestätigt. Er hatte die Wahl "Ohne Gruppen-Senden" (Teilen nur im Raid) und wählte beim Release von 2.74.0 "Ja, veröffentlichen".
+Nachtrag 2026-11-10: Den Kanal `PARTY` hat der Nutzer bestätigt. Er hatte die Wahl "Ohne Gruppen-Senden" (Teilen nur im Raid) und wählte beim Release von 2.74.0 "Ja, veröffentlichen".
 
 ## D-98 Dungeon-Leiste: eine Sicht auf Bosse, Quests, Uhr und Route, von selbst nur in Dungeons
 
@@ -2315,6 +2315,9 @@ Nachtrag 2026-11-11: Den Kanal `PARTY` hat der Nutzer bestätigt. Er hatte die W
 **Folge:** 231 von 232 Bossen der Reihenfolgen haben ein NPC (ohne: Lady Illucia Barov, Scholomance), 275 statt 210 NPCs in `ns.BIS.DG`. Bosse ohne Reihenfolge-Eintrag aus den Item-Daten ohne NPC bei ATT: Deathsworn Captain (Lordaeron), Scorn (Kloster), Balzaphon (Stratholme); die namenlosen "NPC n" tragen ihre ID im Namen. Barrow Deeps und Hyjal Summit haben bei ATT noch keine Bosse, King Op (Shaper's Terrace, 3504) steht dort nur als Kommentar ohne Kreatur. Manor Mistmantle (ATT 3109, nicht auf Blizzards Liste) bleibt aus den Fakten. Etagenkarten hat keine Tabelle (UiMapAssignment kennt nur Außenzonen). Die Modelle zeigt das Spiel nur für Kreaturen, die der Client kennt (`SetCreature`); Anzeige-IDs (`JournalEncounterCreature`) exportiert `tools/export_db2.ps1` schon, die Tabelle ist in Forever 1.60.1 leer. Die Zeilen der neuen Dungeons fehlen dem Export des Nutzers (`Map`, `AreaTable`, `DungeonEncounter`, wohl verschlüsselte Abschnitte des Builds): ein Export mit `-Hotfixes -Force` nach dem Einloggen bringt sie vielleicht; dann nimmt die Reihenfolge des Spiels die von ATT ab.
 
 **Durchgesetzt durch:** `tools/tests/test_att_data.py` (Begegnungen, Flügel, `find_boss` mit ID, Name, NPC, Kurzname, Teilnamen), `tools/tests/test_build_dungeons.py` (ATTs Reihenfolge ohne Client-Zeilen, `npcs`, Alias, andere Hälfte; jeder Boss der Reihenfolge sein NPC bis auf Lady Illucia Barov; die Drowned City), `tools/tests/test_build_bis.py` (`more_boss_npcs`; kein NPC von vorher verloren: `tools/tests/fixtures/boss_npcs_2026-11-10.json`), `tests/test_boss_portraits.lua`, `tests/test_boss_view.lua` (alle Bosse, Porträt aus der Reihenfolge, "nichts für dich").
+
+Nachtrag 2026-11-10: D-106 ersetzt den Punkt "Flügel": jeder Dungeon einer Instanz mehrerer Dungeons hat nur noch
+seine eigenen Bosse in der Reihenfolge (kein `false` mehr), und das Scharlachrote Kloster ist vier Dungeons.
 
 ## D-101 Client-Tabellen auch von wago.tools: nur die API und die CSV-Exporte, die neueste und vollste Kopie gewinnt
 
@@ -2534,7 +2537,7 @@ Kampf, Instanz, eigener Tooltip), `tests/test_scan_trim_ids.lua` (Aufräumen je 
 `tools/tests/test_scan_ids.py` (Archiv je Sprache, Marker, Aufräumen im Addon, Listen und Namen, die Builds
 mit Stufen, Arten und Boss-Nummern, ein leerer Teil ändert nichts), `tools/tests/test_scan_archive.py::test_the_committed_marker_is_current`.
 
-Nachtrag 2026-11-11 (Datenprüfung des Nutzers im Spiel, Client 1.60.1.70862, deDE, Berichte vom 2026-11-10 21:03 bis 21:05):
+Nachtrag 2026-11-10 (Datenprüfung des Nutzers im Spiel, Client 1.60.1.70862, deDE, Berichte vom 2026-11-10 21:03 bis 21:05):
 - **NPC per Nummer geht**, auch für neue Forever-NPCs: der Name kommt sofort oder beim zweiten Fragen nach 1 s, über `C_TooltipInfo.GetHyperlink` wie über den eigenen Tooltip; zehn hintereinander: 5 sofort, alle nach 1 s, keiner ohne Namen. Die Zeilen: Name, eine Titelzeile ohne spitze Klammern, wo der NPC eine hat ("Ragefire-Häuptling"), "Stufe ?? (Elite)", die Art ("Humanoid"). Der Scan speichert deshalb seit 2.74.1 je NPC `Name, Titel, Rang, Art` (Rang = das Wort in der Klammer der Stufenzeile, so sind Rares am Rang zu erkennen); Zeilen eines älteren Scans fragt er neu (`scan.npcs.v = 2`).
 - **Quest per Nummer geht**: `QUEST_DATA_LOAD_RESULT` nach 0,0 bis 0,2 s, Titel deutsch, `GetQuestDifficultyLevel` ist die Queststufe (33, 11, 18, 40), der Tag nur bei Dungeonquests (81); `C_QuestLog.HaveQuestData` und `GetQuestLevel` gibt es auf diesem Client nicht (beide waren schon wahlweise). Der Quest-Tooltip nennt die Ziele als Text.
 - **Modell per Nummer geht**: `SetCreature` setzt ein Modell auch für eine nie gesehene Kreatur; `GetModelFileID` bleibt nil, `GetDisplayInfo` nennt die Anzeige-ID (260042 -> 142144). Das Urteil der Prüfung zählt seit 2.74.1 die Anzeige-ID.
@@ -2592,3 +2595,75 @@ nein, Ablehnung, ohne Nachfrage, nächster sicherer, Tooltip, Zahl der Seite Que
 Schlüssels), `tools/tests/test_build_questitems.py` (Client-Tabellen, eigene Zuordnungen, Archiv, Arten, nur
 Questklasse, Datei), `tools/tests/test_att_data.py::test_the_items_a_quest_works_with`, `tests/ui_scene.lua`
 (Fenster `questitems`).
+
+## D-106 Ein Dungeon je Flügel: das Scharlachrote Kloster als vier Dungeons, eine Regel für alle Instanzen mehrerer Dungeons
+
+**Datum:** 2026-11-10
+**Entscheidung:** Eine Instanz, deren Flügel eigene Dungeons sind (die Fakten nennen `part` und `att_wing`), wird
+in allen Daten und im Addon als mehrere Dungeons geführt (F-174); das Scharlachrote Kloster ist vier: `smgy`
+"Scarlet Monastery: Graveyard", `smlib` "...: Library", `smarm` "...: Armory", `smcath` "...: Cathedral", Teil
+"Scarlet Monastery", die Flügel von AllTheThings ("Graveyard", "Library", "Armory", "Cathedral").
+- **Bosse:** jeder Dungeon behält aus der Reihenfolge des Spiels (`DungeonEncounter` der Karte) nur die Bosse,
+  deren NPC bei AllTheThings unter seinem Flügel steht (`build_dungeons.client_facts`; vorher `false` für die andere
+  Hälfte von Blackrock Spire und eine gemeinsame Reihenfolge). Ein Boss ohne Begegnung (Scarlet Commander Mograine)
+  kommt wie in F-170 aus den Item-Daten und `bossNames` dazu, in seinem Flügel (Kathedrale). Die Seltenen des
+  Friedhofs (Ironspine, Azshir the Sleepless, Fallen Champion) stehen wie bisher als Bosse mit Beute dort; ein
+  Merkmal "selten" gibt es weiter nicht.
+- **Beute** (`build_gear.Places.split`): eine Quelle der Instanz geht an den Flügel des NPCs (AllTheThings'
+  Kopfzeile), sonst des Bossnamens (NPCs und Begegnungen der Instanz), eine Seite der Dropchancen eines Flügels an
+  ihren Namen ("Scarlet Monastery - Armory" ist der Alias), Trash und unbekannte Namen (Scorn) an den ersten Flügel
+  der Fakten. Die Zonen-Drops behalten den Namen der Instanz ("Trash (Scarlet Monastery)").
+- **Quests** (`Places.quest_wings`, eine Regel für die Item-Daten und `DungeonQuestData.lua`): die Kopfzeile von
+  AllTheThings, unter der die Quest steht; sonst jeder Flügel, dessen Boss ein Questziel nennt (`targets`: die NPCs
+  der `objective`-Provider), in der Ordnung der Fakten; sonst der erste Flügel. Feld 11 und die Quelle der
+  Item-Daten nennen den ersten. Kloster: Friedhof 1051, 1113 (Hearts of Zeal: keine Kopfzeile, kein Bossziel, also
+  der erste Flügel); Bibliothek 1048, 1049, 1050, 1053, 1160, 1951; Waffenkammer und Kathedrale 1048, 1053 (beide
+  nennen Loksey, Herod, Mograine und Whitemane).
+- **Stufen:** die Spannen des Bildschirmfotos des Nutzers (Friedhof 30-38, Bibliothek 33-41, Waffenkammer 36-44,
+  Kathedrale 38-46; Quelle `screenshot:sm`); der Client hat eine `LFGDungeons`-Zeile mit Stufe 30 für das Ganze, sie
+  gilt als `lvl` für alle vier (kein "differs"). AllTheThings nennt je Kopfzeile nur eine Stufe (25, 28, 35, 37),
+  keine Spanne: nicht übernommen.
+- **Schlüssel:** The Scarlet Key (7146) für Waffenkammer und Kathedrale, `required`/`door`; laut AllTheThings liegt
+  er in Doan's Strongbox in der Bibliothek nach Arcanist Doan.
+- **Name:** `wing` (englisch) und `part_area` (796, das Gebiet der Karte 189) in den Fakten; das Addon zeigt
+  "<Name des Gebiets im Client>: <Flügel übersetzt>" ("Scharlachrotes Kloster: Friedhof"), ohne Gebietsnamen den Teil.
+  Ein Ladebild, ein Eingangs-Pin (I:189) für alle vier; die Raid-IDs nennen die Karte, also den Teil.
+- **Im Spiel** (eine Karte 189, ein Gebiet, keine Unterzone in einer Tabelle): bis zum ersten Kill nach dem Betreten
+  rät `R.Here()` den ersten Flügel ohne Kill im Lauf und nennt alle als Kandidaten (Seite: alle "Hier bist du";
+  Leiste: der Name der Karte, die Bosse aller Flügel unter ihren Namen); der Kill sagt den Flügel (`run.here`, bis
+  zum nächsten echten Betreten, über `/reload` und Login hinweg). Der Lauf von `Runs.lua` bleibt einer je Karte, jeder
+  Flügel zählt seine eigenen Begegnungen. Die Uhr (`RunTimes.lua`): der erste Kill entscheidet ihren Flügel; sein
+  letzter Boss beendet sie; die nächste startet beim ersten Kampf eines neuen Betretens, wenn jeder Flügel mit
+  einem Kill fertig ist; ein Kill eines anderen Flügels, während eine Uhr mit Kills läuft, beendet sie
+  "nicht beendet" und startet die des anderen ab dem ersten Kampf dieses Betretens.
+- **Gespeichert:** Schritt 6 von `Core/Migrate.lua` (`ns.MigrateSplitDungeon(db, "sm", "Scarlet Monastery")`):
+  `runTimes.inst.sm` geht an die Flügel (ein Lauf und die Bestzeit an den Flügel ihres letzten Kills mit nur dessen
+  Zwischenzeiten, beendet nur, wenn dessen letzter Boss dabei ist; die Bestzeit je Boss an den Flügel des Bosses;
+  ein Lauf ohne Kill fällt weg), eine laufende Uhr an den Flügel ihres letzten Kills (sonst den ersten),
+  `settings.bis.dungeon` und `map.quests` an den Friedhof. Ohne Fakten (nicht Forever) ändert der Schritt nichts;
+  ein nie verschobener Schlüssel "sm" bleibt lesbar und stört nichts. `bis.chars[...].run.here` ist neu (ein Schlüssel,
+  beim Laden geprüft).
+
+**Grund:** Nutzer 2026-11-10 mit einem Bildschirmfoto der Dungeonliste eines anderen Addons: "es muss 4 kloster
+geben". Im Spiel sind die Flügel eigene Instanzen hinter eigenen Türen mit eigener Stufe; ein Dungeon mit sieben
+Bossen passte weder zur Stufe noch zur Lauf-Zählung (der letzte Boss der Kathedrale beendete einen Lauf des
+Friedhofs nie). Blackrock Spire hatte dasselbe Problem halb gelöst (eine Reihenfolge für beide Hälften: "n/14",
+Lower endete nie, die Beute der oberen Bosse aus AllTheThings stand unter Lower); eine Regel für beide.
+
+**Folge:** Annahmen (nicht gefragt): Schlüssel ohne Unterstrich (`smgy` usw., wie `lbrs`; die Fakten erlauben nur
+`[a-z0-9]`); Quests mehrerer Flügel in jedem, unplatzierte im ersten; Trash und Scorn im ersten Flügel; jeder Flügel
+eine eigene Instanzkopie derselben Karte (die Tabellen zeigen eine Karte, ein Gebiet, eine LFG-Zeile; ob der Client
+beim Betreten eine Unterzone nennt, ist ungeprüft und wird nicht genutzt). Blackrock Spire ändert sich mit: Lower 9,
+Upper 5 Bosse, die Beute der oberen Bosse (Drakkisath, Rend, The Beast, Emberseer, Gyth, Solakar) nur noch unter
+Upper, "General Drakkisath's Demise" (5102) unter Upper; alte Zeiten von Lower mit Zwischenzeiten oberer Bosse
+bleiben, die Zeilen zeigen sie nicht mehr. Das ersetzt in D-100 den Satz "die Reihenfolge selbst bleibt für beide
+gleich" und "das Scharlachrote Kloster braucht keine Teilung".
+
+**Durchgesetzt durch:** `tools/tests/test_build_dungeons.py` (vier Flügel mit Stufen, Kopfzeilen, Reihenfolge,
+Begegnungen, NPCs und Schlüssel; nichts verloren gegenüber `tools/tests/fixtures/scarlet_monastery_2026-11-10.json`:
+Bosse, NPCs, Beute je Boss, Quests; die Hälften von Blackrock Spire ohne gemeinsame Bosse),
+`tools/tests/test_build_gear.py` (jede Quelle in ihrem Flügel, die Questregel), `tools/tests/test_build_dungeonquests.py`
+(Quests unter einer Kopfzeile und nach Bossziel, die echten Quests des Klosters), `tools/tests/test_att_data.py`
+(Kopfzeile und Ziele einer Quest), `tools/tests/test_build_bis.py`, `tests/test_scarlet_wings.lua` (vier Karten, Namen,
+Schlüssel, Beute, Quests, Quellen, Kandidaten vor dem Kill, Flügel danach, `/reload`, Uhr je Flügel, Leiste,
+Migration, alte Bestzeit), `tests/test_boss_portraits.lua`, `tests/ui_scene.lua` (`dungeonbar-wings`).

@@ -11,6 +11,9 @@
 --   "Zeit 12:40"  while the run's clock runs (RunTimes.lua): shows or hides the window "Lauf-Zeiten"
 --   "Route 3/7"   while an own route is followed (Routes.lua): the stops, "Weiter" and "Folgen beenden";
 --                 a right click goes on to the next stop
+-- In a map of several dungeons (the Scarlet Monastery's four wings, the halves of Blackrock Spire; F-174,
+-- D-106) the bar names the client's instance and lists the bosses and quests of all of them until the
+-- first kill tells which one the character is in; from then on that one, with its own name.
 -- The lists are the bar's own small panel (AmisiaDungeonBarList) under it, closed by a second click,
 -- Escape and leaving the instance. The close circle hides the bar until the next entry or
 -- `/amisia leiste`. A view on other modules: no data of its own, nothing sent. A plain frame without
@@ -32,6 +35,7 @@ DBar.SEGMENTS = SEGMENTS
 
 local bar, list
 local key            -- the dungeon or raid key the bar shows (nil: hidden)
+local cands          -- the keys of the map while the dungeon stood in is not known yet (nil: known)
 local open           -- the segment whose list shows
 local override       -- { entry = R.entry, show = true/false }: the close circle or /amisia leiste for this entry
 local dirty = false
@@ -41,18 +45,26 @@ local dirty = false
 ---------------------------------------------------------------------------
 local function isRaid(k) return ns.Dungeons ~= nil and ns.Dungeons.IsRaid(k) and true or false end
 
--- The key of the instance stood in: Runs.lua's, or the key of a running clock in the same instance
--- (two keys share one map: Blackrock Spire); nil outside or in an instance the facts lack.
+-- The key of the instance stood in (Runs.lua's), whether it is sure, and the keys of its map; nil
+-- outside or in an instance the facts lack. While a map of several dungeons does not tell which one
+-- (no kill since entering, D-106), a running clock's key of the same map stands in for the guess.
 function DBar.Here()
-    local k = R.Here()
+    local k, sure, keys = R.Here()
     if not k then return nil end
     local l = ns.RunTimes and ns.RunTimes.Live()
-    if l and l.k ~= k then
+    if not sure and l and l.k ~= k then
         local a, b = R.Fact(l.k), R.Fact(k)
         if a and b and a.inst == b.inst then k = l.k end
     end
-    return k
+    return k, sure ~= false, keys
 end
+
+-- The keys the bar lists for k: the candidates while the dungeon is not known, else k alone.
+local function shownKeys(k)
+    if k == key and cands then return cands end
+    return { k }
+end
+DBar.ShownKeys = shownKeys
 
 -- The bosses of k in the game's order: { { i, name, killed, next } }, killed count, total; nil
 -- without an order. A boss counts as killed only when the facts know its encounter.
@@ -81,13 +93,19 @@ local RANK = { ready = 1, active = 2, open = 3, locked = 4 }
 function DBar.Quests(k)
     if not k or isRaid(k) or not ns.DungeonQuests then return {}, 0 end
     local D = ns.Dungeons
-    local out, ready = {}, 0
-    for i, q in ipairs((ns.DungeonQuests(k))) do
-        if not q.done and not q.gone then
-            local st = D.QuestState(q)
-            if RANK[st] then
-                out[#out + 1] = { q = q, state = st, at = i }
-                if st == "ready" then ready = ready + 1 end
+    local out, ready, seen, at = {}, 0, {}, 0
+    -- the candidates' quests once each (a quest of several wings, D-106), each with its own key
+    for _, sk in ipairs(shownKeys(k)) do
+        for _, q in ipairs((ns.DungeonQuests(sk))) do
+            local id = q.qid or q.title
+            if not q.done and not q.gone and not seen[id] then
+                seen[id] = true
+                local st = D.QuestState(q)
+                if RANK[st] then
+                    at = at + 1
+                    out[#out + 1] = { q = q, state = st, at = at, key = sk }
+                    if st == "ready" then ready = ready + 1 end
+                end
             end
         end
     end
@@ -183,29 +201,47 @@ local function say(ok, why) if not ok and why then ns.msg(why) end end
 local entriesOf = {}
 function entriesOf.bosses(k)
     local out = {}
-    for _, b in ipairs((DBar.Bosses(k)) or {}) do
-        local i = b.i
-        local name = ("%d. %s"):format(i, b.name)
-        local text, note
-        if b.killed then
-            text, note = TICK_ICON .. " " .. GREY .. name .. "|r", L["besiegt"]
-        elseif b.next then
-            text, note = GOLD .. name .. "|r", L["als Nächstes"]
-        else
-            text, note = name, ""
+    local keys = shownKeys(k)
+    for _, sk in ipairs(keys) do
+        if #keys > 1 then
+            -- a candidate of a map of several (D-106): its name as a head
+            local f = R.Fact(sk)
+            out[#out + 1] = { text = GOLD .. (f and ns.Dungeons.Name(f) or sk) .. "|r", note = "", head = sk }
         end
-        out[#out + 1] = { text = text, note = note, boss = i,
-            run = function() if ns.ShowDungeonBoss then ns.ShowDungeonBoss(k, i) end end }
+        for _, b in ipairs((DBar.Bosses(sk)) or {}) do
+            out[#out + 1] = b
+            b.key = sk
+        end
+    end
+    for n, b in ipairs(out) do
+        if not b.head then out[n] = DBar.BossEntry(b.key, b) end
     end
     return out
+end
+
+-- The list entry of boss b (DBar.Bosses) of key k.
+function DBar.BossEntry(k, b)
+    local i = b.i
+    local name = ("%d. %s"):format(i, b.name)
+    local text, note
+    if b.killed then
+        text, note = TICK_ICON .. " " .. GREY .. name .. "|r", L["besiegt"]
+    elseif b.next then
+        text, note = GOLD .. name .. "|r", L["als Nächstes"]
+    else
+        text, note = name, ""
+    end
+    return { text = text, note = note, boss = i, key = k,
+        run = function() if ns.ShowDungeonBoss then ns.ShowDungeonBoss(k, i) end end }
 end
 function entriesOf.quests(k)
     local out, D = {}, ns.Dungeons
     for _, e in ipairs((DBar.Quests(k))) do
         local q = e.q
+        local qk = e.key or k
         out[#out + 1] = { text = D.QuestStateIcon(e.state) .. " " .. (e.state == "ready" and GREEN .. q.title .. "|r" or q.title),
             note = D.QuestLevelText(q), state = e.state, qid = q.qid,
-            run = function() if ns.ShowDungeonQuest then ns.ShowDungeonQuest(k, q.qid or q.title) end end }
+            run = function() if ns.ShowDungeonQuest then ns.ShowDungeonQuest(qk, q.qid or q.title) end end }
     end
     return out
 end
@@ -383,9 +419,20 @@ local function on(s) return ns.Get("dungeonbar." .. s) ~= false end
 function DBar.Texts(k)
     local out = {}
     if on("bosses") then
-        local bosses, n, m = DBar.Bosses(k)
-        if bosses then
-            out.bosses = R.Encounters(k) and L["Bosse %d/%d"]:format(n, m) or L["Bosse %d"]:format(m)
+        local keys = shownKeys(k)
+        if #keys > 1 then
+            -- not known yet which dungeon of the map (D-106): how many bosses the candidates have
+            local m = 0
+            for _, sk in ipairs(keys) do
+                local _, _, mm = DBar.Bosses(sk)
+                m = m + (mm or 0)
+            end
+            if m > 0 then out.bosses = L["Bosse %d"]:format(m) end
+        else
+            local bosses, n, m = DBar.Bosses(k)
+            if bosses then
+                out.bosses = R.Encounters(k) and L["Bosse %d/%d"]:format(n, m) or L["Bosse %d"]:format(m)
+            end
         end
     end
     if on("quests") then
@@ -409,7 +456,9 @@ function DBar.Refresh()
     dirty = false
     if not (bar and key) then return end
     local f = R.Fact(key)
-    local name = (select(3, ns.RunTimes.InstanceNow())) or (f and f.name) or key
+    -- a dungeon of a map of several once known (D-106): its own name, else the client's instance name
+    local name = (not cands and f and f.part and ns.Dungeons.Name(f)) or (select(3, ns.RunTimes.InstanceNow()))
+        or (f and f.name) or key
     local h = bar.handle
     h.text:SetText(name)
     h.text:SetWidth(math.min(S.NAME_W, math.max(1, h.text:GetStringWidth() or 0)))
@@ -444,16 +493,17 @@ local function wanted(k)
 end
 
 function DBar.Update()
-    local k = DBar.Here()
+    local k, sure, keys = DBar.Here()
     if not wanted(k) then
-        key = nil
+        key, cands = nil, nil
         closeList()
         if bar then bar:Hide() end
         return
     end
     build()
-    if k ~= key then closeList() end
-    key = k
+    local c = (not sure and keys and #keys > 1) and keys or nil
+    if k ~= key or (c == nil) ~= (cands == nil) then closeList() end
+    key, cands = k, c
     DBar.Refresh()
     if not bar:IsShown() then
         -- at its saved place (a frame moved within the session stands there already)
@@ -513,6 +563,6 @@ ns.RegisterSettings{ key = "dungeonbar", label = L["Dungeon-Leiste"], order = 53
 
 -- for the tests
 function DBar._reset()
-    override, open, dirty = nil, nil, false
+    override, open, dirty, cands = nil, nil, false, nil
     if list then list:Hide() end
 end

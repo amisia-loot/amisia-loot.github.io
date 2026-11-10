@@ -2021,7 +2021,7 @@ local function fillTableRow(r, it, ctx)
     r.art:SetDesaturated(dim and true or false)
     if dim then r.name:SetTextColor(0.56, 0.53, 0.64) else r.name:SetTextColor(W.GOLD[1], W.GOLD[2], W.GOLD[3]) end
     -- the instance the character stands in and the chosen one: the brighter frame (D-72)
-    local here = ctx.here ~= nil and ctx.here == e.key
+    local here = ctx.here ~= nil and (ctx.here == e.key or (ctx.hereSet ~= nil and ctx.hereSet[e.key] == true))
     local a = here and 1 or ctx.chosen == e.key and 0.95 or DT.EDGE
     W.SetBorderColor(r.artFrame.edges, W.GOLD[1], W.GOLD[2], W.GOLD[3], a)
     for _, c in ipairs(ctx.cols) do
@@ -2325,6 +2325,18 @@ end
 -- time the page refreshes after the entry, else nil. The page opens its detail then: on its first
 -- show inside, and when the character enters while it is open.
 local held = {}   -- [isRaid] = the entry a ShowDungeon/ShowRaid used up (it chose another instance)
+
+-- The key stood in for the list (ns.Runs.Here) and, while a map of several dungeons does not tell
+-- which one the character is in (no kill since entering, D-106), the set of all of them: each says
+-- "Hier bist du".
+local function hereCtx(ctx)
+    local k, sure, keys = ns.Runs.Here()
+    ctx.here, ctx.hereSet = k, nil
+    if k and not sure and keys and #keys > 1 then
+        ctx.hereSet = {}
+        for _, x in ipairs(keys) do ctx.hereSet[x] = true end
+    end
+end
 local function holdHere(isRaid) held[isRaid] = ns.Runs.entry end
 local function newHere(B, isRaid)
     if held[isRaid] == ns.Runs.entry then B.lastEntry = ns.Runs.entry end
@@ -2340,7 +2352,7 @@ local function dungeonTexts(e, ctx)
     local raid = e.kind == "raid" and (" (Raid%s)"):format(e.size and (" " .. e.size) or "") or ""
     local name = (e.rank and (e.rank .. ". ") or "") .. e.name .. raid
     local parts = {}
-    if ctx.here == e.key then parts[#parts + 1] = GREEN .. CARD_TEXT.here .. "|r" end
+    if ctx.here == e.key or (ctx.hereSet and ctx.hereSet[e.key]) then parts[#parts + 1] = GREEN .. CARD_TEXT.here .. "|r" end
     local badge = runBadge(e, false, true)
     if badge ~= "" then parts[#parts + 1] = badge end
     if ctx.recommended == e.key then parts[#parts + 1] = GREEN .. CARD_TEXT.tag .. "|r" end
@@ -2603,7 +2615,7 @@ local function refresh(B)
     end
     local e = chosenDungeon(list, nextE)
     B.chosen = e and e.key or nil
-    B.table.ctx.here = ns.Runs.Here()
+    hereCtx(B.table.ctx)
     local filtered = applyFilter(B, shown, true)
     B.table:SetEntries(filtered, B.chosen, nextE and nextE.key or nil)
     if e and not e.computed then e = ns.DungeonInfo(e.key) or e end
@@ -2828,7 +2840,7 @@ ns.Listen("RUN", function() if ns.RefreshSoon then ns.RefreshSoon() end end)
 -- the journal parts the page Raids shares (UI/Pages/RaidJournal.lua)
 ns.DungeonJournalKit = { buildArt = buildArt, fillArt = fillArt, buildDetail = buildDetail,
     buildTable = buildTable, levelText = levelText, instanceZone = instanceZone, instanceSide = instanceSide, wishItems = wishItems, WISH_HINT = WISH_HINT, MAP_HINT = MAP_HINT, ACCESS_HINT = ACCESS_HINT,
-    buildFilter = buildFilter, holdHere = holdHere, applyFilter = applyFilter, runBadge = runBadge, newHere = newHere, ART_H = ART_H, itemHint = DTEXT.itemHint, bossHint = DTEXT.bossHint, signed = signed,
+    buildFilter = buildFilter, holdHere = holdHere, hereCtx = hereCtx, applyFilter = applyFilter, runBadge = runBadge, newHere = newHere, ART_H = ART_H, itemHint = DTEXT.itemHint, bossHint = DTEXT.bossHint, signed = signed,
     -- the bosses and the chosen one's loot (F-154)
     buildBossView = buildBossView, showBosses = showBosses, placeParts = placeParts }
 

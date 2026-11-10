@@ -88,6 +88,8 @@ local function cleanRun(r)
     r.left = tonumber(r.left)
     r.reset = tonumber(r.reset)
     if r.name ~= nil and type(r.name) ~= "string" then r.name = nil end
+    -- the dungeon of the last kill in a map of several (Runs.lua, D-106): a key, else gone
+    if not (type(r.here) == "string" and #r.here <= 40 and r.here:match("^[%w_%-]+$")) then r.here = nil end
     return r
 end
 

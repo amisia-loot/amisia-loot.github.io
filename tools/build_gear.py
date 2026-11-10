@@ -405,14 +405,46 @@ class Places:
         self.facts = list(facts or ())
         self.att = {}       # ATT instance id -> [name, instance id, area id]
         self.by_key = {}    # dungeon_key(name) -> the same list
+        # an instance whose wings are dungeons of their own (the facts' part and att_wing: the halves of
+        # Blackrock Spire, the Scarlet Monastery's four wings; D-106): dungeon_key(part) -> {ATT wing
+        # header: fact}, the facts in their order; its ATT instance's place carries the part's name and
+        # split() gives a boss the wing it stands in
+        self.wings, self.first_wing = {}, {}
+        for f in self.facts:
+            if f.get('part') and f.get('att_wing'):
+                pk = dungeon_key(f['part'])
+                self.wings.setdefault(pk, {})[f['att_wing']] = f
+                self.first_wing.setdefault(pk, f)
+        self.npc_wing = {}    # ATT NPC id -> its wing header
+        self.boss_wing = {}   # (part key, norm_name(boss)) -> wing header (ATT's NPCs and encounters)
+        part_iids = {}
         for iid in sorted(att.get('instances', {})):
             i = att['instances'][iid]
+            pk = next((k for k in (dungeon_key(i['name']), dungeon_key(i.get('stem') or '')) if k in self.wings), None)
+            if pk:
+                part = next(iter(self.wings[pk].values()))['part']
+                place = [part, i.get('mapID') or self.first_wing[pk].get('inst'), i.get('area')]
+                part_iids[iid] = pk
+                self.att[iid] = place
+                for n in [part, i['name']]:
+                    self.by_key.setdefault(dungeon_key(n), place)
+                continue
             fact = self._fact(i['name'], i.get('area')) or self._fact(i.get('stem'), None)
             name = fact['name'] if fact else i['name']
             place = [name, i.get('mapID') or (fact or {}).get('inst'), i.get('area') or (fact or {}).get('area')]
             self.att[iid] = place
             for n in [name, i['name']] + list((fact or {}).get('aliases') or []):
                 self.by_key.setdefault(dungeon_key(n), place)
+        for nid, n in sorted((att.get('npcs') or {}).items()):
+            pk = part_iids.get(n.get('inst'))
+            if pk and n.get('wing') in self.wings[pk]:
+                self.npc_wing[nid] = n['wing']
+                if n.get('name'):
+                    self.boss_wing.setdefault((pk, norm_name(n['name'])), n['wing'])
+        for eid, e in sorted((att.get('encounters') or {}).items()):
+            pk = part_iids.get(e.get('inst'))
+            if pk and e.get('wing') in self.wings[pk] and e.get('name'):
+                self.boss_wing.setdefault((pk, norm_name(e['name'])), e['wing'])
         for f in self.facts:
             place = self.by_key.get(dungeon_key(f['name'])) or [f['name'], f.get('inst'), f.get('area')]
             for n in [f['name']] + list(f.get('aliases') or []):
@@ -446,6 +478,41 @@ class Places:
             if inst and place[1] == inst:
                 return tuple(place)
         return (None, None, None)
+
+    def split(self, place, boss=None, npc=None, wing=None):
+        """place (name, instance id, area id) as of_att()/of_name()/of_instance() give it; for the part of
+        an instance whose wings are dungeons of their own (D-106) the place of the wing: the given ATT wing
+        header, else the wing of the NPC (its ATT header), else of the boss's name (ATT's NPCs and
+        encounters of the instance), else the part's first wing (the facts' order: Lower Blackrock Spire,
+        the Graveyard; trash and unknown names). Any other place stays as it is."""
+        name = place[0] if place else None
+        pk = dungeon_key(name or '')
+        wings = self.wings.get(pk)
+        if not wings:
+            return place
+        w = wing if wing in wings else None
+        if w is None and npc is not None:
+            w = self.npc_wing.get(npc)
+        if w is None and boss:
+            w = self.boss_wing.get((pk, norm_name(boss)))
+        f = wings.get(w) or self.first_wing[pk]
+        return (f['name'], place[1] or f.get('inst'), place[2] or f.get('area'))
+
+    def quest_wings(self, place, q):
+        """The wings a quest of a part's instance belongs to (D-106): its own ATT wing header, else the
+        wings of the NPCs its objectives name (every wing it needs, in the facts' order), else the part's
+        first wing. [place] for a place of no such instance."""
+        pk = dungeon_key((place or (None,))[0] or '')
+        wings = self.wings.get(pk)
+        if not wings:
+            return [place]
+        if q.get('wing') in wings:
+            return [self.split(place, wing=q['wing'])]
+        need = {self.npc_wing.get(t) for t in q.get('targets') or []} & set(wings)
+        if not need:
+            return [self.split(place)]
+        return [self.split(place, wing=f['att_wing']) for f in self.facts if f.get('att_wing') in need
+                and f is wings[f['att_wing']]]
 
     def learn(self, inst, name):
         """An instance id a drop note reported for a dungeon name: kept where the id was unknown."""
@@ -655,6 +722,8 @@ def build(scan_items, collected, att, crafts=None, wowsrc=None,
 
     def quest_rec(qid, q):
         dname = places.of_att(q['inst'])[0] if q.get('inst') is not None else None
+        # a quest of an instance of several wings names the first wing it belongs to (D-106)
+        dname = places.quest_wings((dname, None, None), q)[0][0] if dname else None
         if dname in RAIDS:
             return None
         zone = q.get('zone')
@@ -679,7 +748,7 @@ def build(scan_items, collected, att, crafts=None, wowsrc=None,
         n = npcs.get(nid) if nid is not None else None
         name = (n or {}).get('name') or boss
         if iid is not None:
-            dname, inst, area = places.of_att(iid)
+            dname, inst, area = places.split(places.of_att(iid), name, nid)
             if dname in RAIDS or not dname:
                 continue
             note(item, src.add('D', dname, name or 'Trash', None, inst, area), 'dungeon')
@@ -746,7 +815,7 @@ def build(scan_items, collected, att, crafts=None, wowsrc=None,
                     # below one percent nobody farms it: a random drop like the world drops
                     note(iid, src.add('W', f"{d['name']}: {bname} {it.get('d')}", 0, 0), 'world')
                 else:
-                    pname, inst, area = places.of_name(d['name'])
+                    pname, inst, area = places.split(places.of_name(d['name']), bname)
                     note(iid, src.add('D', pname or d['name'], bname, it.get('d'), inst, area), 'dungeon')
 
     # --- the collector: what players met in the Forever client
@@ -785,6 +854,7 @@ def build(scan_items, collected, att, crafts=None, wowsrc=None,
                     dname, inst, area = places.of_instance(n['instance'])
                     if not dname:
                         dname, inst, area = places.of_name(n['place'])
+                    dname, inst, area = places.split((dname, inst, area), name, n['id'] or None)
                     if dname in RAIDS:
                         continue
                     note(iid, src.add('D', dname or n['place'] or '?', name, None, n['instance'] or inst or None,
@@ -835,6 +905,7 @@ def build(scan_items, collected, att, crafts=None, wowsrc=None,
             if not dname or dname in RAIDS:
                 continue
             if n and 'boss' in n.get('kinds', ()):
+                dname, inst, area = places.split((dname, inst, area), name, nid)
                 num = src.add('D', dname, name, None, inst, area)
                 kind = 'dungeon'
             else:

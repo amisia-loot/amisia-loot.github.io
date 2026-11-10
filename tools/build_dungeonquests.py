@@ -142,9 +142,18 @@ def read_att(base, facts, commit=None):
     the Forever folders (Classic zzOLD folders, where a download still has them, stay out here)."""
     db = att_data.load(base, items=False)
     report = {'files': len(db['files']), 'instances without facts': [], 'quests': 0, 'errors': db['errors']}
+    # an instance whose wings are dungeons of their own (the facts' part and att_wing, D-106): its quests go
+    # to the wings Places.quest_wings() names, its start items to its first wing
+    places = build_gear.Places(db, facts)
+    parts = set()
     keys = {}
     for iid, inst in db['instances'].items():
         if inst['old'] or not inst['file'].startswith('dungeons'):
+            continue
+        place = places.of_att(iid)
+        if place[0] and build_gear.dungeon_key(place[0]) in places.wings:
+            parts.add(iid)
+            keys[iid] = fact_key_of(facts, places.split(place)[0])
             continue
         key = fact_key_of(facts, inst['stem'], inst.get('area'))
         if key:
@@ -176,6 +185,10 @@ def read_att(base, facts, commit=None):
         elif q['startItem']:
             start = 'X'
         key = keys.get(q['inst']) if q['inst'] is not None else None
+        wing_keys = [key] if key else []
+        if q['inst'] in parts:
+            wing_keys = [fact_key_of(facts, p[0]) for p in places.quest_wings(places.of_att(q['inst']), q)]
+            key = wing_keys[0]
         pre = list(q['pre'])
         one = q.get('sqreq') == 1 and len(pre) > 1
         sitems, sobj = [], None
@@ -192,8 +205,8 @@ def read_att(base, facts, commit=None):
                        'rewards': list(q['rewards']), 'startItems': sitems, 'startObject': sobj,
                        'races': int(q.get('races') or 0), 'skill': int(q.get('skill') or 0),
                        'ender': None, 'enderPoints': [], 'objective': None}
-        if key:
-            dungeons.setdefault(key, []).append(qid)
+        for k in wing_keys:
+            dungeons.setdefault(k, []).append(qid)
     report['quests'] = len(quests)
     # what apply_observed needs of the data: NPC and object names, NPC places, the dungeon maps
     ctx = {'npc_names': dict(db.get('npc_names') or {}), 'object_names': dict(db.get('object_names') or {}),

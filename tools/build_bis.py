@@ -2348,7 +2348,7 @@ def more_boss_npcs(facts, att, gear, keys, out):
             out[key] = have + added
 
 
-FACT_FIELDS = ('key', 'name', 'kind', 'min', 'max', 'size', 'inst', 'area', 'from', 'aliases', 'part', 'lvl')
+FACT_FIELDS = ('key', 'name', 'kind', 'min', 'max', 'size', 'inst', 'area', 'from', 'aliases', 'part', 'wing', 'part_area', 'lvl')
 
 
 def build_dungeons(facts, bosses, gd):

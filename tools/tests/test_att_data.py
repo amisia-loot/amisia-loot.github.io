@@ -236,7 +236,7 @@ def test_instanceroot_and_its_quests(new):
     assert inst['name'] == 'Test Keep' and inst['area'] == 99201 and inst['maps'] == [9201] and not inst['old']
     assert inst['points'] == [(1427, 6150, 2250)] and inst['stem'] == 'test keep'
     q = new['quests']
-    assert {i for i, r in q.items() if r['inst'] == 9201} == {73001, 73002, 73004, 73005, 73006}
+    assert {i for i, r in q.items() if r['inst'] == 9201} == {73001, 73002, 73004, 73005, 73006, 73007, 73008}
     assert q[73002]['giver'] == 'Sir Moorhelm' and q[73002]['pre'] == [73003] and q[73003]['breadcrumb']
 
 
@@ -287,6 +287,11 @@ def test_encounters_wings_and_their_creatures(new):
     assert enc[3202]['npcs'] == [83011, 83012] and enc[3202]['name'] == 'Twin Guards', 'a group encounter lists all'
     assert new['npcs'][83003]['wing'] == 'Inner Ward', "inside the instance's own header"
     assert new['npcs'][83013].get('wing') is None, 'outside it no wing'
+    # a quest under the header stands in its wing; a kill objective names its NPC (F-174, D-106)
+    q = new['quests']
+    assert q[73007]['wing'] == 'Inner Ward' and q[73007]['targets'] == []
+    assert q[73008]['wing'] is None and q[73008]['targets'] == [83010], 'the objective\'s NPC, not the giver'
+    assert q[73002]['targets'] == [] and q[73006]['targets'] == [], 'no kill objective: none'
     assert att_data.empty_db()['encounters'] == {}
 
 

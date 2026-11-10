@@ -22,6 +22,89 @@ function ns.MigrateMoveSetting(db, from, to)
     if s[ts][tk] == nil then s[ts][tk] = old end
 end
 
+-- The keys of the dungeons of part (the facts' part: the client's name of a map of several dungeons) in
+-- the facts' order and their encounters (encounter id -> key); empty without the facts (not Forever).
+local function partKeys(part)
+    local keys, byEnc = {}, {}
+    local F = ns.DUNGEON_FACTS
+    for _, e in ipairs(type(F) == "table" and type(F.list) == "table" and F.list or {}) do
+        if type(e) == "table" and e.part == part and type(e.key) == "string" then
+            keys[#keys + 1] = e.key
+            for _, id in ipairs(type(e.enc) == "table" and e.enc or {}) do byEnc[id] = e.key end
+        end
+    end
+    return keys, byEnc
+end
+
+-- The dungeon of part a saved run of the old key belongs to: the one of its last kill (its latest split).
+local function runWing(run, byEnc)
+    local key, at
+    for enc, secs in pairs(type(run) == "table" and type(run.s) == "table" and run.s or {}) do
+        local k = byEnc[enc]
+        if k and type(secs) == "number" and (not at or secs > at) then key, at = k, secs end
+    end
+    return key
+end
+
+-- A copy of a saved run with only the splits of dungeon key; finished only when key's last boss is among
+-- them (a run of the whole old dungeon ended at the last boss of the order).
+local function runOf(run, key, byEnc)
+    local s, last = {}, nil
+    local F = ns.DUNGEON_FACTS
+    for _, e in ipairs(type(F) == "table" and type(F.list) == "table" and F.list or {}) do
+        if e.key == key and type(e.enc) == "table" then last = e.enc[#e.enc] end
+    end
+    for enc, secs in pairs(run.s) do
+        if byEnc[enc] == key then s[enc] = secs end
+    end
+    return { at = run.at, t = run.t, s = s, n = run.n, c = run.c, d = (run.d and last ~= nil and s[last] ~= nil) or nil }
+end
+
+-- What the file saved under the old key of a dungeon that is now several (D-106: "sm", the Scarlet
+-- Monastery, is four wings): the run times go to the wings (a run and the best to the wing of their last
+-- kill with only that wing's splits, a best only if that wing's last boss is among them; the best time
+-- per boss to the wing of the boss; a run without a kill goes), a running clock to the wing of its last
+-- kill (else the first), the page's chosen dungeon and the marked quest givers to the first wing. Without
+-- the facts nothing changes (an unknown key is dropped by its owner or ignored).
+function ns.MigrateSplitDungeon(db, old, part)
+    local keys, byEnc = partKeys(part)
+    local first = keys[1]
+    if not first then return end
+    local rt = type(db.runTimes) == "table" and db.runTimes or nil
+    local rec = rt and type(rt.inst) == "table" and rt.inst[old] or nil
+    if type(rec) == "table" then
+        rt.inst[old] = nil
+        local function into(k)
+            local x = rt.inst[k]
+            if type(x) ~= "table" then x = {}; rt.inst[k] = x end
+            if type(x.seg) ~= "table" then x.seg = {} end
+            if type(x.runs) ~= "table" then x.runs = {} end
+            return x
+        end
+        for _, run in ipairs(type(rec.runs) == "table" and rec.runs or {}) do
+            local k = runWing(run, byEnc)
+            if k then table.insert(into(k).runs, runOf(run, k, byEnc)) end
+        end
+        local k = runWing(rec.best, byEnc)
+        local best = k and runOf(rec.best, k, byEnc)
+        if best and best.d then
+            local x = into(k)
+            local had = type(x.best) == "table" and tonumber(x.best.t)
+            if not had or (tonumber(best.t) or had) < had then x.best = best end
+        end
+        for enc, v in pairs(type(rec.seg) == "table" and rec.seg or {}) do
+            local sk = byEnc[enc]
+            if sk then into(sk).seg[enc] = v end
+        end
+    end
+    for _, l in pairs(rt and type(rt.live) == "table" and rt.live or {}) do
+        if type(l) == "table" and l.k == old then l.k, l.nm = runWing(l, byEnc) or first, nil end
+    end
+    local s = type(db.settings) == "table" and db.settings or nil
+    if s and type(s.bis) == "table" and s.bis.dungeon == old then s.bis.dungeon = first end
+    if type(db.map) == "table" and db.map.quests == old then db.map.quests = first end
+end
+
 -- The steps; step n brings the file from schema n - 1 to n. Never reorder, never remove one: a
 -- step that is no longer needed becomes an empty function.
 ns.MIGRATIONS = {
@@ -79,6 +162,9 @@ ns.MIGRATIONS = {
             ns.MigrateMoveSetting(db, m[1], m[2])
         end
     end,
+    -- 6 (2.75.0): the Scarlet Monastery is four dungeons, one per wing (F-174, D-106): what was saved
+    -- under its old key "sm" goes to the wings
+    function(db) ns.MigrateSplitDungeon(db, "sm", "Scarlet Monastery") end,
 }
 
 local newer   -- the schema of a file a newer Amisia saved, for the one chat line

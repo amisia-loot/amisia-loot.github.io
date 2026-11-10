@@ -965,7 +965,8 @@ def test_more_boss_npcs_from_the_order_and_the_item_data():
     facts = {'dungeons': [
         {'key': 'thanes', 'name': 'Hall of Thanes', 'kind': 'party', 'order': ['Faldrim Anvilmar', 'Infurnus'],
          'npcs': [261306, 261316]},
-        {'key': 'sm', 'name': 'Scarlet Monastery', 'kind': 'party', 'inst': 189},
+        {'key': 'smcath', 'name': 'Scarlet Monastery: Cathedral', 'kind': 'party', 'inst': 189, 'part': 'Scarlet Monastery',
+         'att_wing': 'Cathedral'},
     ]}
     att = {'instances': {1: {'name': 'Hall of Thanes'}, 316: {'name': 'Scarlet Monastery', 'mapID': 189}},
            'encounters': {},
@@ -973,11 +974,11 @@ def test_more_boss_npcs_from_the_order_and_the_item_data():
                     261316: {'name': 'Magmatus', 'kinds': {'boss'}, 'inst': 1},
                     3977: {'name': 'High Inquisitor Whitemane', 'kinds': {'npc'}, 'inst': 316, 'wing': 'Cathedral'},
                     9: {'name': 'Somebody Else', 'kinds': {'npc'}, 'inst': 316}}}
-    gear = {'S': [['D', 'Scarlet Monastery', 'High Inquisitor Whitemane'], ['D', 'Scarlet Monastery', 'Scorn']]}
+    gear = {'S': [['D', 'Scarlet Monastery: Cathedral', 'High Inquisitor Whitemane'], ['D', 'Scarlet Monastery: Cathedral', 'Scorn']]}
     bosses = bb.boss_npcs(facts, att, gear)
     assert bosses['thanes'] == [(261306, 'Faldrim Anvilmar'), (261316, 'Magmatus')], \
         "the instance's bosses first, then the order's NPC by ATT's name of it (the client's Infurnus)"
-    assert bosses['sm'] == [(3977, 'High Inquisitor Whitemane')], \
+    assert bosses['smcath'] == [(3977, 'High Inquisitor Whitemane')], \
         'an item-data boss by its NPC in a wing of the instance; one ATT does not know stays out'
 
 
@@ -997,4 +998,7 @@ def test_no_boss_lost_its_npc():
     lost = [(k, int(i), n, dg.get(k, {}).get(int(i))) for k, v in base.items() for i, n in v.items()
             if dg.get(k, {}).get(int(i)) != n]
     assert not lost, lost
-    assert sum(len(v) for v in base.values()) == 210 and sum(len(v) for v in dg.values()) >= 270
+    # since D-106 each half of Blackrock Spire has only its own bosses (the Upper ones left Lower), and the
+    # Scarlet Monastery is four wings: every NPC id stays in some dungeon
+    assert sum(len(v) for v in base.values()) == 210 and sum(len(v) for v in dg.values()) >= 265
+    assert len({i for v in dg.values() for i in v}) >= 260

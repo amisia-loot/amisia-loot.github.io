@@ -6,7 +6,10 @@
 -- then; leaving counts from the logout too), in a raid when its raid ID ran out (the lockout keeps
 -- the kills until then). Kept per character in AmisiaDB.bis.chars[name].run = { inst, name, enc =
 -- { [encounter id] = true }, at, left, reset } (Bis.lua checks it); the pages Dungeons and Raids show
--- it (n/m on the cards, ticks on the bosses) and refresh on "RUN".
+-- it (n/m on the cards, ticks on the bosses) and refresh on "RUN". An instance map that hosts several
+-- dungeons (the halves of Blackrock Spire, the Scarlet Monastery's four wings; F-174, D-106) is one run
+-- with each dungeon's own encounters; run.here names the dungeon of the last kill since the character
+-- entered (R.Here: sure from the first kill on, a guess before).
 local ADDON, ns = ...
 
 local R = {}
@@ -48,7 +51,7 @@ end
 
 -- A new run of instance inst (name) in run table r.
 local function fresh(r, inst, name)
-    r.inst, r.name, r.enc, r.at, r.left, r.reset = inst, name, {}, now(), nil, nil
+    r.inst, r.name, r.enc, r.at, r.left, r.reset, r.here = inst, name, {}, now(), nil, nil, nil
 end
 
 -- The floors of the instances (D-72): Forever's client tables list no dungeon floors, so the
@@ -128,23 +131,63 @@ local function learnFloors(inst)
     end
 end
 
--- The dungeon or raid key of the instance the character stands in, or nil.
-function R.Here()
-    local inst = instanceNow()
-    if not inst then return nil end
-    local F = ns.DUNGEON_FACTS
-    for _, e in ipairs(type(F) == "table" and type(F.list) == "table" and F.list or {}) do
-        if e.inst == inst then return e.key end
-    end
-    return nil
-end
-
 -- The character's run table, made on first use (nil before the saved data is there).
 local function charRun(make)
     local c = ns.BisChar and ns.BisChar()
     if not c then return nil end
     if c.run == nil and make then c.run = { enc = {} } end
     return c.run
+end
+
+-- The keys of the facts on instance map inst, in the facts' order (several where one map hosts
+-- several dungeons: the halves of Blackrock Spire, the Scarlet Monastery's four wings, D-106).
+function R.KeysOf(inst)
+    local out = {}
+    local F = ns.DUNGEON_FACTS
+    for _, e in ipairs(type(F) == "table" and type(F.list) == "table" and F.list or {}) do
+        if inst and e.inst == inst then out[#out + 1] = e.key end
+    end
+    return out
+end
+
+-- The key among keys whose encounters hold enc, or nil.
+local function keyOfEncounter(keys, enc)
+    for _, k in ipairs(keys) do
+        local f = R.Fact(k)
+        for _, id in ipairs(f and type(f.enc) == "table" and f.enc or {}) do
+            if id == enc then return k end
+        end
+    end
+    return nil
+end
+R.KeyOfEncounter = function(inst, enc) return keyOfEncounter(R.KeysOf(inst), enc) end
+
+-- The dungeon or raid key of the instance the character stands in, whether that is sure, and the
+-- keys of its map; nil outside. A map of several dungeons (D-106): the one of the last kill since the
+-- character entered (sure); before it a guess, the first of them without a kill in this run (else
+-- the first), with all of them as the candidates. The client names no wing: one map, one area, and
+-- the sub zone's names are no table Amisia has.
+function R.Here()
+    local inst = instanceNow()
+    if not inst then return nil end
+    local keys = R.KeysOf(inst)
+    if #keys <= 1 then return keys[1], keys[1] ~= nil, keys end
+    local run = charRun(false)
+    local mine = run and run.inst == inst and type(run.enc) == "table"
+    if mine and type(run.here) == "string" then
+        for _, k in ipairs(keys) do
+            if k == run.here then return k, true, keys end
+        end
+    end
+    for _, k in ipairs(keys) do
+        local f = R.Fact(k)
+        local hit = false
+        for _, id in ipairs(mine and f and type(f.enc) == "table" and f.enc or {}) do
+            if run.enc[id] then hit = true end
+        end
+        if not hit then return k, false, keys end
+    end
+    return keys[1], false, keys
 end
 
 -- the pages Dungeons and Raids refresh on "RUN" (not DATA_CHANGED: no other part cares)
@@ -158,16 +201,22 @@ R.entry = 0
 local lastInst
 
 -- Entering or leaving a world: a new run for another instance or after a long time outside; the
--- time it was left.
-function R.Update()
+-- time it was left. login, reload: PLAYER_ENTERING_WORLD's (the character stands where it stood: the
+-- dungeon of the last kill stays known); any other entry forgets it (D-106).
+function R.Update(login, reload)
     local inst, kind, name = instanceNow()
+    local entered = false
     if inst ~= lastInst then
         lastInst = inst
-        if inst then R.entry = R.entry + 1 end
+        if inst then
+            R.entry = R.entry + 1
+            entered = not (login or reload)
+        end
         changed()
     end
     local run = charRun(inst ~= nil)
     if not run then return end
+    if entered then run.here = nil end
     if inst then
         local stale
         if kind == "raid" then
@@ -203,12 +252,25 @@ function R.Kill(enc)
     local run = charRun(true)
     if not run then return end
     if run.inst ~= inst then fresh(run, inst, select(3, instanceNow())) end
+    -- a map of several dungeons: the kill tells which one the character is in (D-106)
+    local keys = R.KeysOf(inst)
+    local here = #keys > 1 and keyOfEncounter(keys, enc) or nil
     local n = 0
     for _ in pairs(run.enc) do n = n + 1 end
     if not run.enc[enc] and n < MAX_ENC then
         run.enc[enc] = true
+        run.here = here or run.here
+        changed()
+    elseif here and run.here ~= here then
+        run.here = here
         changed()
     end
+end
+
+-- Whether every boss of dkey's order with an encounter is killed in the run (the dungeon is done).
+function R.Done(dkey)
+    local _, n, m = R.Of(dkey)
+    return n ~= nil and m > 0 and n >= m
 end
 
 -- The run ends (the instance was reset; "Lauf zurücksetzen"). name: only when the run is of the
@@ -279,7 +341,7 @@ end
 ns.OnEvent("ADDON_LOADED", function(name)
     if name == ADDON and AmisiaDB then R.Migrate(AmisiaDB) end
 end)
-ns.OnEvent("PLAYER_ENTERING_WORLD", function() R.Update() end)
+ns.OnEvent("PLAYER_ENTERING_WORLD", function(login, reload) R.Update(login, reload) end)
 ns.OnEvent("ZONE_CHANGED_NEW_AREA", function() R.Update() end)
 -- another floor of the instance
 ns.OnEvent("ZONE_CHANGED", function() learnFloors(instanceNow()) end)

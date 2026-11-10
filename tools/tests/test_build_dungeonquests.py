@@ -116,11 +116,14 @@ def test_shipped_file_loads_and_is_in_the_toc_with_its_licence():
         lic = fh.read()
     assert 'Copyright (c) 2026 AllTheThings WoW Addon' in lic and 'Permission is hereby granted, free of charge' in lic
     dq = lua_load(text)
-    facts = {e['key'] for e in bdq.load_facts()}
+    facts = {e['key']: e for e in bdq.load_facts()}
     for key, ids in dq.D.items():
         assert key in facts, key
         for i in ids.values():
-            assert dq.Q[i] is not None and dq.Q[i][11] == key, (key, i)
+            # a quest of several wings of one instance (D-106) names the first of them; it is listed in each
+            first = dq.Q[i][11] if dq.Q[i] is not None else None
+            assert first == key or (first in facts and facts[first].get('part') and facts[first].get('part') == facts[key].get('part')
+                                    and i in dq.D[first].values()), (key, i)
     for qid, q in dq.Q.items():
         for field in (9, 10):
             for p in (q[field] or {}).values():
@@ -158,7 +161,7 @@ def att_new():
 
 def test_new_form_dungeon_quests_and_their_starts(att_new):
     data, report = att_new
-    assert data['dungeons'] == {'keep': [73001, 73002, 73004, 73005, 73006]} and report['instances without facts'] == []
+    assert data['dungeons'] == {'keep': [73001, 73002, 73004, 73005, 73006, 73008, 73007]} and report['instances without facts'] == []
     Q = data['quests']
     assert Q[73001]['start'] == 'X' and Q[73001]['startItems'] == [(63001, 'Keep Thug', 9201, 'keep')], \
         'the start item with the mob that drops it, its map and dungeon'
@@ -169,6 +172,28 @@ def test_new_form_dungeon_quests_and_their_starts(att_new):
     assert Q[73006]['start'] == '' and Q[73006]['startItems'] == [], 'an item the quest hands out starts nothing'
     assert Q[73003]['breadcrumb'] and Q[73003]['dungeon'] is None
     assert data['context']['inside_maps'] == [9201] and data['context']['npc_names'][83003] == 'Keep Prisoner'
+
+
+def test_the_quests_of_an_instance_of_wings_go_to_their_wings():
+    """D-106: a quest under a wing's header goes to that wing, one whose objective names a boss to the wing of
+    the boss, the rest to the first wing (the facts' order); field 11 names the first of its wings."""
+    facts = [{'key': 'outer', 'name': 'Test Keep: Outer Court', 'kind': 'party', 'part': 'Test Keep', 'att_wing': 'Outer Court'},
+             {'key': 'inner', 'name': 'Test Keep: Inner Ward', 'kind': 'party', 'part': 'Test Keep', 'att_wing': 'Inner Ward'}]
+    data, report = bdq.read_att(NEW, facts, 'fedcba9876543210')
+    assert data['dungeons'] == {'outer': [73001, 73002, 73004, 73005, 73006], 'inner': [73008, 73007]}, data['dungeons']
+    assert report['instances without facts'] == []
+    Q = data['quests']
+    assert Q[73007]['dungeon'] == 'inner' and Q[73008]['dungeon'] == 'inner' and Q[73001]['dungeon'] == 'outer'
+    assert Q[73001]['startItems'] == [(63001, 'Keep Thug', 9201, 'outer')], 'a start item of the instance: its first wing'
+
+
+def test_the_shipped_monastery_quests_by_wing():
+    """The real data: the Scarlet Monastery's quests in its four wings (F-174)."""
+    dq = lua_load(open(bdq.OUT, encoding='utf-8').read())
+    D = {k: sorted(v.values()) for k, v in dq.D.items()}
+    assert D['smgy'] == [1051, 1113] and D['smlib'] == [1048, 1049, 1050, 1053, 1160, 1951]
+    assert D['smarm'] == [1048, 1053] and D['smcath'] == [1048, 1053] and 'sm' not in D
+    assert dq.Q[1048][11] == 'smlib' and dq.Q[1051][11] == 'smgy'
 
 
 def test_new_fields_render_as_the_contract_says(att_new):

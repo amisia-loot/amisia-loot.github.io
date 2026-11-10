@@ -5,10 +5,14 @@
 -- split (seconds since the start, wall time: outside and logged out counts too) and the kill of the
 -- last boss of the game's order (the facts' enc) ends it as finished. A run of Runs.lua that ends
 -- before (the instance reset, another instance, 30 minutes outside, 12 hours) or `/amisia zeiten stop`
--- ends the clock "nicht beendet": kept in the history, never a best time. Saved account-wide in
+-- ends the clock "nicht beendet": kept in the history, never a best time. A map of several dungeons (the
+-- halves of Blackrock Spire, the Scarlet Monastery's four wings; F-174, D-106): the first kill decides the
+-- dungeon of the clock; once that dungeon is done, the first fight of the next entry starts the clock of
+-- the next; a kill of another of them while a clock with kills runs ends it unfinished and starts the
+-- other's from the first fight of this entry. Saved account-wide in
 -- AmisiaDB.runTimes = { v = 1, inst = { [dungeon key] = { nm, best = run, seg = { [encounter id] =
 -- { t, at, c } }, runs = { run, ... } } }, live = { [character] = { k, i, nm, at, r, s, n } }, last =
--- { [character] = { r = the Runs run's at, i = its instance } whose clock ran } }; a run = { at, t, s = { [encounter id] =
+-- { [character] = { r = the Runs run's at, i = its instance, k = the key of that clock } whose clock ran } }; a run = { at, t, s = { [encounter id] =
 -- seconds }, n = group size, c = character, d = true when finished }. The key is the dungeon or raid
 -- key alone: this client has one difficulty per instance and the raids a fixed size (D-96).
 -- Fires "RUNTIMES" (what changed) for the window (Gear/RunTimer.lua) and the part Zeiten of the pages.
@@ -135,7 +139,8 @@ function RT.Loaded()
     for c, x in pairs(type(src.last) == "table" and src.last or {}) do
         local at, i = type(x) == "table" and num(x.r, 1, 4e9), type(x) == "table" and num(x.i, 1, 1e9)
         if plainName(c) and at and i then
-            out.last[c] = { r = math.floor(at), i = math.floor(i) }
+            local k = type(x.k) == "string" and #x.k <= 40 and x.k:match("^[%w_%-]+$") and x.k or nil
+            out.last[c] = { r = math.floor(at), i = math.floor(i), k = k }
             lasts[#lasts + 1] = c
         end
     end
@@ -199,13 +204,22 @@ local function groupSize()
     return math.max(1, math.min(40, math.floor(n or 0)))
 end
 
--- The name of key: the client's name kept with its times, else the facts' name.
+-- The name of key: the client's name kept with its times, else the facts' name. A dungeon of a map of
+-- several (D-106) always its own name (the client names only the map: "Scharlachrotes Kloster").
 function RT.Name(key)
+    local f = ns.Runs and ns.Runs.Fact(key)
+    if f and f.part and ns.Dungeons and ns.Dungeons.Name then return ns.Dungeons.Name(f) end
     local t = store()
     local rec = t and t.inst[key]
     if rec and rec.nm then return rec.nm end
-    local f = ns.Runs and ns.Runs.Fact(key)
     return f and f.name or tostring(key)
+end
+
+-- The name a clock of key keeps: the client's instance name, none for a dungeon of a map of several.
+local function keptName(key, name)
+    local f = ns.Runs and ns.Runs.Fact(key)
+    if f and f.part then return nil end
+    return name
 end
 
 ---------------------------------------------------------------------------
@@ -329,26 +343,55 @@ function RT.Check()
     if over then finish(t, c, false) end
 end
 
+local entryFight    -- { entry = ns.Runs.entry, at } the first fight since the character entered (memory)
+local doneEntry     -- the entry in which a clock of a map of several dungeons ended finished (memory)
+
+-- Whether the run of Runs.lua lets a clock start in inst. One dungeon on the map: the run has no kill
+-- and no clock ran in it. Several (D-106): every dungeon with a kill in the run is done, the last clock
+-- of the run (if any) was of a done dungeon, and that did not end in this entry (no fresh clock from
+-- the trash after the last boss).
+local function canStart(t, c, run, inst)
+    local had = t.last[c]
+    local same = had and had.r == run.at and had.i == inst
+    local keys = ns.Runs.KeysOf and ns.Runs.KeysOf(inst) or {}
+    if #keys <= 1 then
+        return not same and not (type(run.enc) == "table" and next(run.enc))
+    end
+    for enc in pairs(type(run.enc) == "table" and run.enc or {}) do
+        local k = ns.Runs.KeyOfEncounter(inst, enc)
+        if k and not ns.Runs.Done(k) then return false end
+    end
+    if same and not (had.k and ns.Runs.Done(had.k)) then return false end
+    return doneEntry ~= ns.Runs.entry
+end
+
+-- Starts the clock of key in instance inst at the moment at (the run of Runs.lua: run).
+local function start(t, c, key, inst, name, run, at)
+    t.live[c] = { k = key, i = inst, nm = keptName(key, name or run.name), at = at, r = run.at, s = {}, n = groupSize() }
+    t.last[c] = { r = run.at, i = inst, k = key }
+    clock[c] = GetTime() - (now() - at)
+    RT.lastDone = nil
+end
+
 -- A fight starts: the clock of a fresh run starts (inside an instance with encounters, the run of
--- Runs.lua of this instance without a kill and without a clock before).
+-- Runs.lua of this instance without a kill and without a clock before; a map of several: canStart).
 function RT.Fight()
     local t, c = store(), me()
     if not (t and c) then return end
+    local entry = ns.Runs and ns.Runs.entry
+    if not entryFight or entryFight.entry ~= entry then entryFight = { entry = entry, at = now() } end
     RT.Check()
     if t.live[c] then return end
     local inst, kind, name = instanceNow()
     if not inst then return end
     local run = runsRun()
     if not run or run.inst ~= inst or not tonumber(run.at) then return end
-    local had = t.last[c]
-    if had and had.r == run.at and had.i == inst then return end
-    if type(run.enc) == "table" and next(run.enc) then return end
-    local key = keyFor(inst)
+    if not canStart(t, c, run, inst) then return end
+    -- the dungeon stood in (a guess in a map of several until the first kill), else the first with encounters
+    local key = ns.Runs.Here and ns.Runs.Here()
+    if not (key and ns.Runs.Encounters(key)) then key = keyFor(inst) end
     if not key then return end
-    t.live[c] = { k = key, i = inst, nm = name or run.name, at = now(), r = run.at, s = {}, n = groupSize() }
-    t.last[c] = { r = run.at, i = inst }
-    clock[c] = GetTime()
-    RT.lastDone = nil
+    start(t, c, key, inst, name, run, now())
     changed("start")
     if ns.RunTimer and ns.RunTimer.Started then ns.RunTimer.Started(kind) end
 end
@@ -360,8 +403,24 @@ function RT.Kill(enc)
     local l = t and c and t.live[c]
     if not (l and enc and enc >= 1) then return end
     if instanceNow() ~= l.i then return end
-    -- a kill of the other key of this map (no split yet): that key
-    if not next(l.s) then l.k = keyFor(l.i, enc) or l.k end
+    -- the key of this map whose encounters hold enc (an encounter of none: nil)
+    local other = ns.Runs.KeyOfEncounter and ns.Runs.KeyOfEncounter(l.i, enc)
+    -- a kill of another key of this map (no split yet): that key
+    if not next(l.s) and other and other ~= l.k then
+        l.k, l.nm = other, keptName(other, l.nm)
+        if t.last[c] then t.last[c].k = other end
+    elseif other and other ~= l.k and ns.Runs.Encounters(other) then
+        -- a kill in another dungeon of the map while this clock has kills (D-106): this one ends
+        -- unfinished, the other's starts with the first fight of this entry
+        local run = runsRun()
+        local entry = ns.Runs and ns.Runs.entry
+        local at = entryFight and entryFight.entry == entry and entryFight.at or now()
+        finish(t, c, false)
+        if not run then return end
+        start(t, c, other, l.i, l.nm, run, math.max(at, l.at))
+        l = t.live[c]
+        changed("start")
+    end
     local encs = ns.Runs.Encounters(l.k)
     if not encs or l.s[enc] then return end
     local known = false
@@ -372,7 +431,9 @@ function RT.Kill(enc)
     l.s[enc] = now() - l.at
     l.n = math.max(l.n or 1, groupSize())
     if enc == encs[#encs] then
+        local several = ns.Runs.KeysOf and #ns.Runs.KeysOf(l.i) > 1
         finish(t, c, true)
+        if several then doneEntry = ns.Runs and ns.Runs.entry end
     else
         changed("split")
     end
@@ -498,7 +559,7 @@ local function slash(rest)
     RT.Check()
     local l = RT.Live()
     local inst = instanceNow()
-    local here = inst and keyFor(inst)
+    local here = inst and (ns.Runs.Here() or keyFor(inst))
     if (l or here) and ns.RunTimer then
         ns.RunTimer.Show(l and l.k or here)
         return
@@ -532,4 +593,5 @@ ns.RegisterSettings{ key = "runtimes", label = L["Lauf-Zeiten"], order = 52, gro
 RT._reset = function()
     clock = {}
     RT.lastDone = nil
+    entryFight, doneEntry = nil, nil
 end

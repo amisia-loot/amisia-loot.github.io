@@ -57,11 +57,14 @@ LFG_SKIP_TYPES = ('4', '5')
 # written. part: the client's name of an instance that hosts several dungeons (Blackrock Spire).
 # lvl: the level the client tunes the dungeon to (forever_dungeons_client.json).
 # order: the bosses' English names in the game's order (DungeonEncounter, forever_dungeons_client.json);
-# enc: their encounter ids, one per name of order; npcs: their NPC ids, one per name of order (0 unknown,
-# false: a boss of the other dungeon of the same instance). maps: the uiMap ids of the instance's floors.
+# enc: their encounter ids, one per name of order; npcs: their NPC ids, one per name of order (0 unknown;
+# a dungeon of one wing of an instance keeps only the bosses of its wing, att_wing, D-106). maps: the uiMap
+# ids of the instance's floors.
 # keys: the key and attunement items (forever_dungeon_keys.json), each with the fields of KEY_FIELDS.
+# wing: the English name of the wing a dungeon is (the Scarlet Monastery's four, F-174), part_area: the client's
+# area id of the part's name (the addon shows "<part>: <wing>" in the client's language).
 FIELDS = ('key', 'name', 'kind', 'min', 'max', 'lvl', 'size', 'inst', 'area', 'from', 'bosses', 'order', 'enc',
-          'npcs', 'maps', 'aliases', 'part', 'keys')
+          'npcs', 'maps', 'aliases', 'part', 'wing', 'part_area', 'keys')
 KEY_FIELDS = ('item', 'need', 'why', 'quests', 'questsA', 'questsH')
 KEY_NEED = ('required', 'optional')
 KEY_WHY = ('door', 'part', 'summon', 'attune', 'boss')
@@ -140,10 +143,12 @@ def client_facts(facts, dirs=WAGO_DIRS, att=None, scans=None, enc_names=None):
                 tables[t] = os.path.basename(path)
                 break
     tuning = {cid: lo for cid, (lo, _) in tuning_levels(att_data.wago_rows('ContentTuning', *dirs)).items()}
-    by_key = {}
+    by_key, by_part = {}, {}
     for e in facts['dungeons']:
         for k in _keys(e):
             by_key.setdefault(k, e['key'])
+        if e.get('part'):
+            by_part.setdefault(att_data.name_key(e['part']), []).append(e['key'])
     out, unmatched, seen = {}, [], set()
     for row in att_data.wago_rows('LFGDungeons', *dirs):
         lid = _int(row.get('ID'))
@@ -153,11 +158,14 @@ def client_facts(facts, dirs=WAGO_DIRS, att=None, scans=None, enc_names=None):
         raw = (row.get('Name_lang') or '').strip()
         name = LFG_NAMES.get(raw, raw)
         key = by_key.get(att_data.name_key(name)) or by_key.get(att_data.name_key(name.split(' - ')[0]))
-        if key is None:
+        # the row of an instance whose wings are dungeons of their own (the Scarlet Monastery, F-174): the
+        # client has one row for the whole instance; it counts for every wing
+        keys = [key] if key is not None else by_part.get(att_data.name_key(name), [])
+        if not keys:
             unmatched.append(raw)
             continue
         lvl = tuning.get(_int(row.get('ContentTuningID')))
-        if lvl:
+        for key in keys if lvl else ():
             rec = out.setdefault(key, {})
             rec.setdefault('lvl', lvl)
             rec.setdefault('lfg', [])
@@ -209,7 +217,15 @@ def client_facts(facts, dirs=WAGO_DIRS, att=None, scans=None, enc_names=None):
                     rec['order'], rec['enc'], rec['order_src'] = [n for _, n in encs], [i for i, _ in encs], 'att'
             order = e.get('order') or rec.get('order')
             if order:
-                out.setdefault(e['key'], rec)['npcs'] = npcs_of(e, order, e.get('enc') or rec.get('enc'), index, iid)
+                npcs = npcs_of(e, order, e.get('enc') or rec.get('enc'), index, iid)
+                out.setdefault(e['key'], rec)['npcs'] = npcs
+                if e.get('att_wing') and not e.get('order') and False in npcs:
+                    # a dungeon of one wing keeps only the bosses of its wing (D-106): the order, the
+                    # encounters and the NPCs of the other wings go
+                    keep = [i for i, n in enumerate(npcs) if n is not False]
+                    rec['order'] = [rec['order'][i] for i in keep]
+                    rec['enc'] = [rec['enc'][i] for i in keep]
+                    rec['npcs'] = [npcs[i] for i in keep]
     if scans:
         for key, name, npc in boss_npcs_from_scan(out, scans, enc_names or {}):
             print(f'NPC scan: {key} {name} -> {npc}')
@@ -298,7 +314,8 @@ def npcs_of(e, order, enc, index, iid):
     """The boss NPC of each name of order (att_data.find_boss in ATT instance iid; a name of the facts'
     boss_alias is looked up by its alias where its own name finds none), lined up with order: the NPC id,
     0 where no source names one, False where the boss stands in the wing of another dungeon of the same
-    instance (the facts' att_wing: the two halves of Blackrock Spire)."""
+    instance (the facts' att_wing: the two halves of Blackrock Spire, the Scarlet Monastery's four wings;
+    client_facts() then drops those bosses from the dungeon's order, D-106)."""
     alias = e.get('boss_alias') or {}
     wing = e.get('att_wing')
     out = []
@@ -385,7 +402,8 @@ def conflicts(facts, client):
     out = []
     for e in facts['dungeons']:
         c = cd.get(e['key']) or {}
-        if c.get('lvl') and e.get('min') is not None and c['lvl'] != e['min']:
+        # the client tunes an instance of several wings as a whole: the wings' own ranges are facts (F-174)
+        if c.get('lvl') and e.get('min') is not None and c['lvl'] != e['min'] and not e.get('part'):
             out.append(f"{e['name']}: level {c['lvl']} in the client, {e['min']} in the facts")
         if c.get('inst') and e.get('inst') is not None and c['inst'] != e['inst']:
             out.append(f"{e['name']}: instance {c['inst']} in the client, {e['inst']} in the facts")
@@ -410,7 +428,7 @@ def render(facts, client=None, keys=None):
         "-- to (its LFGDungeons and ContentTuning tables), the low end of its range; dungeons without a fact",
         '-- range take the high end from their items meanwhile. order: the bosses in the game\'s order, enc their',
         '-- encounter ids (DungeonEncounter, else AllTheThings\' encounters; one per name of order), npcs their NPC ids',
-        '-- (AllTheThings; 0 unknown, false a boss of the other dungeon of the same instance); maps: the uiMap ids of the floors',
+        '-- (AllTheThings; 0 unknown; a wing of an instance has only its own bosses); maps: the uiMap ids of the floors',
         '-- (UiMapAssignment, empty in the Forever tables so far); keys: the key and attunement items, checked',
         '-- by hand (item, need required/optional, why door/part/summon/attune/boss, quests or questsA/questsH',
         '-- leading to it).',
@@ -439,7 +457,7 @@ def write_client(client, path=CLIENT):
                        '(AreaTable), its bosses in the game\'s order with their encounter ids (DungeonEncounter) and '
                        'the uiMaps of its floors (UiMapAssignment); where the client has no encounters of an instance, '
                        'AllTheThings\' encounters (order_src "att"), and per name of the order its boss NPC from '
-                       'AllTheThings (npcs: 0 unknown, false a boss of the other dungeon of the same instance). '
+                       'AllTheThings (npcs: 0 unknown; a wing of an instance keeps only the bosses of its wing). '
                        'Game data, no loot. Do not edit; rebuild instead.',
            **client}
     text = json.dumps(doc, indent=1, sort_keys=False, ensure_ascii=False) + '\n'

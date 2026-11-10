@@ -360,6 +360,71 @@ def test_zone_names_only_for_zone_fields(tmp_path):
     assert '[301]="Razorfen Kraul",' in text and '"Uldaman"' not in text
 
 
+# ---------------------------------------------------------------- the wings of one instance (F-174, D-106)
+MONASTERY = {316: {'name': 'Scarlet Monastery', 'area': 796, 'maps': [302], 'points': [], 'file': 'd',
+                   'stem': 'scarlet monastery', 'old': False, 'mapID': 189}}
+WINGS = [{'key': w[0], 'name': 'Scarlet Monastery: ' + w[1], 'kind': 'party', 'part': 'Scarlet Monastery',
+          'att_wing': w[1], 'aliases': ['Scarlet Monastery - ' + w[1]]}
+         for w in (('smgy', 'Graveyard'), ('smlib', 'Library'), ('smarm', 'Armory'), ('smcath', 'Cathedral'))]
+
+
+def monastery_att():
+    return att(instances=MONASTERY,
+               npcs={3983: dict(npc('Interrogator Vishas', {'npc'}, inst=316), wing='Graveyard'),
+                     6489: dict(npc('Ironspine', {'rare'}, inst=316), wing='Graveyard'),
+                     3974: dict(npc('Houndmaster Loksey', {'npc'}, inst=316), wing='Library'),
+                     3975: dict(npc('Herod', {'npc'}, inst=316), wing='Armory'),
+                     3976: dict(npc('Scarlet Commander Mograine', {'npc'}, inst=316), wing='Cathedral'),
+                     3977: dict(npc('High Inquisitor Whitemane', {'npc'}, inst=316), wing='Cathedral')},
+               encounters={448: {'name': 'Herod', 'npcs': [3975], 'inst': 316, 'wing': 'Armory'}})
+
+
+def test_every_source_of_an_instance_of_wings_lands_in_its_wing():
+    """The item data names the wing of a boss (D-106): an ATT drop by its NPC's header, a wing page of the drop
+    chances by its own name, a drop the collector saw by its NPC, by the boss's name; trash and unknown names
+    go to the first wing; the trash of the zone keeps the instance's name."""
+    a = monastery_att()
+    a['drops'] = [(30, 3983, 'boss', 316, 302, False, None), (31, 6489, 'rare', 316, 302, False, None),
+                  (32, 3977, 'boss', 316, 302, False, None), (33, None, 'boss', 316, 302, False, 'Herod')]
+    a['zone_drops'] = [(34, [9999], 316, 302, False)]
+    a['item_names'] = {35: 'Ravager', 36: 'Scarlet Belt'}
+    scan = {i: scan_item(f'I{i}', q=3) for i in range(30, 40)}
+    scan[35], scan[36] = scan_item('Ravager', q=3), scan_item('Scarlet Belt', q=2)
+    wowsrc = {'dungeons': [{'name': 'Scarlet Monastery - Armory', 'bosses': [
+        {'name': 'Herod', 'items': [{'n': 'Ravager', 'd': '12%'}]}, {'name': 'Trash', 'items': [{'n': 'Scarlet Belt', 'd': '2%'}]}]}]}
+    collected = {37: ['Drop: ? [3974] @Scharlachrotes Kloster #party:189'],
+                 38: ['Drop: Scorn [14693] @Scharlachrotes Kloster #party:189']}
+    src, keep, *_ = build_gear.build(scan, collected, a, wowsrc=wowsrc, facts=WINGS)
+    rec = lambda i: src.rows[keep[i][1][0] - 1]  # noqa: E731
+    assert rec(30)[:3] == ('D', 'Scarlet Monastery: Graveyard', 'Interrogator Vishas') and rec(30)[4:] == (189, 796)
+    assert rec(31)[:3] == ('D', 'Scarlet Monastery: Graveyard', 'Ironspine'), 'a rare of the wing'
+    assert rec(32)[:3] == ('D', 'Scarlet Monastery: Cathedral', 'High Inquisitor Whitemane')
+    assert rec(33)[:3] == ('D', 'Scarlet Monastery: Armory', 'Herod'), 'an encounter boss by its name'
+    assert rec(34) == ('W', 'Trash (Scarlet Monastery)', 0, 0), 'the zone drops keep the instance'
+    assert rec(35)[:4] == ('D', 'Scarlet Monastery: Armory', 'Herod', '12%'), "the wing page's own name"
+    assert rec(36)[:3] == ('D', 'Scarlet Monastery: Armory', 'Trash')
+    assert rec(37)[:3] == ('D', 'Scarlet Monastery: Library', 'Houndmaster Loksey'), 'a drop seen in game by its NPC'
+    assert rec(38)[:3] == ('D', 'Scarlet Monastery: Graveyard', 'Scorn'), 'an unknown boss: the first wing'
+
+
+def test_the_quest_rule_of_an_instance_of_wings():
+    """A quest of the instance (D-106): its own ATT header; else every wing whose boss an objective names, in
+    the facts' order; else the first wing. The item data's quest names the first of them."""
+    a = monastery_att()
+    p = build_gear.Places(a, WINGS)
+    place = p.of_att(316)
+    assert place == ('Scarlet Monastery', 189, 796)
+    names = lambda q: [x[0].split(': ')[1] for x in p.quest_wings(place, q)]  # noqa: E731
+    assert names({'wing': 'Library', 'targets': [3977]}) == ['Library'], 'the header wins'
+    assert names({'wing': None, 'targets': [3977, 3975, 3974, 3976]}) == ['Library', 'Armory', 'Cathedral']
+    assert names({'wing': None, 'targets': []}) == ['Graveyard'], 'nothing places it: the first wing'
+    assert names({'wing': None, 'targets': [12345]}) == ['Graveyard'], 'an NPC of no wing'
+    assert p.quest_wings(('The Deadmines', 36, 1581), {'targets': [3977]}) == [('The Deadmines', 36, 1581)]
+    a['quests'] = {1048: dict(quest('Into The Scarlet Monastery', 33, 'H', inst=316, rewards=[40]), targets=[3974, 3975, 3977])}
+    src, keep, *_ = build_gear.build({40: scan_item('Sword', q=3)}, {}, a, facts=WINGS)
+    assert src.rows[keep[40][1][0] - 1][8] == 'Scarlet Monastery: Library'
+
+
 def test_the_facts_carry_the_client_instance_ids():
     by = {f['key']: f for f in build_gear.load_facts()}
     assert by['ubrs']['inst'] == 229 and by['deadmines']['inst'] == 36, 'tools/forever_dungeons_client.json'

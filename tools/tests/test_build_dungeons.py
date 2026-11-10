@@ -114,21 +114,90 @@ def test_every_label_says_where_its_facts_can_be_checked():
 def test_blackrock_spire_hosts_two_dungeons():
     by = {e['key']: e for e in entries()}
     assert by['lbrs']['part'] == by['ubrs']['part'] == 'Blackrock Spire'
-    assert [e['key'] for e in entries() if e.get('part')] == ['lbrs', 'ubrs']
+    assert [e['key'] for e in entries() if e.get('part')] == ['smgy', 'smlib', 'smarm', 'smcath', 'lbrs', 'ubrs']
     text = build_dungeons.render(facts())
     assert 'aliases = { "Blackrock Spire" }, part = "Blackrock Spire" }' in text
     assert re.search(r'\{ key = "ubrs", name = "Upper Blackrock Spire", kind = "party", lvl = 53, inst = 229, (order = \{[^}]*\}, enc = \{[^}]*\}, '
                      r'(npcs = \{[^}]*\}, )?)?part = "Blackrock Spire" \},', text)
-    # one order for both halves, each NPC only in its own half (att_wing; false: the other half's boss, F-170)
+    # each half only its own bosses of the instance's order (att_wing, D-106; before: one shared order with false)
     c = client()['dungeons']
-    assert c['lbrs']['order'] == c['ubrs']['order']
-    lower = dict(zip(c['lbrs']['order'], c['lbrs']['npcs']))
-    upper = dict(zip(c['ubrs']['order'], c['ubrs']['npcs']))
-    assert lower['Highlord Omokk'] == 9196 and upper['Highlord Omokk'] is False
-    assert upper['General Drakkisath'] == 10363 and lower['General Drakkisath'] is False
-    assert all((lower[n] is False) != (upper[n] is False) for n in c['lbrs']['order']), 'each boss in one half'
-    assert ', npcs = { 9196, 9236, 9237, 10596, 10584, 9736, 10220, 10268, 9568, false, false, false, false, false }, ' in text
+    assert c['lbrs']['order'][0] == 'Highlord Omokk' and c['lbrs']['order'][-1] == 'Overlord Wyrmthalak'
+    assert c['ubrs']['order'] == ['Pyroguard Emberseer', 'Warchief Rend Blackhand', 'The Beast', 'General Drakkisath', 'Lord Valthalak']
+    assert not set(c['lbrs']['order']) & set(c['ubrs']['order']) and not set(c['lbrs']['enc']) & set(c['ubrs']['enc'])
+    assert ', npcs = { 9196, 9236, 9237, 10596, 10584, 9736, 10220, 10268, 9568 }, ' in text and 'false' not in text
     assert '_src' not in text, 'the labels stay in the JSON'
+
+
+SM_WINGS = (('smgy', 'Graveyard', 'Friedhof', 30, 38), ('smlib', 'Library', 'Bibliothek', 33, 41),
+            ('smarm', 'Armory', 'Waffenkammer', 36, 44), ('smcath', 'Cathedral', 'Kathedrale', 38, 46))
+
+
+def test_the_scarlet_monastery_is_four_dungeons():
+    """F-174, D-106: the four wings with the user's level ranges, ATT's headers, one map and area, each its own
+    bosses in the game's order with their encounters and NPCs; the key on the Armory and the Cathedral."""
+    by = {e['key']: e for e in entries()}
+    assert 'sm' not in by
+    for key, wing, _, lo, hi in SM_WINGS:
+        e = by[key]
+        assert e['name'] == 'Scarlet Monastery: ' + wing and e['aliases'] == ['Scarlet Monastery - ' + wing], e
+        assert (e['min'], e['max']) == (lo, hi) and e['min_src'] == e['max_src'] == 'screenshot:sm'
+        assert e['part'] == 'Scarlet Monastery' and e['att_wing'] == e['wing'] == wing and e['part_area'] == 796
+    assert 'Nutzer 2026-11-10 (Bildschirmfoto)' in facts()['sources']['screenshot:sm']
+    c = client()['dungeons']
+    assert c['smgy']['order'] == ['Interrogator Vishas', 'Bloodmage Thalnos'] and c['smgy']['enc'] == [444, 2779]
+    assert c['smlib']['order'] == ['Houndmaster Loksey', 'Arcanist Doan'] and c['smlib']['enc'] == [446, 447]
+    assert c['smarm']['order'] == ['Herod'] and c['smarm']['enc'] == [448]
+    assert c['smcath']['order'] == ['High Inquisitor Fairbanks', 'High Inquisitor Whitemane'] and c['smcath']['enc'] == [449, 450]
+    assert c['smgy']['npcs'] == [3983, 4543] and c['smcath']['npcs'] == [4542, 3977]
+    for key, *_ in SM_WINGS:
+        assert c[key]['inst'] == 189 and c[key]['lvl'] == 30 and c[key]['lfg'] == ['Scarlet Monastery'], \
+            "one map and one LFGDungeons row for the whole instance"
+    text = build_dungeons.render(facts())
+    assert ('{ key = "smarm", name = "Scarlet Monastery: Armory", kind = "party", min = 36, max = 44, lvl = 30, inst = 189, '
+            'order = { "Herod" }, enc = { 448 }, npcs = { 3975 }, aliases = { "Scarlet Monastery - Armory" }, '
+            'part = "Scarlet Monastery", wing = "Armory", part_area = 796, keys = { { item = 7146, need = "required", why = "door" } } },') in text
+    assert 'key = "smgy"' in text and 'keys' not in text.split('key = "smgy"')[1].split('\n')[0], 'the Graveyard needs no key'
+
+
+def test_no_boss_of_the_old_scarlet_monastery_is_lost():
+    """Against the one dungeon before F-174 (fixture): every boss of its order in exactly one wing, in the same
+    order, with its encounter and NPC; every boss NPC of the build in a wing; every item of a boss with its wing;
+    every quest in at least one wing."""
+    with open(os.path.join(HERE, 'fixtures', 'scarlet_monastery_2026-11-10.json'), encoding='utf-8') as fh:
+        old = json.load(fh)
+    c = client()['dungeons']
+    keys = [k for k, *_ in SM_WINGS]
+    order = [n for k in keys for n in c[k]['order']]
+    assert order == old['order'], 'the same bosses in the same order, wing after wing'
+    assert [x for k in keys for x in c[k]['enc']] == old['enc'] and [x for k in keys for x in c[k]['npcs']] == old['npcs']
+    with open(os.path.join(ADDON, 'Data', 'BisData.lua'), encoding='utf-8') as fh:
+        bis = fh.read()
+    npcs = {}
+    for line in bis.splitlines():
+        key, names = re.search(r'\bkey = "([a-z0-9]+)"', line), re.search(r'\bbossNames = \{ (.*?) \}, bosses = ', line)
+        if key and key.group(1) in keys and names:
+            for i, n in re.findall(r'\[(\d+)\] = "((?:[^"\\]|\\.)*)"', names.group(1)):
+                assert i not in npcs, ('one wing per NPC', i)
+                npcs[i] = (key.group(1), n)
+    assert {i: n for i, (_, n) in npcs.items()} == old['bossNames'], 'every boss NPC of the build, under its name'
+    assert npcs['3976'][0] == 'smcath' and npcs['6489'][0] == 'smgy', 'Mograine in the Cathedral, the rares in the Graveyard'
+    with open(os.path.join(ADDON, 'Data', 'GearData.lua'), encoding='utf-8') as fh:
+        gear = fh.read()
+    recs = set(re.findall(r'\{"D","Scarlet Monastery: (\w+)","((?:[^"\\]|\\.)*)"', gear))
+    wing_of = {}
+    for wing, boss in recs:
+        wing_of.setdefault(boss.replace("\\'", "'"), set()).add(wing)
+    for boss in old['loot']:
+        assert boss in wing_of, boss
+        assert len(wing_of[boss]) == 1 or boss == 'Trash', (boss, wing_of[boss])
+    assert wing_of['Trash'] == {'Graveyard', 'Library', 'Armory', 'Cathedral'}, 'each wing page lists its trash'
+    assert '{"D","Scarlet Monastery",' not in gear and ',"Scarlet Monastery"},' not in gear, 'no source names the old dungeon'
+    with open(os.path.join(ADDON, 'Data', 'DungeonQuestData.lua'), encoding='utf-8') as fh:
+        dq = fh.read()
+    listed = set()
+    for k in keys:
+        listed |= {int(x) for x in re.search(r'\b' + k + r' = \{ ([\d, ]+) \}', dq).group(1).split(', ')}
+    assert listed == set(old['quests'])
 
 
 def test_the_raids_open_on_the_ninth_of_december():
@@ -145,7 +214,7 @@ def test_classic_dungeons_come_from_the_repo_and_wait_for_the_client_table():
     sources = facts()['sources']
     assert 'LFGDungeons' in sources['repo'], 'says where the levels will come from'
     classic = [e for e in entries() if e['src'] == 'repo']
-    assert len(classic) >= 18, len(classic)
+    assert len(classic) >= 17, len(classic)
     for e in classic:
         assert e['kind'] == 'party' and e.get('min') is None and e.get('max') is None, e
         assert e['name'] in names or any(a in names for a in e.get('aliases', [])), e['name']
@@ -156,6 +225,9 @@ def test_every_dungeon_the_data_names_has_an_entry():
     for e in entries():
         known.add(e['name'])
         known.update(e.get('aliases', []))
+        # the instance of several dungeons by its own name (the entrances, the zone's trash; D-106)
+        if e.get('part'):
+            known.add(e['part'])
     missing = sorted(n for n in repo_names() - NOT_DUNGEONS if n not in known)
     assert not missing, missing
 
@@ -165,7 +237,8 @@ def test_no_loot_table_and_no_link():
     for e in entries():
         assert not set(e) - {'key', 'name', 'kind', 'src', 'min', 'max', 'size', 'inst', 'area', 'from', 'bosses',
                               'aliases', 'part', 'bosses_src', 'aliases_src', 'inst_src', 'order', 'order_src', 'enc',
-                              'enc_src', 'boss_alias', 'boss_alias_src', 'att_wing', 'att_wing_src'}, e
+                              'enc_src', 'boss_alias', 'boss_alias_src', 'att_wing', 'att_wing_src', 'min_src', 'max_src',
+                              'wing', 'part_area', 'part_area_src'}, e
         # a boss alias names another boss name, never an NPC id (the ids come from AllTheThings, D-100)
         assert all(isinstance(a, str) and isinstance(b, str) for a, b in (e.get('boss_alias') or {}).items()), e
     assert 'http' not in text and 'www.' not in text
@@ -234,10 +307,11 @@ def test_the_client_levels_and_instance_ids():
         assert v.get('lvl') is None or 1 <= v['lvl'] <= 60, (k, v)
     by = {e['key']: e for e in entries()}
     # the client's level is the low end of the public range wherever both are known; Shaper's Terrace
-    # alone is tuned to the top of its range (60 of 58-60, build 1.60.1.70888; the range stays the facts', D-101)
+    # alone is tuned to the top of its range (60 of 58-60, build 1.60.1.70888; the range stays the facts', D-101);
+    # the Scarlet Monastery's wings have the level of the whole instance (30), their ranges are the user's (D-106)
     both = [k for k, v in c['dungeons'].items() if v.get('lvl') and by[k].get('min') is not None and by[k]['kind'] == 'party']
-    assert len(both) >= 9, both
-    assert [k for k in both if c['dungeons'][k]['lvl'] != by[k]['min']] == ['shaper'], both
+    assert len(both) >= 13, both
+    assert [k for k in both if c['dungeons'][k]['lvl'] != by[k]['min']] == ['shaper', 'smarm', 'smcath', 'smlib'], both
     assert c['dungeons']['shaper']['lvl'] == by['shaper']['max'] == 60
     assert c['dungeons']['deadmines'] == {'lvl': 16, 'lfg': ['Deadmines'], 'inst': 36, 'order': [
         "Rhahk'Zor", 'Sneed', 'Miner Johnson', 'Gilnid', 'Captain Greenskin', 'Mr. Smite', 'Cookie', 'Edwin VanCleef'],
@@ -314,12 +388,12 @@ def test_the_bosses_npcs_and_the_order_of_a_dungeon_the_client_lacks():
         "the client's order, an NPC by name, by the encounter's name, by the facts' alias"
     assert d['new'] == {'order': ['New One', 'New Pair'], 'enc': [3001, 3002], 'order_src': 'att', 'npcs': [9101, 9102]}, \
         "no client rows: ATT's encounters in its order, a group by its first creature"
-    assert d['upper']['npcs'] == [False], 'a boss of the other wing of the instance'
+    assert d['upper']['npcs'] == [] and d['upper']['order'] == [], 'a boss of the other wing leaves the order (D-106)'
     merged = {e['key']: e for e in build_dungeons.merge(facts_, c)}
     assert merged['new']['order'] == ['New One', 'New Pair'] and merged['new']['npcs'] == [9101, 9102]
     text = build_dungeons.render({'checked': 'x', 'dungeons': facts_['dungeons']}, c, {})
     assert 'order = { "New One", "New Pair" }, enc = { 3001, 3002 }, npcs = { 9101, 9102 } },' in text
-    assert 'npcs = { false }' in text
+    assert 'false' not in text
     # without ATT as before: no npcs, no order of its own
     assert 'npcs' not in build_dungeons.client_facts(facts_, [WAGO])['dungeons']['halls']
 

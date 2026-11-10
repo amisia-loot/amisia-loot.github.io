@@ -43,6 +43,15 @@ instanceroot(9201, {	-- Test Keep
 				qi = 63005,	-- Handout (PQI!)
 				lvl = 40,
 			}),
+			q(73008, {	-- Grim Business
+				qg = 83002,	-- Sir Moorhelm <Order of the Moor>
+				lvl = 40,
+				groups = {
+					objective(1, {	-- 0/1 Warden Grim slain
+						provider = { "n", 83010 },	-- Warden Grim
+					}),
+				},
+			}),
 		}),
 		n(ZONE_DROPS, {
 			i(63001, {	-- Torn Keep Note (QS!)
@@ -50,6 +59,12 @@ instanceroot(9201, {	-- Test Keep
 			}),
 		}),
 		n(INNER_WARD, {
+			n(QUESTS, {
+				q(73007, {	-- Ward Errand
+					qg = 83003,	-- Keep Prisoner
+					lvl = 40,
+				}),
+			}),
 			n(83003, {	-- Keep Prisoner
 				description = "Chained in the inner ward.",
 			}),

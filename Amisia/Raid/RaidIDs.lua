@@ -468,12 +468,13 @@ local function recOf(name, idx)
     return nil
 end
 
--- The name of an instance: what the own client called it, else the dungeon facts, else "Instanz N".
+-- The name of an instance: what the own client called it, else the dungeon facts (the part of a map of
+-- several dungeons: the ID is the map's, not a wing's, D-106), else "Instanz N".
 function ns.RaidIDsName(m)
     local st = DB and DB.raidcheck
     if st and st.names[m] then return st.names[m] end
     for _, d in ipairs(ns.DUNGEON_FACTS and ns.DUNGEON_FACTS.list or {}) do
-        if d.inst == m then return d.name end
+        if d.inst == m then return d.part or d.name end
     end
     return L["Instanz %d"]:format(m)
 end

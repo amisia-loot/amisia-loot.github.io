@@ -1,0 +1,145 @@
+{
+ "_comment": "The Scarlet Monastery as one dungeon \"sm\" before F-174 (D-106), from the data built on 2026-11-10 before the split: the order of the game (DungeonData.lua order, enc, npcs), the build's boss NPCs (BisData.lua bossNames), the items of each boss of the item data (GearData.lua D records \"Scarlet Monastery\", by boss) and the dungeon quests (DungeonQuestData.lua D.sm). tools/tests/test_build_dungeons.py checks that the four wings together keep every one of them.",
+ "order": [
+  "Interrogator Vishas",
+  "Bloodmage Thalnos",
+  "Houndmaster Loksey",
+  "Arcanist Doan",
+  "Herod",
+  "High Inquisitor Fairbanks",
+  "High Inquisitor Whitemane"
+ ],
+ "enc": [
+  444,
+  2779,
+  446,
+  447,
+  448,
+  449,
+  450
+ ],
+ "npcs": [
+  3983,
+  4543,
+  3974,
+  6487,
+  3975,
+  4542,
+  3977
+ ],
+ "bossNames": {
+  "3974": "Houndmaster Loksey",
+  "3975": "Herod",
+  "3976": "Scarlet Commander Mograine",
+  "3977": "High Inquisitor Whitemane",
+  "3983": "Interrogator Vishas",
+  "4542": "High Inquisitor Fairbanks",
+  "4543": "Bloodmage Thalnos",
+  "6487": "Arcanist Doan",
+  "6488": "Fallen Champion",
+  "6489": "Ironspine",
+  "6490": "Azshir the Sleepless"
+ },
+ "loot": {
+  "Arcanist Doan": [
+   7711,
+   7712,
+   7713,
+   7714,
+   274293,
+   274294
+  ],
+  "Azshir the Sleepless": [
+   7708,
+   7709,
+   7731
+  ],
+  "Bloodmage Thalnos": [
+   7684,
+   7685,
+   274291
+  ],
+  "Fallen Champion": [
+   7689,
+   7690,
+   7691
+  ],
+  "Herod": [
+   7717,
+   7718,
+   7719
+  ],
+  "High Inquisitor Fairbanks": [
+   19507,
+   19508,
+   19509
+  ],
+  "High Inquisitor Whitemane": [
+   7720,
+   7721,
+   7722
+  ],
+  "Houndmaster Loksey": [
+   3456,
+   7710,
+   7756,
+   274292
+  ],
+  "Interrogator Vishas": [
+   7682,
+   7683,
+   274290
+  ],
+  "Ironspine": [
+   7686,
+   7687,
+   7688
+  ],
+  "Scarlet Commander Mograine": [
+   7723,
+   7724,
+   7726
+  ],
+  "Scorn": [
+   23169
+  ],
+  "Trash": [
+   7736,
+   7760,
+   10329,
+   10330,
+   10331,
+   10333
+  ]
+ },
+ "questLoot": {
+  "Compendium of the Fallen": [
+   7747,
+   7749,
+   17508
+  ],
+  "Into The Scarlet Monastery": [
+   6802,
+   6803,
+   10711
+  ],
+  "Mythology of the Titans": [
+   7746
+  ],
+  "Vorrel's Revenge": [
+   4643,
+   7750,
+   7751
+  ]
+ },
+ "quests": [
+  1048,
+  1049,
+  1050,
+  1051,
+  1053,
+  1113,
+  1160,
+  1951
+ ]
+}

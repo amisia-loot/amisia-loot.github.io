@@ -3,14 +3,18 @@
   "checked": "2026-11-08",
   "sources": {
     "classic": "The key's role as the Classic game has it (which door, wing or boss), checked by hand; the item id and its English name are the client's own (ItemSparse 1.60.1.70862). Whether Forever changed the role is not verified in game.",
+    "att:wing": "AllTheThings (MIT), Scarlet Monastery (instance 316): the headers of the Armory and the Cathedral cost The Scarlet Key (cost i 7146), and the Library's treasure Doan's Strongbox (object 103821, \"Found in the chest after killing Arcanist Doan.\") holds it; the item id and its English name are the client's own (ItemSparse 1.60.1.70888). required: the wing's door needs it (F-174, D-106); whether a lockpick opens it too is not in the data.",
     "classic+quests": "As classic; the quests are the chain of Amisia/Data/DungeonQuestData.lua (ids, titles and pre-quests as that file has them), whose last quest rewards the item there."
   },
   "dungeons": {
     "gnomer": [
       {"item": 6893, "name": "Workshop Key", "need": "optional", "why": "door", "quests": [], "src": "classic", "note": "opens the back door (the workshop entrance)"}
     ],
-    "sm": [
-      {"item": 7146, "name": "The Scarlet Key", "need": "optional", "why": "part", "quests": [], "src": "classic", "note": "opens the doors of the Armory and the Cathedral"}
+    "smarm": [
+      {"item": 7146, "name": "The Scarlet Key", "need": "required", "why": "door", "quests": [], "src": "att:wing", "note": "opens the door of the Armory (and of the Cathedral); it lies in Doan's Strongbox in the Library after Arcanist Doan"}
+    ],
+    "smcath": [
+      {"item": 7146, "name": "The Scarlet Key", "need": "required", "why": "door", "quests": [], "src": "att:wing", "note": "opens the door of the Cathedral (and of the Armory); it lies in Doan's Strongbox in the Library after Arcanist Doan"}
     ],
     "zf": [
       {"item": 9240, "name": "Mallet of Zul'Farrak", "need": "optional", "why": "summon", "quests": [], "src": "classic", "note": "summons Gahz'rilla at the gong"}

@@ -227,7 +227,10 @@ class Atlas:
                     self.by_key.setdefault(build_gear.dungeon_key(n), iid)
         for f in facts or ():
             iid = self.by_key.get(build_gear.dungeon_key(f['name']))
-            for n in list(f.get('aliases') or []) + ([f['part']] if f.get('part') else []):
+            if iid is None and f.get('part'):
+                # a wing of an instance of several (D-106): the instance of its part
+                iid = self.by_key.get(build_gear.dungeon_key(f['part']))
+            for n in [f['name']] + list(f.get('aliases') or []) + ([f['part']] if f.get('part') else []):
                 if iid is not None:
                     self.by_key.setdefault(build_gear.dungeon_key(n), iid)
         self.by_name = {}

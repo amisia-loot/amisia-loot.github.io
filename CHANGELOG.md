@@ -5,6 +5,18 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): the Scarlet Monastery is four dungeons, one per wing (F-174)
+
+  The Graveyard (level 30-38), the Library (33-41), the Armory (36-44) and the Cathedral (38-46) each have a card
+  of their own with only their own bosses in the game's order, their loot and their quests; the Armory and the
+  Cathedral show The Scarlet Key. A quest goes to the wing its data names, else to every wing whose boss it asks
+  for (In the Name of the Light: Library, Armory, Cathedral), else to the Graveyard. Inside, the game does not tell
+  which door you came through: the dungeon bar shows the Scarlet Monastery with the bosses of all four wings until
+  the first kill, then the wing; run times count per wing, and the next wing's clock starts with its first fight.
+  Times saved under the old dungeon move to the wing of their last kill. The two halves of Blackrock Spire follow
+  the same rule: each counts only its own bosses (Lower ends with Overlord Wyrmthalak), and loot of the Upper
+  bosses no longer shows under Lower.
+
 - fix(scan): the NPC scan keeps titles, ranks and kinds (F-172)
 
   The first run of the data check in the game showed how this client writes an NPC's tooltip: a title

@@ -243,12 +243,26 @@ local function questData()
     return nil
 end
 
--- The name a dungeon shows: the client's (by area id) where known, else the fact's.
+-- The client's name of an area id (in its language), or nil.
+local function areaName(area)
+    if type(area) ~= "number" or area <= 0 or not (C_Map and C_Map.GetAreaInfo) then return nil end
+    local ok, name = pcall(C_Map.GetAreaInfo, area)
+    name = ok and ns.Plain(name) or nil
+    return type(name) == "string" and name ~= "" and name or nil
+end
+
+-- The wings of an instance whose wings are dungeons of their own (F-174, D-106): the data's English
+-- name -> the shown one.
+local WING = { Graveyard = L["Friedhof"], Library = L["Bibliothek"], Armory = L["Waffenkammer"], Cathedral = L["Kathedrale"] }
+
+-- The name a dungeon shows: the client's (by area id) where known; a wing "<part>: <wing>" with the
+-- client's name of the part (its area) and the wing's name in the client's language; else the fact's.
 function D.Name(e)
-    if type(e.area) == "number" and e.area > 0 and C_Map and C_Map.GetAreaInfo then
-        local ok, name = pcall(C_Map.GetAreaInfo, e.area)
-        name = ok and ns.Plain(name) or nil
-        if type(name) == "string" and name ~= "" then return name end
+    local name = areaName(e.area)
+    if name then return name end
+    if type(e.wing) == "string" then
+        local part = areaName(e.part_area) or (type(e.part) == "string" and e.part) or nil
+        if part then return part .. ": " .. (WING[e.wing] or e.wing) end
     end
     return e.name or e.key
 end

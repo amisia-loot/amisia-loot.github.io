@@ -39,6 +39,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-174 Scharlachrotes Kloster als vier Dungeons
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du die Seite Dungeons öffnest, dann stehen dort statt eines Klosters vier Karten "Scharlachrotes Kloster: Friedhof" (Stufe 30-38), "...: Bibliothek" (33-41), "...: Waffenkammer" (36-44) und "...: Kathedrale" (38-46); Waffenkammer und Kathedrale tragen in der Spalte Schlüssel das Symbol von "The Scarlet Key" (grau, solange du ihn nicht hast), Friedhof und Bibliothek keins.
+- Prüfung: Wenn du einen Flügel öffnest (Teil Übersicht), dann stehen links nur seine Bosse in der Reihenfolge des Spiels, jeder mit Porträt: Friedhof Interrogator Vishas und Bloodmage Thalnos (dazu die Seltenen Ironspine, Azshir the Sleepless, Fallen Champion und Scorn mit Beute), Bibliothek Houndmaster Loksey und Arcanist Doan, Waffenkammer Herod, Kathedrale High Inquisitor Fairbanks, High Inquisitor Whitemane und Scarlet Commander Mograine.
+- Prüfung: Wenn du in der Waffenkammer auf Herod klickst, dann stehen rechts seine drei Items (eine Zweihandaxt, Schultern und ein Helm, Stufe 37), und im Friedhof, in der Bibliothek und der Kathedrale kommt Herod nicht vor.
+- Prüfung: Wenn du (Allianz) in der Bibliothek den Teil Quests öffnest, dann steht dort "Mythology of the Titans", im Friedhof nicht; "In the Name of the Light" steht in Bibliothek, Waffenkammer und Kathedrale (ihre Bosse stehen in diesen drei Flügeln).
+- Prüfung: Wenn du im Spiel einen Flügel betrittst, dann heißt die Dungeon-Leiste zuerst "Scharlachrotes Kloster" mit "Bosse 7" (die Liste zeigt alle vier Flügel), und nach dem ersten Boss heißt sie wie der Flügel (z. B. "Scharlachrotes Kloster: Bibliothek") mit "Bosse 1/2"; die Lauf-Zeiten stehen danach unter diesem Flügel.
+- Notiz: DECISIONS D-106. Keine Spec (kein neuer gespeicherter Schlüssel; die alten Daten unter "sm" verschiebt Schritt 6 von `Core/Migrate.lua`). Die Stufen der Flügel sind die des Bildschirmfotos des Nutzers (keine Tabelle kennt sie); der Name des Klosters kommt aus dem Client (Gebiet 796), die Flügel aus der Übersetzung. Der Client sagt nicht, durch welche Tür man kam (eine Karte 189, ein Gebiet): bis zum ersten Kill rät Amisia den ersten Flügel ohne Kill. Ein gemeinsamer Eingangs-Pin für alle vier (AllTheThings kennt nur einen Eingang).
+- Notiz: Dieselbe Regel gilt jetzt für die beiden Hälften von Blackrock Spire: jede hat nur noch ihre eigenen Bosse in der Reihenfolge (die Karte zeigt "n/9" bzw. "n/5" statt "n/14"), Lower endet mit Overlord Wyrmthalak, und Beute der oberen Bosse, die bisher auch unter Lower stand, steht nur noch unter Upper; "General Drakkisath's Demise" steht jetzt unter Upper.
+
 ### F-173 Questgegenstände aufräumen: sicher, wahrscheinlich, unklar
 - Version: 2.74.0
 - Status: gebaut

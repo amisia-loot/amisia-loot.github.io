@@ -469,11 +469,13 @@ local function walk(v, ctx, depth)
         -- the items the quest works with (F-173): its own provider items, the items it hands out (qi,
         -- qis) and the provider items of its objectives (objective(n, { provider = { "i", id } }),
         -- also a providers list, and objectives inside plain groups below it; never another quest's)
-        local qitems = {}
-        local function itemProvs(x)
+        local qitems, qnpcs = {}, {}
+        local function itemProvs(x, objective)
             local ps = plain(x.providers) and x.providers or { x.provider }
             for _, p in ipairs(ps) do
                 if plain(p) and p[1] == "i" and type(p[2]) == "number" then qitems[#qitems + 1] = p[2] end
+                -- the NPCs an objective names (a kill: "0/1 Herod slain"; F-174, the wing of a quest)
+                if objective and plain(p) and p[1] == "n" and type(p[2]) == "number" then qnpcs[#qnpcs + 1] = p[2] end
             end
         end
         itemProvs(t)
@@ -485,7 +487,7 @@ local function walk(v, ctx, depth)
                 for _, x in ipairs(v) do objectives(x, d + 1) end
                 if plain(v.groups) then objectives(v.groups, d + 1) end
             elseif v._kind == "objective" and not v._t._skip then
-                itemProvs(v._t)
+                itemProvs(v._t, true)
                 objectives(v._t.groups, d + 1)
                 for _, x in ipairs(v._t) do objectives(x, d + 1) end
             end
@@ -503,7 +505,7 @@ local function walk(v, ctx, depth)
                          pre = pre, sqreq = type(t.sourceQuestNumRequired) == "number" and t.sourceQuestNumRequired or nil,
                          alt = ids(t.altQuests), raceMask = c.raceMask, skill = skillOf(t.requireSkill),
                          breadcrumb = t.isBreadcrumb == true, repeatable = t.repeatable == true or t.isDaily == true,
-                         maps = mapList(t.maps), sitems = sitems, qitems = qitems })
+                         maps = mapList(t.maps), sitems = sitems, qitems = qitems, qnpcs = qnpcs, wing = ctx.wing })
         c.quest = id
     elseif kind == "n" or kind == "e" or kind == "header" then
         local npc
@@ -868,7 +870,9 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
                      'races' (mask, bit race id - 1, 0 any of the faction), 'skill' (skill line or 0),
                      'breadcrumb', 'repeatable', 'maps' (uiMapIDs the data names for the quest),
                      'startItems' (the items that start it), 'items' (the items it works with, F-173:
-                     its own provider items, qi/qis, the provider items of its objectives; sorted)}},
+                     its own provider items, qi/qis, the provider items of its objectives; sorted),
+                     'targets' (the NPCs its objectives name, sorted; F-174), 'wing' (the instance's own
+                     header it stands under, as for NPCs, or None)}},
      'npcs': {id: {'name', 'title', 'points', 'zone', 'faction', 'kinds' (set), 'inst', 'old', 'wing' (only
                    inside an instance's own header: its readable name, "Hordemar City (Lower)"),
                    'profs' (only a trainer: the set of ATT profession names it stands under, 'ALCHEMY')}},
@@ -959,7 +963,9 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
                'breadcrumb': bool(r.get('breadcrumb')), 'repeatable': bool(r.get('repeatable')),
                'maps': [int(m) for m in r.get('maps') or []],
                'startItems': [int(i) for i in r.get('sitems') or []],
-               'items': sorted({int(i) for i in r.get('qitems') or [] if int(i) > 0})}
+               'items': sorted({int(i) for i in r.get('qitems') or [] if int(i) > 0}),
+               'targets': sorted({int(n) for n in r.get('qnpcs') or [] if int(n) > 0}),
+               'wing': r.get('wing') or None}
         have = quests.get(qid)
         if have is None:
             quests[qid] = rec
