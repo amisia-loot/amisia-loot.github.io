@@ -145,6 +145,7 @@ assert(has(text, "OK     Auren: alle 5 vorhanden"), text)
 assert(has(text, "OK     Ausrüstung: alle 4 vorhanden"), text)
 assert(has(text, "OK     Pull-Countdown, Einladung annehmen: alle 3 vorhanden"), text)
 assert(has(text, "OK     Rollen: Haupttank, Plündermeister: alle 8 vorhanden"), text)
+assert(has(text, "OK     Routen: Kartenlink, Position: alle 5 vorhanden"), text)
 assert(has(text, "CanInvite true, AllowedToDoPartyConversion(true) false"), text)
 assert(has(text, [[WERT   ERR_BAD_PLAYER_NAME_S: "Spieler '%s' nicht gefunden."]]), text)
 -- auras

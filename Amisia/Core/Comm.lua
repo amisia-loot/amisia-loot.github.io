@@ -33,7 +33,7 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
 -- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
@@ -41,7 +41,8 @@ local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 6
 local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10, IV = 60, SQ = 5, FA = 5 }
 local KEYED_MAX = 64        -- keyed gaps remembered per sender before the old ones are cleared
 
-local CHANNELS = { RAID = true, GUILD = true, WHISPER = true }
+-- PARTY only in an own home party (D-97: the routes and points shared with a group of five)
+local CHANNELS = { RAID = true, PARTY = true, GUILD = true, WHISPER = true }
 local BLOB_ARTS = { SP = true, SO = true, OP = true, DK = true, CK = true, LC = true, PK = true, KS = true, SR = true }
 -- parts a blob of an art may have (default MAX_PARTS)
 local ART_PARTS = { OP = MAX_PARTS_OP, DK = MAX_PARTS_DK, CK = MAX_PARTS_DK, LC = 40, PK = MAX_PARTS_DK, KS = MAX_PARTS_DK, SR = 30 }
@@ -311,6 +312,9 @@ end
 local function optNum(v) return v == nil or v == "-" or isNum(v, 0, 9999999) end
 
 -- the raid sign-up (Raid/Signup.lua): a night, a role, a class token
+-- the routes (Gear/Routes.lua): a route's name or a point's label (no bar, no control character)
+local function routeText(v, max) return type(v) == "string" and v ~= "" and #v <= max and not v:find("[%c|]") end
+
 local function isNight(v) return type(v) == "string" and v:match("^%d%d%d%d%-%d%d%-%d%d$") ~= nil end
 local SIGN_STATUS = { A = true, V = true, X = true }
 local SIGN_ROLE = { T = true, H = true, M = true, R = true, ["-"] = true }
@@ -472,6 +476,17 @@ local VALID = {
         return noBar(f[4], 220)
     end,
     FA = function(f) return #f >= 1 and feedbackId(f[1]) end,
+    -- the routes (Gear/Routes.lua): RO <id> <parts 1-24> <bytes 1-6000> <map id> <stops 0-30> <lines 0-20>
+    -- <name> heads a route, RD <id> <part> <piece> carries it; RX <map id> <x 0-10000> <y 0-10000> <label|->
+    -- a single point
+    RO = function(f)
+        return #f >= 7 and isHex(f[1], 4) and isNum(f[2], 1, 24) and isNum(f[3], 1, 6000) and isNum(f[4], 1, 999999)
+            and isNum(f[5], 0, 30) and isNum(f[6], 0, 20) and routeText(f[7], 30)
+    end,
+    RD = function(f) return #f >= 3 and isHex(f[1], 4) and isNum(f[2], 1, 24) and routeText(f[3], 230) end,
+    RX = function(f)
+        return #f >= 4 and isNum(f[1], 1, 999999) and isNum(f[2], 0, 10000) and isNum(f[3], 0, 10000) and routeText(f[4], 24)
+    end,
 }
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end
@@ -503,6 +518,7 @@ local homeRaid, inGuild = ns.HomeRaid, ns.InGuild
 local function channelOk(chan, target, anyone)
     if not CHANNELS[chan] then return nil, L["Dieser Kanal wird nicht benutzt."] end
     if chan == "RAID" and not homeRaid() then return nil, L["Keine eigene Raidgruppe."] end
+    if chan == "PARTY" and not ns.HomeGroup() then return nil, L["Keine eigene Gruppe."] end
     if chan == "GUILD" and not inGuild() then return nil, L["Keine Gilde."] end
     if chan == "WHISPER" then
         if type(target) ~= "string" or target == "" then return nil, L["Kein Empfänger."] end
@@ -756,8 +772,8 @@ local function envelope(kind, fields)
     return text, parts
 end
 
--- Sends one control message. kind: "HI", "VQ", ...; fields: list of strings; chan "GUILD", "RAID"
--- or "WHISPER" with target. opts.ttl (seconds, default 60), opts.key (a waiting entry with the same
+-- Sends one control message. kind: "HI", "VQ", ...; fields: list of strings; chan "GUILD", "RAID",
+-- "PARTY" (only the routes, D-97) or "WHISPER" with target. opts.ttl (seconds, default 60), opts.key (a waiting entry with the same
 -- key is replaced), opts.jitter (random delay of 0 to n seconds before the first try), opts.low
 -- (lowest priority: goes only while nothing else waits, ttl default 120), opts.when (a function; the
 -- entry waits while it does not return true), opts.sent (a function called once the message went),

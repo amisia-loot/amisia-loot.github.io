@@ -209,6 +209,14 @@ function ns.HomeRaid()
     return IsInRaid() and true or false
 end
 
+-- Whether this client is in a home group (a party or raid of its own, not a finder or battleground
+-- group); the routes' PARTY messages go only there (D-97).
+function ns.HomeGroup()
+    if type(_G.IsInGroup) ~= "function" then return false end
+    if _G.LE_PARTY_CATEGORY_HOME then return IsInGroup(LE_PARTY_CATEGORY_HOME) and true or false end
+    return IsInGroup() and true or false
+end
+
 function ns.InGuild()
     return type(_G.IsInGuild) == "function" and IsInGuild() and true or false
 end

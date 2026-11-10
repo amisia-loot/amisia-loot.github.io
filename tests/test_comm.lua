@@ -59,7 +59,7 @@ assert(refused("HI", { "a|b" }, "RAID"), "no pipe inside a field")
 assert(refused("HI", { string.rep("x", 247) }, "RAID"), "at most 250 bytes")
 assert(NS.CommSend("HI", { string.rep("x", 246) }, "RAID") == true, "250 bytes fit")
 assert(#STUB.addon[#STUB.addon].text == 250)
-for _, chan in ipairs({ "INSTANCE_CHAT", "PARTY", "SAY", "CHANNEL", "OFFICER", "BATTLEGROUND" }) do
+for _, chan in ipairs({ "INSTANCE_CHAT", "SAY", "CHANNEL", "OFFICER", "BATTLEGROUND" }) do
     assert(refused("HI", { "2.1.0" }, chan), chan .. " is never used")
 end
 assert(refused("HI", { "2.1.0" }, "WHISPER"), "a whisper needs a target")
@@ -81,6 +81,17 @@ STUB.roster = roster
 for _, a in ipairs(STUB.addonTries) do
     assert(a.chan ~= "INSTANCE_CHAT" and a.chan ~= "PARTY", "never the instance or party channel")
 end
+-- PARTY (D-97, the routes) only in an own home group: never alone, never in an instance group
+STUB.roster = {}
+assert(refused("HI", { "2.1.0" }, "PARTY"), "no PARTY alone")
+STUB.roster = roster
+STUB.instanceGroup = true
+assert(refused("HI", { "2.1.0" }, "PARTY"), "no PARTY in an instance group")
+STUB.instanceGroup = nil
+STUB.party = true
+assert(NS.CommSend("HI", { "2.1.0" }, "PARTY") == true and STUB.addon[#STUB.addon].chan == "PARTY", "PARTY in an own party")
+assert(refused("HI", { "2.1.0" }, "RAID"), "but no RAID there")
+STUB.party = nil
 
 ---------------------------------------------------------------------------
 -- envelope: reading

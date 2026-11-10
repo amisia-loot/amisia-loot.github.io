@@ -48,6 +48,9 @@ GT.FUNCTIONS = {
     -- F-165: the lineup's view "Rollen" (main tanks; master loot: the C_PartyInfo form or the global)
     { L["Rollen: Haupttank, Plündermeister"], { "SetPartyAssignment", "GetPartyAssignment", "C_PartyInfo.SetLootMethod", "SetLootMethod",
         "C_PartyInfo.GetLootMethod", "GetLootMethod", "SetLootThreshold", "GetLootThreshold" } },
+    -- F-167: a shared point's link (only of the client's own waypoint) and where the player stands
+    { L["Routen: Kartenlink, Position"], { "C_Map.GetUserWaypointHyperlink", "C_Map.GetUserWaypoint", "C_Map.GetBestMapForUnit",
+        "C_Map.GetPlayerMapPosition", "IsMouseButtonDown" } },
 }
 -- The system message templates the invite status would read (check 10).
 GT.TEMPLATES = { "ERR_INVITE_PLAYER_S", "ERR_DECLINE_GROUP_S", "ERR_ALREADY_IN_GROUP_S", "ERR_BAD_PLAYER_NAME_S", "ERR_GROUP_FULL",

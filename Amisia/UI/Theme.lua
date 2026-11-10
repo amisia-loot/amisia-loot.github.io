@@ -424,6 +424,21 @@ T.DPART = {
 -- one row per boss (ROW_H: name NAME_W, the split SPLIT_W and the difference DIFF_W at the right end),
 -- the result line and the link at the bottom (BOTTOM_H); at most MAX_ROWS bosses; the live total is
 -- drawn every TICK seconds.
+-- the own routes on the world map (F-167, Gear/RouteMap.lua): the bar AmisiaRouteBar (BAR_H high, PAD
+-- inside, BAR_X/BAR_Y from the map's lower left corner, the name field NAME_W, its menus MENU_W, the
+-- ground BAR_SHADE dark), the route layer and the click layer above the canvas (LAYER_LEVEL,
+-- OVERLAY_LEVEL), a stop STOP square on screen (a right click within HIT px of it opens its menu), the
+-- lines LINE px thick on screen (JOIN between the stops, STROKE drawn by hand, LIVE while drawing);
+-- without lines of the client dots of DOT px every DOT_STEP px of the canvas, MAX_DOTS at most; a stop
+-- STOP_COLOR, the one followed NOW, a passed one DONE
+T.ROUTE = {
+    BAR_H = 28, PAD = 6, BAR_X = 8, BAR_Y = 8, NAME_W = 110, MENU_W = 260, BAR_SHADE = 0.78,
+    LAYER_LEVEL = 290, OVERLAY_LEVEL = 340, STOP = 18, HIT = 14, LINE = 3,
+    DOT = 4, DOT_STEP = 6, MAX_DOTS = 1500,
+    JOIN = { 0.89, 0.72, 0.34, 0.95 }, STROKE = { 0.35, 0.75, 1, 0.9 }, LIVE = { 0.65, 0.9, 1, 1 },
+    STOP_COLOR = { 0.89, 0.72, 0.34 }, NOW = { 0.3, 0.9, 0.3 }, DONE = { 0.5, 0.5, 0.5 },
+}
+
 T.RUNTIMER = { W = 260, PAD = 12, TOP = 30, TOTAL_H = 22, LINE_H = 16, ROW_H = 16, NAME_W = 132, SPLIT_W = 44, DIFF_W = 44,
     GAP = 4, BOTTOM_H = 40, MAX_ROWS = 16, TICK = 0.2 }
 

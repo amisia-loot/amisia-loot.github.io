@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-167 Eigene Routen auf der Karte: Stopps, Zeichnen, Teilen
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du die Weltkarte öffnest, dann steht unten links eine kleine Leiste "Route"; nach einem Klick darauf, "Stopp" und drei Klicks auf die Karte stehen die Stopps 1, 2, 3, mit einer goldenen Linie verbunden; ist "Route" wieder aus, lässt sich die Karte ziehen und klicken wie immer (bitte melden, wenn die Leiste falsch sitzt, Stopps an der falschen Stelle landen oder eine Fehlermeldung "blockiert"/"tainted" kommt).
+- Prüfung: Wenn du "Zeichnen" wählst und mit gedrückter linker Maustaste ziehst, dann folgt eine blaue Linie der Maus; "Rückgängig" nimmt erst die Linie, dann den letzten Stopp; ein Klick auf einen Stopp bietet "Beschriften", "Früher", "Später", "Löschen", "Punkt teilen" (steht statt Linien nur eine Punktreihe, bitte melden).
+- Prüfung: Wenn du einen Namen ins Feld tippst, "Speichern" klickst, `/reload` machst und auf der Karte "Route", dann "Laden" öffnest, dann steht die Route unter der Zone und lädt mit einem Klick; "Mehr" > "Gespeicherte Route löschen" fragt erst.
+- Prüfung: Wenn du "Mehr" > "Route folgen" klickst, dann ist "Stopp 1/3" dein Ziel (Wegpunkt oder Pfeil); läufst du hin, wird Stopp 2 das Ziel, nach dem letzten steht "Route ... zu Ende: alle 3 Stopps erreicht."; in einem Dungeon geht es mit `/amisia route weiter`.
+- Prüfung: Wenn du in einer Gruppe (Braucht: Gruppe) mit einem zweiten Amisia "Teilen" klickst, dann steht bei ihm "<Dein Name> teilt die Route ..." und erst nach `/amisia route annehmen` steht sie auf seiner Karte; "Punkt teilen" an einem Stopp schreibt "Amisia-Punkt: <Zone> 45.2, 63.1 (...)" in den Gruppenchat und er kann ihn mit `/amisia route punkt` als Ziel nehmen.
+- Notiz: Spec docs/specs/2026-11-10-eigene-routen.md; DECISIONS D-97. Die ersten vier Prüfungen gehen allein; die fünfte (Teilen) braucht eine Gruppe mit einem zweiten Amisia (Braucht: Gruppe), darum steht keine Zeile "Braucht", die die anderen in der Testliste verstecken würde. Neu: der Kanal PARTY für diese Nachrichten (ändert D-19). Ob Forever Linien (CreateLine) und den Kartenlink hat, sagt `/amisia selbsttest gruppe` ("Routen: Kartenlink, Position").
+
 ### F-166 Lauf-Zeiten: Zwischenzeit je Boss, Bestzeit, Verlauf
 - Version: -
 - Status: geplant

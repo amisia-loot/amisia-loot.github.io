@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(map): your own routes on the world map, shared with your group (F-167)
+
+  A small bar at the lower left of the world map turns on route mode: "Stop" sets numbered stops with a
+  click, "Draw" draws lines while you hold the mouse button, with undo, clear, a name, save and load (for
+  all your characters). "Follow route" makes each stop your target in turn, moving on as you arrive
+  (`/amisia route next` where the game gives no position). "Share" sends the route to your party or raid:
+  players with Amisia get a chat line and see it only after `/amisia route accept`. "Share point" posts
+  the zone and coordinates in group chat. Two new settings under Map and waypoint.
+
 - feat(dungeons): run times with splits, best time and history (F-166)
 
   A small "Run times" window opens with the first fight in a dungeon (and raid): the running time, each

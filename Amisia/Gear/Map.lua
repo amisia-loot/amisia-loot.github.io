@@ -958,6 +958,11 @@ ns.RegisterSettings{ key = "map", label = L["Karte und Wegpunkt"], order = 48, g
       tip = L["Automatisch: nur wenn der Client den Wegpunkt nicht setzen kann."] },
     { key = "map.autoClear", type = "toggle", label = L["Ziel beim Ankommen löschen"], default = true, tip = L["Bist du am Ziel angekommen, verschwinden Ziel und Pfeil."] },
     { key = "map.tooltip", type = "toggle", label = L["Fundort im Tooltip (mit Shift)"], default = true, tip = L["Mit gedrückter Shift-Taste nennt der Item-Tooltip, wo das Item zu finden ist."] },
+    -- the own routes (F-167, Gear/Routes.lua, Gear/RouteMap.lua)
+    { key = "map.routeBar", type = "toggle", label = L["Routen-Leiste auf der Weltkarte zeigen"], default = true,
+      tip = L["Eine kleine Leiste unten links auf der Weltkarte: Route an, Stopps setzen, zeichnen, speichern, laden, teilen. /amisia route geht auch ohne sie."] },
+    { key = "map.routeShare", type = "toggle", label = L["Geteilte Routen annehmen dürfen"], default = true,
+      tip = L["Teilt jemand aus deiner Gruppe eine Route oder einen Punkt, nennt der Chat es dir; gezeigt wird erst, wenn du es annimmst. Aus: Angebote werden nicht beachtet."] },
     { key = "map.resetHidden", type = "button", label = L["Ausgeblendete Orte wieder zeigen"],
       run = function()
           local m = db()

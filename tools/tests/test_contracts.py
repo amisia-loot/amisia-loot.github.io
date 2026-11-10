@@ -161,8 +161,10 @@ def test_every_kind_is_sent_and_handled_somewhere(comm):
 
 def test_two_prefixes_and_one_sender(comm):
     assert re.search(r'local PREFIX_CTRL, PREFIX_DATA = "Amisia", "AmisiaD"', comm), 'exactly the two prefixes'
-    assert re.search(r'^local CHANNELS = \{ RAID = true, GUILD = true, WHISPER = true \}', comm, re.M), \
-        'only RAID, GUILD and WHISPER (never INSTANCE_CHAT)'
+    # PARTY since D-97 (the routes shared with a party of five), only in an own home group
+    assert re.search(r'^local CHANNELS = \{ RAID = true, PARTY = true, GUILD = true, WHISPER = true \}', comm, re.M), \
+        'only RAID, PARTY, GUILD and WHISPER (never INSTANCE_CHAT)'
+    assert 'if chan == "PARTY" and not ns.HomeGroup() then' in comm, 'PARTY only in an own home group (D-97)'
     for rel, text in code_files():
         if rel in ('Core/Comm.lua', 'Core/SelfTest.lua'):
             continue

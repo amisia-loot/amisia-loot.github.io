@@ -13,8 +13,8 @@ the addon, ADDON_LOADED). The test text itself runs in a director runtime of its
                        strings, booleans and tables, copied through STUB.dump); "return" may be
                        left out for a single expression
   CLIENTS              the client names
-  BUS.raid, BUS.guild  lists of names: RAID goes to everyone in BUS.raid (the sender too, as the
-                       client echoes it), GUILD to everyone in BUS.guild, WHISPER to the runtime of
+  BUS.raid, BUS.guild  lists of names: RAID (and PARTY) goes to everyone in BUS.raid (the sender
+                       too, as the client echoes it), GUILD to everyone in BUS.guild, WHISPER to the runtime of
                        that player (a "-Realm" ending is dropped)
   BUS.realm            text appended to the sender of every delivered message (default "")
   BUS.setRaid(names)   BUS.raid and STUB.roster of every client (those not listed get none)
@@ -326,7 +326,7 @@ class Bus:
                 raise RuntimeError('the bus does not settle')
             sender, prefix, text, chan, target = self.pending.pop(0)
             kind = bytes.fromhex(chan).decode('ascii', 'replace')
-            if kind == 'RAID':
+            if kind in ('RAID', 'PARTY'):
                 to = [n for n in self._names('raid') if n in self.clients]
                 if sender not in self._names('raid'):
                     to = []

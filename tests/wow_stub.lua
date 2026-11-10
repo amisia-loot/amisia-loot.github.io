@@ -38,13 +38,17 @@ end
 -- Group categories: STUB.instanceGroup makes the group an instance group (a battleground or a
 -- finder group), so IsInRaid(LE_PARTY_CATEGORY_HOME) is false while IsInRaid() stays true.
 _G.LE_PARTY_CATEGORY_HOME, _G.LE_PARTY_CATEGORY_INSTANCE = 1, 2
-_G.IsInRaid = function(cat)
+-- STUB.party makes the roster a party of five (IsInGroup true, IsInRaid false).
+_G.IsInGroup = function(cat)
     if #STUB.roster == 0 then return false end
     if cat == LE_PARTY_CATEGORY_HOME then return not STUB.instanceGroup end
     if cat == LE_PARTY_CATEGORY_INSTANCE then return STUB.instanceGroup and true or false end
     return true
 end
-_G.IsInGroup = _G.IsInRaid
+_G.IsInRaid = function(cat)
+    if STUB.party then return false end
+    return IsInGroup(cat)
+end
 -- "player" is the leader with STUB.leader; a raid unit "raid<i>" with STUB.roster[i].leader (the
 -- player's own raid unit, STUB.playerRaidIndex, follows STUB.leader when that is not set).
 _G.UnitIsGroupLeader = function(u)
@@ -223,6 +227,7 @@ C_ChatInfo.SendAddonMessage = function(prefix, text, chan, target)
     if not result then
         if STUB.chatLock then result = 11
         elseif chan == "RAID" and not IsInRaid(LE_PARTY_CATEGORY_HOME) then result = 5
+        elseif chan == "PARTY" and not IsInGroup(LE_PARTY_CATEGORY_HOME) then result = 5
         elseif chan == "GUILD" and not IsInGuild() then result = 10
         elseif chan == "WHISPER" and (type(target) ~= "string" or target == "") then result = 6
         elseif type(text) ~= "string" or #text > 255 then result = 2
@@ -1260,6 +1265,16 @@ function _G.CreateFrame(kind, name, parent, template)
     f.CreateFontString = function(self, _, layer, template) return region(self, "FontString", layer, template) end
     f.CreateTexture = function(self, _, layer) return region(self, "Texture", layer) end
     f.CreateMaskTexture = function(self, _, layer) return region(self, "MaskTexture", layer) end
+    -- a line between two points (STUB.noLines: a client without lines); its ends and thickness are kept
+    if not STUB.noLines then
+        f.CreateLine = function(self, _, layer)
+            local l = region(self, "Line", layer)
+            l.SetStartPoint = function(me, point, rel, x, y) me.from = { point, rel, x or 0, y or 0 } end
+            l.SetEndPoint = function(me, point, rel, x, y) me.to = { point, rel, x or 0, y or 0 } end
+            l.SetThickness = function(me, t) me.thickness = t end
+            return l
+        end
+    end
     f.SetFontObject = function(self, obj) self.font = fontName(obj) end
     f.SetNormalFontObject = function(self, obj) self.font = fontName(obj) end
     f.SetJustifyH = function(self, j) self.justifyH = j end
@@ -1299,6 +1314,7 @@ function _G.CreateFrame(kind, name, parent, template)
     f.GetLeft = function(self) return self._left end
     f.GetTop = function(self) return self._top end
     f.GetRight = function(self) return self._right end
+    f.GetBottom = function(self) return self._bottom end
     f.SetSize = function(self, w, h) self._w, self._h = w, h end
     f.SetWidth = function(self, w) self._w = w end
     f.SetHeight = function(self, h) self._h = h end
@@ -1397,6 +1413,8 @@ end
 _G.DEFAULT_CHAT_FRAME = { AddMessage = function(_, t) STUB.messages[#STUB.messages + 1] = t end }
 _G.UIParent = CreateFrame("Frame", "UIParent")
 _G.GetCursorPosition = function() return STUB.cursorX or 0, STUB.cursorY or 0 end
+-- the mouse buttons held (STUB.mouseDown = { LeftButton = true })
+_G.IsMouseButtonDown = function(b) return STUB.mouseDown ~= nil and STUB.mouseDown[b or "LeftButton"] == true end
 UIParent:SetSize(1920, 1080)   -- a 1080p screen at scale 1 (the main window clamps its height to it)
 _G.GameTooltip = CreateFrame("GameTooltip", "GameTooltip")
 _G.ItemRefTooltip = CreateFrame("GameTooltip", "ItemRefTooltip")

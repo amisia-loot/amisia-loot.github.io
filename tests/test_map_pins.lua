@@ -90,9 +90,11 @@ assert(r.HEAD[1] and r.HEAD[1].id == 201 and r.HEAD[1].upgrade, "a head upgrade 
 ---------------------------------------------------------------------------
 -- the layer: made once at login, a child of the canvas that takes no mouse; no data provider
 ---------------------------------------------------------------------------
+-- the pins' layers on the canvas (the routes' layer of RouteMap.lua, F-167, is a frame of its own)
 local function ours()
     local n = 0
-    for _, kid in ipairs(STUB.mapCanvas.kids or {}) do if kid.scripts then n = n + 1 end end
+    local routes = NS.RouteMap and NS.RouteMap.Layer()
+    for _, kid in ipairs(STUB.mapCanvas.kids or {}) do if kid.scripts and kid ~= routes then n = n + 1 end end
     return n
 end
 assert(ours() <= 1, "at most one layer before login (a change of the data makes it)")

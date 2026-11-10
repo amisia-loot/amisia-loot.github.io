@@ -835,6 +835,34 @@ S.WINDOWS = {
         NS.RunTimer.Show("deadmines")
         return AmisiaRunTimer
     end },
+    { key = "routebar", view = "raider", open = function()
+        -- the route bar on the world map (F-167): the route mode with the stop tool, a named route of
+        -- three stops and a line, one offer waiting
+        STUB.instance = { name = "Dun Morogh", type = "none", id = 0 }
+        STUB.maps[1426] = { name = "Dun Morogh", mapType = 3 }
+        local R = NS.Routes
+        R._reset()
+        WorldMapFrame:Show()
+        WorldMapFrame:SetMapID(1426)
+        R.AddStop(1426, 0.2, 0.3)
+        R.AddStop(1426, 0.4, 0.35)
+        R.AddStop(1426, 0.5, 0.6)
+        R.StartLine(1426, 0.2, 0.3)
+        R.LineTo(0.3, 0.5)
+        R.EndLine()
+        R.SetName("Zur Höhle der Trogg")
+        R.SetTool("stop")
+        STUB.tick(0)
+        return AmisiaRouteBar
+    end },
+    { key = "routebar-off", view = "raider", open = function()
+        -- the route mode off: the switch alone with the count of the offers
+        NS.Routes._reset()
+        WorldMapFrame:Show()
+        STUB.tick(0)
+        NS.RouteMap.RefreshBar()
+        return AmisiaRouteBar
+    end },
     { key = "tradehelper", view = "raider", open = function()
         -- the trade window with Anna: the helper beside it
         S.handover()
