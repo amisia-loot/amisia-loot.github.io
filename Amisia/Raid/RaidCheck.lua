@@ -52,9 +52,10 @@ local function me() return ns.UnitFullName("player") end
 -- the raid once, not once per answer
 local function fireSoon() ns.FireSoon("RAIDCHECK") end
 
--- Who may see and ask: the officer view with the officer rank (D-41, as the lineup).
+-- Who may see and ask: the officer view with the officer rank (D-41, as the lineup), or the author's
+-- character (ns.SelfMayOfficer, D-92; the raiders still answer only an officer rank).
 function ns.RaidCheckAllowed()
-    return ns.IsOfficerView() and ns.SelfIsOfficer ~= nil and ns.SelfIsOfficer(true) or false
+    return ns.IsOfficerView() and ns.SelfMayOfficer(true) or false
 end
 
 -- Why nothing is read or sent now: "combat", "lock" (the chat lockdown of a boss fight) or nil.

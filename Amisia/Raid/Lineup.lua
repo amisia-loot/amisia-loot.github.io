@@ -922,10 +922,11 @@ function ns.LineupRematch(night)
 end
 
 ---------------------------------------------------------------------------
--- Who may: officer view and officer rank by the guild roster (rank flag 22, D-18)
+-- Who may: officer view and officer rank by the guild roster (rank flag 22, D-18), or the author's
+-- character (ns.SelfMayOfficer, D-92)
 ---------------------------------------------------------------------------
 function ns.LineupAllowed()
-    return ns.IsOfficerView() and ns.SelfIsOfficer ~= nil and ns.SelfIsOfficer(true) or false
+    return ns.IsOfficerView() and ns.SelfMayOfficer(true) or false
 end
 
 ---------------------------------------------------------------------------

@@ -171,6 +171,14 @@ function ns.MayOfficerView()
     return ns.SelfIsOfficer and ns.SelfIsOfficer(true) or false
 end
 
+-- Whether this client opens its own officer pages (the lineup, the raid check; D-92): an officer
+-- rank of the guild, or the author's character, also without a rank or a guild. Only this client's
+-- pages: what another client accepts from a sender is still decided there by the sender's rank.
+function ns.SelfMayOfficer(noAsk)
+    if ns.Feedback and ns.Feedback.IsAuthor() then return true end
+    return ns.SelfIsOfficer and ns.SelfIsOfficer(noAsk) or false
+end
+
 -- Whether the officer parts are shown: whoever may have them, unless he chose the raider view.
 function ns.IsOfficerView()
     if not ns.MayOfficerView() then return false end

@@ -2160,3 +2160,16 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 **Folge:** Annahmen (nicht gefragt): die Vorlagen als eigene Ansicht statt eines Menüs; die Spielerliste unten im Planer statt rechts daneben, weil die Seite 602 breit ist; "Leeren" leert die Gruppen, nicht die Liste; der Export ist Text zum Kopieren, keine Addon-Nachricht; nur die Funktionen des Vorbilds, nicht sein Aussehen. Offen und nicht gebaut: Rollen (Haupttanks, Assistenten nach Namensliste, Plündermeister mit Schwelle) und Einladen nach Gildenrang, eigene Stichwörter, Einladungen annehmen (Spec, "Offene Fragen").
 
 **Durchgesetzt durch:** `tests/test_lineup_sets.lua` (von Hand, Vorlagen mit Grenze und Aufräumen beim Laden, Leeren, Block mit Gruppen hin und zurück, zu volle Gruppe, aus dem Raid mit Gast und Abgemeldetem, die Seite: Planer ohne Liste, Raster mit Filtern, Klick und Platz, Tausch, Ansicht "Vorlagen", Menü "Mehr", Nachfragen), `tests/ui_scene.lua` (`lineup-players`, `lineup-sets`, `lineup-export`).
+
+## D-92 Der Charakter des Autors öffnet die Offiziersseiten auch ohne Rang
+
+**Datum:** 2026-11-10
+**Entscheidung:** Die beiden Seiten, die Amisia auf dem eigenen Client nur mit Offiziersrang zeigt, gehen für den Charakter des Autors Vulo Vultrox (`ns.Feedback.IsAuthor`) auch ohne Rang und ohne Gilde auf: "Aufstellung" mit ihrem Einstellungsabschnitt (`ns.LineupAllowed`) und "Raid-Check" (`ns.RaidCheckAllowed`). Beide fragen `ns.SelfMayOfficer` (Offiziersrang oder Autor). Die Offiziersansicht selbst hatte er schon (D-87).
+- Das gilt nur für die Oberfläche des eigenen Clients. Was ein anderer Client von einem Absender annimmt (Abgleich, Vergaben, Punkte, Lootregeln, Raid-Check-Fragen, Bankbedarf), entscheidet dort weiter der Rang des Absenders in der Gilde (D-18, D-41). Der Autor ohne Offiziersrang bekommt also weiter DENIED, und Raider antworten nicht auf sein "Prüfen".
+- Kein fester Name bekommt Rechte auf fremden Clients: das Addon ist öffentlich, und ein gleichnamiger Charakter in einer anderen Gilde oder auf einem anderen Realm hätte sie sonst auch.
+
+**Grund:** Nutzer 2026-11-10: "Vulo Vultrox soll alle rechte haben", nachdem er die neue Seite Aufstellung mit diesem Charakter nicht fand.
+
+**Folge:** Ändert D-41 und D-87 für diesen einen Charakter. Annahme (nicht gefragt): "alle Rechte" heißt hier die eigenen Seiten; Rechte bei anderen Spielern bekommt der Charakter wie jeder über einen Offiziersrang der Gilde. Dem Nutzer als Frage gestellt.
+
+**Durchgesetzt durch:** `tests/test_officer_view.lua` (Autor ohne Gilde: beide Seiten da, in der Raider-Ansicht weg, ein anderer Vulo bekommt nichts), `tests/test_sync_ops.lua` (ein Absender ohne Rang bekommt DENIED).

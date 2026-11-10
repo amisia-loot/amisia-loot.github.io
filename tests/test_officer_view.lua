@@ -71,10 +71,16 @@ STUB.clock = STUB.clock + 30
 STUB.fire("PLAYER_GUILD_UPDATE")
 assert(NS.Feedback.IsAuthor(), "the author")
 assert(NS.MayOfficerView() and NS.IsOfficerView(), "the author has the officer view")
+-- and this client's officer pages, without a rank (D-92): the lineup and the raid check
+assert(not NS.SelfIsOfficer(true) and NS.SelfMayOfficer(true), "no rank, but the pages")
+assert(NS.LineupAllowed() and NS.RaidCheckAllowed(), "the lineup and the raid check")
+assert(NS.Visible(NS.Panel("lineup")) and NS.Visible(NS.Panel("raidcheck")), "both pages in the list")
 NS.Set("ui.view", "raider")
 assert(not NS.IsOfficerView(), "the author can choose the raider view")
+assert(not NS.LineupAllowed() and not NS.RaidCheckAllowed(), "the raider view hides them")
 NS.Reset("ui.view")
 
 -- another Vulo is not the author
 STUB.player = "Vulo Sturmwind"
 assert(not NS.Feedback.IsAuthor() and not NS.IsOfficerView(), "only Vulo Vultrox")
+assert(not NS.SelfMayOfficer(true) and not NS.LineupAllowed() and not NS.RaidCheckAllowed(), "no pages for another Vulo")

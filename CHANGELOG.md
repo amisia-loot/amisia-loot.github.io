@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(lineup): the author's character sees the officer pages without a rank (F-162)
+
+  The pages Lineup and Raid check open for the addon author's character even without an officer rank
+  or a guild. Nothing changes for anyone else, and what other players' clients accept still depends
+  on the sender's guild rank.
+
 ## [v2.73.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.73.0) (2026-11-10)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.72.0...v2.73.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
