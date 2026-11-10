@@ -197,6 +197,16 @@ def fresh(source='', player=None, setup=None, locale=None):
         with open(path, encoding='utf-8') as fh:
             chunk = loader(fh.read(), name)
         chunk('Amisia', ns)
+    # The shipped scan names (Data/ScanNames.lua: the titles and names the user's client gave the quest
+    # and NPC scans) change with every scan and would replace the names tests make up. A test sees none
+    # unless it sets STUB.scanNames (a table shaped as the file's) or STUB.shippedScanNames = true.
+    lua.eval('''function(ns)
+        local real = ns.Data
+        ns.Data = function(key, ...)
+            if key == "SCAN_NAMES" and not STUB.shippedScanNames then return STUB.scanNames or { L = {} } end
+            return real(key, ...)
+        end
+    end''')(ns)
     lua.eval('function(ns) NS = ns; STUB.fire("ADDON_LOADED", "Amisia") end')(ns)
     return lua
 

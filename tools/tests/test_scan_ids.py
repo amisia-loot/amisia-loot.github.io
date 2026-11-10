@@ -90,9 +90,12 @@ def test_id_scans_for_the_builders(tmp_path):
         'name': 'Flintauge', 'sub': 'Ragefire-Häuptling', 'rank': 'Elite', 'kind': 'Humanoid'}
     assert sa.npc_fields('Gill\t\tRar') == {'name': 'Gill', 'sub': '', 'rank': 'Rar', 'kind': ''}
     assert 115 in got['npc_empty']['deDE']
-    # the real archive has no scan by id yet: nothing for the builders
+    # the real archive (it holds the user's quest scan since 2026-11-10): whatever it has is well formed
     real = sa.id_scans(REAL_ARCHIVE, [])
-    assert real == {'quests': {}, 'npcs': {}, 'npc_empty': {}}
+    assert set(real) == {'quests', 'npcs', 'npc_empty'}
+    for loc, part in real['quests'].items():
+        assert loc in sa.LOCALES and all(isinstance(k, int) and q['title'] for k, q in part.items())
+        assert not any('\ufffd' in q['title'] or '\ufffd' in q['obj'] for q in part.values()), 'no broken character'
 
 
 # ---------------------------------------------------------------- the marker and the trim
@@ -173,6 +176,8 @@ def test_names_leave_english_out_and_load_in_the_addon():
     lua = run.fresh('')
     lua.globals().NAMES = sl.names_text(parts)
     lua.execute('assert(loadstring(NAMES))("Amisia", NS)')
+    # tests/run.py hides the names file from tests; this one reads the file it just loaded
+    lua.execute('STUB.shippedScanNames = true')
     assert lua.eval('NS.ScannedQuestTitle(2)') == 'Im Verlies'
     assert lua.eval('NS.ScannedNpcName(261306)') == 'Faldrim Ambossmar'
     assert lua.eval('NS.ScannedNpcName(1)') is None
