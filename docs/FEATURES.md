@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-173 Questgegenstände aufräumen: sicher, wahrscheinlich, unklar
-- Version: -
-- Status: geplant
+- Version: 2.74.0
+- Status: gebaut
 - Prüfung: Wenn du `/amisia questitems` eingibst (oder auf der Seite Quests oben rechts "Aufräumen" klickst), dann öffnet sich "Questgegenstände aufräumen" mit deinen Questgegenständen unter "Sicher überflüssig", "Wahrscheinlich überflüssig" und "Unklar", jeder mit Symbol, Anzahl und Grund ("startet die Quest ... (abgeschlossen)", "laut Daten für ...", "Quest ... nicht im Log"); keine Rüstung, kein Schlüssel, nichts aus der Bank.
 - Prüfung: Wenn du die Maus auf einen Questgegenstand hältst (Tasche oder Liste), dann steht im Tooltip "Quest: Name (abgeschlossen)" bzw. "(im Log)" oder "(nicht im Log)", bei einem überflüssigen grün "wird nicht mehr gebraucht" oder gelb "wahrscheinlich nicht mehr gebraucht"; Einstellungen > Quests > "Questgegenstände im Tooltip" aus nimmt die Zeile weg.
 - Prüfung: Wenn du bei einem sicheren Gegenstand auf "Löschen" klickst, dann fragt ein Fenster mit Name, Anzahl, Grund und "Gelöschte Questgegenstände lassen sich nicht zurückholen."; "Abbrechen" löscht nichts, "Löschen" einen Stapel, danach steht im Chat "Gelöscht: Name xN." (oder, wenn das Spiel es Addons verbietet, einmal "Das Spiel lässt Addons keine Gegenstände löschen: ..." und die Knöpfe verschwinden: bitte melden, welches von beiden kam).
@@ -50,8 +50,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-10-questgegenstaende.md; DECISIONS D-105. Gelöscht wird nur aus "sicher", nur im Klick, ein Stapel je Klick, nie im Kampf, nie bei offener Bank, Post oder Handel. Ob Forever Addons `DeleteCursorItem` erlaubt, ist offen: `/amisia selbsttest` nennt unter "Wahlweise vorhanden" `DeleteCursorItem`, `GetCursorInfo` und `C_Container.GetContainerItemQuestInfo`. Nichts wird gesendet.
 
 ### F-172 Daten per Nummer: Datenprüfung, Quest-Scan, NPC-Scan
-- Version: -
-- Status: geplant
+- Version: 2.74.0
+- Status: gebaut
 - Prüfung: Wenn du `/amisia selbsttest daten` eingibst (nicht im Kampf), dann steht nach etwa 5 Sekunden im Selbsttest-Fenster ein Bericht mit "NPC-Namen per Nummer", "Quests per Nummer", "Modell per Nummer", "Weitere Quellen" und am Ende "Urteil" (z. B. "NPC per Nummer: geht (sofort)" oder "geht nicht"); bitte den ganzen Bericht (Strg+A, Strg+C) an uns schicken.
 - Prüfung: Wenn du `/amisia scan quests` eingibst (oder in den Werkzeugen, Expertenmodus, auf "Quest-Scan" klickst), dann steht im Chat "Quest-Scan gestartet: 6626 von 6626 Quests offen, 20 pro Sekunde, etwa 6 min" und auf der Seite Werkzeuge "Quest-Scan läuft: ..." mit der Restzeit; `/amisia scan stop` hält an, ein zweiter Aufruf macht weiter; zum Schluss "Quest-Scan fertig: N Quests gespeichert.", dann `/reload`.
 - Prüfung: Wenn du `/amisia scan npcs` eingibst, dann läuft Phase A (2133 NPCs, etwa 8 Minuten) mit "NPC-Scan Phase A gestartet ..." im Chat, oder, wenn der Client keine Namen nennt, steht nur "Der Client nennt keine NPC-Namen per Nummer: NPC-Scan beendet." da; nach Phase A fragt ein zweiter `/amisia scan npcs` mit einem Fenster ("Phase B fragt 34814 Nummern in 11 Bereichen ab ... bis zu ...") und startet erst mit "Starten".
@@ -60,8 +60,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Heute fehlt die Stufe bei 482 von 527 Dungeonquests und 745 von 748 Questquellen der Ausrüstung; 2133 NPCs unserer Daten haben nur englische Namen. Boss-Nummern aus dem Scan (Overseer Wrex, King Op, Lady Illucia Barov) braucht bei einem deutschen Client einmal `python3 tools/build.py tables --tables DungeonEncounter --locale deDE` auf dem N100; die drei Rares der Drowned City (Gill, Umbra, Zin'aka) haben keine Begegnung und keinen deutschen Namen in einer Tabelle: dafür braucht es einen englischen Client oder eine Sichtung.
 
 ### F-171 Flugpunkte aus den Daten des Spiels
-- Version: -
-- Status: geplant
+- Version: 2.74.0
+- Status: gebaut
 - Prüfung: Wenn du unter Einstellungen > Karte und Wegpunkt "Flugmeister auf der Karte" einschaltest und als Horde die Weltkarte von Riverglades öffnest, dann steht dort ein Flugpunkt-Symbol bei Rog'mar (etwa 59.6, 45.1) mit dem Tooltip "Rog'mar, Riverglades" und "Flugmeister · Horde" (vorher fehlte er); als Allianz steht dort stattdessen nur Farholde Keep (Gretchen Mayberry).
 - Prüfung: Wenn du die Karte der Östlichen Pestländer öffnest, dann steht der Flugpunkt von Light's Hope Chapel deiner Fraktion (Allianz Khaelyn Steelwing etwa 71.7, 49.6; Horde Georgia etwa 70.5, 47.6) im Tooltip mit dem Namen des Flugmeisters und darunter "Light's Hope Chapel, Eastern Plaguelands"; bitte melden, ob das Symbol beim echten Flugmeister steht (vorher stand es bei 81.6, 59.2 und 80.2, 57.0, wo der Flugmeister in Classic steht).
 - Prüfung: Wenn du die Karte von Mount Hyjal öffnest, dann stehen dort für beide Fraktionen die Flugpunkte Summit of Eternity und Tainted Foothills; die Karte von Moonglade zeigt nur noch die normalen Flugmeister (Sindrayl für die Allianz, Faustron für die Horde), nicht mehr die der Druiden.
@@ -70,8 +70,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: DECISIONS D-103, nur auf dem N100 (nichts davon im Spiel): `tools/auto_data.py` schaut zusätzlich höchstens einmal am Tag bei wago.tools nach einem neuen `wowf`-Build, lädt dessen Tabellen und baut ihn wie einen Export des PCs auf `auto/data-<build>`; aus mit `~/addons/_auto/amisia-wago.off`. Wenn ein neuer Build gebaut wurde, dann stehen am Ende von `~/addons/_auto/amisia-data.txt` die ersten Zeilen von "Neu in diesem Build" (Items, Quests, Dungeons, Bosse, Flugpunkte, Zauber) und der ganze Bericht in `~/addons/_auto/amisia-data-diff.txt`; wenn der Blick nichts Neues fand oder scheiterte, dann steht dort eine Zeile "wago.tools (täglich, ...)". Von Hand: `python3 tools/build.py diff [ALT NEU]`.
 
 ### F-170 Boss-Porträts für alle Dungeons, Drowned City
-- Version: -
-- Status: geplant
+- Version: 2.74.0
+- Status: gebaut
 - Prüfung: Wenn du auf der Seite Dungeons das Scharlachrote Kloster (Scarlet Monastery) öffnest (Teil Übersicht), dann stehen links alle sieben Bosse in der Reihenfolge des Spiels (Interrogator Vishas bis High Inquisitor Whitemane), jeder mit dem runden Porträt seines Modells statt des Totenkopfs; ein Boss ohne Beute für dich steht grau mit "N Items · nichts für dich" oder "keine Beute bekannt" da.
 - Prüfung: Wenn du Lower und Upper Blackrock Spire öffnest, dann hat jede nur ihre eigenen Bosse (unten Highlord Omokk bis Overlord Wyrmthalak, oben Pyroguard Emberseer bis Lord Valthalak), alle mit Porträt.
 - Prüfung: Wenn du die Drowned City öffnest, dann steht dort Stufe 35-40, oben ihr eigener Ladebildschirm statt des allgemeinen Bildes, und links stehen Zul'Alai, Var'Taka, Captain Dreadrise, Deathless Guardians, Primeval Elemental und Min'loth the Serpent (die Reihenfolge des Spiels) mit Porträt; Teil Quests zeigt ihre Quests (auch "The Saltseer Captain" und "The Web of Magic"); in der Drowned City zeigt sich die Dungeon-Leiste mit "Bosse 0/6".
@@ -81,8 +81,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: DECISIONS D-101 (2026-11-10, "nimm alle Quellen die du bekommen kannst"): die Client-Tabellen jetzt auch als CSV-Export von wago.tools (Build 1.60.1.70888, `build.py tables`), je Tabelle die neueste und vollste Kopie (`tools/client_tables.py`). Damit haben die fünf neuen Forever-Dungeons die Reihenfolge und Begegnungen des Spiels (die Handreihenfolge der Drowned City und die Reihenfolge aus AllTheThings sind weg), ihre Stufe aus dem Client und ihren Ladebildschirm; 231 von 234 Bossen haben ein NPC (neu ohne: Overseer Wrex, King Op). Items und Werte unverändert. Etagenkarten der Dungeons hat auch der neue Build nicht.
 
 ### F-169 Spieler-Tooltip: Gearscore, Itemstufe und Berufe
-- Version: -
-- Status: geplant
+- Version: 2.74.0
+- Status: gebaut
 - Prüfung: Wenn du die Maus auf deinen eigenen Charakter hältst (oder ihn als Ziel nimmst und die Maus auf das Zielfenster hältst), dann steht im Tooltip unter den Zeilen des Spiels grau "Gearscore N · Itemstufe N", die Gearscore-Zahl in der Farbe deiner Ausrüstung (grün, blau, lila), die Itemstufe weiß und gleich der Zahl im Charakterfenster (bitte melden, wenn sie abweicht oder eine Fehlermeldung kommt).
 - Prüfung: Wenn du einen Beruf im Berufsfenster einmal geöffnet hast und dich wieder mit der Maus ansiehst, dann steht über der Gearscore-Zeile eine Reihe kleiner Berufssymbole, die Hauptberufe vor Kochen, Erste Hilfe und Angeln; bei einem Gildenmitglied mit Berufen in der Gildennotiz (oder im Rezeptaustausch) ebenso.
 - Prüfung: Wenn du die Maus auf einen anderen Spieler in deiner Nähe hältst (braucht: einen anderen Spieler in der Nähe), dann erscheint die Gearscore-Zeile nach einem kurzen Moment von selbst, ohne dass sich das Betrachten-Fenster öffnet; ein zweites Mal sofort; ist das Betrachten-Fenster offen oder bist du im Kampf, bleibt sie weg.
@@ -90,8 +90,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: DECISIONS D-99. Keine Spec (keine neue Nachricht, kein gespeicherter Schlüssel, keine Seite, kein neuer Abschnitt). Gearscore ist Amisias eigene Rechnung (Summe aus Itemstufe mal Gewicht des Platzes), nicht die Zahl eines anderen Addons. Gearscore-Zeile auch auf TBC und Era, die Berufe nur auf Forever. Ob Forever `GetInventoryItemID`, `CheckInteractDistance` und `C_Item.GetDetailedItemLevelInfo` hat, sagt `/amisia selbsttest`.
 
 ### F-168 Dungeon-Leiste: Bosse, Quests, Zeit und Route
-- Version: -
-- Status: geplant
+- Version: 2.74.0
+- Status: gebaut
 - Prüfung: Wenn du allein einen Dungeon betrittst, dann steht oben in der Mitte eine kleine Leiste mit seinem Namen, "Bosse 0/n" und (wenn du dort Quests hast oder bekommen kannst) "Quests n"; läufst du hinaus, ist sie weg (bitte melden, wenn sie etwas verdeckt oder eine Fehlermeldung kommt).
 - Prüfung: Wenn du den ersten Boss tötest, dann steht "Bosse 1/n"; ein Klick auf "Bosse" zeigt darunter die Liste mit Haken beim ersten und dem nächsten gold "als Nächstes"; ein Klick auf einen Boss öffnet die Seite Dungeons auf ihm; ein zweiter Klick auf "Bosse" oder Escape schließt die Liste, die Leiste bleibt.
 - Prüfung: Wenn du eine Quest dieses Dungeons im Log hast und sie fertig ist, dann steht grün "(1 fertig)" hinter "Quests n", in der Liste steht sie oben mit dem gelben "?", und ein Klick öffnet ihren Weg im Quest-Journal der Seite Dungeons.
@@ -100,8 +100,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-10-dungeon-leiste.md; DECISIONS D-98. "Route 2/5" erscheint, solange du einer eigenen Route folgst (F-167, Rechtsklick: nächster Stopp); in Raids nur mit "Auch in Raids" (Einstellungen, Dungeon-Leiste). Nichts wird gesendet.
 
 ### F-167 Eigene Routen auf der Karte: Stopps, Zeichnen, Teilen
-- Version: -
-- Status: geplant
+- Version: 2.74.0
+- Status: gebaut
 - Prüfung: Wenn du die Weltkarte öffnest, dann steht unten links eine kleine Leiste "Route"; nach einem Klick darauf, "Stopp" und drei Klicks auf die Karte stehen die Stopps 1, 2, 3, mit einer goldenen Linie verbunden; ist "Route" wieder aus, lässt sich die Karte ziehen und klicken wie immer (bitte melden, wenn die Leiste falsch sitzt, Stopps an der falschen Stelle landen oder eine Fehlermeldung "blockiert"/"tainted" kommt).
 - Prüfung: Wenn du "Zeichnen" wählst und mit gedrückter linker Maustaste ziehst, dann folgt eine blaue Linie der Maus; "Rückgängig" nimmt erst die Linie, dann den letzten Stopp; ein Klick auf einen Stopp bietet "Beschriften", "Früher", "Später", "Löschen", "Punkt teilen" (steht statt Linien nur eine Punktreihe, bitte melden).
 - Prüfung: Wenn du einen Namen ins Feld tippst, "Speichern" klickst, `/reload` machst und auf der Karte "Route", dann "Laden" öffnest, dann steht die Route unter der Zone und lädt mit einem Klick; "Mehr" > "Gespeicherte Route löschen" fragt erst.
@@ -110,8 +110,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-10-eigene-routen.md; DECISIONS D-97. Die ersten vier Prüfungen gehen allein; die fünfte (Teilen) braucht eine Gruppe mit einem zweiten Amisia (Braucht: Gruppe), darum steht keine Zeile "Braucht", die die anderen in der Testliste verstecken würde. Neu: der Kanal PARTY für diese Nachrichten (ändert D-19). Ob Forever Linien (CreateLine) und den Kartenlink hat, sagt `/amisia selbsttest gruppe` ("Routen: Kartenlink, Position").
 
 ### F-166 Lauf-Zeiten: Zwischenzeit je Boss, Bestzeit, Verlauf
-- Version: -
-- Status: geplant
+- Version: 2.74.0
+- Status: gebaut
 - Prüfung: Wenn du allein einen Dungeon betrittst und eine Minute am Eingang wartest, dann ist kein Fenster offen; beim ersten Kampf geht das Fenster "Lauf-Zeiten" mit dem Namen des Dungeons auf und die Zeit läuft (bitte melden, wenn es sich im Kampf nicht öffnet oder eine Fehlermeldung kommt).
 - Prüfung: Wenn du den ersten Boss tötest, dann steht seine Zeit in seiner Zeile; tötest du den letzten Boss, dann steht im Chat "<Dungeon> in m:ss (erste gemessene Zeit)." und im Fenster grün "Erste gemessene Zeit"; beim Rauslaufen schließt es sich.
 - Prüfung: Wenn du den Dungeon zurücksetzt und noch einmal läufst, dann steht beim nächsten Boss grau die Zeit des ersten Laufs, nach jedem Kill grün "-m:ss" oder rot "+m:ss", am Ende "Neue Bestzeit!" oder rot "+m:ss zur Bestzeit" und im Chat "(Bestzeit m:ss, ...)".
@@ -120,8 +120,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-10-lauf-zeiten.md; DECISIONS D-96. In Raids dasselbe (Einstellung "Zeitfenster auch in Raids"); eine Gruppe ändert nur die Spalte "Gruppe". Nichts wird gesendet.
 
 ### F-165 Raid-Rollen: Haupttanks, Assistenten, Plündermeister
-- Version: -
-- Status: geplant
+- Version: 2.74.0
+- Status: gebaut
 - Braucht: Raid
 - Prüfung: Wenn du als Offizier unter Aufstellung oben "Rollen" klickst, bei "Assistenten" zwei Namen aus dem Raid mit Komma einträgst, Enter drückst und als Raidleiter "Rollen jetzt setzen" klickst, dann sind beide Assistent, und im Chat steht "Rollen: Assistenten: 2 befördert." (bzw. "... schon Assistent", "... nicht im Raid").
 - Prüfung: Wenn du bei "Haupttanks, in Reihenfolge" "Aus dem Planer" klickst und dann "Rollen jetzt setzen", dann sind die Tanks im Raidfenster Haupttank, und im Chat steht "Haupttanks: N gesetzt"; lässt das Spiel es nicht zu, steht stattdessen "Haupttanks: Das Spiel lässt Addons das nicht setzen. Setze sie im Raidfenster von Hand." (bitte genau diese Zeile und die Meldung des Spiels über ein blockiertes Addon melden).
@@ -131,8 +131,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-10-raid-rollen.md; DECISIONS D-95. Nimmt nichts weg: niemand wird herabgestuft, kein Haupttank entfernt. Ob Forever Addons Haupttanks und Plündermeister setzen lässt, ist ungeprüft; ein verweigerter Teil wird bis /reload nicht mehr versucht.
 
 ### F-164 Pull- und Pausen-Timer
-- Version: -
-- Status: geplant
+- Version: 2.74.0
+- Status: gebaut
 - Braucht: Gruppe
 - Prüfung: Wenn du allein `/amisia pull` tippst, dann steht im Chat "Pull in 10 Sekunden (nur bei dir: du bist in keiner Gruppe)", unten links in Amisia zählt "Pull in 9 s" herunter, und nach 10 Sekunden steht "Pull!" im Chat.
 - Prüfung: Wenn du als Gruppenleiter `/amisia pull 15` tippst, dann sieht jeder der Gruppe die großen Zahlen des Spiels (falls der Client sie hat, `/amisia selbsttest gruppe` sagt es unter "Pull-Countdown") und im Gruppenchat "Pull in 15 Sekunden"; ohne die Zahlen des Spiels zählt der Chat 5 4 3 2 1 und "Pull!".
@@ -141,8 +141,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-10-pull-timer.md; DECISIONS D-94. Der Befehl der Pause heißt `/amisia raidpause` (en `break`), weil `/amisia pause` schon die Aufnahme pausiert; `/amisia pause 5` (mit Zahl) ist die Pause.
 
 ### F-163 Einladen: Gilde nach Rang, eigene Stichwörter, Einladungen annehmen
-- Version: -
-- Status: geplant
+- Version: 2.74.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn du als Offizier unter Aufstellung (auch ohne Liste) "Einladen" klickst, "bis Veteran" wählst und "Gilde einladen" klickst, dann fragt Amisia "N Gildenmitglieder bis Rang Veteran einladen?" und lädt nach "Einladen" einen nach dem anderen ein; die Liste zeigt sie mit "eingeladen" und "über Gilde einladen".
 - Prüfung: Wenn du unter Einstellungen, Raid-Aufstellung "Stichwörter zum Einladen" auf "raid, komm" setzt, "Einladen auf Flüstern" anschaltest und dir ein Gildenmitglied "komm" flüstert, dann wird es eingeladen; "inv" lädt dann nicht mehr ein.

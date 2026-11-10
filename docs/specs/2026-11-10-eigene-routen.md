@@ -128,6 +128,8 @@ Gruppe dieselbe Route sieht, nachdem einer sie geteilt und der andere sie angeno
 
 - 2026-11-10: Nutzer auf die Liste der neun Punkte: "1,2,3,5,8,9" -> Punkt 8 "Routen: auf der Karte zeichnen,
   nummerierte Stopps, Route oder Kartenpunkt mit der Gruppe teilen". D-97.
+- 2026-11-11: Frage 1 (Kanal `PARTY`): dem Nutzer am 2026-11-10 als Entscheidung vorgelegt, mit der Wahl "Ohne
+  Gruppen-Senden" (dann nur im Raid); er wählte beim Release "Ja, veröffentlichen" -> `PARTY` bleibt.
 - Annahme (nicht gefragt): Teilen geht in einer Gruppe über `PARTY` (neu in `Core/Comm.lua`, nur in einer eigenen
   Gruppe) und im Raid über `RAID`; nicht über einen Blob, weil Blobs nur von Gildenmitgliedern angenommen werden
   und Gruppen auch Fremde haben.

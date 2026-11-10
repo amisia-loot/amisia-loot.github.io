@@ -2261,6 +2261,7 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 
 **Durchgesetzt durch:** `tests/test_routes.lua` (Modus, Leiste, Stopps per Klick, Zeichnen mit Vereinfachung und Grenzen, Rückgängig, Leeren, andere Karte, Stopp-Menü und Beschriftung, Speichern, Umbenennen, Laden, Löschen mit Nachfrage, 40 Routen, Bereinigung beim Laden, Folgen mit Ankunft, von Hand und in der Instanz, Kampf, Teilen und Punkt mit Grenzen, jede Ablehnung beim Empfang, Angebote, nichts in die Karte geschrieben, Punkte statt Linien), `tests/test_routes_share.lua` (zwei Clients: Route in Stücken über PARTY, Angebot, Annehmen, Speichern, Punkt, RAID im Raid, Fremder bekommt nichts), `tests/test_comm.lua` (PARTY nur in eigener Gruppe), `tests/test_map_layer_safe.lua`, `tools/tests/test_contracts.py::test_two_prefixes_and_one_sender`, `tests/ui_scene.lua` (Fenster `routebar`, `routebar-off`).
 
+Nachtrag 2026-11-11: Den Kanal `PARTY` hat der Nutzer bestätigt. Er hatte die Wahl "Ohne Gruppen-Senden" (Teilen nur im Raid) und wählte beim Release von 2.74.0 "Ja, veröffentlichen".
 
 ## D-98 Dungeon-Leiste: eine Sicht auf Bosse, Quests, Uhr und Route, von selbst nur in Dungeons
 
