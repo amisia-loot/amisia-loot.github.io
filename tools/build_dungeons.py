@@ -30,7 +30,9 @@ The generated table is ns.DUNGEON_FACTS. Once tools/build_bis.py writes ns.BIS.D
 NPC ids), the planner takes that instead and this file can go.
 """
 import argparse
+import csv
 import json
+import re
 import os
 import sys
 
@@ -43,6 +45,8 @@ CLIENT = os.path.join(HERE, 'forever_dungeons_client.json')
 KEYS = os.path.join(HERE, 'forever_dungeon_keys.json')
 OUT = os.path.join(ROOT, 'Amisia', 'Data', 'DungeonData.lua')
 WAGO_DIRS = (os.path.expanduser('~/addons/_wago'), os.path.join(att_data.ATT_CACHE, '.config', '.wago'))
+# where a client table in another language lies (build.py tables --locale deDE writes the first)
+DE_DIRS = (os.path.expanduser('~/addons/_cache/wago'), os.path.expanduser('~/addons/_wago'))
 
 # LFGDungeons names that differ from the facts' names and aliases (the client's own spellings).
 LFG_NAMES = {'Stormwind Stockades': 'The Stockade', "Zul'Farak": "Zul'Farrak", 'Onyxia': "Onyxia's Lair"}
@@ -112,7 +116,7 @@ def tuning_levels(rows):
     return out
 
 
-def client_facts(facts, dirs=WAGO_DIRS, att=None):
+def client_facts(facts, dirs=WAGO_DIRS, att=None, scans=None, enc_names=None):
     """{'tables': {table: file name}, 'dungeons': {fact key: {'lvl', 'inst', 'lfg', 'order', 'enc', 'npcs',
     'order_src', 'maps'}}, 'unmatched': [names]} from the client tables in dirs (the first folder holding a
     table wins, its newest build) and, with att (att_data.load()), AllTheThings' encounters and NPCs.
@@ -126,7 +130,8 @@ def client_facts(facts, dirs=WAGO_DIRS, att=None):
     difficulty (0 and 1) by OrderIndex, each name once (only the first folder holding the table counts);
     an instance without rows there takes ATT's encounters of the instance in its file's order
     (order_src 'att': ATT's e() id is the client's encounter id in Forever's new dungeons).
-    npcs: the boss NPC of each name of the order (the facts' own order where they have one; see npcs_of())."""
+    npcs: the boss NPC of each name of the order (the facts' own order where they have one; see npcs_of());
+    where no source names one, the NPC scan by id (scans, enc_names; boss_npcs_from_scan(), D-104)."""
     tables = {}
     for t in ('LFGDungeons', 'ContentTuning', 'AreaTable', 'DungeonEncounter', 'UiMapAssignment'):
         for d in dirs:
@@ -205,6 +210,9 @@ def client_facts(facts, dirs=WAGO_DIRS, att=None):
             order = e.get('order') or rec.get('order')
             if order:
                 out.setdefault(e['key'], rec)['npcs'] = npcs_of(e, order, e.get('enc') or rec.get('enc'), index, iid)
+    if scans:
+        for key, name, npc in boss_npcs_from_scan(out, scans, enc_names or {}):
+            print(f'NPC scan: {key} {name} -> {npc}')
     if tables.get('UiMapAssignment'):
         out_maps = uimap_floors(next(d for d in dirs if att_data.wago_csv(d, 'UiMapAssignment')))
         for e in facts['dungeons']:
@@ -212,6 +220,64 @@ def client_facts(facts, dirs=WAGO_DIRS, att=None):
             if out_maps.get(inst):
                 out.setdefault(e['key'], {})['maps'] = out_maps[inst]
     return {'tables': tables, 'dungeons': {k: out[k] for k in sorted(out)}, 'unmatched': sorted(set(unmatched))}
+
+
+# ---------------------------------------------------------------- boss NPCs from the NPC scan (D-104)
+def scan_key(name):
+    """A name compared without case, blanks and punctuation (letters of every language kept)."""
+    return re.sub(r'[\W_]+', '', (name or '').casefold())
+
+
+def encounter_names(dirs, locale='deDE'):
+    """{encounter id: name} of the client table DungeonEncounter in another language
+    (DungeonEncounter.<build>.<locale>.csv, as `build.py tables --tables DungeonEncounter --locale deDE`
+    writes it; the newest build of the first folder holding one), or {} without one."""
+    pat = re.compile(r'^DungeonEncounter\.(\d+(?:\.\d+)*)\.' + re.escape(locale) + r'\.csv$')
+    for d in dirs:
+        if not d or not os.path.isdir(d):
+            continue
+        found = sorted((tuple(int(x) for x in m.group(1).split('.')), name)
+                       for name in os.listdir(d) for m in [pat.match(name)] if m)
+        if found:
+            out = {}
+            with open(os.path.join(d, found[-1][1]), encoding='utf-8-sig', newline='') as fh:
+                for row in csv.DictReader(fh):
+                    eid, name = _int(row.get('ID')), (row.get('Name_lang') or '').strip()
+                    if eid is not None and name:
+                        out[eid] = name
+            return out
+    return {}
+
+
+def boss_npcs_from_scan(dungeons, scans, enc_names):
+    """Fills the NPC id of a boss no other source names (npcs 0) from the NPC scan by id
+    (build_scan_archive.id_scans): a scanned NPC whose name is the encounter's name in the scan's
+    language: the order's own name for an English scan, the DungeonEncounter name of that language
+    (enc_names {locale: {encounter id: name}}) for any other. Of several NPCs with that name the one
+    nearest to the dungeon's other boss NPCs. In place; returns [(dungeon key, boss, NPC id)]."""
+    taken = []
+    for key, rec in dungeons.items():
+        order, enc, npcs = rec.get('order') or [], rec.get('enc') or [], rec.get('npcs')
+        if not npcs or len(npcs) != len(order):
+            continue
+        known = [n for n in npcs if n]
+        for i, name in enumerate(order):
+            if npcs[i] != 0:
+                continue
+            eid = enc[i] if i < len(enc) else None
+            for loc, part in sorted(((scans or {}).get('npcs') or {}).items()):
+                target = name if loc in ('enUS', 'enGB') else (enc_names.get(loc) or {}).get(eid)
+                if not target:
+                    continue
+                cands = sorted(nid for nid, f in part.items() if scan_key(f.get('name')) == scan_key(target))
+                if not cands:
+                    continue
+                npc = min(cands, key=lambda c: (min((abs(c - k) for k in known), default=0), c))
+                npcs[i] = npc
+                rec.setdefault('npcs_scan', []).append(name)
+                taken.append((key, name, npc))
+                break
+    return taken
 
 
 def att_instance(att, e, inst):
@@ -393,6 +459,9 @@ def main(argv=None):
                     help='read the client tables first (default: the newest copy of each table, tools/client_tables.py)')
     ap.add_argument('--no-att', action='store_true',
                     help='with --wago: without AllTheThings\' encounters and NPCs (default: its cache, see tools/att_data.py)')
+    ap.add_argument('--sv', nargs='*', help='Amisia SavedVariables with the NPC scan (default: ~/addons/_SavedVariables/Amisia.lua ...)')
+    ap.add_argument('--scan-archive', default=os.path.join(HERE, 'scan_archive.json'),
+                    help='the scan archive with the NPC scan by id ("" for none)')
     args = ap.parse_args(argv)
     with open(FACTS, encoding='utf-8') as fh:
         facts = json.load(fh)
@@ -404,7 +473,16 @@ def main(argv=None):
         if not args.wago:
             import client_tables
             args.wago = [client_tables.default_dir()]
-        client = client_facts(facts, args.wago, att)
+        # the NPC scan by id (D-104): boss NPCs no other source names, matched by the encounter's name
+        import build_scan
+        import build_scan_archive
+        svs = args.sv if args.sv is not None else build_scan_archive.default_svs()
+        scans = build_scan_archive.id_scans(args.scan_archive or None, [build_scan.load_sv(p) for p in svs])
+        enc_names = {loc: encounter_names(DE_DIRS, loc) for loc in (scans.get('npcs') or {}) if loc not in ('enUS', 'enGB')}
+        for loc, names in sorted(enc_names.items()):
+            print(f'NPC scan {loc}: {len(scans["npcs"][loc])} names; DungeonEncounter.{loc}: '
+                  + (f'{len(names)} encounters' if names else 'missing (python3 tools/build.py tables --tables DungeonEncounter --locale ' + loc + ')'))
+        client = client_facts(facts, args.wago, att, scans, enc_names)
         if not client['tables'].get('LFGDungeons') and not client['tables'].get('AreaTable'):
             raise SystemExit('no LFGDungeons or AreaTable CSV in ' + ', '.join(args.wago))
         print('client tables: ' + ', '.join(f'{t} {n}' for t, n in sorted(client['tables'].items())))

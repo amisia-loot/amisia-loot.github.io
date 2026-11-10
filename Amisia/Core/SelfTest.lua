@@ -1666,10 +1666,10 @@ end
 
 ns.ShowSelfTest = function() return ST.Show() end
 
-ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt] [kalender [schreiben]] [gruppe]"],
-    desc = L["prüft den Client, Bericht zum Kopieren (kurz: nur Probleme im Chat; kalender: die Kalender-Prüfung; kalender schreiben: die Schreibprüfung, schreibt in den Kalender; gruppe: Einladen, Raid-IDs, Buffs, Haltbarkeit, Verzauberungen)"], run = function(rest)
+ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt] [kalender [schreiben]] [gruppe] [daten]"],
+    desc = L["prüft den Client, Bericht zum Kopieren (kurz: nur Probleme im Chat; kalender: die Kalender-Prüfung; kalender schreiben: die Schreibprüfung, schreibt in den Kalender; gruppe: Einladen, Raid-IDs, Buffs, Haltbarkeit, Verzauberungen; daten: NPC-Namen, Quests und Modelle per Nummer)"], run = function(rest)
     local opts = {}
-    local short, calendar, write, group = false, false, false, false
+    local short, calendar, write, group, data = false, false, false, false, false
     for word in tostring(rest or ""):lower():gmatch("%S+") do
         if word == "kurz" or word == "short" then -- l10n-ok: the German and English sub-words
             short = true
@@ -1681,8 +1681,12 @@ ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt] [k
             write = true
         elseif word == "gruppe" or word == "group" then -- l10n-ok: the German and English sub-words
             group = true
+        elseif word == "daten" or word == "data" then -- l10n-ok: the German and English sub-words
+            data = true
         end
     end
+    -- the data probe (SelfTestData.lua): asks for NPCs and quests by id and waits for the answers
+    if data and ST.Data then return ST.Data.Start() end
     -- the group probe (SelfTestGroup.lua): its first invite runs inside this key press
     if group and ST.Group then return ST.Group.Start() end
     -- the calendar write probe (SelfTestCalendarWrite.lua): asks first, then writes

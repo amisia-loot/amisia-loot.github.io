@@ -230,7 +230,8 @@ local function titleOf(qid, name)
         title = ok and ns.Plain(title) or nil
         if type(title) == "string" and title ~= "" then return title end
     end
-    return name or "?"
+    -- the title the quest scan found in the client's language (D-104), else the data's
+    return (ns.ScannedQuestTitle and type(qid) == "number" and ns.ScannedQuestTitle(qid)) or name or "?"
 end
 
 local function questTitle(rec) return titleOf(rec[7], rec[2]) end

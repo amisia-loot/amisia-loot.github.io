@@ -1700,7 +1700,7 @@ local function questTitle(rec)
         local title = C_QuestLog.GetTitleForQuestID(qid)
         if title and title ~= "" then return title end
     end
-    return rec[2]
+    return (qid and ns.ScannedQuestTitle and ns.ScannedQuestTitle(qid)) or rec[2]
 end
 
 local FACTION_TAG = { A = " |cff4a8fe0[A]|r", H = " |cffd04040[H]|r" }

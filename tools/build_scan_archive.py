@@ -19,12 +19,20 @@ SavedVariables of 2026-10-07 were 2.3 MB and cost about 7 MB of Lua memory at ev
   `scan.sources` and `scan.retry` only what the marker covers, so its file keeps only what is new.
 - The builds (build_scan.py full, build_gear.py, build_bis.py) read the archive and the
   SavedVariables together (`with_archive`, `overlay`), so a trimmed file builds the same data.
+- The scans by id (D-104): `scan.quests` (/amisia scan quests: per quest id "title\tdifficulty
+  level\tquest level\ttype\tgroup\tobjectives" and the ids without an answer, `none`) and `scan.npcs`
+  (/amisia scan npcs: per NPC id "name\t<title>" and the ids without a name, `empty`), each in the
+  client's language `loc`. The archive keeps them per language (`quests`, `quest_none`, `npcs`,
+  `npc_empty`: a German title never replaces an English one); the marker lists their hashes and
+  ranges per language (QL, QE, NL, NE, only when there are any); `id_scans()` hands them to the
+  builds (build_scan_lists.py, build_gear.py, build_dungeonquests.py, build_dungeons.py).
 
 The hash is the addon's (ScanTrim.lua): h = (h * 31 + byte) % 1000000007 over the UTF-8 bytes,
 written in base 36. Requires lupa (to read SavedVariables).
 """
 import argparse
 import csv
+import re
 import datetime
 import glob
 import hashlib
@@ -47,11 +55,15 @@ MAX_ID = 9999999
 ABOUT = ('Amisia scan archive (tools/build_scan_archive.py): every item line of /amisia scan and the collector '
          '(items), the collector notes (sources) and random suffixes (suffix) any SavedVariables delivered; '
          'client: the ids the client table ItemSparse knows, as ranges. Never edit by hand.')
+# the scans by id (D-104): per language {id: line} and the ids without an answer as ranges
+ID_PARTS = (('quests', 'quest_none', 'none'), ('npcs', 'npc_empty', 'empty'))
+LOCALES = ('deDE', 'enUS', 'enGB', 'frFR', 'esES', 'esMX', 'ruRU', 'ptBR', 'itIT', 'koKR', 'zhCN', 'zhTW')
 
 
 # ---------------------------------------------------------------- archive
 def empty():
-    return {'v': 1, 'updated': '', 'client': None, 'items': {}, 'sources': {}, 'suffix': {}}
+    return {'v': 1, 'updated': '', 'client': None, 'items': {}, 'sources': {}, 'suffix': {},
+            'quests': {}, 'quest_none': {}, 'npcs': {}, 'npc_empty': {}}
 
 
 def _pairs(v):
@@ -89,6 +101,13 @@ def load(path=ARCHIVE):
     for k, v in (raw.get('suffix') or {}).items():
         if _id(k) and isinstance(v, dict):
             arch['suffix'][_id(k)] = {int(s): t for s, t in v.items() if str(s).lstrip('-').isdigit() and isinstance(t, str)}
+    for lines, gone, _ in ID_PARTS:
+        for loc, part in (raw.get(lines) or {}).items():
+            if loc in LOCALES and isinstance(part, dict):
+                arch[lines][loc] = {_id(k): v for k, v in part.items() if _id(k) and isinstance(v, str) and v}
+        for loc, rs in (raw.get(gone) or {}).items():
+            if loc in LOCALES and isinstance(rs, list):
+                arch[gone][loc] = ranges(i for a, b in rs for i in range(int(a), int(b) + 1))
     return arch
 
 
@@ -97,6 +116,9 @@ def text(arch):
     out = ['{', f'"v": 1,', f'"about": {json.dumps(ABOUT)},', f'"updated": {json.dumps(arch["updated"])},',
            f'"client": {json.dumps(arch["client"], sort_keys=True)},']
     parts = (('items', arch['items']), ('sources', arch['sources']), ('suffix', arch['suffix']))
+    # the scans by id only when there are any, so an archive without them stays as it was
+    extra = [(key, arch.get(key) or {}) for lines, gone, _ in ID_PARTS for key in (lines, gone)]
+    extra = [(key, val) for key, val in extra if any(val.values())]
     for i, (key, val) in enumerate(parts):
         out.append(f'"{key}": {{')
         ids = sorted(val)
@@ -105,7 +127,19 @@ def text(arch):
             if key == 'suffix':
                 v = {str(s): v[s] for s in sorted(v)}
             out.append(f'{json.dumps(str(k))}: {json.dumps(v, ensure_ascii=False)}' + (',' if n < len(ids) - 1 else ''))
-        out.append('}' + (',' if i < 2 else ''))
+        out.append('}' + (',' if i < 2 or extra else ''))
+    for i, (key, val) in enumerate(extra):
+        out.append(f'"{key}": {{')
+        locs = [loc for loc in sorted(val) if val[loc]]
+        for j, loc in enumerate(locs):
+            out.append(f'{json.dumps(loc)}: {{' if isinstance(val[loc], dict) else f'{json.dumps(loc)}: {json.dumps(val[loc])}'
+                       + (',' if j < len(locs) - 1 else ''))
+            if isinstance(val[loc], dict):
+                ids = sorted(val[loc])
+                for n, k in enumerate(ids):
+                    out.append(f'{json.dumps(str(k))}: {json.dumps(val[loc][k], ensure_ascii=False)}' + (',' if n < len(ids) - 1 else ''))
+                out.append('}' + (',' if j < len(locs) - 1 else ''))
+        out.append('}' + (',' if i < len(extra) - 1 else ''))
     out.append('}')
     return '\n'.join(out) + '\n'
 
@@ -166,7 +200,66 @@ def absorb(arch, db):
                 if have.get(s) != t:
                     stats['suffix'] += 1
                 have[s] = t
+    for lines, gone, field in ID_PARTS:
+        part = scan.get(lines)
+        if not isinstance(part, dict):
+            continue
+        loc = part.get('loc')
+        if loc not in LOCALES:
+            continue
+        have = arch[lines].setdefault(loc, {})
+        for k, line in _pairs(part.get('list')):
+            k = _id(k)
+            if not k or not isinstance(line, str) or not line or '\n' in line:
+                continue
+            if have.get(k) != line:
+                stats[lines] = stats.get(lines, 0) + 1
+            have[k] = line
+        ids = parse_ranges(part.get(field))
+        if ids:
+            old = arch[gone].get(loc) or []
+            arch[gone][loc] = ranges([i for a, b in old for i in range(a, b + 1)] + ids)
+        # a name found later wins over an earlier empty answer
+        if arch[gone].get(loc) and have:
+            arch[gone][loc] = ranges(i for a, b in arch[gone][loc] for i in range(a, b + 1) if i not in have)
     return stats
+
+
+def parse_ranges(text):
+    """The ids of the addon's ranges text "a-b,c,..." (ScanById.lua), sorted; [] for anything else."""
+    if not isinstance(text, str):
+        return []
+    out = set()
+    for a, b in re.findall(r'(\d+)(?:-(\d+))?', text):
+        a, b = int(a), int(b or a)
+        if 1 <= a <= b <= MAX_ID and b - a < 1000000:
+            out.update(range(a, b + 1))
+    return sorted(out)
+
+
+def quest_fields(line):
+    """A quest scan line as {'title', 'level' (difficulty), 'qlevel', 'tag', 'group', 'obj'}."""
+    f = line.split('\t') + [''] * 6
+    num = lambda v: int(v) if v.isdigit() else 0  # noqa: E731
+    return {'title': f[0], 'level': num(f[1]), 'qlevel': num(f[2]), 'tag': f[3] if f[3] in ('G', 'D', 'R', 'P') else '',
+            'group': num(f[4]), 'obj': f[5]}
+
+
+def npc_fields(line):
+    """An NPC scan line as {'name', 'sub'}."""
+    f = line.split('\t') + ['']
+    return {'name': f[0], 'sub': f[1]}
+
+
+def id_scans(path=ARCHIVE, dbs=()):
+    """The scans by id of the archive and the SavedVariables tables (a file's line wins):
+    {'quests': {loc: {id: quest_fields}}, 'npcs': {loc: {id: npc_fields}}, 'npc_empty': {loc: set(ids)}}."""
+    arch = load(path) if path and os.path.exists(path) else empty()
+    for db in dbs:
+        absorb(arch, db)
+    return {'quests': {loc: {k: quest_fields(v) for k, v in part.items()} for loc, part in arch['quests'].items() if part},
+            'npcs': {loc: {k: npc_fields(v) for k, v in part.items()} for loc, part in arch['npcs'].items() if part},
+            'npc_empty': {loc: {i for a, b in rs for i in range(a, b + 1)} for loc, rs in arch['npc_empty'].items() if rs}}
 
 
 def as_db(arch):
@@ -260,8 +353,28 @@ def marker_parts(arch):
     for first, last in client.get('ids') or []:
         parts.append(b36(first - prev) + '.' + b36(last - first + 1))
         prev = last
-    digest = hashlib.sha1((items + '|' + srcs + '|' + ','.join(parts)).encode('utf-8')).hexdigest()[:8]
+    extra = id_marker(arch)
+    seed = items + '|' + srcs + '|' + ','.join(parts) + ('|' + json.dumps(extra, sort_keys=True) if extra else '')
+    digest = hashlib.sha1(seed.encode('utf-8')).hexdigest()[:8]
     return items, srcs, ','.join(parts), f'{arch["updated"] or "-"}:{digest}'
+
+
+def id_marker(arch):
+    """The marker's parts of the scans by id, only those with entries: {'QL': {loc: "<step>.<hash>,..."},
+    'QE': {loc: "a-b,c"}, 'NL': ..., 'NE': ...} (ranges as ScanById.lua writes them)."""
+    out = {}
+    for (lines, gone, _), (kl, ke) in zip(ID_PARTS, (('QL', 'QE'), ('NL', 'NE'))):
+        for loc, part in sorted((arch.get(lines) or {}).items()):
+            if part:
+                prev, entries = 0, []
+                for k in sorted(part):
+                    entries.append(b36(k - prev) + '.' + b36(lua_hash(part[k])))
+                    prev = k
+                out.setdefault(kl, {})[loc] = ','.join(entries)
+        for loc, rs in sorted((arch.get(gone) or {}).items()):
+            if rs:
+                out.setdefault(ke, {})[loc] = ','.join(str(a) if a == b else f'{a}-{b}' for a, b in rs)
+    return out
 
 
 def marker_text(arch):
@@ -285,8 +398,16 @@ def marker_text(arch):
         f'    I = "{items}",',
         f'    S = "{srcs}",',
         f'    C = "{client}",',
-        '}',
     ]
+    extra = id_marker(arch)
+    if extra:
+        at = lines.index('ns.SCAN_DONE = {')
+        lines[at:at] = ['-- QL, NL: per language the lines of the quest and NPC scans by id "<step>.<hash>"; QE, NE: their',
+                      '-- ids without an answer as ranges "a-b,c" (D-104).']
+        for key in ('QL', 'QE', 'NL', 'NE'):
+            if extra.get(key):
+                lines.append(f'    {key} = {{ ' + ', '.join(f'{loc} = "{v}"' for loc, v in sorted(extra[key].items())) + ' },')
+    lines.append('}')
     import lua_data
     return lua_data.lazy('\n'.join(lines) + '\n', 'SCAN_DONE', len(arch['items']))
 
@@ -319,7 +440,8 @@ def update(archive=ARCHIVE, svs=None, wago=WAGO, marker=MARKER, today=None, log=
     before = text(arch)
     for p in (default_svs() if svs is None else svs):
         s = absorb(arch, build_scan.load_sv(p))
-        log(f'{p}: {s["items"]} new items, {s["changed"]} changed, {s["sources"]} new notes, {s["suffix"]} suffixes')
+        log(f'{p}: {s["items"]} new items, {s["changed"]} changed, {s["sources"]} new notes, {s["suffix"]} suffixes'
+            + (f', {s.get("quests", 0)} quest lines, {s.get("npcs", 0)} NPC lines' if s.get('quests') or s.get('npcs') else ''))
     got = client_ids(wago)
     if got:
         build, ids = got

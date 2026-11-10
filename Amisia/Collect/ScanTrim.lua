@@ -1,4 +1,5 @@
--- Amisia scan trim: AmisiaDB.scan (the item scan's lines, the collector's notes, the ids to ask again)
+-- Amisia scan trim: AmisiaDB.scan (the item scan's lines, the collector's notes, the ids to ask again,
+-- the quest and NPC scans by id: their lines per language and the ids without an answer, D-104)
 -- exists only to reach the N100, where tools/build_scan_archive.py keeps all of it for good in
 -- tools/scan_archive.json. The marker Data/ScanDone.lua (ns.Data("SCAN_DONE")) says what that archive
 -- held when this version was built: per item id a hash of its line, per item the hashes of its notes,
@@ -41,10 +42,68 @@ end
 
 local count = ns.Count
 
+-- The parts of the scans by id (Collect/ScanQuests.lua, ScanNpcs.lua) and their marker fields: lines per
+-- language "<step>.<hash>" (QL, NL) and the ids without an answer as ranges (QE, NE).
+local ID_PARTS = {
+    { key = "quests", lines = "QL", empty = "QE", field = "none" },
+    { key = "npcs", lines = "NL", empty = "NE", field = "empty" },
+}
+
+-- Removes from list (id -> line) every line whose hash the marker text "<step>.<hash>,..." lists for
+-- its id. Returns the count and the bytes.
+local function trimLines(list, text, spend)
+    local ids = sortedIDs(list)
+    local i, id, n, bytes = 1, 0, 0, 0
+    if not ids[1] then return 0, 0 end
+    for step, h in text:gmatch("(%w+)%.(%w+)") do
+        id = id + (tonumber(step, 36) or 0)
+        while ids[i] and ids[i] < id do i = i + 1 end
+        if not ids[i] then break end
+        if ids[i] == id then
+            local line = list[id]
+            if type(line) == "string" then
+                spend(#line / 16)
+                if hash(line) == tonumber(h, 36) then
+                    list[id] = nil
+                    n = n + 1
+                    bytes = bytes + #line + 10
+                end
+            end
+            i = i + 1
+        end
+        spend(1)
+    end
+    return n, bytes
+end
+
+-- The ranges text have without the ids of gone (both "a-b,c,..."): the rest and how many went.
+function ns.ScanTrimRanges(have, gone)
+    local SB = ns.ScanById
+    local a, b = SB.ParseRanges(have), SB.ParseRanges(gone)
+    local out, removed, j = {}, 0, 1
+    for _, r in ipairs(a) do
+        local from, to = r[1], r[2]
+        while b[j] and b[j][2] < from do j = j + 1 end
+        local k = j
+        while from <= to do
+            local g = b[k]
+            if not g or g[1] > to then
+                out[#out + 1] = { from, to }
+                break
+            end
+            if g[1] > from then out[#out + 1] = { from, g[1] - 1 } end
+            removed = removed + math.min(to, g[2]) - math.max(from, g[1]) + 1
+            from = g[2] + 1
+            k = k + 1
+        end
+    end
+    return SB.RangesText(out), removed
+end
+
 -- The work, as a function that calls pause() whenever its budget for one step is used up. Returns
 -- the counts: items, sources (items whose notes all went), notes, retry, bytes.
 local function trim(m, s, pause)
-    local res = { items = 0, sources = 0, notes = 0, retry = 0, bytes = 0 }
+    local res = { items = 0, sources = 0, notes = 0, retry = 0, bytes = 0, quests = 0, npcs = 0 }
     local budget = ns.SCAN_TRIM.budget
     local used = 0
     local function spend(n)
@@ -165,6 +224,31 @@ local function trim(m, s, pause)
         s.retry = keep
     end
 
+    -- the scans by id (quests, NPCs; D-104): lines of the scan's language whose hash the marker lists,
+    -- and the ids without an answer the archive holds too
+    for _, part in ipairs(ID_PARTS) do
+        local p = type(s[part.key]) == "table" and s[part.key] or nil
+        local loc = p and p.loc
+        if p and type(loc) == "string" then
+            local lines = type(m[part.lines]) == "table" and m[part.lines][loc]
+            if type(p.list) == "table" and type(lines) == "string" and lines ~= "" then
+                local n, bytes = trimLines(p.list, lines, spend)
+                res[part.key] = res[part.key] + n
+                res.bytes = res.bytes + bytes
+                local fresh = {}
+                for k, v in pairs(p.list) do fresh[k] = v end
+                p.list = fresh
+                p.n = count(p.list)
+            end
+            local gone = type(m[part.empty]) == "table" and m[part.empty][loc]
+            if type(p[part.field]) == "string" and type(gone) == "string" and gone ~= "" then
+                local kept, n = ns.ScanTrimRanges(p[part.field], gone)
+                p[part.field] = kept
+                res.bytes = res.bytes + n * 2
+            end
+        end
+    end
+
     -- a Lua table keeps its size when its keys go: new tables with what is left give the memory back now
     -- (in one step: anything added meanwhile is copied too)
     for _, key in ipairs({ "items", "sources" }) do
@@ -180,27 +264,31 @@ local function trim(m, s, pause)
 end
 
 local function report(res, m)
-    return L["Scan aufgeräumt (Stand %s): %d Items, %d Quellen und %d offene IDs entfernt, etwa %d KB. Es bleiben %d Items und %d Quellen, die noch nicht ausgewertet sind."]
+    local text = L["Scan aufgeräumt (Stand %s): %d Items, %d Quellen und %d offene IDs entfernt, etwa %d KB. Es bleiben %d Items und %d Quellen, die noch nicht ausgewertet sind."]
         :format(tostring(m.built or "?"), res.items, res.notes, res.retry, math.floor(res.bytes / 1024 + 0.5),
             AmisiaDB.scan.count or 0, AmisiaDB.scan.sourceCount or 0)
+    if res.quests + res.npcs > 0 then
+        text = text .. " " .. L["Dazu %d Quests und %d NPC-Namen der Scans per Nummer."]:format(res.quests, res.npcs)
+    end
+    return text
 end
 
 local function finish(res, m, loud)
     local s = AmisiaDB.scan
     local before = type(s.trim) == "table" and s.trim or {}
     s.trim = { built = m.built, at = time(), items = res.items, notes = res.notes, retry = res.retry,
-               total = (tonumber(before.total) or 0) + res.items }
+               quests = res.quests, npcs = res.npcs, total = (tonumber(before.total) or 0) + res.items }
     lastRun = res
     running = false
     -- the marker is spent for this session (what comes later is new anyway)
     ns.DropData("SCAN_DONE")
-    if loud or (before.built ~= m.built and res.items + res.notes + res.retry > 0) then ns.msg(report(res, m)) end
+    if loud or (before.built ~= m.built and res.items + res.notes + res.retry + res.quests + res.npcs > 0) then ns.msg(report(res, m)) end
     if ns.Refresh then ns.Refresh() end
 end
 
 local function ready()
     if running then return nil, L["Das Aufräumen läuft schon."] end
-    if ns.ScanRunning and ns.ScanRunning() then return nil, L["Erst den Scan anhalten (/amisia scan stop), dann aufräumen."] end
+    if (ns.ScanRunning and ns.ScanRunning()) or (ns.ScanById and ns.ScanById.Busy()) then return nil, L["Erst den Scan anhalten (/amisia scan stop), dann aufräumen."] end
     local s = AmisiaDB and AmisiaDB.scan
     if type(s) ~= "table" then return nil, L["Kein Scan gespeichert, nichts aufzuräumen."] end
     local m = ns.Data("SCAN_DONE")
@@ -260,7 +348,8 @@ function ns.ScanTrimRunning() return running end
 ns.OnEvent("PLAYER_LOGIN", function()
     if not ns.Get("tools.scanAutotrim") then return end
     C_Timer.After(ns.SCAN_TRIM.delay, function()
-        if ns.Get("tools.scanAutotrim") and not running and not (ns.ScanRunning and ns.ScanRunning()) and ns.HasData("SCAN_DONE") then
+        if ns.Get("tools.scanAutotrim") and not running and not (ns.ScanRunning and ns.ScanRunning())
+            and not (ns.ScanById and ns.ScanById.Busy()) and ns.HasData("SCAN_DONE") then
             ns.ScanTrimStart()
         end
     end)

@@ -185,7 +185,8 @@ local function npc(idx, id)
         local s = type(idx.data.N) == "table" and idx.data.N[id]
         local n, pts = nil, nil
         if type(s) == "string" then n, pts = s:match("^(.-);(.*)$") end
-        name = n or false
+        -- the name the NPC scan found in the client's language (D-104) before the data's English one
+        name = (n and ns.ScannedNpcName and ns.ScannedNpcName(id)) or n or false
         idx.npcName[id], idx.npcPts[id] = name, (pts and pts ~= "") and pts or false
     end
     return name or nil, idx.npcPts[id] or nil
@@ -329,6 +330,8 @@ function Q.Title(qid)
             return title
         end
     end
+    local scanned = ns.ScannedQuestTitle and ns.ScannedQuestTitle(qid)
+    if scanned then return scanned end
     local idx = ns.QuestIndex()
     local r = idx and idx.byId[qid]
     return r and r[NAME] or ("Quest " .. tostring(qid))

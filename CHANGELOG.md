@@ -5,6 +5,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(data): ask the game for quests and NPCs by id: a data probe, a quest scan and an NPC scan (F-172)
+
+  `/amisia selftest data` checks what this client answers when Amisia asks for an NPC's name, a quest or a model
+  by its id, and shows a report to copy with a verdict per technique. `/amisia scan quests` then asks the game
+  for every quest of the client (6626: title in your language, level, type) and `/amisia scan npcs` for the
+  names of the NPCs our data knows and, after a question with the expected duration, for Forever's new NPCs;
+  both are throttled, can be paused and resumed, never run in combat or in instances, and end quietly when the
+  client does not answer. The Tools page has buttons and progress lines for both. After the next data build the
+  dungeon and quest pages show German titles, quest levels and boss names where only English ones were known.
+
 - data(map): flight points from the game's own data, with the place in the tooltip (F-171)
 
   The flight points on the world map (shown with "Flight masters on the map") now come from the game's own list

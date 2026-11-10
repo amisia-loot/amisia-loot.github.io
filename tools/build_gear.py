@@ -322,6 +322,42 @@ def update_quest_tags(dbs, path=QUEST_TAGS, today=None):
     return {int(k): v for k, v in tags.items() if v in QUEST_TAG_CODES}
 
 
+# ---------------------------------------------------------------- the quest scan by id (D-104)
+def scan_quest_info(scans):
+    """{quest id: (level, type code)} of the quest scan (build_scan_archive.id_scans): the quest level
+    where the client gave one, else the difficulty level (0 unknown), and G/D/R/P or ''."""
+    out = {}
+    for part in ((scans or {}).get('quests') or {}).values():
+        for qid, f in part.items():
+            lvl = f.get('qlevel') or f.get('level') or 0
+            old = out.get(qid, (0, ''))
+            out[qid] = (old[0] or (lvl if 0 < lvl <= 99 else 0), old[1] or f.get('tag') or '')
+    return out
+
+
+def apply_quest_scan(src, info):
+    """The quest records of src (Q: name, quest level, minimum level, faction, zone, quest id, ...) with
+    the scanned level where theirs is 0. In place; returns how many took one."""
+    n = 0
+    for i, rec in enumerate(src.rows):
+        if rec[0] != 'Q' or len(rec) < 7 or rec[2]:
+            continue
+        lvl = (info.get(rec[6]) or (0, ''))[0]
+        if lvl:
+            src.rows[i] = rec[:2] + (lvl,) + rec[3:]
+            n += 1
+    return n
+
+
+def scan_quest_tags(qtags, info):
+    """The learned quest types with the scanned ones where the quest log taught none."""
+    out = dict(qtags)
+    for qid, (_, tag) in info.items():
+        if tag in QUEST_TAG_CODES and qid not in out:
+            out[qid] = tag
+    return out
+
+
 # ---------------------------------------------------------------- joining
 class Sources:
     """Interns source records so items can point at them by number."""
@@ -1157,6 +1193,12 @@ def main(argv=None):
         sources.append('wowsrc.com')
     rep = client_reputation(args.wago)
     qtags = update_quest_tags(dbs)
+    # the quest scan by id (D-104): levels where the sources have none, types the quest log did not teach
+    qinfo = scan_quest_info(build_scan_archive.id_scans(args.scan_archive or None, dbs))
+    took = apply_quest_scan(src, qinfo)
+    qtags = scan_quest_tags(qtags, qinfo)
+    no_level = sum(1 for r in src.rows if r[0] == 'Q' and len(r) > 2 and not r[2])
+    log(f'quest scan: {len(qinfo)} quests scanned, {took} quest levels taken; {no_level} quest sources still without a level')
     # the ids of the client's item table: the export, else the scan archive's ranges
     client = client_item_ids(args.wago)
     if client is None and args.scan_archive and os.path.exists(args.scan_archive):

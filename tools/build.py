@@ -217,7 +217,7 @@ def data_steps(sv=None, wago=WAGO, refresh_att=False):
         # marker Data/ScanDone.lua tells the addon what it may trim
         ('scan archive', 'build_scan_archive.py', ['update', '--wago', wago] + sv_args, None, None),
         # the dungeon facts first: the gear build places dungeon sources by them
-        ('dungeons', 'build_dungeons.py', ['--wago', wago], [('LFGDungeons', 'AreaTable')], []),
+        ('dungeons', 'build_dungeons.py', ['--wago', wago] + sv_args, [('LFGDungeons', 'AreaTable')], []),
         ('gear', 'build_gear.py', ['--wago', wago] + sv_args + (['--refresh-att'] if refresh_att else []), None, None),
         ('map', 'build_map.py', ['--wago', wago] + sv_args, None, None),
         ('dungeon quests', 'build_dungeonquests.py', sv_args, None, None),
@@ -232,6 +232,8 @@ def data_steps(sv=None, wago=WAGO, refresh_att=False):
         ('enchants', 'build_enchants.py', ['--wago', wago], ENCHANT_TABLES, 'skip'),
         ('dungeon art', 'build_dungeonart.py', ['--wago', wago], ['Map', 'LoadingScreens'], []),
         ('bis', 'build_bis.py', ['--wago', wago] + sv_args, None, None),
+        # last: reads the NPC ids of the files above; the quest list from QuestV2, the scanned names (D-104)
+        ('scan lists', 'build_scan_lists.py', ['--wago', wago] + sv_args, None, None),
     ]
 
 
@@ -308,6 +310,8 @@ def cmd_tables(args):
         cmd += ['--version', args.version]
     if args.tables:
         cmd += ['--tables'] + list(args.tables)
+    if getattr(args, 'locale', None):
+        cmd += ['--locale', args.locale]
     rc, _ = run(cmd)
     return rc
 
@@ -821,6 +825,8 @@ def main(argv=None):
     tb = sub.add_parser('tables', help='download the client tables from wago.tools (tools/fetch_tables.py, D-101)')
     tb.add_argument('--version', default=None, help='the client build, e.g. 1.60.1.70888 (default: the newest wowf build)')
     tb.add_argument('--tables', nargs='*', default=None, help='only these tables (default: every table the builders read)')
+    tb.add_argument('--locale', default=None, choices=('enUS', 'deDE'),
+                    help='string columns in this language (deDE: DungeonEncounter for the boss matching of the NPC scan, D-104)')
     df = sub.add_parser('diff', help='what a new client build brings: the tables of two builds compared (tools/build_diff.py)')
     df.add_argument('builds', nargs='*', help='OLD NEW (default: the build of the data on main, the newest on disk)')
     df.add_argument('--out', default=None, help='also write the full report into this file')

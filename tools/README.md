@@ -8,7 +8,7 @@ the Python that starts it has no `lupa`, it starts again in `~/.venvs/amisia`, s
 
 ```
 python3 tools/build.py data [--sv FILE] [--wago DIR] [--att DIR] [--refresh-att]
-python3 tools/build.py tables [--version V] [--tables T ...]
+python3 tools/build.py tables [--version V] [--tables T ...] [--locale deDE]
 python3 tools/build.py check
 python3 tools/build.py tocs
 python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
@@ -20,20 +20,25 @@ python3 tools/build.py errors [--sv FILE] [--all]
 
 - `data` runs the data builds in dependency order: `build_scan_archive.py update`, `build_dungeons.py --wago`, `build_gear.py`,
   `build_map.py`, `build_dungeonquests.py`, `build_quests.py`, `build_professions.py`,
-  `build_talents.py`, `build_magescrolls.py`, `build_raidcheck.py`, `build_enchants.py`, `build_dungeonart.py --wago`, `build_bis.py`. It stops at the first build
+  `build_talents.py`, `build_magescrolls.py`, `build_raidcheck.py`, `build_enchants.py`, `build_dungeonart.py --wago`, `build_bis.py`,
+  `build_scan_lists.py` (last: it reads the NPC ids of the files before it). It stops at the first build
   that fails and ends with `git diff --stat` of `Amisia/Data` and `tools`. Without `--wago` it first
   chooses the newest, fullest copy of every client table (`client_tables.py`, below) and prints per table
   the file it took (version, rows, source); `--wago DIR` reads only that folder instead. Professions, talents, mage scrolls and the raid check are skipped with a
   note naming the missing tables (`build.py tables`, or export them on the PC with `tools/export_db2.ps1 -Tables ...`),
   dungeons and dungeon art fall back to their kept snapshots. `--sv` goes to `build_gear.py`,
   `build_map.py` (learned entrances), `build_professions.py` (trainers read in the game), `build_dungeonquests.py` (the collector's own quest observations),
-  `build_bis.py` and `build_scan_archive.py` (default: what each finds, e.g. `~/addons/_SavedVariables/Amisia.lua`);
+  `build_bis.py`, `build_scan_archive.py`, `build_dungeons.py` and `build_scan_lists.py` (the scans by id, D-104;
+  default: what each finds, e.g. `~/addons/_SavedVariables/Amisia.lua`);
   `--att DIR` builds every step from another AllTheThings download (it sets `AMISIA_ATT_CACHE`, see
   `att_data.py`; e.g. a fresh download in `~/addons/_cache/att_<date>` to compare before it replaces the
   cache); `--refresh-att` downloads the AllTheThings data first. `data` never asks wago.tools: it builds
   from what is on disk, so the same files give the same data.
 - `tables` downloads the client tables from wago.tools (`fetch_tables.py`, below): the newest `wowf` build
   or `--version`, every table of `client_tables.TABLES` or only `--tables`. The one step that asks the site.
+  `--locale deDE` writes `<Table>.<build>.deDE.csv` beside the others (the builders' chooser never takes such a
+  file): only `DungeonEncounter` is wanted that way, once per build, for the boss matching of the NPC scan
+  (`build_dungeons.py`, D-104).
 - `check` runs `tests/syntax.cjs`, `tests/run.py`, the layout rules of every page and
   window (`tools/ui_layout.py rules`, see below), `pytest tools/tests` (which holds the
   "generated file is current" checks), a UTF-8 check of every addon text file (no byte order mark),
@@ -363,10 +368,44 @@ memory at every login, so it is kept here for good and the addon lets go of what
   trimmed file builds the same `GearData.lua` and `forever.js` (`tools/tests/test_scan_archive.py`
   runs that round trip with the real files when they are there).
 
+The scans by id (D-104; `Collect/ScanQuests.lua`, `ScanNpcs.lua`) ride along: `scan.quests` and `scan.npcs`
+of a file go into the archive keys `quests`, `quest_none`, `npcs`, `npc_empty`, per language (`loc` of the
+scan; a German title never replaces an English one), the file's line winning, an id named later leaving the
+empty ranges. The keys stand in the file only once there is a scan. The marker gets `QL`/`NL` (per language
+`<step>.<hash>` of the lines) and `QE`/`NE` (the ids without an answer, `a-b,c`), also only then, and the trim
+takes exactly those out of `scan.quests`/`scan.npcs` (their progress stays). `id_scans(archive, dbs)` hands
+the builds `{quests: {loc: {id: {title, level, qlevel, tag, group, obj}}}, npcs: {loc: {id: {name, sub}}},
+npc_empty}`: `build_dungeonquests.py` and `build_gear.py` take quest levels where the data has none (and
+`build_gear.py` the type for `QT`), `build_dungeons.py` boss NPC ids, `build_scan_lists.py` the names.
+
 Measured 2026-10-08 with the file of 2026-10-07 (2.24 MB; stub, lupa, `tools/load_cost.py --sv`): the
 addon load with it 10.5 MB of Lua memory (the addon alone 6.4 MB, so the file cost about 4 MB here),
 after the trim at login 6.6 MB. The trimmed table written back is 6 KB instead of 2.4 MB, and a login
 with it costs 20 KB over the addon alone.
+
+## build_scan_lists.py: what the scans by id ask, and the names they found (D-104)
+
+```
+python3 tools/build_scan_lists.py [--wago DIR] [--sv FILE...] [--scan-archive FILE] [--data DIR]
+```
+
+- `Amisia/Data/ScanLists.lua` (lazy `SCAN_LISTS`): `Q` every quest id of the client table `QuestV2` (ranges
+  `<step>.<length>`), `NA` phase A of the NPC scan: every NPC id the data files name (DungeonData, BisData,
+  QuestData givers, GearData rares, mobs and vendors, MapData `U:` points; `<step>,<step>`), `NB` phase B: the
+  ids from `FOREVER_MIN` (200000) up in clusters no more than `GAP` (1000) apart, each padded by `PAD` (250).
+  For 1.60.1.70888: 6626 quests, 2133 NPCs (quest givers 1423, map points 357, bosses 269/231, mobs 191, rares
+  155, vendors 110), phase B 11 ranges with 34814 ids.
+- `Amisia/Data/ScanNames.lua` (lazy `SCAN_NAMES`): `L = {deDE = {Q = {[quest] = title}, N = {[npc] = name}}}`,
+  every language but English (the data has those); the addon shows them where the data has only the English
+  name (`ns.ScannedQuestTitle`, `ns.ScannedNpcName`: quest titles the client has not loaded, boss names on the
+  page Dungeons, quest givers). Empty until the first scan.
+- Boss NPC ids: `build_dungeons.py` (`boss_npcs_from_scan`) gives a boss without an NPC (`npcs` 0) the
+  scanned NPC whose name is the encounter's name in the scan's language: the order's own name for an English
+  scan, `DungeonEncounter.<build>.deDE.csv` (`build.py tables --tables DungeonEncounter --locale deDE`, in
+  `~/addons/_cache/wago` or `~/addons/_wago`) for a German one; of several, the nearest to the dungeon's other
+  bosses. The client names tooltips only in its own language, so without that table a German scan cannot
+  match. Rares without an encounter (the Drowned City's Gill, Umbra, Zin'aka) have no German name in any
+  table: they need an English client or a sighting.
 
 ## build_scan.py
 

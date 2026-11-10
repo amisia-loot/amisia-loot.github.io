@@ -262,7 +262,14 @@ function ns.ScanCommand(rest)
     local word, arg = rest:match("^(%S*)%s*(.*)$")
     word = (word or ""):lower()
     if word == "stop" then
+        -- every scan: items, quests, NPCs
         ns.ScanStop()
+        if ns.QuestScan then ns.QuestScan.Stop() end
+        if ns.NpcScan then ns.NpcScan.Stop() end
+    elseif word == "quests" or word == "quest" then   -- l10n-ok: typed sub-words
+        if ns.QuestScan then ns.QuestScan.Command(arg) else ns.msg(L["Den Quest-Scan gibt es nur in WoW Forever."]) end
+    elseif word == "npcs" or word == "npc" then   -- l10n-ok: typed sub-words
+        if ns.NpcScan then ns.NpcScan.Command(arg) else ns.msg(L["Den NPC-Scan gibt es nur in WoW Forever."]) end
     elseif word == "retry" then
         local ok, why = ns.ScanRetry()
         if not ok and why then ns.msg(why) end
@@ -288,7 +295,7 @@ function ns.ScanCommand(rest)
     else
         local from, to = rest:match("^(%d+)%s+(%d+)$")
         if not from and rest ~= "" then
-            ns.msg(L["Aufruf: /amisia scan [<von> <bis>] | gear | retry | aufräumen | stop | status | rate <n>"])
+            ns.msg(L["Aufruf: /amisia scan [<von> <bis>] | gear | quests | npcs | retry | aufräumen | stop | status | rate <n>"])
             return
         end
         local ok, why = ns.ScanStart(from and tonumber(from), to and tonumber(to))
@@ -300,9 +307,13 @@ ns.RegisterSettings{ key = "tools", label = L["Werkzeuge"], order = 95, group = 
     { key = "tools.collect", type = "toggle", label = L["Item-Sammler"], default = true,
       tip = L["Merkt sich Items aus Taschen, Händlern, Quests, Auktionshaus, Tooltips und Loot mit ihrer Quelle."] },
     { key = "tools.scanRate", type = "slider", label = L["Scan-Rate (Anfragen pro Sekunde)"], default = 100, min = 10, max = 1000, step = 10, tip = L["So viele Items fragt /amisia scan pro Sekunde beim Spiel an. Weniger ist schonender."] },
+    { key = "tools.questRate", type = "slider", label = L["Quest-Scan (Abfragen pro Sekunde)"], default = 20, min = 5, max = 50, step = 5,
+      tip = L["So viele Quests fragt /amisia scan quests pro Sekunde beim Spiel an; kommen Antworten zu spät, wird der Scan von selbst langsamer."] },
+    { key = "tools.npcRate", type = "slider", label = L["NPC-Scan (Abfragen pro Sekunde)"], default = 5, min = 1, max = 20, step = 1,
+      tip = L["So viele NPC-Tooltips liest /amisia scan npcs pro Sekunde; bleiben bekannte NPCs leer, wird der Scan von selbst langsamer."] },
     { key = "tools.scanAutotrim", type = "toggle", label = L["Ausgewertete Scan-Daten beim Login entfernen"], default = true,
       tip = L["Was der Build schon im Scan-Archiv hat (Data/ScanDone.lua), fliegt ein paar Sekunden nach dem Login aus der gespeicherten Datei; nur Neues bleibt. /amisia scan aufräumen macht es sofort."] },
 }}
-ns.RegisterSlash("scan", { args = L["[von bis] | gear | retry | aufräumen | stop | status | rate <n>"], desc = L["Item-Scan"], run = function(rest)
+ns.RegisterSlash("scan", { args = L["[von bis] | gear | quests | npcs | retry | aufräumen | stop | status | rate <n>"], desc = L["Item-Scan, Quest-Scan, NPC-Scan"], run = function(rest)
     ns.ScanCommand(rest)
 end })

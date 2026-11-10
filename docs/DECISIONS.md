@@ -2468,3 +2468,67 @@ der Bericht neben der Statusdatei, nur über `fetch_tables.py`), `tools/tests/te
 geändert, Zahlen mit Toleranz, eine Tabelle nur in einem Build, Berufe ohne Klassenzauber),
 `tools/tests/test_fetch_tables.py::test_latest_only_prints_the_newest_build`,
 `tools/tests/test_contracts.py::test_no_tool_fetches_from_the_forbidden_sites`.
+
+## D-104 Daten per Nummer: erst die Datenprüfung, dann Quest-Scan und NPC-Scan, alles über das Scan-Archiv
+
+**Datum:** 2026-11-10
+**Entscheidung:** Amisia fragt den eigenen Client per Nummer nach Quests und NPCs (F-172, Spec
+`docs/specs/2026-11-10-quest-und-npc-scan.md`); was er sagt, geht wie der Item-Scan über die SavedVariables in
+das Scan-Archiv des N100 und mit dem nächsten Datenbau ins Addon.
+- **Erst prüfen:** `/amisia selbsttest daten` fragt harmlos (nur lesen, gedrosselt, nicht im Kampf und nicht in
+  einer Bosssperre) NPC-Namen über `C_TooltipInfo.GetHyperlink` und einen eigenen versteckten Tooltip (nie
+  `GameTooltip`), Quests über `RequestLoadQuestByID`, ein eigenes Modell mit `SetCreature`, Vignetten, Quests
+  auf der Karte, das Dungeonjournal und die Flugkarte; die Urteile ("ok", "retry", "none") stehen je
+  Client-Build in `AmisiaDB.probe`. Der NPC-Scan richtet sich danach: "none" beendet ihn mit einer Zeile, ohne
+  Urteil macht er erst eine Mini-Probe mit drei bekannten NPCs; der Quest-Scan liest den Quest-Tooltip nur bei
+  "ok". Ein Urteil eines anderen Builds zählt nicht.
+- **Quest-Scan** (`/amisia scan quests`): die Quests der Client-Tabelle `QuestV2` (die Liste baut
+  `tools/build_scan_lists.py` nach `Data/ScanLists.lua`), 20 pro Sekunde (`tools.questRate`), halb so schnell
+  nach fünf Zeitüberschreitungen in Folge, 4 s Wartezeit, zwei Versuche; Titel mit "<" am Anfang gelten als
+  Platzhalter. Antworten die ersten 50 Quests eines Laufs alle nicht, endet er mit einer Zeile und zählt nicht.
+- **NPC-Scan** (`/amisia scan npcs`): Phase A die NPCs, die unsere Daten nennen; Phase B die Nummernbereiche
+  der neuen Forever-NPCs (aus den Nummern unserer Daten ab 200000: Häufungen mit höchstens 1000 Abstand, je 250
+  Rand; Daten, kein Code), nur nach `W.Confirm` mit der Dauer. 5 pro Sekunde (`tools.npcRate`), ein zweiter
+  Versuch nach 1 s, halb so schnell und noch einmal gefragt, wenn fünf bekannte NPCs in Folge leer bleiben.
+  Nummern ohne Namen als Bereiche, damit nichts doppelt gefragt wird.
+- **Gespeichert** wird kompakt in der Sprache des Clients (`loc` einmal je Scan; ein Sprachwechsel, solange
+  Zeilen der anderen Sprache warten, wird abgelehnt), nie im Kampf und nie in einer Instanz gefragt, nichts
+  gesendet, keine neue Nachricht. Nur ein Scan per Nummer läuft zur Zeit, und nicht neben dem Item-Scan.
+- **Archiv und Aufräumen (D-34):** `tools/scan_archive.json` hält `quests`, `quest_none`, `npcs`, `npc_empty`
+  je Sprache (ein deutscher Titel ersetzt nie einen englischen); der Marker `Data/ScanDone.lua` bekommt `QL`,
+  `QE`, `NL`, `NE`, und `Collect/ScanTrim.lua` nimmt genau das aus der Datei. Ohne Scans bleiben Archiv und
+  Marker Byte für Byte wie vorher.
+- **Was die Builds daraus nehmen:** die Stufe, wo die Daten keine haben (`build_dungeonquests.py` nach den
+  eigenen Beobachtungen, die Questquellen von `build_gear.py`), die Art einer Quest, wo das Questlog keine
+  lehrte (`QT` der Ausrüstungsdaten), die Titel und Namen in der Sprache des Scans (`Data/ScanNames.lua`; das
+  Addon zeigt sie, wo die Daten nur den englischen Namen haben: Questtitel, Bossnamen der Seite Dungeons,
+  Questgeber; die englischen Namen bleiben Schlüssel), und die Nummer eines Bosses, die keine Quelle kennt
+  (`build_dungeons.py`): ein gescannter NPC, dessen Name der Name der Begegnung in der Sprache des Scans ist.
+  Der Client nennt Tooltips nur in seiner Sprache; bei einem deutschen Scan kommt der deutsche Name der
+  Begegnung aus `DungeonEncounter` in deDE (`python3 tools/build.py tables --tables DungeonEncounter --locale
+  deDE`, neu `--locale` an `build.py tables`; ändert D-101 "nur enUS" für diese eine Tabelle), bei mehreren
+  gleichnamigen der nächste an den anderen Bossen des Dungeons. Rares ohne Begegnung (Gill, Umbra, Zin'aka in
+  der Drowned City) haben keinen deutschen Namen in einer Tabelle: dafür braucht es einen englischen Client
+  oder eine Sichtung.
+
+**Grund:** Nutzer 2026-11-10 auf acht Vorschläge, wie andere Werkzeuge ihre Daten sammeln (wie D-102, D-103):
+"ja mach deine empfehling"; die Vorschläge 1 ("Probe im Selbsttest: zeigt, ob NPC-Namen und Quests per Nummer
+auf Forever funktionieren"), 2 ("Quest-Scan per Nummer: deutsche Titel, Stufe und Art aller 6626 Quests. Heute
+fehlt bei vielen Quests die Stufe") und 3 ("NPC-Scan per Nummer: deutsche NPC-Namen und die Nummern der Bosse
+und Rares, die wir nur vom Namen kennen"). Dass NPC-Namen per Nummer auf Forever gehen, hat öffentlich niemand
+bestätigt; darum gehört die Prüfung dazu, und beide Scans schalten sich still ab, wenn der Client nicht antwortet.
+
+**Folge:** Heute ohne Stufe: 482 von 527 Dungeonquests, 745 von 748 Questquellen der Ausrüstung; `QuestData.lua`
+hat kein Feld für die Queststufe (nur die Mindeststufe, vollständig) und bekommt keins. 2133 NPCs unserer Daten
+haben nur englische Namen (Phase A, etwa 8 Minuten bei 5 pro Sekunde); Phase B 34814 Nummern in 11 Bereichen
+(bis zu knapp 4 Stunden bei zwei Abfragen je Nummer); der Quest-Scan 6626 Quests (etwa 6 Minuten). Neue Dateien
+`Data/ScanLists.lua` (etwa 12 KB) und `Data/ScanNames.lua` (leer bis zum ersten Scan), beide lazy. Im Spiel nicht
+geprüft: ob der Client die Namen nennt, wie schnell, und ob ungesehene NPCs gehen (Offene Fragen der Spec).
+
+**Durchgesetzt durch:** `tests/test_selftest_data.lua` (sofort, spät, nie, geheim, Kampf, ohne Funktionen,
+Urteile gespeichert), `tests/test_scan_quests.lua` (Takt, Zeitüberschreitung, Platzhalter, fortsetzen,
+anhalten, die 50 ohne Antwort, Kampf, Instanz, Sprache, die Seite Werkzeuge), `tests/test_scan_npcs.lua`
+(Phase A, zweiter Versuch, langsamer bei leeren, fortsetzen, die Frage vor Phase B, Bereiche, Mini-Probe,
+Kampf, Instanz, eigener Tooltip), `tests/test_scan_trim_ids.lua` (Aufräumen je Sprache, Bereiche),
+`tools/tests/test_scan_ids.py` (Archiv je Sprache, Marker, Aufräumen im Addon, Listen und Namen, die Builds
+mit Stufen, Arten und Boss-Nummern, ein leerer Teil ändert nichts), `tools/tests/test_scan_archive.py::test_the_committed_marker_is_current`.

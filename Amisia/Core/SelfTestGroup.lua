@@ -51,6 +51,9 @@ GT.FUNCTIONS = {
     -- F-167: a shared point's link (only of the client's own waypoint) and where the player stands
     { L["Routen: Kartenlink, Position"], { "C_Map.GetUserWaypointHyperlink", "C_Map.GetUserWaypoint", "C_Map.GetBestMapForUnit",
         "C_Map.GetPlayerMapPosition", "IsMouseButtonDown" } },
+    -- F-172: the scans by id (/amisia selbsttest daten says whether they answer)
+    { L["Daten per Nummer"], { "C_TooltipInfo.GetHyperlink", "C_QuestLog.RequestLoadQuestByID", "C_QuestLog.HaveQuestData",
+        "C_QuestLog.GetTitleForQuestID", "C_QuestLog.GetQuestDifficultyLevel", "C_QuestLog.GetQuestTagInfo" } },
 }
 -- The system message templates the invite status would read (check 10).
 GT.TEMPLATES = { "ERR_INVITE_PLAYER_S", "ERR_DECLINE_GROUP_S", "ERR_ALREADY_IN_GROUP_S", "ERR_BAD_PLAYER_NAME_S", "ERR_GROUP_FULL",

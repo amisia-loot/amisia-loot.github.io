@@ -57,6 +57,9 @@ Raid\AwardHistory.lua
 Raid\BankNeeds.lua
 Raid\BankLog.lua
 Collect\Scan.lua [AllowLoadGameType camelot]
+Collect\ScanById.lua [AllowLoadGameType camelot]
+Collect\ScanQuests.lua [AllowLoadGameType camelot]
+Collect\ScanNpcs.lua [AllowLoadGameType camelot]
 Collect\Collect.lua [AllowLoadGameType camelot]
 Collect\ScanTrim.lua [AllowLoadGameType camelot]
 Collect\Drops.lua [AllowLoadGameType camelot]
@@ -77,6 +80,8 @@ Data\TalentData.lua [AllowLoadGameType camelot]
 Data\MageScrollData.lua [AllowLoadGameType camelot]
 Data\DungeonArt.lua [AllowLoadGameType camelot]
 Data\ScanDone.lua [AllowLoadGameType camelot]
+Data\ScanLists.lua [AllowLoadGameType camelot]
+Data\ScanNames.lua [AllowLoadGameType camelot]
 Data\RaidCheckData.lua [AllowLoadGameType camelot]
 Data\EnchantData.lua [AllowLoadGameType camelot]
 Gear\Gear.lua [AllowLoadGameType camelot]
@@ -169,3 +174,4 @@ Core\SelfTest.lua
 Core\SelfTestCalendar.lua
 Core\SelfTestCalendarWrite.lua
 Core\SelfTestGroup.lua
+Core\SelfTestData.lua

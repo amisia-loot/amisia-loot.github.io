@@ -52,6 +52,11 @@ local function makeClient(opts)
     _G.ConfirmReadyCheck = function() error("ConfirmReadyCheck called") end
     -- F-163/F-164: only looked up, never called by the probe
     C_PartyInfo.DoCountdown = function() error("DoCountdown called") end
+    -- F-172: the scans by id, only looked up here
+    C_TooltipInfo.GetHyperlink = function() error("GetHyperlink called") end
+    for _, name in ipairs({ "RequestLoadQuestByID", "HaveQuestData", "GetTitleForQuestID", "GetQuestDifficultyLevel", "GetQuestTagInfo" }) do
+        C_QuestLog[name] = function() error(name .. " called") end
+    end
     _G.AcceptGroup = function() error("AcceptGroup called") end
     _G.StaticPopup_Hide = function() end
     -- F-165: the roles of the lineup, only looked up

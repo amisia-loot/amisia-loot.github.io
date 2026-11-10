@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-172 Daten per Nummer: Datenprüfung, Quest-Scan, NPC-Scan
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du `/amisia selbsttest daten` eingibst (nicht im Kampf), dann steht nach etwa 5 Sekunden im Selbsttest-Fenster ein Bericht mit "NPC-Namen per Nummer", "Quests per Nummer", "Modell per Nummer", "Weitere Quellen" und am Ende "Urteil" (z. B. "NPC per Nummer: geht (sofort)" oder "geht nicht"); bitte den ganzen Bericht (Strg+A, Strg+C) an uns schicken.
+- Prüfung: Wenn du `/amisia scan quests` eingibst (oder in den Werkzeugen, Expertenmodus, auf "Quest-Scan" klickst), dann steht im Chat "Quest-Scan gestartet: 6626 von 6626 Quests offen, 20 pro Sekunde, etwa 6 min" und auf der Seite Werkzeuge "Quest-Scan läuft: ..." mit der Restzeit; `/amisia scan stop` hält an, ein zweiter Aufruf macht weiter; zum Schluss "Quest-Scan fertig: N Quests gespeichert.", dann `/reload`.
+- Prüfung: Wenn du `/amisia scan npcs` eingibst, dann läuft Phase A (2133 NPCs, etwa 8 Minuten) mit "NPC-Scan Phase A gestartet ..." im Chat, oder, wenn der Client keine Namen nennt, steht nur "Der Client nennt keine NPC-Namen per Nummer: NPC-Scan beendet." da; nach Phase A fragt ein zweiter `/amisia scan npcs` mit einem Fenster ("Phase B fragt 34814 Nummern in 11 Bereichen ab ... bis zu ...") und startet erst mit "Starten".
+- Prüfung: Wenn nach den Scans ein `/reload` gemacht ist, der N100 die Daten gebaut hat (`python3 tools/build.py data`) und die neue Version veröffentlicht ist, dann zeigen die Seiten Dungeons und Quests bei Quests, die der Client noch nicht geladen hat, den deutschen Titel und die Stufe, und beim nächsten Login meldet "Scan aufgeräumt ..." auch "Dazu N Quests und M NPC-Namen der Scans per Nummer.".
+- Notiz: Spec `docs/specs/2026-11-10-quest-und-npc-scan.md`, DECISIONS D-104. Die SavedVariables kommen von selbst über Syncthing zum N100; besser werden die Daten erst nach dem nächsten Datenbau und Release. Ob NPC-Namen per Nummer auf Forever gehen, hat öffentlich niemand bestätigt: die Datenprüfung zeigt es, und der NPC-Scan schaltet sich still ab, wenn der Client nicht antwortet.
+- Notiz: Heute fehlt die Stufe bei 482 von 527 Dungeonquests und 745 von 748 Questquellen der Ausrüstung; 2133 NPCs unserer Daten haben nur englische Namen. Boss-Nummern aus dem Scan (Overseer Wrex, King Op, Lady Illucia Barov) braucht bei einem deutschen Client einmal `python3 tools/build.py tables --tables DungeonEncounter --locale deDE` auf dem N100; die drei Rares der Drowned City (Gill, Umbra, Zin'aka) haben keine Begegnung und keinen deutschen Namen in einer Tabelle: dafür braucht es einen englischen Client oder eine Sichtung.
+
 ### F-171 Flugpunkte aus den Daten des Spiels
 - Version: -
 - Status: geplant

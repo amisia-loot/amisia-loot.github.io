@@ -200,7 +200,9 @@ local function detailItems(e)
     out = {}
     for _, jb in ipairs(ns.Dungeons.JournalBosses(e.key, e.bosses)) do
         local b = jb.b
-        local head = { kind = "boss", text = b.name, b = b, npc = jb.npc, items = {} }
+        -- shown: the name in the client's language where the NPC scan found it (D-104); text stays the key
+        local head = { kind = "boss", text = b.name, shown = ns.ScannedNpcName and jb.npc and ns.ScannedNpcName(jb.npc) or nil,
+                       b = b, npc = jb.npc, items = {} }
         out[#out + 1] = head
         for _, it in ipairs(b.items) do
             local row = { kind = "item", id = it.id, it = it, rec = it.rec, wished = it.wished, owned = it.owned }
@@ -235,7 +237,7 @@ local function bossHeads(B, e)
     local heads = {}
     for _, row in ipairs(detailItems(e)) do
         if row.kind == "boss" then
-            heads[#heads + 1] = { kind = "boss", text = row.text, b = row.b, npc = row.npc, items = row.items, n = #heads + 1,
+            heads[#heads + 1] = { kind = "boss", text = row.text, shown = row.shown, b = row.b, npc = row.npc, items = row.items, n = #heads + 1,
                 killed = JP.BossKilled(e.key, row.text) }
         end
     end
@@ -274,7 +276,7 @@ local function wishItems(e)
     local out, head = {}, nil
     for _, row in ipairs(detailItems(e)) do
         if row.kind == "boss" then
-            head = { kind = "boss", text = row.text, b = row.b, items = {}, killed = JP.BossKilled(e.key, row.text) }
+            head = { kind = "boss", text = row.text, shown = row.shown, b = row.b, items = {}, killed = JP.BossKilled(e.key, row.text) }
         elseif (row.wished or row.rec) and head then
             if #head.items == 0 then out[#out + 1] = head end
             out[#out + 1] = row
@@ -406,7 +408,8 @@ local function fillDetailRow(r, e)
     r.way:SetText("")
     if e.kind == "boss" then
         -- killed in the run (D-72): the ready check's tick, the name grey
-        r.name:SetText(e.killed and (KILLED .. GREY .. e.text .. "|r") or (GOLD_TEXT .. e.text .. "|r"))
+        local shown = e.shown or e.text
+        r.name:SetText(e.killed and (KILLED .. GREY .. shown .. "|r") or (GOLD_TEXT .. shown .. "|r"))
         r.slot:SetText("")
         r.gain:SetText("")
         r.rate:SetText(bossRate(e.b))
@@ -711,7 +714,8 @@ local function fillBossRow(r, h)
     r.sel:SetShown(h.on and true or false)
     setPortrait(r.port, h.b.npc or h.npc)
     r.port:SetAlpha(h.killed and 0.5 or 1)
-    local name = h.killed and (KILLED .. GREY .. h.text .. "|r") or ((h.on and GOLD_TEXT or "|cffffffff") .. h.text .. "|r")
+    local shown = h.shown or h.text
+    local name = h.killed and (KILLED .. GREY .. shown .. "|r") or ((h.on and GOLD_TEXT or "|cffffffff") .. shown .. "|r")
     r.name:SetText(GREY .. h.n .. ".|r " .. name)
     r.sub:SetText(bossLine(h))
 end
@@ -730,7 +734,7 @@ fillBossView = function(B, h, n)
     end
     setPortrait(head.port, h.b.npc or h.npc)
     head.port:SetAlpha(h.killed and 0.5 or 1)
-    head.name:SetText(GOLD_TEXT .. h.text .. "|r")
+    head.name:SetText(GOLD_TEXT .. (h.shown or h.text) .. "|r")
     local parts = { BTEXT.of:format(h.n, n) }
     local rate = bossRate(h.b)
     if rate ~= "" then parts[#parts + 1] = rate end
@@ -794,7 +798,7 @@ local function buildBossView(B, top)
             if not h then return end
             B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry, h.b.npc and h.b or h))
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(h.text, 1, 0.82, 0)
+            GameTooltip:AddLine(h.shown or h.text, 1, 0.82, 0)
             GameTooltip:AddLine(BTEXT.bossTip, 0.6, 0.6, 0.6, true)
             GameTooltip:Show()
         end)

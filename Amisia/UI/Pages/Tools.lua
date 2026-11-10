@@ -1,4 +1,5 @@
--- Tools (expert mode): the item scan and the collector that build the data files, and the guild's
+-- Tools (expert mode): the item scan, the quest and NPC scans by id (D-104) and the collector that build
+-- the data files, and the guild's
 -- drop data: kills own and heard, the list per instance and boss with the rates, the sharing switch
 -- and the text "Drops für die Website" (in place of the list).
 local ADDON, ns = ...
@@ -8,8 +9,8 @@ local page
 local exportOpen = false
 local exportText = ""
 
--- rows of 18 under the drop controls down to the footer (14 x 18 = 252 of 269)
-local DROP_ROWS, DROP_ROW_H = 14, 18
+-- rows of 18 under the drop controls down to the footer (12 x 18 = 216 of 221)
+local DROP_ROWS, DROP_ROW_H = 12, 18
 local GOLD = { 1, 0.82, 0 }
 local GREY = { 0.56, 0.53, 0.64 }
 local WHITE = { 1, 1, 1 }
@@ -125,28 +126,34 @@ end
 ns.RegisterPanel{ key = "tools", label = L["Werkzeuge"], sub = L["Daten teilen, einfügen und prüfen."], icon = "Interface\\Icons\\INV_Misc_Gear_01", order = 80, group = "guild", expert = true,
     create = function(parent)
         local f = W.Page(parent)
-        -- the head row: the scan's buttons; under it its state and what to do with it (two lines each)
-        f:Bands({ "row", { "line", lines = 2 }, { "line", lines = 2 } })
+        -- the head row: the scans' buttons; under it their state (item scan, quest scan, NPC scan, collector)
+        -- and what to do with it (two lines)
+        f:Bands({ "row", { "line", lines = 4 }, { "line", lines = 2 } })
         local gear = W.Button(f, L["Ausrüstungs-Scan"], 140, function() ns.ScanCommand("gear"); ns.Refresh() end)
         local resume = W.Link(f, L["Scan fortsetzen"], function() ns.ScanCommand(""); ns.Refresh() end)
         local retry = W.Link(f, L["Offene wiederholen"], function() ns.ScanCommand("retry"); ns.Refresh() end)
-        local stop = W.Link(f, L["Anhalten"], function() ns.ScanStop(); ns.Refresh() end)
+        local quests = W.Link(f, L["Quest-Scan"], function() ns.ScanCommand("quests"); ns.Refresh() end)
+        local npcs = W.Link(f, L["NPC-Scan"], function() ns.ScanCommand("npcs"); ns.Refresh() end)
+        local stop = W.Link(f, L["Anhalten"], function() ns.ScanCommand("stop"); ns.Refresh() end)
         W.FitChip(gear, 140)
         W.FitChip(resume)
         W.FitChip(retry)
+        W.FitChip(quests)
+        W.FitChip(npcs)
         W.FitChip(stop)
-        f:Place(1, { gear, resume, retry, stop })
+        f:Place(1, { gear, resume, retry, quests, npcs, stop })
         f.state = f:Line(2)
         local hint = f:Line(3)
         hint:SetText(L["Der Scan läuft nur außerhalb von Instanzen. Danach ausloggen, damit die Datei geschrieben wird; tools/build_gear.py und tools/build_scan.py lesen sie. Sammler und Scan-Rate stehen in den Einstellungen."])
         f.drops = buildDrops(f)
         -- the parts the layout tests read
-        f.buttons, f.hint = { gear, resume, retry, stop }, hint
+        f.buttons, f.hint = { gear, resume, retry, quests, npcs, stop }, hint
         page = f
         return f
     end,
     refresh = function(f)
-        f.state:SetText(ns.ScanStatus() .. "\n" .. (ns.Get("tools.collect") and L["Item-Sammler: an, %d Items mit Quelle."]
+        f.state:SetText(ns.ScanStatus() .. "\n" .. (ns.QuestScan and ns.QuestScan.Status() or "") .. "\n"
+            .. (ns.NpcScan and ns.NpcScan.Status() or "") .. "\n" .. (ns.Get("tools.collect") and L["Item-Sammler: an, %d Items mit Quelle."]
             or L["Item-Sammler: aus, %d Items mit Quelle."]):format(ns.CollectCount()))
         fillDrops(f.drops)
     end }
