@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.75.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.75.0) (2026-11-10)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.74.0...v2.75.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - fix(scan): long quest texts are no longer cut inside a letter (F-172)
 
   The quest scan cut a long objective text after a fixed number of bytes, which could split an umlaut
