@@ -956,6 +956,7 @@ L["Dazu %d Quests und %d NPC-Namen der Scans per Nummer."] = "Also %d quests and
 L["Den NPC-Scan gibt es nur in WoW Forever."] = "The NPC scan exists in WoW Forever only."
 L["Den Quest-Scan gibt es nur in WoW Forever."] = "The quest scan exists in WoW Forever only."
 L["Der Client beantwortet Quest-Abfragen nicht: Quest-Scan beendet."] = "The client does not answer quest queries: quest scan ended."
+L["Der Client nennt für jede Quest dieselbe Belohnung: der Quest-Scan speichert in diesem Lauf keine Belohnungen mehr."] = "The client names the same reward for every quest: the quest scan keeps no more rewards in this run."
 L["Der Client nennt keine NPC-Namen per Nummer: NPC-Scan beendet."] = "The client gives no NPC names by id: NPC scan ended."
 L["Der NPC-Scan läuft nicht %s."] = "The NPC scan does not run %s."
 L["Der NPC-Scan läuft schon. /amisia scan npcs stop hält ihn an."] = "The NPC scan is running already. /amisia scan npcs stop stops it."

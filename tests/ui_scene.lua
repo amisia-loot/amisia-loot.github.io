@@ -512,6 +512,11 @@ S.STATES = {
     { page = "planner", name = "planner-goals", open = function() NS.ShowPlanner("goals") end },
     { page = "planner", name = "planner-sets", open = function() NS.ShowPlanner("sets", "dungeon") end },
     { page = "planner", name = "planner-search", open = function() NS.ShowPlanner("search", "a") end },
+    -- F-175: the main hand's suggestions with the gear of unknown source shown ("Quelle unbekannt", "?")
+    { page = "planner", name = "planner-nosource", open = function()
+        NS.Set("bis.noSource", true)
+        NS.ShowPlanner("suggest", nil, "MAINHAND")
+    end },
     { page = "raidlog", name = "raidlog-bench", open = function() NS.ShowRaidLog("bench") end },
     { page = "raidlog", name = "raidlog-rolls", open = function() NS.ShowRaidLog("rolls") end },
     { page = "raidlog", name = "raidlog-discord", open = function() NS.ShowRaidLog("discord") end },

@@ -12,7 +12,10 @@
 -- (names, or an item link or id: that item as the own pick); under them the slot's name, "Stufe [lo]
 -- - [hi]", Meine Stufe | Alle (Ziele: "N/17 Ziele" over its bar and the filters); the list: icon,
 -- name, "Stufe N · source", the gain, the source's symbol and the wish star. Vorschläge starts with
--- "Deine Wahl" (the own pick with its X, "Überholt ... Übernehmen", "Passt nicht zum Waffenplan");
+-- "Deine Wahl" (the own pick with its X, "Überholt ... Übernehmen", "Passt nicht zum Waffenplan") and
+-- ends with "+ N weitere ohne bekannte Quelle" when scanned gear of unknown source passes the list's
+-- filters (Gear/NoSource.lua, F-175, D-107): a click (the setting bis.noSource, also under "Optionen")
+-- puts them into the list by gain, each with "Quelle unbekannt" and a grey "?" for its source;
 -- a click on a row makes it the own pick of its slot (again: lifts it). Ziele lists the slots by
 -- section; a click shows that slot's suggestions. The side bar's marks are the catalog's set
 -- categories (Gear/Catalog.lua): one shows that category's sets in the list instead. State in
@@ -27,6 +30,7 @@ local Gear = ns.Gear
 local K = ns.GearPageKit
 local DK = ns.GoalsKit
 local Cat = ns.Catalog
+local NSR = ns.GearNoSource
 local GREY, GREEN = T.GREY, "|cff4fd06a"
 local NORM = { FINGER2 = "FINGER1", TRINKET2 = "TRINKET1" }
 local CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:12:12|t "
@@ -248,9 +252,15 @@ local function listRows(res, o, chosen, lo, hi)
         if #rows == 0 then rows[1] = { note = L["Kein Platz mit diesem Filter."] } end
     else
         rows[1] = pickRow(res, chosen)
-        for _, e in ipairs(suggestions(res, o, chosen, lo, hi)) do rows[#rows + 1] = e end
+        -- the scanned gear of unknown source that passes the same filters: by gain among the others
+        -- while the setting is on, else only counted in the last line (D-107)
+        local extra = NSR and NSR.For(chosen, o, res, lo, hi, tostring(res)) or {}
+        local shown = suggestions(res, o, chosen, lo, hi)
+        if #extra > 0 and NSR.On() then shown = NSR.Merge(shown, extra) end
+        for _, e in ipairs(shown) do rows[#rows + 1] = e end
         title = ns.BIS_SLOT_NAME[chosen] or chosen
         if #rows == 1 then rows[2] = { note = noSuggestion(res, chosen, lo, hi) } end
+        if #extra > 0 then rows[#rows + 1] = { more = #extra, on = NSR.On() } end
     end
     for _, e in ipairs(rows) do
         -- a link or id becomes the chosen slot's pick (refused with the reason when it does not fit)
@@ -324,6 +334,8 @@ local function subOf(e, o, rec)
         src = e.why
     else
         src = sourceLine(rec, e, o)
+        -- no source at all (D-107): said instead of one
+        if not rec and (src == nil or src == "") then src = L["Quelle unbekannt"] end
     end
     if src and src ~= "" then parts[#parts + 1] = src end
     return GREY .. table.concat(parts, " · ") .. "|r"
@@ -360,6 +372,7 @@ end
 local function hideItemParts(r)
     r.frame:Hide()
     r.src:Hide()
+    r.srcQ:Hide()
     r.star:Hide()
     r.gain:SetText("")
 end
@@ -431,7 +444,7 @@ local function fillRow(r, e)
         if e.stored then right = right + T.RESET + PL.END end
         if e.take then right = right + r.take:GetWidth() + PL.END end
         textRight(r, right)
-    elseif e.header or e.note then
+    elseif e.header or e.note or e.more then
         textRight(r, PL.END)
     else
         textRight(r, r.textR)
@@ -454,6 +467,12 @@ local function fillRow(r, e)
         r.sub:SetText("")
         return
     end
+    if e.more then
+        hideItemParts(r)
+        r.name:SetText(GREY .. (e.on and L["ohne bekannte Quelle ausblenden"] or L["+ %d weitere ohne bekannte Quelle"]:format(e.more)) .. "|r")
+        r.sub:SetText("")
+        return
+    end
     if e.set then
         local s = e.set
         hideItemParts(r)
@@ -471,6 +490,8 @@ local function fillRow(r, e)
     r.sub:SetText(subOf(e, o, rec))
     r.gain:SetText(gainOf(e))
     setArt(r.src, srcArt(rec))
+    -- no source at all: a grey "?" where the symbol sits, nothing to click (D-107)
+    r.srcQ:SetShown(rec == nil)
     setStar(r.star, wished(e.id))
     r.star:Show()
     if own then r.sel:Show() end
@@ -479,6 +500,14 @@ end
 local function rowTip(self)
     local e = self.item
     if not e or e.note or e.header then return end
+    if e.more then
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(e.on and L["ohne bekannte Quelle ausblenden"] or L["Items ohne bekannte Quelle"], 1, 0.82, 0)
+        GameTooltip:AddLine(L["Amisia kennt die Werte aus dem Item-Scan, aber nicht, woher es kommt. Tötet jemand mit Amisia den Boss oder gibt eine Quest es als Belohnung, lernt Amisia die Quelle."], 1, 1, 1, true)
+        GameTooltip:AddLine(e.on and L["Klick: wieder nur Items mit bekannter Quelle."] or L["Klick: sie in der Liste zeigen, nach Zuwachs einsortiert."], 0.6, 0.6, 0.6, true)
+        GameTooltip:Show()
+        return
+    end
     if e.set then return DK.setTip(self, e.set) end
     if e.pickRow then
         if e.stored then K.itemTooltip(self, e.stored) end
@@ -490,7 +519,11 @@ local function rowTip(self)
     end
     K.itemTooltip(self, e.id)
     local rec = firstSource(e.id, self:GetParent().opts)
-    if rec then GameTooltip:AddLine(L["Quelle: %s"]:format(Gear.SourceText(rec, true) or ""), 0.85, 0.85, 0.85, true) end
+    if rec then
+        GameTooltip:AddLine(L["Quelle: %s"]:format(Gear.SourceText(rec, true) or ""), 0.85, 0.85, 0.85, true)
+    else
+        GameTooltip:AddLine(L["Amisia kennt die Werte aus dem Item-Scan, aber nicht, woher es kommt. Tötet jemand mit Amisia den Boss oder gibt eine Quest es als Belohnung, lernt Amisia die Quelle."], 0.85, 0.85, 0.85, true)
+    end
     if e.pickSlot then
         GameTooltip:AddLine(L["Klick: deine Wahl für %s. Rechtsklick: Menü."]:format(ns.BIS_SLOT_NAME[e.pickSlot] or e.pickSlot),
             0.6, 0.6, 0.6, true)
@@ -501,6 +534,10 @@ end
 local function rowClick(self, button)
     local e = self.item
     if not e or e.note or e.header then return end
+    if e.more then
+        NSR.SetOn(not e.on)
+        return
+    end
     if e.pickRow then
         if e.stored then K.modifiedClick(e.stored) end
         return
@@ -571,6 +608,10 @@ local function buildRow(r)
     r.srcBtn:SetPoint("RIGHT", -srcX, 0)
     r.src = r.srcBtn:CreateTexture(nil, "ARTWORK")
     r.src:SetAllPoints()
+    r.srcQ = W.Text(r.srcBtn, T.FONT.body)
+    r.srcQ:SetPoint("CENTER", 0, 0)
+    r.srcQ:SetText(GREY .. "?|r")
+    r.srcQ:Hide()
     r.srcBtn:SetScript("OnClick", function(self)
         local row = self:GetParent()
         local e = row.item
@@ -914,6 +955,9 @@ local function optionsMenu(self)
             src[k] = not src[k]
             ns.Fire("BIS_CHANGED")
         end }
+    end
+    if NSR then
+        out[#out + 1] = { (NSR.On() and CHECK or "") .. L["Items ohne bekannte Quelle"], function() NSR.SetOn(not NSR.On()) end }
     end
     local n = ns.PlayStyle.Count()
     out[#out + 1] = { n > 0 and L["Spielstil (%d) ..."]:format(n) or L["Spielstil ..."], function() W.Menu(self, K.styleEntries(self)) end }

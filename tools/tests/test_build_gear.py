@@ -578,3 +578,122 @@ def test_names_and_icons_only_for_items_the_client_lacks():
     assert build_gear.client_has(None, 99), 'unknown: every id counts as known'
     assert build_gear.clean_name('|cffa335eeReif der Prophezeiung|r') == 'Reif der Prophezeiung'
     assert build_gear.clean_name('a|b') == 'ab' and build_gear.clean_name('x' * 65) == ''
+
+
+# ---------------------------------------------------------------- the quest scan's rewards (D-104, D-107)
+def scanned_quests(lines, loc='deDE'):
+    import build_scan_archive as sa
+    return {'quests': {loc: {qid: sa.quest_fields(line) for qid, line in lines.items()}}}
+
+
+def test_scanned_rewards_become_quest_sources_where_none_is_known():
+    """A reward or choice of a scanned quest (layout 2) gets the quest as its source when no quest names
+    it: AllTheThings' record of a quest it knows, the collector's of one it saw, else the scanned title
+    and level without a faction; an item with a quest source keeps only that one; a raid quest gives none."""
+    a = att(quests={500: quest('The Quest', 24, 'A', None, rewards=[40]), 510: quest('Raid Q', 58, inst=1)},
+            instances={1: {'name': 'Molten Core', 'area': 1, 'maps': [], 'points': [], 'file': 'r', 'stem': 'mc',
+                           'old': False, 'mapID': 409}})
+    scan = {i: scan_item(f'I{i}', q=3) for i in (40, 41, 42, 43, 44, 45)}
+    scan[274998] = scan_item('Schattenlichtathame', loc='INVTYPE_WEAPONMAINHAND', cls=2, q=3, lvl=40)
+    sb = build_gear.build_scan
+    observed = sb.collect_observed([{'collect': {'q': {
+        2001: sb.mark_collect_record('q', '280;0;3344;1440:5234:4011;0;;45;;34;30;H;0;Sturmrufer;;;Seen Quest', 'own')}}}])
+    lines = {500: 'Die Quest\t24\t26\t\t0\t\t40,41', 600: 'Neue Quest\t41\t0\t\t0\t\t274998\t42,43', 510: 'Raid\t58\t0\t\t0\t\t44',
+             2001: 'Gesehen\t30\t0\t\t0\t\t\t45*2'}
+    scanned = build_gear.scan_quest_rewards(scanned_quests(lines))
+    assert scanned[600] == {'title': 'Neue Quest', 'level': 41, 'items': [274998, 42, 43]}
+    assert scanned[500]['level'] == 26, 'the quest level before the difficulty'
+    src, keep, *_ = build_gear.build(scan, {}, a, observed=observed, scanned=scanned)
+    recs = lambda i: {src.rows[n - 1] for n in keep[i][1]}  # noqa: E731
+    att_quest = ('Q', 'The Quest', 0, 24, 'A', None, 500, 0)
+    assert recs(40) == {att_quest}, 'ATT names it already: one source'
+    assert recs(41) == {att_quest}, 'a reward ATT does not list: ATT\'s record of the quest'
+    new = ('Q', 'Neue Quest', 41, 0, None, None, 600)
+    assert recs(274998) == recs(42) == recs(43) == {new}, 'a quest no source knows: the scan\'s title and level'
+    assert keep[274998][2] == 40, 'the required level stays (quest level - 4 = 37 is below it)'
+    assert 44 not in keep, 'a raid quest is no source'
+    assert recs(45) == {('Q', 'Seen Quest', 34, 30, 'H', 1440, 2001)}, 'the collector\'s record of a quest it saw'
+    assert 274998 in src.named and 44 not in src.named
+
+
+def test_an_empty_scan_part_changes_nothing(tmp_path):
+    """No scan with rewards yet (the real archive today): the build and its file stay byte for byte."""
+    a = att(quests={500: quest('The Quest', 24, 'A', 1436, rewards=[40])})
+    scan = {40: scan_item('I40', q=3), 41: scan_item('I41', q=3)}
+    old = scanned_quests({500: 'Die Quest\t24', 9: 'Alt\t3\t0\t\t0\tZiele'})
+    assert build_gear.scan_quest_rewards(old) == {} and build_gear.scan_quest_rewards({}) == {}
+    outs = []
+    for scanned in (None, {}, build_gear.scan_quest_rewards(old)):
+        src, keep, zone_rows, *_ = build_gear.build(scan, {}, a, scanned=scanned)
+        out = tmp_path / f'G{len(outs)}.lua'
+        build_gear.write_lua(str(out), src, keep, zone_rows, {'built': '2026-11-10'})
+        outs.append(out.read_bytes())
+    assert outs[0] == outs[1] == outs[2]
+    import build_scan_archive as sa
+    real = build_gear.scan_quest_rewards(sa.id_scans(sa.ARCHIVE, []))
+    assert real == {}, 'the committed archive has no rewards yet'
+
+
+# ---------------------------------------------------------------- gear without a known source (D-107)
+def test_no_source_rules():
+    """What GearNoSource.lua keeps: scanned gear no source names, uncommon or better, with a scored stat,
+    no test or placeholder name, no old raid gear; a required level of 0 stays (its level from the item
+    level)."""
+    keys = build_gear.scored_stat_keys()
+    def it(name, q=3, req=40, ilvl=45, loc='INVTYPE_WEAPONMAINHAND', cls=2, stats='STAMINA_SHORT=9;INTELLECT_SHORT=5'):
+        return {'name': name, 'q': q, 'ilvl': ilvl, 'min': req, 'classID': cls, 'subclassID': 15, 'equipLoc': loc,
+                'icon': '135656', 'bind': 1, 'stats': stats}
+    scan = {274998: it('Schattenlichtathame'), 275836: it('Akolythenklinge', q=2, req=0, ilvl=57),
+            253884: it('Template Item', q=2), 273878: it('[DNT] Crafted Tier Piece Placeholder', q=4),
+            274027: it('Placeholder'), 277555: it('Monster - Shield, Skyborne (Gray)', loc='INVTYPE_SHIELD', cls=4),
+            2189: it("Tigole's Boomstick (TEST)"), 18968: it('Ring of Critical Testing', loc='INVTYPE_FINGER', cls=4),
+            20322: it('63 Green Rogue Spaulders', q=2, loc='INVTYPE_SHOULDER', cls=4), 21124: it("Ahn'Qiraj Wand [PH]"),
+            23034: it('Nax PH Crit Plate Shoulders'), 10037: it('DEPRECATED'), 99001: it('DNT HEAD'),
+            24358: it('QATest +1000 Spell Dmg Ring'), 21276: it('Blessed Qiraji Naturalist Staff UNUSED'),
+            99002: it('Grauer Dolch', q=1), 99003: it('Ohne Werte', stats=''), 99004: it('Nur Proc', stats='SOCKET=1'),
+            99005: it('Eine Tasche', loc='INVTYPE_BAG', cls=1), 99006: it('Ein Hemd', loc='INVTYPE_BODY', cls=4),
+            19324: it('Der Geistesbrecher', q=4, req=60, ilvl=65), 20069: it('Eisenborkenstab', q=4, req=60, ilvl=70),
+            280001: it('Hoher Forever-Dolch', q=4, req=60, ilvl=80), 274999: it('Hat schon eine Quelle'),
+            99007: it('Testament des Lichts', q=3, req=30, ilvl=35)}
+    rows, dropped = build_gear.no_source(scan, {274999}, keys, {'classes': {'274998': 16}, 'delay': {'274998': 1800}})
+    assert set(rows) == {274998, 275836, 19324, 280001, 99007}, sorted(rows)
+    it0, level, mask, speed, st = rows[274998]
+    assert (level, mask, speed) == (40, 16, 1.8) and st == 'STAMINA=9;INTELLECT=5'
+    assert rows[275836][1] == 52, 'required level 0: the item level less five, kept'
+    names = {k: sorted(n for _, n in v) for k, v in dropped.items()}
+    assert len(names['junk']) == 13 and 'Template Item' in names['junk'] and '63 Green Rogue Spaulders' in names['junk']
+    assert names['quality'] == ['Grauer Dolch'] and names['raid level'] == ['Eisenborkenstab']
+    assert names['no stats'] == ['Nur Proc', 'Ohne Werte']
+    assert names['not gear'] == [], 'a bag or shirt is no gear and not worth a word'
+    assert 274999 not in rows, 'an item a source names is never in both files'
+
+
+def test_an_item_that_gets_a_source_leaves_the_no_source_file(tmp_path):
+    """No duplicates: once a kill record, a quest reward or AllTheThings names an item, it is a normal entry
+    of GearData.lua and GearNoSource.lua no longer holds it."""
+    keys = build_gear.scored_stat_keys()
+    dagger = dict(scan_item('Schattenlichtathame', loc='INVTYPE_WEAPONMAINHAND', cls=2, q=3, lvl=40),
+                  stats='STAMINA_SHORT=9;INTELLECT_SHORT=5;SPELL_POWER_SHORT=52')
+    scan = {274998: dagger}
+    src, keep, *_ = build_gear.build(scan, {}, att())
+    rows, _ = build_gear.no_source(scan, src.named, keys)
+    assert 274998 not in keep and 274998 in rows
+    cases = [
+        ('a kill record', {274998: ['Drop: Twilight Commander Zarmok [261001] @Krol\'dok Stronghold #party:2998']}, att(), None),
+        ('a quest reward', {}, att(), build_gear.scan_quest_rewards(scanned_quests({600: 'Neue Quest\t41\t0\t\t0\t\t274998'}))),
+        ('AllTheThings', {}, att(quests={700: quest('Q', 40, rewards=[274998])}), None),
+    ]
+    for why, collected, a, scanned in cases:
+        src, keep, zone_rows, *_ = build_gear.build(scan, collected, a, scanned=scanned)
+        rows, _ = build_gear.no_source(scan, src.named, keys)
+        assert 274998 in keep and 274998 not in rows, why
+    out = tmp_path / 'GearNoSource.lua'
+    rows, _ = build_gear.no_source({274998: dagger, 275836: dict(dagger, name='Akolythenklinge', min=0)}, set(), keys)
+    build_gear.write_no_source(str(out), rows, {'built': '2026-11-10', 'client': [[1, 274998]]})
+    text = out.read_text(encoding='utf-8')
+    assert text.startswith('-- GENERATED by tools/build_gear.py') and 'ns.LazyData("GEAR_NOSRC"' in text
+    body = lua_data.eager(text).replace(' ', '')
+    assert '[274998]={"WEAPONMAINHAND",2,2,40,3,1,45,0,0,0}' in body, body
+    assert '[274998]="STAMINA=9;INTELLECT=5;SPELL_POWER=52"' in body
+    assert '[275836]="Akolythenklinge"' in body and '[274998]="Schattenlichtathame"' not in body, \
+        'names only for items the client lacks'

@@ -2667,3 +2667,67 @@ Bosse, NPCs, Beute je Boss, Quests; die Hälften von Blackrock Spire ohne gemein
 (Kopfzeile und Ziele einer Quest), `tools/tests/test_build_bis.py`, `tests/test_scarlet_wings.lua` (vier Karten, Namen,
 Schlüssel, Beute, Quests, Quellen, Kandidaten vor dem Kill, Flügel danach, `/reload`, Uhr je Flügel, Leiste,
 Migration, alte Bestzeit), `tests/test_boss_portraits.lua`, `tests/ui_scene.lua` (`dungeonbar-wings`).
+
+## D-107 Ausrüstung ohne bekannte Quelle: zuschaltbar, aus von Haus aus; Questbelohnungen des Quest-Scans als Quelle
+
+**Datum:** 2026-11-10
+**Entscheidung:**
+- **Questbelohnungen als Quelle:** Der Quest-Scan (D-104) fragt, wo die Datenprüfung es fand (`probe.questReward`
+  "ok"), je Quest die Belohnungen und die Auswahl (`GetNumQuestLogRewards`/`GetQuestLogRewardInfo`,
+  `GetNumQuestLogChoices(id, false)`/`GetQuestLogChoiceInfo`, die Nummer aus dem sechsten Wert, sonst aus
+  `GetQuestLogItemLink`), dazu Geld und EP (`probe.questXP`). `build_gear.py` macht daraus eine Questquelle für
+  jedes Item, das noch keine Questquelle hat (AllTheThings oder der Sammler): AllTheThings' Eintrag der Quest,
+  wo es sie kennt (Stufe, Fraktion, Klasse), sonst den des Sammlers, sonst Titel und Stufe des Scans ohne
+  Fraktion. Hat ein Item schon eine Questquelle, bleibt es bei ihr (kein zweiter Eintrag derselben Quest in
+  einer anderen Sprache). Die EP füllen nur Lücken in `AmisiaDB.questxp`; Geld und EP haben in den Daten
+  kein Feld und bleiben im Archiv. Nennt der Client für jede Quest dieselben Items, übergeht er die
+  Questnummer: die Probe sagt dann "geht nicht", der Scan hört nach fünf gleichen auf, Belohnungen zu speichern.
+- **Ausrüstung ohne bekannte Quelle** (F-175): `build_gear.py` schreibt die gescannte Ausrüstung, die keine
+  Quelle nennt, nach `Data/GearNoSource.lua` (lazy `GEAR_NOSRC`; die Spalten von `GearData.lua`s `I` ohne
+  Quellen, `ST`, `N`, `IC`). Weg fallen: ein Item, das irgendeine Quelle nennt (es steht in `GearData.lua` oder
+  fiel dort wegen seiner Quelle weg, etwa ein Raid), keine Ausrüstung (Platz, Klasse), Qualität unter
+  Ungewöhnlich, ein Test- oder Platzhaltername (`NOSRC_JUNK`: "test"/"testing" als Wort, "Template",
+  "Placeholder", "[DNT]", "DNT", "NYI", "[PH]", "PH" als Wort, "DEPRECATED", "Monster - ", "UNUSED", "QA...",
+  "zz...", "(OLD)", "OLD ...", eine Zahl mit "Green"/"Blue"/"Purple"/"Epic"/"White" am Anfang wie "63 Green
+  Rogue Belt"; dazu `is_junk` und `TEST_ITEMS` der Gear-Daten), Classic-Ausrüstung über Gegenstandsstufe 65
+  (alte Raid-Beute, die der Client behält) und ein Item ohne einen Wert, den der Planer wertet. Eine
+  Mindeststufe 0 ist kein Grund: die Stufe des Planers ist dann die Gegenstandsstufe weniger fünf (1 bis 60).
+  Für den Build vom 2026-11-10: 1670 Items (1027 neue Forever-Items), 189 KB Text; weg fielen 215 Test- und
+  Platzhalternamen, 1277 unter Ungewöhnlich, 396 alte Raid-Ausrüstung, 118 ohne gewerteten Wert, 39 mit einem Platz,
+  aber ohne Waffen- oder Rüstungsklasse.
+- **Im Planer:** nur die Vorschläge eines Platzes. Am Ende steht "+ N weitere ohne bekannte Quelle", wenn
+  solche Items die Filter der Liste bestehen (Stufenbereich, Platz und Waffenplan, Waffen- und Rüstungsart der
+  Klasse, Klassenmaske, eigene Ausschlüsse, Spielstil: keine Schalter außer "Jetzt holbar", das nur den Ruf
+  prüft; wie `PS.Passes` für ein Item ohne Quellen) und für die Spezialisierung etwas werten. Ein Klick (die
+  Einstellung `bis.noSource`, aus von Haus aus; auch unter "Optionen") zeigt sie nach Zuwachs zwischen den
+  anderen (jede Liste behält ihre Ordnung), jedes mit "Quelle unbekannt" und einem grauen "?" ohne
+  Klickziel; die Zeile heißt dann "ohne bekannte Quelle ausblenden". Die Datei wird gebaut, sobald der Planer
+  Vorschläge zeigt (für die Zahl); erst dann finden `Gear.Item`, `Gear.ScannedStats`, `Gear.ScanName` und
+  `Gear.ScanIcon` auch ihre Zeilen. Eine Datei eines anderen Builds als `GearData.lua` (anderer Stempel `built`)
+  bleibt ungenutzt, eine Nummer beider Dateien zählt als die mit Quelle. Wünsche ohne Quelle zeigen "Quelle
+  unbekannt".
+**Grund:** Nutzer 2026-11-10: der Dolch "Schattenlichtathame" (274998, Twilight Commander Zarmok in Krol'dok
+Stronghold) fehlte in den Vorschlägen der Waffenhand ("gibt bestimmt noch mehr items"); Amisia kannte seine
+Werte aus dem Scan, aber keine Quelle, und plant nach D-59 nur mit Quellen. Von etwa 9000 gescannten
+Ausrüstungsteilen ab Ungewöhnlich fehlten etwa 2700 in den Daten, etwa 1100 davon neue Forever-Items, die keine
+erlaubte Quelle kennt. Auf den Vorschlag "Questbelohnungen per Nummer, sonst zuschaltbar" sagte der Nutzer
+"kannst du nicht herausfinden woher die sind ansonsten ja zuschaltbar". Aus von Haus aus, weil D-59 weiter
+gilt: geplant wird, was man gezielt bekommt; ein Item ohne Quelle kann eine Testbeute, ein Weltdrop oder
+eine Belohnung sein, die es nicht mehr gibt. Wer es sehen will, schaltet es zu und sieht, dass die Quelle
+fehlt. Bossbeute lernt Amisia weiter aus eigenen und Gilden-Kills (der Sammler).
+**Folge:** Das erweitert D-59 (F-132): Ziele, Tabelle, Sets, Simulation und Tooltip-Ziele planen weiter nur mit
+Quellen; nur die Vorschläge zeigen auf Wunsch, was keine Quelle hat. Das kostet bei jedem Login 189 KB
+wartenden Text und, sobald der Planer Vorschläge zeigt, etwa 660 KB gebaute Tabellen (gemessen mit lupa, Lua 5.1;
+zum Vergleich `GearData.lua`: 878 KB Text, 3,6 MB gebaut). Etwa 640 der 1670 Items heißen wie
+PvP-Rangausrüstung ("... des Marschalls", "Erstklassige ..."); ihnen fehlt eine Quelle der Ränge (offen).
+Bekommt ein Item später eine Quelle (ein Kill, eine gescannte Questbelohnung, ein neueres AllTheThings), steht
+es nach dem nächsten Datenbau normal in `GearData.lua` und nicht mehr in `GearNoSource.lua`. Annahme (nicht
+gefragt): Einhänder in der Schildhand zählen nicht mit (ihr Zuwachs wäre der der Waffenhand); die Suche nach
+Namen findet sie nicht (eine ID oder ein Link in der Suche geht wie bisher).
+**Durchgesetzt durch:** `tests/test_gear_nosource.lua` (Zeile, Klick, Ordnung, Markierung, Tooltip, Filter,
+Spielstil, Waffenplan, Einstellung, Optionen, Wunsch, fremder Build, Nummer beider Dateien),
+`tests/test_selftest_data.lua` (Abschnitt, beide Formen, alle Zeilen, Urteile, Client ohne Questnummer, ohne
+Funktionen), `tests/test_scan_quests.lua` (Layout 2, alte Zeilen neu, ohne Urteil wie bisher, gleiche Items,
+EP nur in Lücken), `tools/tests/test_build_gear.py::test_scanned_rewards_become_quest_sources_where_none_is_known`,
+`::test_an_empty_scan_part_changes_nothing`, `::test_no_source_rules`,
+`::test_an_item_that_gets_a_source_leaves_the_no_source_file`, `tools/tests/test_scan_ids.py`.

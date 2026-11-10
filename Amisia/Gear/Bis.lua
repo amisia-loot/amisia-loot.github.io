@@ -2352,6 +2352,8 @@ function ns.Wishes()
         if o then
             local rec = Gear.Sources(id, o)[1] or Gear.Sources(id)[1]
             src = rec and Gear.SourceText(rec, true) or nil
+            -- a wish of unknown source (an item of the planner's "ohne bekannte Quelle", D-107)
+            if not src and ns.GearNoSource and ns.GearNoSource.Unknown(id) then src = L["Quelle unbekannt"] end
         end
         out[#out + 1] = { id = id, e = e, owned = ns.BisOwned(id), slot = slotKey and SLOT_NAME[slotKey] or nil, slotKey = slotKey,
             src = src, name = itemName(id), excluded = c.ex.item[id] or nil }
@@ -2784,6 +2786,8 @@ ns.RegisterSettings{ key = "bis", label = L["Ausrüstung und Wünsche"], order =
       tip = L["Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung."] },
     { key = "bis.upgradeDot", type = "toggle", label = L["Upgrade-Punkt in der Tabelle"], default = true,   -- l10n-ok: setting key
       tip = L["Grüner Punkt an Items, die besser sind als das, was du trägst."] },
+    { key = "bis.noSource", type = "toggle", label = L["Items ohne bekannte Quelle vorschlagen"], default = false,   -- l10n-ok: setting key
+      tip = L["Die Vorschläge des Ausrüstungsplaners zeigen auch Items, deren Werte Amisia aus dem Item-Scan kennt, aber nicht, woher sie kommen (\"Quelle unbekannt\")."] },
     { key = "bis.slotClick", type = "toggle", label = L["Rechtsklick auf Slots im Charakterfenster"], default = true,   -- l10n-ok: setting key
       tip = L["Ein Rechtsklick auf einen Slot im Charakterfenster zeigt die besten Items für diesen Slot (bei Items mit Benutzen-Effekt Alt+Rechtsklick)."] },
 }}

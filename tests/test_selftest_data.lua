@@ -142,6 +142,93 @@ SlashCmdList.AMISIA("selftest data")
 assert(has(lastMsg(), "Datenprüfung läuft schon"), lastMsg())
 STUB.tick(6)
 
+-- 5b) quest rewards by id: the quest log's reward functions answer for any quest id (global and C_ forms)
+local knownQ, knownItem
+for _, qid in ipairs(qids) do
+    local row = dq.Q[qid]
+    if qid ~= qids[1] and qid ~= qids[2] and type(row[12]) == "table" and #row[12] > 0 then knownQ, knownItem = qid, row[12][1] break end
+end
+assert(knownQ, "the data has a dungeon quest with a known reward")
+local rewardsOf
+local function rewardClient(byId)
+    -- byId false: the client ignores the quest id and always answers for the same quest
+    rewardsOf = function(qid)
+        if not byId then qid = knownQ end
+        if qid == knownQ then return { items = { { knownItem, 1 } }, choices = { 4711, 4712 }, money = 120, xp = 450 } end
+        if qid == 95775 then return { items = { { 5000, 2 } }, choices = {}, money = 0, xp = 1200 } end
+        return { items = {}, choices = {}, money = 0, xp = 0 }
+    end
+    _G.GetNumQuestLogRewards = function(qid) return #rewardsOf(qid).items end
+    _G.GetQuestLogRewardInfo = function(i, qid)
+        local it = rewardsOf(qid).items[i]
+        if it then return "Item " .. it[1], 133000, it[2], 2, true, it[1] end
+    end
+    _G.GetNumQuestLogChoices = function(qid, withCurrencies) return #rewardsOf(qid).choices end
+    _G.GetQuestLogChoiceInfo = function(i, qid)
+        local id = rewardsOf(qid).choices[i]
+        if id then return "Wahl " .. id, 133001, 1, 3, true end   -- no item id: the link gives it
+    end
+    local link = _G.GetQuestLogItemLink
+    _G.GetQuestLogItemLink = function(kind, i, qid)
+        if kind == "choice" and rewardsOf(qid).choices[i] then return ("|cff1eff00|Hitem:%d::::::::30:::::|h[Wahl]|h|r"):format(rewardsOf(qid).choices[i]) end
+        return link(kind, i)
+    end
+    _G.GetQuestLogRewardMoney = function(qid) return rewardsOf(qid).money end
+    _G.GetQuestLogRewardXP = nil
+    C_QuestLog.GetQuestLogRewardXP = function(qid) return rewardsOf(qid).xp end   -- only the C_ form
+end
+local quests2 = { [qids[1]] = { title = "Die erste" }, [qids[2]] = { title = "Die zweite" }, [95775] = { title = "Die Ertrunkene Stadt" },
+    [knownQ] = { title = "Mit Belohnung" } }
+client({ quests = quests2 })
+-- the tooltip data lines carry a type and ids
+C_TooltipInfo.GetHyperlink = function(link)
+    local qid = tonumber(link:match("^quest:(%d+)$"))
+    if qid and quests2[qid] then
+        local out = {}
+        for i = 1, 14 do out[i] = { leftText = "Zeile " .. i, type = i == 14 and 10 or 0, id = i == 14 and 5000 or nil } end
+        out[1].leftText = quests2[qid].title
+        return { type = 7, id = qid, lines = out }
+    end
+    return { lines = {} }
+end
+rewardClient(true)
+STUB.messages = {}
+DT.Start()
+STUB.tick(6)
+text = report()
+assert(has(text, "== Questbelohnungen per Nummer =="), text)
+assert(has(text, "GetNumQuestLogRewards: global"), "presence per form")
+assert(has(text, "GetQuestLogRewardXP: C_QuestLog"), "only the C_ form")
+assert(has(text, "GetQuestRewardSpells: fehlt"), text)
+assert(has(text, knownQ .. " mit bekannter Belohnung: Belohnungen 1"), text)
+assert(has(text, knownQ .. " Belohnung 1: Info: \"Item " .. knownItem .. "\""), text)
+assert(has(text, knownQ .. " Auswahl 2: Info:") and has(text, "Item 4712"), "the choice's id from its link")
+assert(has(text, "Geld 120; EP 450"), text)
+assert(has(text, knownQ .. " laut unseren Daten: " .. knownItem), text)
+assert(has(text, knownQ .. " Zeile 14 (C_TooltipInfo): Zeile 14"), "every tooltip line, not only four")
+assert(has(text, knownQ .. " Zeilendaten 14: id=5000, type=10"), text)
+assert(has(text, "Questbelohnungen per Nummer: geht (Funktion GetQuestLogRewardInfo)"), text)
+assert(has(text, "Quest-EP per Nummer: geht (sofort)"), text)
+assert(AmisiaDB.probe.questReward == "ok" and AmisiaDB.probe.questXP == "ok")
+assert(has(lastMsg(), "Questbelohnungen geht (sofort)"), lastMsg())
+
+-- the client ignores the quest id: the same answer for every quest is no answer
+rewardClient(false)
+DT.Start()
+STUB.tick(6)
+assert(has(report(), "Questbelohnungen per Nummer: geht nicht"), report())
+assert(AmisiaDB.probe.questReward == "none")
+
+-- no reward functions at all: reported missing, the verdict "geht nicht"
+for _, name in ipairs({ "GetNumQuestLogRewards", "GetQuestLogRewardInfo", "GetNumQuestLogChoices", "GetQuestLogChoiceInfo", "GetQuestLogRewardMoney" }) do _G[name] = nil end
+C_QuestLog.GetQuestLogRewardXP = nil
+DT.Start()
+STUB.tick(6)
+text = report()
+assert(has(text, "GetNumQuestLogRewards: fehlt") and has(text, "Questbelohnungen per Nummer: geht nicht"), text)
+assert(has(text, "Quest-EP per Nummer: geht nicht"), text)
+assert(AmisiaDB.probe.questReward == "none" and AmisiaDB.probe.questXP == "none")
+
 -- 6) a client without C_TooltipInfo and without the quest functions: the probe still reports
 C_TooltipInfo.GetHyperlink = nil
 C_QuestLog.RequestLoadQuestByID = nil

@@ -165,6 +165,61 @@ STUB.tick(1)
 assert(AmisiaDB.scan.quests.list[1] == "Eins\t5\t0\t\t0\tTöte 10 Kobolde.", AmisiaDB.scan.quests.list[1])
 AmisiaDB.probe = nil
 
+-- rewards by id (layout 2): only where the probe found them; an older scan's lines are asked again
+AmisiaDB.scan.quests = { loc = "deDE", next = 4, n = 1, list = { [1] = "Alt\t5" } }   -- a scan of 2.74.0 (no v)
+lists("1.3")
+client({ known = { [1] = { title = "Eins", level = 5 }, [2] = { title = "Zwei", level = 7 }, [3] = { title = "Drei", level = 9 } } })
+local RW = { [1] = { items = { { 2001, 1 }, { 2002, 5 } }, choices = { 3001, 3002 }, money = 150, xp = 400 },
+             [2] = { items = {}, choices = { 3003 }, money = 0, xp = 0 }, [3] = { items = {}, choices = {}, money = 0, xp = 90 } }
+_G.GetNumQuestLogRewards = function(qid) return #(RW[qid] or { items = {} }).items end
+_G.GetQuestLogRewardInfo = function(i, qid) local it = RW[qid].items[i]; return "x", 1, it[2], 2, true, it[1] end
+_G.GetNumQuestLogChoices = function(qid, cur) assert(cur == false, "choices without currencies"); return #(RW[qid] or { choices = {} }).choices end
+_G.GetQuestLogChoiceInfo = function(i, qid) local id = RW[qid].choices[i]; return "x", 1, 1, 2, true, id end
+_G.GetQuestLogRewardMoney = function(qid) return RW[qid] and RW[qid].money or 0 end
+C_QuestLog.GetQuestLogRewardXP = function(qid) return RW[qid] and RW[qid].xp or 0 end
+-- without a verdict: the scan stays as it was, the old lines stay
+assert(QS.Start())
+assert(not (QS.Parts()), "no rewards without the probe")
+QS.Stop()
+assert(AmisiaDB.scan.quests.list[1] == "Alt\t5" and AmisiaDB.scan.quests.v == nil, "nothing asked again without rewards")
+SB.SaveProbe({ quest = "ok", questReward = "ok", questXP = "ok" })
+AmisiaDB.questxp = { [3] = { 120, 20 } }   -- a quest seen already keeps its XP
+STUB.level = 30
+assert(QS.Start())
+q = AmisiaDB.scan.quests
+assert(q.v == 2 and q.next <= 2 and q.list[1] == nil, "layout 2: the older lines are asked again")
+STUB.tick(2)
+assert(q.list[1] == "Eins\t5\t0\t\t0\t\t2001,2002*5\t3001,3002\t150\t400", q.list[1])
+assert(q.list[2] == "Zwei\t7\t0\t\t0\t\t\t3003", q.list[2])
+assert(q.list[3] == "Drei\t9\t0\t\t0\t\t\t\t\t90", q.list[3])
+assert(AmisiaDB.questxp[1][1] == 400 and AmisiaDB.questxp[3][1] == 120, "XP fills only gaps")
+assert(not AmisiaDB.questxp[2], "no XP: nothing kept")
+assert(AmisiaDB.questxp[1][2] == 30, "kept at the level it was seen at")
+STUB.level = nil
+assert(QS.WithoutRewards(q.list[1]) == "Eins\t5", QS.WithoutRewards(q.list[1]))
+-- the client ignores the quest id: five quests in a row with the same items stop the rewards of the run
+AmisiaDB.scan.quests = nil
+lists("1.8")
+local k8 = {}
+for i = 1, 8 do k8[i] = { title = "Q" .. i, level = 10 } end
+client({ known = k8 })
+for i = 1, 8 do RW[i] = { items = { { 2001, 1 } }, choices = {}, money = 0, xp = 0 } end
+assert(QS.Start())
+STUB.tick(3)
+q = AmisiaDB.scan.quests
+for i = 1, 8 do assert(not q.list[i]:find("2001", 1, true), "no reward kept: " .. q.list[i]) end
+assert(has(table.concat(STUB.messages, "\n"), "dieselbe Belohnung"), "said once")
+-- a client without the reward functions reads no rewards even with the verdict
+for _, name in ipairs({ "GetNumQuestLogRewards", "GetQuestLogRewardInfo", "GetNumQuestLogChoices", "GetQuestLogChoiceInfo", "GetQuestLogRewardMoney" }) do _G[name] = nil end
+C_QuestLog.GetQuestLogRewardXP = nil
+AmisiaDB.scan.quests = nil
+lists("1.1")
+client({ known = { [1] = { title = "Eins", level = 5 } } })
+assert(QS.Start())
+STUB.tick(1)
+assert(AmisiaDB.scan.quests.list[1] == "Eins\t5", AmisiaDB.scan.quests.list[1])
+AmisiaDB.probe = nil
+
 -- the slash command and the stop of every scan
 AmisiaDB.scan.quests = nil
 lists("1.u")

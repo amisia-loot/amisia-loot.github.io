@@ -94,9 +94,10 @@ sind gekürzt (Tooltipzeilen ohne Codes, Ziele höchstens 200 Bytes) und gehen n
 
 ## Daten
 
-- `AmisiaDB.scan.quests = { loc, next, n, at, done, list = { [questID] = "Titel\tSchwierigkeit\tQueststufe\tArt\tGruppe\tZiele" }, none = "a-b,c" }`
+- `AmisiaDB.scan.quests = { loc, next, n, at, done, v, list = { [questID] = "Titel\tSchwierigkeit\tQueststufe\tArt\tGruppe\tZiele\tBelohnungen\tAuswahl\tGeld\tEP" }, none = "a-b,c" }`
+  (die letzten vier Felder und `v = 2` seit dem Nachtrag unten)
 - `AmisiaDB.scan.npcs = { loc, a, b, n, at, doneA, doneB, list = { [npcID] = "Name\t<Titel>" }, empty = "a-b,c" }`
-- `AmisiaDB.probe = { v = 1, build, at, src = probe/mini, npc, npcNew, quest, questTip, model, vignette, questMap, journal, taxi (ok/retry/none), route (info/tip), burst (0-10) }`
+- `AmisiaDB.probe = { v = 1, build, at, src = probe/mini, npc, npcNew, quest, questTip, questReward, questXP, model, vignette, questMap, journal, taxi (ok/retry/none), route (info/tip), burst (0-10) }`
 - Einstellungen `tools.questRate` (5-50, 20), `tools.npcRate` (1-20, 5).
 - Generiert: `Data/ScanLists.lua` (`SCAN_LISTS`), `Data/ScanNames.lua` (`SCAN_NAMES`); `Data/ScanDone.lua`
   bekommt `QL`, `QE`, `NL`, `NE` (nur wenn es Scans gibt). Archiv `tools/scan_archive.json`: `quests`,
@@ -133,3 +134,44 @@ Nur das Spiel kann sie beantworten; die Datenprüfung sagt es:
   (`python3 tools/build.py tables --tables DungeonEncounter --locale deDE`, einmal je Build).
 - Annahme (nicht gefragt): `QuestData.lua` bekommt keine Queststufe (die Datei hat kein Feld dafür; der
   Questtracker zeigt die Mindeststufe aus AllTheThings, die vollständig ist).
+
+## Nachtrag 2026-11-10: Questbelohnungen per Nummer
+
+Freigegeben vom Nutzer 2026-11-10 ("kannst du nicht herausfinden woher die sind ansonsten ja zuschaltbar"):
+etwa 1100 neue Forever-Items (Nummern ab 200000) kennt Amisia aus dem Item-Scan, aber keine Quelle; ein guter
+Teil dürfte Questbelohnung sein. Der Quest-Scan soll darum auch die Belohnungen fragen, mit einer Probe vorher.
+
+- **Datenprüfung:** neuer Abschnitt "Questbelohnungen per Nummer" nach "Quests per Nummer". Er nennt für jede
+  Belohnungsfunktion des Questlogs, wo es sie gibt (global, `C_QuestLog`, `C_QuestInfoSystem`):
+  `GetNumQuestLogRewards`, `GetQuestLogRewardInfo` (Name, Symbol, Anzahl, Qualität, nutzbar, Item), 
+  `GetNumQuestLogChoices` (mit und ohne Währungen), `GetQuestLogChoiceInfo`, `GetQuestLogItemLink`,
+  `GetQuestLogRewardMoney`, `GetQuestLogRewardXP`, die Zauber- und Währungsfunktionen. Nach dem
+  `QUEST_DATA_LOAD_RESULT` fragt er sie für die Quest im Log, eine erledigte, zwei Dungeonquests, 95775 und eine
+  Dungeonquest, deren Belohnung unsere Daten kennen (Feld 12 von `DungeonQuestData.lua`, zum Vergleich), und
+  schreibt alle Werte, alle Zeilen des Quest-Tooltips (bis 30, beide Wege) und die Zeilendaten von
+  `C_TooltipInfo.GetHyperlink` (Typ und die Zahlenfelder, auch `args`) in den Bericht. Urteil
+  "Questbelohnungen per Nummer: geht (Funktion ...)" nur, wenn die Quest mit bekannter Belohnung eines ihrer
+  Items nennt und keine zweite Quest dieselbe nicht leere Antwort gab (sonst übergeht der Client die
+  Questnummer und meint die gewählte Quest des Logs); "Quest-EP per Nummer: geht", wenn eine Quest außerhalb
+  des Logs EP nennt, die nicht die der Quest im Log sind. Gespeichert als `probe.questReward`, `probe.questXP`.
+- **Quest-Scan:** mit dem Urteil "ok" hängt er an jede Zeile vier Felder: Belohnungen ("2001,2002*5": Item,
+  mit Anzahl über 1), Auswahl ("3001,3002"), Geld in Kupfer, EP (Layout 2, `scan.quests.v = 2`; leere Felder
+  am Ende fallen weg). Die EP füllen `AmisiaDB.questxp`, wo dort nichts steht (`collect.quests` an). Zeilen
+  eines älteren Scans fragt er einmal neu: ein Quest-Scan von 2.74.0 läuft nach dem Update einmal ganz neu
+  (etwa 6 Minuten). Ohne Urteil "ok" bleibt der Scan wie bisher (auch keine neue Runde). Nennen fünf Quests
+  hintereinander dieselben Items, speichert der Lauf keine Belohnungen mehr, nimmt sie aus diesen fünf Zeilen
+  und sagt es einmal im Chat.
+- **N100:** `build_scan_archive.quest_fields` liest die neuen Felder (je Sprache wie bisher, ein Zeilenformat);
+  `build_gear.py` gibt einem Item, das eine gescannte Quest als Belohnung oder Auswahl nennt und das noch
+  keine Questquelle hat, diese Quest als Quelle: AllTheThings' Eintrag der Quest, wo es sie kennt (Stufe,
+  Fraktion, Klasse), sonst der des Sammlers, sonst Titel und Stufe des Scans ohne Fraktion. Geld und EP haben
+  in den Daten kein Feld: sie bleiben im Archiv (die EP wirken über `AmisiaDB.questxp` im eigenen Spiel).
+  Ohne Scan mit Belohnungen bleiben alle erzeugten Dateien Byte für Byte gleich.
+- **Abnahme:** Wenn du `/amisia selbsttest daten` eingibst, dann steht im Bericht "== Questbelohnungen per
+  Nummer ==" mit den Funktionen, den Werten je Quest und allen Tooltipzeilen, im Urteil "Questbelohnungen per
+  Nummer: geht (Funktion ...)" oder "geht nicht" und "Quest-EP per Nummer: ...". Wenn das Urteil "geht" war
+  und du danach `/amisia scan quests` eingibst, dann beginnt der Scan bei 1 von 6626.
+- Annahme (nicht gefragt): nur die Questlog-Funktionen sind ein Weg für den Scan; was der Tooltip oder seine
+  Zeilendaten zeigen, steht nur im Bericht (kein Beispiel bekannt, wie Forever Belohnungen dort nennt).
+- Annahme (nicht gefragt): Auswahl ohne Währungen (`GetNumQuestLogChoices(id, false)`), damit die Nummern der
+  Items zu den Indizes passen.

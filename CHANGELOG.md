@@ -5,6 +5,24 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(gear): the planner can show gear without a known source (F-175)
+
+  Amisia knows the stats of about 1,700 items from the item scan but not where they come from, among them loot
+  of the new Forever dungeons such as the dagger Schattenlichtathame (item 274998); the planner only suggested
+  items with a known source. Now a slot's suggestions end with a quiet line "+ N more without a known source"
+  when such items pass the list's filters; a click shows them sorted in by gain, marked "Source unknown" with a
+  grey "?" instead of the source symbol, and the line hides them again. The choice is remembered (also under
+  Options and in the settings, off by default); the wish star works on them. Test and placeholder items are left
+  out. Once a kill or a quest names an item's source, it becomes a normal suggestion.
+
+- feat(scan): quest rewards by quest id (F-172)
+
+  The data check (`/amisia selftest data`) now also asks every reward function of the quest log for a quest by
+  its id, in both spellings, and reports every value, every line of the quest tooltip and its line data, with a
+  verdict for rewards and for XP. Where rewards work, the quest scan also keeps each quest's reward and choice
+  items, money and XP (a quest scan of 2.74.0 runs once more), and the next data build makes the quest the
+  source of the items no quest named yet. The XP fills in quests whose XP this character has not seen.
+
 - feat(dungeons): the Scarlet Monastery is four dungeons, one per wing (F-174)
 
   The Graveyard (level 30-38), the Library (33-41), the Armory (36-44) and the Cathedral (38-46) each have a card

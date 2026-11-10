@@ -44,8 +44,8 @@ end
 
 -- The left texts of the own tooltip after SetHyperlink(link): a list (an unreadable line is ""), nil and
 -- the number of secret lines; or nil and why ("missing": no tooltip, "error": the client raised,
--- "secret": every line secret).
-function SB.TipLines(link)
+-- "secret": every line secret). max: lines read at most (default SB.MAX_LINES).
+function SB.TipLines(link, max)
     local t = SB.Tip()
     if not t or type(t.SetHyperlink) ~= "function" then return nil, "missing" end
     if t.SetOwner then pcall(t.SetOwner, t, _G.WorldFrame or UIParent, "ANCHOR_NONE") end
@@ -54,7 +54,7 @@ function SB.TipLines(link)
     local okN, n = pcall(t.NumLines, t)
     n = okN and tonumber(ns.Plain(n)) or 0
     local out, secret = {}, 0
-    for i = 1, math.min(n, SB.MAX_LINES) do
+    for i = 1, math.min(n, max or SB.MAX_LINES) do
         local fs = _G[TIP_NAME .. "TextLeft" .. i]
         local text
         if fs and fs.GetText then
@@ -71,8 +71,9 @@ function SB.TipLines(link)
     return out, nil, secret
 end
 
--- The left texts of C_TooltipInfo.GetHyperlink(link), as TipLines.
-function SB.InfoLines(link)
+-- The left texts of C_TooltipInfo.GetHyperlink(link), as TipLines; the fourth value is the client's
+-- line data (data.lines, for the probe's types and ids).
+function SB.InfoLines(link, max)
     local api = _G.C_TooltipInfo
     local f = type(api) == "table" and api.GetHyperlink
     if type(f) ~= "function" then return nil, "missing" end
@@ -83,23 +84,23 @@ function SB.InfoLines(link)
     local lines = ns.Plain(data.lines)
     if type(lines) ~= "table" then return {} end
     local out, secret = {}, 0
-    for i = 1, math.min(#lines, SB.MAX_LINES) do
+    for i = 1, math.min(#lines, max or SB.MAX_LINES) do
         local line = ns.Plain(lines[i])
         local v = type(line) == "table" and line.leftText or nil
         if v ~= nil and ns.Plain(v) == nil then secret = secret + 1 end
         out[#out + 1] = clean(v) or ""
     end
     if #lines > 0 and secret == #lines then return nil, "secret" end
-    return out, nil, secret
+    return out, nil, secret, lines
 end
 
 -- The lines through route ("info" or "tip"; nil: the probe's route, else info where the client has it).
-function SB.Lines(link, route)
+function SB.Lines(link, route, max)
     route = route or SB.Route()
-    if route == "tip" then return SB.TipLines(link) end
-    local lines, why, secret = SB.InfoLines(link)
-    if lines or route == "info" then return lines, why, secret end
-    return SB.TipLines(link)
+    if route == "tip" then return SB.TipLines(link, max) end
+    local lines, why, secret, raw = SB.InfoLines(link, max)
+    if lines or route == "info" then return lines, why, secret, raw end
+    return SB.TipLines(link, max)
 end
 
 -- The route the probe found to give NPC names, else info where the client has it, else tip.
@@ -199,9 +200,10 @@ end
 
 ---------------------------------------------------------------------------
 -- The probe's verdicts: AmisiaDB.probe = { v = 1, build, at, npc, npcNew, route, burst, quest,
--- questTip, model, ... } (Core/SelfTestData.lua writes it; a mini-probe of the NPC scan may write npc)
+-- questTip, questReward, questXP, model, ... } (Core/SelfTestData.lua writes it; a mini-probe of the NPC scan may write npc)
 ---------------------------------------------------------------------------
-local PROBE_KEYS = { npc = "v", npcNew = "v", quest = "v", questTip = "v", model = "v", vignette = "v", questMap = "v",
+local PROBE_KEYS = { npc = "v", npcNew = "v", quest = "v", questTip = "v", questReward = "v", questXP = "v", model = "v",
+                     vignette = "v", questMap = "v",
                      journal = "v", taxi = "v", route = "r", burst = "n", src = "s" }
 
 -- Called on ADDON_LOADED: AmisiaDB.probe with known fields of known values only, or nil.

@@ -956,3 +956,13 @@ L["Zeit in der Leiste"] = "Time in the bar"
 L["\"Zeit 12:40\": die Uhr des Laufs (Lauf-Zeiten), solange sie läuft."] = "\"Time 12:40\": the run's clock (run times) while it runs."
 L["Route in der Leiste"] = "Route in the bar"
 L["\"Route 3/7\": der Stopp der Route, der du folgst; Rechtsklick geht weiter."] = "\"Route 3/7\": the stop of the route you follow; a right click goes on."
+
+-- gear without a known source (F-175, D-107)
+L["+ %d weitere ohne bekannte Quelle"] = "+ %d more without a known source"
+L["ohne bekannte Quelle ausblenden"] = "hide those without a known source"
+L["Items ohne bekannte Quelle"] = "Items without a known source"
+L["Items ohne bekannte Quelle vorschlagen"] = "Suggest items without a known source"
+L["Die Vorschläge des Ausrüstungsplaners zeigen auch Items, deren Werte Amisia aus dem Item-Scan kennt, aber nicht, woher sie kommen (\"Quelle unbekannt\")."] = "The gear planner's suggestions also show items whose stats Amisia knows from the item scan but not where they come from (\"Source unknown\")."
+L["Amisia kennt die Werte aus dem Item-Scan, aber nicht, woher es kommt. Tötet jemand mit Amisia den Boss oder gibt eine Quest es als Belohnung, lernt Amisia die Quelle."] = "Amisia knows the stats from the item scan, but not where it comes from. When someone with Amisia kills the boss or a quest gives it as a reward, Amisia learns the source."
+L["Klick: wieder nur Items mit bekannter Quelle."] = "Click: only items with a known source again."
+L["Klick: sie in der Liste zeigen, nach Zuwachs einsortiert."] = "Click: show them in the list, sorted in by gain."

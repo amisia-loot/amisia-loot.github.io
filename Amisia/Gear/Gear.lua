@@ -224,11 +224,21 @@ function Gear.ReadStats(item)
     return s
 end
 
+-- Data/GearNoSource.lua once built and of the same build (Gear/NoSource.lua builds it; nothing here does).
+local function noSource()
+    local N = ns.GearNoSource
+    return N and N.Data(false) or nil
+end
+
 -- Stats the item scan saw, as GearData.lua keeps them: "STRENGTH=5;RESISTANCE0_NAME=40" (the client's
 -- keys without ITEM_MOD_ and _SHORT; STAT knows the long spelling too).
 function Gear.ScannedStats(id)
     local d = ns.Data("GEAR")
     local text = d and d.ST and d.ST[id]
+    if not text then
+        local n = d and noSource()
+        text = n and type(n.ST) == "table" and n.ST[id] or nil
+    end
     if not text then return nil end
     local s = parseStats({}, text)
     local row = Gear.Item(id)
@@ -446,27 +456,35 @@ end
 
 -- The item's row: equip location, class, subclass, level, quality, bind, item level, class mask
 -- (0 = every class), weapon speed, profession needed to wear it (Gear.WearProf), sources...
--- A BiS pick GearData.lua does not list has its row in ns.BIS.PI (no sources, plus name).
+-- A BiS pick GearData.lua does not list has its row in ns.BIS.PI (no sources, plus name); an item of
+-- Data/GearNoSource.lua its row there once the planner built that file (Gear/NoSource.lua, D-107).
 function Gear.Item(id)
     local d = data()
     local row = d and d.I[id]
     if row then return row end
     local B = ns.BIS
-    return d and type(B) == "table" and type(B.PI) == "table" and B.PI[id] or nil
+    row = d and type(B) == "table" and type(B.PI) == "table" and B.PI[id] or nil
+    if row then return row end
+    local n = d and noSource()
+    return n and type(n.I) == "table" and n.I[id] or nil
 end
 
 -- The name and icon the scan saw for an item only the server describes (GearData N and IC, D-59):
 -- what stands in while the client has nothing. The name is the German client's, so only there.
-function Gear.ScanName(id)
-    if not (GetLocale and GetLocale() == "deDE") then return nil end
+local function scanField(key, id)
     local d = ns.HasData("GEAR") and ns.Data("GEAR")
-    return d and type(d.N) == "table" and d.N[id] or nil
+    local v = d and type(d[key]) == "table" and d[key][id] or nil
+    if v ~= nil then return v end
+    local n = noSource()
+    return n and type(n[key]) == "table" and n[key][id] or nil
 end
 
-function Gear.ScanIcon(id)
-    local d = ns.HasData("GEAR") and ns.Data("GEAR")
-    return d and type(d.IC) == "table" and d.IC[id] or nil
+function Gear.ScanName(id)
+    if not (GetLocale and GetLocale() == "deDE") then return nil end
+    return scanField("N", id)
 end
+
+function Gear.ScanIcon(id) return scanField("IC", id) end
 
 local QUALITY_RGB = { [0] = { 0.62, 0.62, 0.62 }, { 1, 1, 1 }, { 0.12, 1, 0 }, { 0, 0.44, 0.87 }, { 0.64, 0.21, 0.93 },
     { 1, 0.5, 0 } }

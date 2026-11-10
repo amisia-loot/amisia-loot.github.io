@@ -20,7 +20,9 @@ SavedVariables of 2026-10-07 were 2.3 MB and cost about 7 MB of Lua memory at ev
 - The builds (build_scan.py full, build_gear.py, build_bis.py) read the archive and the
   SavedVariables together (`with_archive`, `overlay`), so a trimmed file builds the same data.
 - The scans by id (D-104): `scan.quests` (/amisia scan quests: per quest id "title\tdifficulty
-  level\tquest level\ttype\tgroup\tobjectives" and the ids without an answer, `none`) and `scan.npcs`
+  level\tquest level\ttype\tgroup\tobjectives\trewards\tchoices\tmoney\txp" (the last four since
+  2.74.1 where the probe found the reward functions; rewards "id" or "id*count" apart by ",", choices
+  "id,id", money in copper; older lines end earlier) and the ids without an answer, `none`) and `scan.npcs`
   (/amisia scan npcs: per NPC id "name\ttitle\trank\tkind" and the ids without a name, `empty`), each in the
   client's language `loc`. The archive keeps them per language (`quests`, `quest_none`, `npcs`,
   `npc_empty`: a German title never replaces an English one); the marker lists their hashes and
@@ -237,12 +239,24 @@ def parse_ranges(text):
     return sorted(out)
 
 
+def reward_items(text):
+    """The reward field of a quest scan line ("2001,2002*5") as [(item id, count)]; bad parts left out."""
+    out = []
+    for part in (text or '').split(','):
+        m = re.fullmatch(r'(\d+)(?:\*(\d+))?', part.strip())
+        if m and _id(m.group(1)):
+            out.append((int(m.group(1)), max(1, int(m.group(2) or 1))))
+    return out
+
+
 def quest_fields(line):
-    """A quest scan line as {'title', 'level' (difficulty), 'qlevel', 'tag', 'group', 'obj'}."""
-    f = line.split('\t') + [''] * 6
+    """A quest scan line as {'title', 'level' (difficulty), 'qlevel', 'tag', 'group', 'obj', 'rewards'
+    [(item, count)], 'choices' [item], 'money' (copper), 'xp'}; an older line has no rewards (empty)."""
+    f = line.split('\t') + [''] * 10
     num = lambda v: int(v) if v.isdigit() else 0  # noqa: E731
     return {'title': f[0], 'level': num(f[1]), 'qlevel': num(f[2]), 'tag': f[3] if f[3] in ('G', 'D', 'R', 'P') else '',
-            'group': num(f[4]), 'obj': f[5]}
+            'group': num(f[4]), 'obj': f[5], 'rewards': reward_items(f[6]), 'choices': [i for i, _ in reward_items(f[7])],
+            'money': num(f[8]), 'xp': num(f[9])}
 
 
 def npc_fields(line):

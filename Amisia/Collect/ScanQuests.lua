@@ -6,10 +6,18 @@
 -- (tools.questRate per second, slower when answers time out), resumable (scan.quests.next), never in
 -- combat or in an instance. It ends with one line when the first 50 ids all time out.
 --
--- AmisiaDB.scan.quests = { loc, next (index into the list), n, at, done, list = { [questID] =
--- "title\tdifficulty level\tquest level\ttype\tgroup\tobjectives" }, none = ranges of ids without an
--- answer }. tools/build_scan_archive.py keeps it in tools/scan_archive.json (per language);
--- Collect/ScanTrim.lua takes out what the archive holds.
+-- Where the probe found the quest log's reward functions answering by quest id (verdicts questReward,
+-- questXP; spec addition 2026-11-10 "Belohnungen"), a line also holds the reward items with their
+-- count, the choice items, the money and the XP (layout 2); without such a verdict the scan stays as it
+-- was. A quest's XP fills AmisiaDB.questxp where it has none (Collect/QuestXP.lua). Five quests in a
+-- row with the same items mean the client ignores the quest id: the run stops keeping rewards and takes
+-- them out of those five lines.
+--
+-- AmisiaDB.scan.quests = { loc, next (index into the list), n, at, done, v (layout), list = { [questID] =
+-- "title\tdifficulty level\tquest level\ttype\tgroup\tobjectives\trewards\tchoices\tmoney\txp" },
+-- none = ranges of ids without an answer }; rewards "id" or "id*count" apart by ",", choices "id,id",
+-- money in copper; empty fields at the end left out. tools/build_scan_archive.py keeps it in
+-- tools/scan_archive.json (per language); Collect/ScanTrim.lua takes out what the archive holds.
 local ADDON, ns = ...
 local L = ns.L
 local SB = ns.ScanById
@@ -24,6 +32,9 @@ QS.MAX_PENDING = 60
 QS.REPORT_EVERY = 500
 QS.MIN_RATE = 2
 QS.MAX_OBJ = 200      -- bytes of objective text kept
+QS.LAYOUT = 2         -- the layout of a saved line with rewards (see QS.DB, QS.Start)
+QS.MAX_REWARDS = 10   -- reward and choice items read at most per quest
+QS.SAME_MAX = 5       -- quests in a row with the same reward items: the client ignores the quest id
 
 local running = false
 local ticker
@@ -33,6 +44,8 @@ local rate            -- the rate now (the setting, lower after timeouts)
 local first           -- { asked, answered } of the first QS.FIRST ids of this run
 local timeouts = 0    -- in a row
 local nextReport
+local rewardsOn, xpOn -- the parts this run reads (the probe's verdicts at the start)
+local same            -- { sig, ids } of the quests in a row with the same reward items
 
 local function now() return GetTime() end
 
@@ -49,6 +62,80 @@ local function call(f, ...)
     return ns.Plain(a), ns.Plain(b)
 end
 
+-- A function of the quest log in either form: the global one, else C_QuestLog's (the client of
+-- 2026-11-10 has some only in one of them), else C_QuestInfoSystem's.
+function QS.Fn(name)
+    local f = rawget(_G, name)
+    if type(f) == "function" then return f end
+    f = api(name)
+    if f then return f end
+    local Q = _G.C_QuestInfoSystem
+    f = type(Q) == "table" and Q[name] or nil
+    return type(f) == "function" and f or nil
+end
+
+local function count(v)
+    v = tonumber(v)
+    return v and v >= 1 and v % 1 == 0 and v or nil
+end
+
+-- The item of reward i of kind ("reward", "choice"): its id (the info's sixth value, else the link's)
+-- and count; nil without an id.
+local function rewardItem(kind, i, qid)
+    local info = QS.Fn(kind == "choice" and "GetQuestLogChoiceInfo" or "GetQuestLogRewardInfo")
+    local id, n
+    if info then
+        local ok, _, _, c, _, _, itemID = pcall(info, i, qid)
+        if ok then id, n = count(ns.Plain(itemID)), count(ns.Plain(c)) end
+    end
+    if not id then
+        local link = call(QS.Fn("GetQuestLogItemLink"), kind, i, qid)
+        id = type(link) == "string" and count(ns.ItemID(link)) or nil
+    end
+    if id and id > 9999999 then id = nil end
+    return id, n or 1
+end
+
+-- What the client says a loaded quest gives: { items = { { id, count } }, choices = { id }, money, xp }
+-- (money and xp nil when 0 or unknown); nil when it has none of the functions.
+function QS.Rewards(qid)
+    local numR, numC = QS.Fn("GetNumQuestLogRewards"), QS.Fn("GetNumQuestLogChoices")
+    local money, xp = QS.Fn("GetQuestLogRewardMoney"), QS.Fn("GetQuestLogRewardXP")
+    if not (numR or numC or money or xp) then return nil end
+    local out = { items = {}, choices = {} }
+    for i = 1, math.min(tonumber(call(numR, qid)) or 0, QS.MAX_REWARDS) do
+        local id, n = rewardItem("reward", i, qid)
+        if id then out.items[#out.items + 1] = { id, n } end
+    end
+    for i = 1, math.min(tonumber(call(numC, qid, false)) or 0, QS.MAX_REWARDS) do
+        local id = rewardItem("choice", i, qid)
+        if id then out.choices[#out.choices + 1] = id end
+    end
+    out.money = count(call(money, qid))
+    out.xp = count(call(xp, qid))
+    return out
+end
+
+-- The reward items of r as one text for the same-items check ("" for none).
+local function signature(r)
+    local ids = {}
+    for _, it in ipairs(r.items) do ids[#ids + 1] = it[1] end
+    for _, id in ipairs(r.choices) do ids[#ids + 1] = id end
+    table.sort(ids)
+    return table.concat(ids, ",")
+end
+
+-- The four reward fields of a line: rewards, choices, money, xp (as the parts this run reads allow).
+local function rewardFields(r)
+    local items, choices = {}, {}
+    if rewardsOn then
+        for _, it in ipairs(r.items) do items[#items + 1] = it[2] > 1 and (it[1] .. "*" .. it[2]) or tostring(it[1]) end
+        for _, id in ipairs(r.choices) do choices[#choices + 1] = tostring(id) end
+    end
+    return table.concat(items, ","), table.concat(choices, ","), tostring(rewardsOn and r.money or ""),
+        tostring(xpOn and r.xp or "")
+end
+
 -- AmisiaDB.scan.quests, made and checked.
 function QS.DB()
     AmisiaDB.scan = AmisiaDB.scan or {}
@@ -58,6 +145,7 @@ function QS.DB()
     if type(q.none) ~= "string" then q.none = "" end
     if not ns.Int(q.next, 1) then q.next = 1 end
     if type(q.loc) ~= "string" then q.loc = nil end
+    if q.v ~= nil and not ns.Int(q.v, 1, 99) then q.v = nil end
     -- counted once; the scan keeps it up to date, the trim sets it again
     if not ns.Int(q.n, 0) then q.n = ns.Count(q.list) end
     s.quests = q
@@ -95,8 +183,51 @@ function QS.Read(qid)
     local group = tonumber(call(api("GetSuggestedGroupSize"), qid)) or 0
     local code = ns.QuestTags and ns.QuestTags.Code(tag, group) or ""
     local fields = { title, tostring(math.floor(diff)), tostring(math.floor(level)), code or "", tostring(math.floor(group)), objectives(qid) }
+    local r = (rewardsOn or xpOn) and QS.Rewards(qid) or nil
+    if r then
+        local a, b, c, d = rewardFields(r)
+        fields[7], fields[8], fields[9], fields[10] = a, b, c, d
+    end
     while fields[#fields] == "" or fields[#fields] == "0" do fields[#fields] = nil end
-    return table.concat(fields, "\t")
+    return table.concat(fields, "\t"), r
+end
+
+-- A line without its reward fields (the first six).
+local function withoutRewards(line)
+    local parts, n = {}, 0
+    for part in (line .. "\t"):gmatch("([^\t]*)\t") do
+        n = n + 1
+        if n <= 6 then parts[n] = part end
+    end
+    while #parts > 1 and (parts[#parts] == "" or parts[#parts] == "0") do parts[#parts] = nil end
+    return table.concat(parts, "\t")
+end
+QS.WithoutRewards = withoutRewards
+
+-- The same-items check: five quests in a row with the same reward items stop the rewards of this run
+-- and take them out of those lines. The quest's XP fills the quest XP store where it has none.
+local function checkRewards(qid, r)
+    if not r then return end
+    if xpOn and r.xp and ns.QuestXP and not ns.QuestXP.Get(qid) and ns.Get("collect.quests") then
+        ns.QuestXP.Record(qid, r.xp)
+    end
+    if not rewardsOn then return end
+    local sig = signature(r)
+    if sig == "" then same = nil return end
+    if same and same.sig == sig then
+        same.ids[#same.ids + 1] = qid
+    else
+        same = { sig = sig, ids = { qid } }
+    end
+    if #same.ids >= QS.SAME_MAX then
+        rewardsOn = false
+        local q = QS.DB()
+        for _, id in ipairs(same.ids) do
+            if q.list[id] then q.list[id] = withoutRewards(q.list[id]) end
+        end
+        same = nil
+        ns.msg(L["Der Client nennt für jede Quest dieselbe Belohnung: der Quest-Scan speichert in diesem Lauf keine Belohnungen mehr."])
+    end
 end
 
 local function report(fmt, ...)
@@ -124,13 +255,14 @@ local function stored(qid, line)
     q.list[qid] = line
 end
 
-local function settle(qid, line)
+local function settle(qid, line, r)
     local p = pending[qid]
     if not p then return end
     pending[qid] = nil
     pendingCount = pendingCount - 1
     if line then
         stored(qid, line)
+        checkRewards(qid, r)
         timeouts = 0
         if p.first then first.answered = first.answered + 1 end
         if rate < (ns.Get("tools.questRate") or 20) then rate = rate + 0.5 end
@@ -144,9 +276,9 @@ local function send(qid, tries, isFirst, index)
     pending[qid] = { at = now(), tries = tries, first = isFirst, index = index }
     local have = call(api("HaveQuestData"), qid)
     if have == true then
-        local line = QS.Read(qid)
+        local line, r = QS.Read(qid)
         if line then
-            settle(qid, line)
+            settle(qid, line, r)
             return true
         end
     end
@@ -220,9 +352,9 @@ ns.OnEvent("QUEST_DATA_LOAD_RESULT", function(qid, success)
         settle(qid, nil)
         return
     end
-    local line = QS.Read(qid)
+    local line, r = QS.Read(qid)
     if line then
-        settle(qid, line)
+        settle(qid, line, r)
     elseif pending[qid].tries >= QS.TRIES then
         settle(qid, nil)
     end
@@ -230,6 +362,8 @@ ns.OnEvent("QUEST_DATA_LOAD_RESULT", function(qid, success)
 end)
 
 function QS.Running() return running end
+-- Whether this run keeps rewards and XP (tests, the status line).
+function QS.Parts() return rewardsOn and true or false, xpOn and true or false end
 
 -- Starts or resumes the scan. Returns true, or nil and why.
 function QS.Start()
@@ -248,6 +382,12 @@ function QS.Start()
     end
     if q.loc ~= loc then q.next, q.none, q.done = 1, "", nil end
     q.loc = loc
+    rewardsOn, xpOn, same = SB.Verdict("questReward") == "ok", SB.Verdict("questXP") == "ok", nil
+    -- layout 2 (2.74.1): with rewards to read, what an older scan left is asked again
+    if (rewardsOn or xpOn) and q.v ~= QS.LAYOUT then
+        q.list, q.none, q.next, q.done, q.n = {}, "", 1, nil, 0
+        q.v = QS.LAYOUT
+    end
     if q.next > #list then q.next, q.done = 1, nil end
     pending, pendingCount, credit, timeouts = {}, 0, 0, 0
     rate = ns.Get("tools.questRate") or 20

@@ -871,6 +871,9 @@ local OPTIONAL = {
     "C_Traits.GetTraitDescription", "C_Traits.GetGroupDisplayInfoByTreeID", "C_Spell.GetSpellName", "C_Spell.GetSpellTexture",
     -- the dungeon view: the dressing room on Ctrl-click, the quest XP
     "DressUpLink", "IsModifiedClick", "GetRewardXP", "GetQuestLogRewardXP",
+    -- the quest scan's rewards by id (D-107; /amisia selbsttest daten names both forms and what they give)
+    "GetNumQuestLogRewards", "GetQuestLogRewardInfo", "GetNumQuestLogChoices", "GetQuestLogChoiceInfo",
+    "GetQuestLogRewardMoney", "C_QuestLog.GetQuestLogRewardXP",
     -- the professions page: a spell's description once the client has loaded it
     "C_Spell.RequestLoadSpellData", "C_Spell.IsSpellDataCached",
     -- the guild crafters: a whisper with a prefilled question (else the chat line opened by hand)

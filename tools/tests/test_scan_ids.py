@@ -75,7 +75,14 @@ def test_id_scans_for_the_builders(tmp_path):
     sa.absorb(arch, EN)
     sa.save(str(path), arch)
     got = sa.id_scans(str(path), [DE])
-    assert got['quests']['deDE'][2] == {'title': 'Im Verlies', 'level': 24, 'qlevel': 26, 'tag': 'D', 'group': 0, 'obj': ''}
+    assert got['quests']['deDE'][2] == {'title': 'Im Verlies', 'level': 24, 'qlevel': 26, 'tag': 'D', 'group': 0, 'obj': '',
+                                        'rewards': [], 'choices': [], 'money': 0, 'xp': 0}, 'an older line: no rewards'
+    # a line of layout 2 (2.74.1): rewards with their count, choices, money, XP after the objectives
+    assert sa.quest_fields('Eins\t5\t0\t\t0\t\t2001,2002*5\t3001,3002\t150\t400') == {
+        'title': 'Eins', 'level': 5, 'qlevel': 0, 'tag': '', 'group': 0, 'obj': '', 'rewards': [(2001, 1), (2002, 5)],
+        'choices': [3001, 3002], 'money': 150, 'xp': 400}
+    assert sa.quest_fields('Zwei\t7\t0\t\t0\t\t\t3003')['choices'] == [3003]
+    assert sa.reward_items('x,12*0,0,99999999,7*2') == [(12, 1), (7, 2)], 'bad parts left out, a count at least 1'
     assert got['quests']['enUS'][1]['title'] == 'The Kobolds'
     assert got['npcs']['deDE'][261306] == {'name': 'Faldrim Ambossmar', 'sub': '<Thane>', 'rank': '', 'kind': ''}
     # a line of the layout since 2.74.1: the title, the rank of the level line and the kind

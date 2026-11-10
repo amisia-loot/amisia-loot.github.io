@@ -27,11 +27,21 @@ Where an item comes from (tools/att_data.py reads all of it, MIT licence, see LI
   - The Amisia source collector (`collect`, shared in the guild): quests with giver, rewards and
     level, vendors, drops of non-boss NPCs. Below ATT: a quest or NPC ATT knows keeps ATT's record,
     the observation adds what ATT lacks (so a quest reward ATT lists as missing gets its source).
+  - The quest scan by id (/amisia scan quests, tools/scan_archive.json, D-104): the reward and choice
+    items of a quest, where the probe found the reward functions (layout 2, 2.74.1). An item that no
+    quest source names yet (AllTheThings or the collector) gets the quest as its source: AllTheThings'
+    record where it knows the quest (level, faction, class), the collector's where it saw it, else the
+    scanned title and level without a faction.
   - The client tables (--wago): the item every recipe makes (SpellEffect) and the skill it needs,
     the higher of SkillLineAbility's MinSkillLineRank and the RequiredSkillRank of the recipe item
     that teaches it (ItemXItemEffect, ItemSparse).
   - wowsrc.com dungeon loot pages (drop chances), kept parsed in tools/gear_wowsrc.json;
     --refresh-wowsrc downloads them again, --no-wowsrc leaves them out.
+
+The scanned gear no source names at all goes to Amisia/Data/GearNoSource.lua (lazy GEAR_NOSRC, the
+planner's "ohne bekannte Quelle", D-107): the rows and stats of GearData.lua without sources, minus test
+and placeholder items, quality below uncommon, items without a scored stat, what is no gear and old raid
+gear (no_source). An item that gets a source later is a normal entry of GearData.lua and leaves that file.
 
 Instance ids (what GetInstanceInfo reports) come from the client tables UiMapAssignment and
 AreaTable (<Table>[.<build>].csv in --wago, default the newest copy of each table of the export,
@@ -76,6 +86,7 @@ WAGO = os.path.expanduser('~/addons/_wago')
 # ItemSparse class bits of the nine Classic classes; a mask holding all of them limits nothing.
 ALL_CLASSES = 1 | 2 | 4 | 8 | 16 | 64 | 128 | 256 | 1024
 OUT = os.path.join(ROOT, 'Amisia', 'Data', 'GearData.lua')
+NOSRC_OUT = os.path.join(ROOT, 'Amisia', 'Data', 'GearNoSource.lua')
 GEAR_LUA = os.path.join(ROOT, 'Amisia', 'Gear', 'Gear.lua')
 USER_AGENT = att_data.USER_AGENT
 
@@ -355,6 +366,25 @@ def scan_quest_tags(qtags, info):
     for qid, (_, tag) in info.items():
         if tag in QUEST_TAG_CODES and qid not in out:
             out[qid] = tag
+    return out
+
+
+def scan_quest_rewards(scans):
+    """{quest id: {'title', 'level', 'items': [item ids, rewards then choices]}} of the quest scan's
+    lines with rewards (layout 2); the English title where an English client scanned it, else the
+    first language's. Empty without such lines."""
+    out = {}
+    parts = (scans or {}).get('quests') or {}
+    for loc in sorted(parts, key=lambda x: (x not in ('enUS', 'enGB'), x)):
+        for qid, f in parts[loc].items():
+            items = [i for i, _ in f.get('rewards') or []] + list(f.get('choices') or [])
+            if not items:
+                continue
+            lvl = f.get('qlevel') or f.get('level') or 0
+            r = out.setdefault(qid, {'title': f.get('title') or '', 'level': lvl if 0 < lvl <= 99 else 0, 'items': []})
+            for i in items:
+                if i not in r['items']:
+                    r['items'].append(i)
     return out
 
 
@@ -658,10 +688,11 @@ def is_junk(name):
 
 
 def build(scan_items, collected, att, crafts=None, wowsrc=None,
-          itemsparse=None, forever_raids=None, facts=None, prev_items=None, observed=None):
+          itemsparse=None, forever_raids=None, facts=None, prev_items=None, observed=None, scanned=None):
     """Joins the sources to the items. att is the neutral form of tools/att_data.py (att_data.empty_db()
     for none); crafts client_crafts' form (None for none); observed the source
-    collector's records (build_scan.collect_observed). Returns the source
+    collector's records (build_scan.collect_observed); scanned the quest scan's rewards
+    (scan_quest_rewards). The ids any source names are kept as src.named (no_source). Returns the source
     records, the kept items {id: (item, source numbers, level, class mask, speed, skill line)}, the
     zone names, link counts, what was left out and why, wowsrc names without an item, and the ids to
     ask the client for."""
@@ -870,6 +901,13 @@ def build(scan_items, collected, att, crafts=None, wowsrc=None,
     # observation fills in what ATT lacks: a quest or vendor ATT does not have, a reward ATT does
     # not list, a mob nobody named.
     obs = observed or {}
+
+    def obs_quest(qid, q):
+        fac = q['fac'] if q['fac'] in ('A', 'H') else None
+        zone = zone_ref(q['gpos'][0]) if q['gpos'] else None
+        # the lowest player level that was offered the quest stands in for its minimum level
+        return src.add('Q', q['title'] or f'Quest {qid}', q['qlevel'] or 0, q['minlvl'] or 0, fac, zone, qid)
+
     for qid, q in sorted((obs.get('q') or {}).items()):
         rewards = list(q['rewards']) + list(q['choices'])
         if not rewards:
@@ -879,12 +917,25 @@ def build(scan_items, collected, att, crafts=None, wowsrc=None,
         if aq and num is None:
             continue   # a raid quest
         if num is None:
-            fac = q['fac'] if q['fac'] in ('A', 'H') else None
-            zone = zone_ref(q['gpos'][0]) if q['gpos'] else None
-            # the lowest player level that was offered the quest stands in for its minimum level
-            num = src.add('Q', q['title'] or f'Quest {qid}', q['qlevel'] or 0, q['minlvl'] or 0, fac, zone, qid)
+            num = obs_quest(qid, q)
         for item in rewards:
             note(item, num, 'quest')
+    # --- the quest scan by id (D-104, 2.74.1): rewards of quests for items no quest source names yet;
+    # AllTheThings' record of the quest, else the collector's, else the scan's title and level
+    for qid, r in sorted((scanned or {}).items()):
+        todo = [i for i in r['items'] if not any(src.rows[n - 1][0] == 'Q' for n in found.get(i, ()))]
+        if not todo:
+            continue
+        aq = quests.get(qid)
+        num = quest_rec(qid, aq) if aq else None
+        if aq and num is None:
+            continue   # a raid quest
+        if num is None and qid in (obs.get('q') or {}):
+            num = obs_quest(qid, obs['q'][qid])
+        if num is None:
+            num = src.add('Q', r['title'] or f'Quest {qid}', r['level'] or 0, 0, None, None, qid)
+        for item in todo:
+            note(item, num, 'scan quest')
     for nid, v in sorted((obs.get('s') or {}).items()):
         n = npcs.get(nid)
         if n:
@@ -975,7 +1026,128 @@ def build(scan_items, collected, att, crafts=None, wowsrc=None,
             # worn only with the profession, so not before that skill is reached
             level = max(level, min(60, -(-rank // 5)))
         keep[iid] = (it, nums, level, mask, speed, line)
+    src.named = set(found)
     return src, keep, zone_rows, stats, dropped, unmatched, sorted(missing)
+
+
+# ---------------------------------------------------------------- gear without a known source (D-107)
+# Names of test, placeholder and unused items, in both client languages: what no player gets ("TEST",
+# "Ring of Critical Testing", "Template Item", "[DNT] ... Placeholder", "DNT HEAD", "NYI", "[PH]", "Nax PH ...",
+# "DEPRECATED", "Monster - Shield", "UNUSED", "QATest", "zz...", "(OLD)", "63 Green Rogue Belt": the
+# developers' stand-ins of a level and quality).
+NOSRC_JUNK = re.compile(r'\btest(ing)?\b|template|placeholder|\[dnt\]|\bdnt\b|\bnyi\b|\[ph\]|\bph\b|deprecated|'
+                        r'^monster - |\bunused\b|^qa|^zz|\(old\)|^old |^\d+ (green|blue|purple|epic|white)\b', re.I)
+NOSRC_MIN_QUALITY = 2
+
+
+def nosrc_level(it):
+    """The planner's level of a source-less item: its required level, else (0) its item level less five
+    (Classic gear asks about five levels below its item level), at least 1, at most 60."""
+    if it.get('min'):
+        return it['min']
+    return max(1, min(60, (it.get('ilvl') or 0) - 5))
+
+
+def no_source(scan_items, named, keys, itemsparse=None):
+    """The scanned gear no source names, by the rules of D-107: (rows {id: (item, level, mask, speed,
+    stats)}, dropped {rule: [(id, name)]}). Left out: an item any source names (it is in GearData.lua or
+    was left out there for its sources: a raid, a quality), no gear (slot or class), quality below
+    uncommon, a test or placeholder name (NOSRC_JUNK, is_junk, TEST_ITEMS), Classic gear above the
+    Classic item level cap (old raid gear the client keeps), and no stat the planner scores. A required
+    level of 0 is no reason (nosrc_level)."""
+    itemsparse = itemsparse or {}
+    classes, delays = itemsparse.get('classes', {}), itemsparse.get('delay', {})
+    rows, dropped = {}, {k: [] for k in ('not gear', 'quality', 'junk', 'raid level', 'no stats')}
+    for iid, it in sorted((scan_items or {}).items()):
+        if iid in named:
+            continue
+        name = it.get('name') or ''
+        if it.get('equipLoc') not in EQUIP or it.get('classID') not in (build_scan.CLASS_WEAPON, build_scan.CLASS_ARMOR):
+            rule = 'not gear'
+        elif (it.get('q') or 0) < NOSRC_MIN_QUALITY:
+            rule = 'quality'
+        elif iid in TEST_ITEMS or is_junk(name) or NOSRC_JUNK.search(name):
+            rule = 'junk'
+        elif iid < FOREVER_IDS and (it.get('ilvl') or 0) > CLASSIC_MAX_ILVL:
+            rule = 'raid level'
+        else:
+            st = compact_stats(it.get('stats'), keys)
+            if not st:
+                rule = 'no stats'
+            else:
+                mask = int(classes.get(str(iid), 0))
+                speed = round(int(delays.get(str(iid), 0)) / 1000, 2)
+                rows[iid] = (it, nosrc_level(it), mask, speed, st)
+                continue
+        if it.get('equipLoc') in EQUIP or rule != 'not gear':
+            dropped[rule].append((iid, name))
+    return rows, dropped
+
+
+def sparse_for(wago_dir, ids):
+    """Class limits and weapon speeds of ids from the client's ItemSparse in wago_dir, as
+    gear_itemsparse.json holds them ({'classes', 'delay'} by str id); empty without the table."""
+    path = att_data.wago_csv(wago_dir, 'ItemSparse') if wago_dir else None
+    out = {'classes': {}, 'delay': {}}
+    if not path or not ids:
+        return out
+    import csv as csv_mod
+    want = set(ids)
+    with open(path, encoding='utf-8') as fh:
+        for row in csv_mod.DictReader(fh):
+            if not (row.get('ID') or '').isdigit() or int(row['ID']) not in want:
+                continue
+            mask = int(row.get('AllowableClass') or -1)
+            if mask > 0 and mask & ALL_CLASSES != ALL_CLASSES:
+                out['classes'][row['ID']] = mask & ALL_CLASSES
+            d = int(row.get('ItemDelay') or 0)
+            if d > 0:
+                out['delay'][row['ID']] = d
+    return out
+
+
+def write_no_source(out, rows, info):
+    """Amisia/Data/GearNoSource.lua: lazy GEAR_NOSRC = { built, I (the columns of GearData.lua's I
+    without sources), ST, N, IC (as GearData.lua) }."""
+    lines = [
+        '-- GENERATED by tools/build_gear.py. Do not edit; rebuild instead.',
+        '-- Sources: the Amisia item scan (tools/scan_archive.json): gear no source of GearData.lua names (D-107).',
+        'local _, ns = ...',
+        '',
+        '-- The planner\'s gear "ohne bekannte Quelle", built only when the planner asks (UI/Pages/Planner.lua,',
+        '-- Gear/NoSource.lua). I: [itemID] = {equipLoc, classID, subclassID, level, quality, bind, item level, class',
+        '-- mask, weapon speed, 0} as GearData.lua\'s I without sources (level: the required level, else the item',
+        '-- level less five); ST, N, IC as in GearData.lua (N and IC only for the items the client\'s table lacks).',
+        'ns.GEAR_NOSRC = {',
+        f'    built = {lua_str(info["built"])},',
+        '    I = {',
+    ]
+    for iid in sorted(rows):
+        it, level, mask, speed, _ = rows[iid]
+        vals = [lua_str(it['equipLoc'].replace('INVTYPE_', '')), it['classID'], it['subclassID'], level, it['q'],
+                it.get('bind') or 0, it.get('ilvl') or 0, mask, f'{speed:g}', 0]
+        lines.append(f'        [{iid}] = {{' + ', '.join(str(v) for v in vals) + '},')
+    lines.append('    },')
+    lines.append('    ST = {')
+    for iid in sorted(rows):
+        lines.append(f'        [{iid}] = {lua_str(rows[iid][4])},')
+    lines.append('    },')
+    unknown = [iid for iid in sorted(rows) if not client_has(info.get('client'), iid)]
+    lines.append('    N = {')
+    for iid in unknown:
+        name = clean_name(rows[iid][0].get('name'))
+        if name:
+            lines.append(f'        [{iid}] = {lua_str(name)},')
+    lines.append('    },')
+    lines.append('    IC = {')
+    for iid in unknown:
+        icon = str(rows[iid][0].get('icon') or '')
+        if icon.isdigit() and int(icon) > 0:
+            lines.append(f'        [{iid}] = {icon},')
+    lines.append('    },')
+    lines.append('}')
+    with open(out, 'w', encoding='utf-8', newline='\n') as fh:
+        fh.write(lua_data.lazy('\n'.join(lines) + '\n', 'GEAR_NOSRC', len(rows)))
 
 
 # ---------------------------------------------------------------- scanned stats
@@ -1190,6 +1362,7 @@ def main(argv=None):
     ap.add_argument('--scan-archive', default=build_scan_archive.ARCHIVE,
                     help='the scan archive read under the SavedVariables (default tools/scan_archive.json; "" for none)')
     ap.add_argument('--out', default=OUT)
+    ap.add_argument('--nosrc-out', default=NOSRC_OUT, help='the gear without a known source (default Amisia/Data/GearNoSource.lua)')
     ap.add_argument('--refresh-wowsrc', action='store_true', help='download the wowsrc.com dungeon pages again')
     ap.add_argument('--no-wowsrc', action='store_true', help='leave the wowsrc.com dungeon pages out')
     ap.add_argument('--show-unmatched', action='store_true')
@@ -1253,9 +1426,13 @@ def main(argv=None):
     last = args.out if os.path.exists(args.out) else OUT
     prev_items, old_stats = previous_items(last), previous_stats(last)
     log(f'last build ({os.path.relpath(last, ROOT)}): {len(prev_items)} items, {len(old_stats)} with stats')
+    # the quest scan by id (D-104): its rewards are quest sources where no quest names an item yet
+    id_scans = build_scan_archive.id_scans(args.scan_archive or None, dbs)
+    scanned = scan_quest_rewards(id_scans)
     src, keep, zone_rows, stats, dropped, unmatched, missing = build(
         scan_items, collected, att, crafts, wowsrc, itemsparse, forever_raids, load_facts(),
-        prev_items, observed)
+        prev_items, observed, scanned)
+    log(f'quest scan rewards: {len(scanned)} quests with reward items, {stats.get("scan quest", 0)} items took one as their source')
     missing = client_known(missing, args.wago)
     sources = [att_data.ATT_SOURCE + (f' at {att["commit"][:10]}' if att.get('commit') else ''), 'the Amisia item scan']
     if crafts:
@@ -1265,7 +1442,7 @@ def main(argv=None):
     rep = client_reputation(args.wago)
     qtags = update_quest_tags(dbs)
     # the quest scan by id (D-104): levels where the sources have none, types the quest log did not teach
-    qinfo = scan_quest_info(build_scan_archive.id_scans(args.scan_archive or None, dbs))
+    qinfo = scan_quest_info(id_scans)
     took = apply_quest_scan(src, qinfo)
     qtags = scan_quest_tags(qtags, qinfo)
     no_level = sum(1 for r in src.rows if r[0] == 'Q' and len(r) > 2 and not r[2])
@@ -1276,6 +1453,14 @@ def main(argv=None):
         client = (build_scan_archive.load(args.scan_archive).get('client') or {}).get('ids')
     n_src = write_lua(args.out, src, keep, zone_rows, {'built': time.strftime('%Y-%m-%d'), 'sources': sources,
                                                       'rep': rep, 'qtags': qtags, 'client': client}, missing, old_stats)
+    # the scanned gear without a known source (D-107), with its class limits and speeds from ItemSparse
+    keys = scored_stat_keys()
+    first, _ = no_source(scan_items, src.named, keys)
+    nsrc, ndropped = no_source(scan_items, src.named, keys, sparse_for(args.wago, first))
+    write_no_source(args.nosrc_out, nsrc, {'built': time.strftime('%Y-%m-%d'), 'client': client})
+    log(f'without a known source: {len(nsrc)} items -> {os.path.relpath(args.nosrc_out, ROOT)} '
+        f'({os.path.getsize(args.nosrc_out) // 1024} KB); left out: '
+        + ', '.join(f'{k} {len(v)}' for k, v in ndropped.items()))
     log(f'reputation: {sum(1 for i in keep if i in rep)} of {len(keep)} items ask for a standing')
     scanned = sum(1 for k in keep.values() if k[0].get('stats'))
     kept_old = sum(1 for i, k in keep.items() if not k[0].get('stats') and i in old_stats)

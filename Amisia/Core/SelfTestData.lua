@@ -4,7 +4,11 @@
 -- GameTooltip) on "unit:Creature-0-0-0-0-<id>-0000000000", for NPCs this client has seen, classic
 -- bosses of our data and new Forever bosses: at once, after 1 s, after 3 s or never, with the first
 -- lines; ten asks in a row (refused or not). Quests by id: HaveQuestData, RequestLoadQuestByID with
--- QUEST_DATA_LOAD_RESULT, title, difficulty level, quest level, tag, the quest tooltip's lines. A model
+-- QUEST_DATA_LOAD_RESULT, title, difficulty level, quest level, tag, the quest tooltip's lines. Quest
+-- rewards by id: after the load result every reward function of the quest log in both forms (global,
+-- C_QuestLog, C_QuestInfoSystem) with its values, every line of the quest tooltip and the tooltip data's
+-- line types and ids, for a quest in the log, a completed one, dungeon quests, a new Forever one and one
+-- whose reward item our data knows (the verdicts questReward, questXP). A model
 -- frame of our own with SetCreature for a seen and an unseen creature (shown nowhere). Whether
 -- vignettes, quests on the map, the dungeon journal and the flight map give anything. The report goes
 -- into the self-test window and ends with a verdict per technique; the verdicts are kept in
@@ -28,6 +32,14 @@ DT.TIMES = { 1, 3 }                    -- seconds of the second and third ask
 DT.BURST = 10
 DT.QUEST_WAIT = 4
 DT.MODEL_WAIT = 2
+DT.ALL_LINES = 30                      -- quest tooltip lines read for the rewards section
+DT.REWARD_ROWS = 6                     -- reward and choice items listed per quest
+-- the reward functions of the quest log, looked up global, in C_QuestLog and in C_QuestInfoSystem
+DT.REWARD_FNS = { "GetNumQuestLogRewards", "GetQuestLogRewardInfo", "GetNumQuestLogChoices", "GetQuestLogChoiceInfo",
+    "GetQuestLogItemLink", "GetQuestLogRewardMoney", "GetQuestLogRewardXP", "GetNumQuestLogRewardSpells",
+    "GetQuestLogRewardSpell", "GetQuestRewardSpells", "GetQuestRewardCurrencies", "GetQuestRewardCurrencyInfo",
+    "GetNumQuestLogRewardCurrencies", "GetQuestLogRewardCurrencyInfo" }
+DT.FN_PLACES = { { "_G", "global" }, { "C_QuestLog", "C_QuestLog" }, { "C_QuestInfoSystem", "C_QuestInfoSystem" } }
 local STALE = 30
 
 local run
@@ -225,6 +237,16 @@ local function questSamples(P)
     end
     for i = 1, math.min(2, #ids) do addQ(ids[i], L["Dungeonquest aus unseren Daten"]) end
     addQ(DT.QUEST_NEW, L["neu in Forever"])
+    -- a quest whose reward items our data knows, so the answer can be compared
+    for _, qid in ipairs(ids) do
+        local row = d.Q[qid]
+        local gear = type(row) == "table" and row[12]
+        if type(gear) == "table" and #gear > 0 and qid ~= ids[1] and qid ~= ids[2] then
+            addQ(qid, L["mit bekannter Belohnung"])
+            out[#out].known = gear
+            break
+        end
+    end
     addQ(DT.QUEST_NONE, L["gibt es nicht"])
     P.quests = out
     P.questById = {}
@@ -248,9 +270,10 @@ local function readQuest(q)
     q.haveNow = pcallPlain(questApi("HaveQuestData"), q.id)
     q.tips = {}
     for _, route in ipairs(ROUTES) do
-        local lines, why = SB().Lines(SB().QuestLink(q.id), route)
-        q.tips[route] = { lines = lines, why = why }
+        local lines, why, _, raw = SB().Lines(SB().QuestLink(q.id), route, DT.ALL_LINES)
+        q.tips[route] = { lines = lines, why = why, raw = raw }
     end
+    DT.ReadRewards(q)
 end
 
 local function sectionQuests(P)
@@ -403,6 +426,191 @@ local function sectionPresence(P)
 end
 
 ---------------------------------------------------------------------------
+-- Quest rewards by id
+---------------------------------------------------------------------------
+-- A reward function in one place ("global", "C_QuestLog", "C_QuestInfoSystem"), or nil.
+local function fnAt(place, name)
+    local t = place == "_G" and _G or rawget(_G, place)
+    local f = type(t) == "table" and rawget(t, name) or nil
+    return type(f) == "function" and f or nil
+end
+
+-- Where a reward function exists: "global, C_QuestLog" or nil.
+local function fnPlaces(name)
+    local out = {}
+    for _, pl in ipairs(DT.FN_PLACES) do
+        if fnAt(pl[1], name) then out[#out + 1] = pl[2] end
+    end
+    return #out > 0 and table.concat(out, ", ") or nil
+end
+
+-- Every value of a protected call as text ("nil" for none; an error as "Fehler: ...").
+local function allValues(f, ...)
+    if not f then return nil end
+    local res = { pcall(f, ...) }
+    if not res[1] then return L["Fehler: %s"]:format(cut(tostring(res[2]))), {} end
+    local parts, vals = {}, {}
+    for i = 2, math.max(2, #res) do
+        local v = ns.Plain(res[i])
+        vals[#vals + 1] = v
+        parts[#parts + 1] = type(v) == "table" and sample(v) or show(v)
+    end
+    return table.concat(parts, ", "), vals
+end
+
+-- The first place's form of a function (the one the scan would use: QS.Fn).
+local function firstFn(name)
+    local QS = ns.QuestScan
+    return QS and QS.Fn and QS.Fn(name) or fnAt("_G", name)
+end
+
+-- The number fields and argument fields of a tooltip data line as "type=0, id=1234, ..." (no texts).
+local function lineFields(line)
+    if type(line) ~= "table" then return show(line) end
+    local parts = {}
+    for k, v in pairs(line) do
+        v = ns.Plain(v)
+        if type(v) == "number" or type(v) == "boolean" then parts[#parts + 1] = ("%s=%s"):format(tostring(k), show(v)) end
+    end
+    local args = ns.Plain(line.args)
+    if type(args) == "table" then
+        for _, a in ipairs(args) do
+            a = ns.Plain(a)
+            if type(a) == "table" and a.field then
+                local v = a.intVal or a.guidVal or a.boolVal or a.colorVal or a.stringVal
+                parts[#parts + 1] = ("%s=%s"):format(tostring(a.field), type(v) == "string" and cut(v) or show(ns.Plain(v)))
+            end
+        end
+    end
+    table.sort(parts)
+    return #parts > 0 and table.concat(parts, ", ") or L["keine Zahlen"]
+end
+
+-- The item id of a value list of GetQuestLogRewardInfo/GetQuestLogChoiceInfo (the sixth) or of a link.
+local function idOf(vals, link)
+    local id = vals and tonumber(vals[6])
+    if id and id > 0 then return id, "info" end
+    id = type(link) == "string" and ns.ItemID(link) or nil
+    if id then return id, "link" end
+    return nil
+end
+
+-- Reads everything the reward functions say about q (after its load result) into q.rw.
+function DT.ReadRewards(q)
+    local rw = { rows = {}, ids = {}, via = {} }
+    q.rw = rw
+    local id = q.id
+    rw.numR = { allValues(firstFn("GetNumQuestLogRewards"), id) }
+    rw.numCt = { allValues(firstFn("GetNumQuestLogChoices"), id, true) }
+    rw.numCf = { allValues(firstFn("GetNumQuestLogChoices"), id, false) }
+    local function items(kind, num, infoName)
+        local n = tonumber(num and num[2] and num[2][1]) or 0
+        for i = 1, math.min(n, DT.REWARD_ROWS) do
+            local text, vals = allValues(firstFn(infoName), i, id)
+            local link = select(2, allValues(firstFn("GetQuestLogItemLink"), kind, i, id))
+            link = link and link[1]
+            local item, via = idOf(vals, link)
+            if item then
+                rw.ids[#rw.ids + 1] = item
+                rw.via[via] = true
+            end
+            rw.rows[#rw.rows + 1] = { kind = kind, i = i, info = text, link = link, id = item }
+        end
+    end
+    items("reward", rw.numR, "GetQuestLogRewardInfo")
+    items("choice", rw.numCf[2] and tonumber(rw.numCf[2][1]) and rw.numCf or rw.numCt, "GetQuestLogChoiceInfo")
+    rw.money = { allValues(firstFn("GetQuestLogRewardMoney"), id) }
+    rw.xp = { allValues(firstFn("GetQuestLogRewardXP"), id) }
+    rw.spells = { allValues(firstFn("GetNumQuestLogRewardSpells"), id) }
+    rw.extra = {}
+    for _, path in ipairs({ "C_QuestInfoSystem.GetQuestRewardSpells", "C_QuestInfoSystem.GetQuestRewardCurrencies",
+                            "C_QuestLog.GetQuestRewardCurrencies", "C_QuestLog.GetQuestRewardCurrencyInfo" }) do
+        local f = fn(path)
+        if f then rw.extra[#rw.extra + 1] = { path, (allValues(f, id)) } end
+    end
+    table.sort(rw.ids)
+    rw.sig = table.concat(rw.ids, ",")
+    rw.xpValue = tonumber(rw.xp[2] and rw.xp[2][1]) or 0
+end
+
+local function sectionRewards(P)
+    local R = P.R
+    K.section(R, L["Questbelohnungen per Nummer"])
+    for _, name in ipairs(DT.REWARD_FNS) do
+        local at = fnPlaces(name)
+        add(R, at and "OK" or "WERT", name, at or L["fehlt"])
+    end
+    for _, q in ipairs(P.quests) do
+        local rw = q.rw
+        if q.id ~= DT.QUEST_NONE and rw then
+            local label = ("%d %s"):format(q.id, q.kind)
+            add(R, "WERT", label, L["Belohnungen %s; Auswahl (mit Währungen) %s, (ohne) %s; Geld %s; EP %s; Zauber %s"]:format(
+                rw.numR[1] or L["fehlt"], rw.numCt[1] or L["fehlt"], rw.numCf[1] or L["fehlt"], rw.money[1] or L["fehlt"],
+                rw.xp[1] or L["fehlt"], rw.spells[1] or L["fehlt"]))
+            for _, row in ipairs(rw.rows) do
+                add(R, row.id and "OK" or "WERT", ("%d %s %d"):format(q.id, row.kind == "choice" and L["Auswahl"] or L["Belohnung"], row.i),
+                    L["Info: %s; Link: %s; Item %s"]:format(row.info or L["fehlt"], show(row.link), show(row.id)))
+            end
+            for _, e in ipairs(rw.extra) do add(R, "WERT", ("%d %s"):format(q.id, e[1]), e[2] or "nil") end
+            if q.known then
+                local parts = {}
+                for _, item in ipairs(q.known) do parts[#parts + 1] = tostring(item) end
+                add(R, "WERT", L["%d laut unseren Daten"]:format(q.id), table.concat(parts, ", "))
+            end
+            for _, route in ipairs(ROUTES) do
+                local t = q.tips and q.tips[route] or {}
+                local name = route == "info" and "C_TooltipInfo" or L["eigener Tooltip"]
+                for i, line in ipairs(type(t.lines) == "table" and t.lines or {}) do
+                    add(R, "WERT", L["%d Zeile %d (%s)"]:format(q.id, i, name), line ~= "" and line or L["leer"])
+                end
+                for i, line in ipairs(type(t.raw) == "table" and t.raw or {}) do
+                    if i > DT.ALL_LINES then break end
+                    add(R, "WERT", L["%d Zeilendaten %d"]:format(q.id, i), lineFields(ns.Plain(line)))
+                end
+            end
+        end
+    end
+end
+
+-- The verdicts of the rewards: "ok" when the quest with a known reward names one of its items and no
+-- other quest gave the same non-empty answer (the client then ignores the quest id); the XP "ok" when
+-- a quest not in the log has XP different from the log quest's.
+local function rewardVerdicts(P)
+    local v = P.v
+    local known, other, inLog
+    for _, q in ipairs(P.quests) do
+        if q.rw and q.id ~= DT.QUEST_NONE then
+            if q.known then known = q end
+            if q.kind == L["im Questlog"] then inLog = q end
+        end
+    end
+    local sigs = {}
+    for _, q in ipairs(P.quests) do
+        local rw = q.rw
+        if rw and rw.sig ~= "" then
+            if sigs[rw.sig] and sigs[rw.sig] ~= q.id then other = true end
+            sigs[rw.sig] = q.id
+        end
+    end
+    if known and known.rw then
+        local hit = false
+        for _, item in ipairs(known.rw.ids) do
+            for _, want in ipairs(known.known) do if item == want then hit = true end end
+        end
+        v.questReward = (hit and not other) and "ok" or "none"
+        P.rewardVia = known.rw.via.info and "GetQuestLogRewardInfo" or (known.rw.via.link and "GetQuestLogItemLink") or nil
+    end
+    local xpSeen = false
+    for _, q in ipairs(P.quests) do
+        local rw = q.rw
+        if rw and q ~= inLog and q.id ~= DT.QUEST_NONE and rw.xpValue > 0 and (not inLog or rw.xpValue ~= inLog.rw.xpValue) then
+            xpSeen = true
+        end
+    end
+    v.questXP = (xpSeen and firstFn("GetQuestLogRewardXP")) and "ok" or "none"
+end
+
+---------------------------------------------------------------------------
 -- The verdicts
 ---------------------------------------------------------------------------
 local VERDICT_TEXT = { ok = L["geht (sofort)"], retry = L["geht (nach einer Wartezeit)"], none = L["geht nicht"] }
@@ -432,6 +640,7 @@ local function verdicts(P)
     end
     v.quest = title and "ok" or "none"
     v.questTip = tipLines and "ok" or "none"
+    rewardVerdicts(P)
     local seenModel, newModel
     for _, e in ipairs(P.models) do
         -- the client of 2026-11-10 gives no file id but the display id, also for a creature never seen
@@ -452,6 +661,9 @@ local function sectionVerdicts(P)
     if v.burst then add(R, "WERT", L["Zehn hintereinander"], L["%d ohne Namen"]:format(v.burst)) end
     line(L["Quest per Nummer"], "quest")
     line(L["Quest-Tooltip (Ziele)"], "questTip")
+    add(R, v.questReward == "ok" and "OK" or "WERT", L["Questbelohnungen per Nummer"], v.questReward == "ok"
+        and L["geht (Funktion %s)"]:format(P.rewardVia or "?") or (v.questReward and L["geht nicht"] or L["nicht geprüft"]))
+    line(L["Quest-EP per Nummer"], "questXP")
     if v.model then add(R, "WERT", L["Modell per Nummer"], v.model == "ok" and L["auch ungesehene"] or v.model == "retry" and L["nur gesehene"] or L["geht nicht"]) end
     for _, k in ipairs({ { "vignette", L["Vignetten"] }, { "questMap", L["Quests auf der Karte"] }, { "journal", L["Dungeonjournal"] }, { "taxi", L["Flugkarte"] } }) do
         if v[k[1]] then add(R, "WERT", k[2], v[k[1]] == "ok" and L["liefert Daten"] or L["leer"]) end
@@ -461,8 +673,8 @@ end
 local function summary(P)
     local v = P.v
     local function t(k) return v[k] and VERDICT_TEXT[v[k]] or L["nicht geprüft"] end
-    return L["Datenprüfung: NPC per Nummer %s, neue Forever-NPCs %s, Quest per Nummer %s, Quest-Tooltip %s. Bericht im Fenster; das Ergebnis ist gespeichert."]:format(
-        t("npc"), t("npcNew"), t("quest"), t("questTip"))
+    return L["Datenprüfung: NPC per Nummer %s, neue Forever-NPCs %s, Quest per Nummer %s, Quest-Tooltip %s, Questbelohnungen %s. Bericht im Fenster; das Ergebnis ist gespeichert."]:format(
+        t("npc"), t("npcNew"), t("quest"), t("questTip"), t("questReward"))
 end
 
 ---------------------------------------------------------------------------
@@ -494,7 +706,7 @@ local function finish(P)
     if P.aborted then
         add(R, "WERT", L["Abgebrochen"], L["%s: außerhalb des Kampfes neu prüfen"]:format(P.aborted))
     end
-    for _, body in ipairs({ sectionNpcs, sectionQuests, sectionModels, sectionPresence }) do
+    for _, body in ipairs({ sectionNpcs, sectionQuests, sectionRewards, sectionModels, sectionPresence }) do
         local ok, err = pcall(body, P)
         if not ok then add(R, "FEHLER", L["Abschnitt"], cut(tostring(err))) end
     end

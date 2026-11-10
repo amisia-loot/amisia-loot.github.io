@@ -230,7 +230,7 @@ them in dependency order; `build.py check` fails when a file is missing from it.
 
 ### Lazy data
 
-The big generated files (`GearData`, `GearWeights`, `MapData`, `QuestData`, `QuestItemData`, `ProfessionData`, `TalentData`, `MageScrollData`, `RaidCheckData`, `ScanDone`)
+The big generated files (`GearData`, `GearNoSource`, `GearWeights`, `MapData`, `QuestData`, `QuestItemData`, `ProfessionData`, `TalentData`, `MageScrollData`, `RaidCheckData`, `ScanDone`)
 hand their table to `ns.LazyData("KEY", [=[ return { ... } ]=], N)` as text (`tools/lua_data.py`:
 `lazy()` in the generators, `eager()` and `load()` for the tools and tests that read a data file;
 N is the generator's count of entries; the long string's level is 1 at least, as Lua 5.1 refuses a
@@ -374,9 +374,12 @@ scan; a German title never replaces an English one), the file's line winning, an
 empty ranges. The keys stand in the file only once there is a scan. The marker gets `QL`/`NL` (per language
 `<step>.<hash>` of the lines) and `QE`/`NE` (the ids without an answer, `a-b,c`), also only then, and the trim
 takes exactly those out of `scan.quests`/`scan.npcs` (their progress stays). `id_scans(archive, dbs)` hands
-the builds `{quests: {loc: {id: {title, level, qlevel, tag, group, obj}}}, npcs: {loc: {id: {name, sub}}},
-npc_empty}`: `build_dungeonquests.py` and `build_gear.py` take quest levels where the data has none (and
-`build_gear.py` the type for `QT`), `build_dungeons.py` boss NPC ids, `build_scan_lists.py` the names.
+the builds `{quests: {loc: {id: {title, level, qlevel, tag, group, obj, rewards, choices, money, xp}}}, npcs:
+{loc: {id: {name, sub, rank, kind}}}, npc_empty}`: `build_dungeonquests.py` and `build_gear.py` take quest levels
+where the data has none (and `build_gear.py` the type for `QT` and, from lines of layout 2, the reward and choice
+items as quest sources, D-107), `build_dungeons.py` boss NPC ids, `build_scan_lists.py` the names. A quest line of
+layout 2 (2.74.1, only where the probe found the reward functions) ends in four more fields: rewards ("2001,2002*5"),
+choices ("3001,3002"), money in copper, XP; `quest_fields` gives an older line empty ones.
 
 Measured 2026-10-08 with the file of 2026-10-07 (2.24 MB; stub, lupa, `tools/load_cost.py --sv`): the
 addon load with it 10.5 MB of Lua memory (the addon alone 6.4 MB, so the file cost about 4 MB here),
@@ -530,7 +533,8 @@ form) and `tools/tests/fixtures/att_new` (the form since 2026-11-05).
 ## build_gear.py
 
 Builds `Amisia/Data/GearData.lua` for the addon's gear window (`/amisia gear`, WoW Forever only):
-every item a levelling character can wear and where it comes from. The stat weights
+every item a levelling character can wear and where it comes from; and `Amisia/Data/GearNoSource.lua`, the
+scanned gear of unknown source (D-107). The stat weights
 (`GearWeights.lua`) are Amisia's own and come from `build_bis.py`.
 
 ```
@@ -596,8 +600,19 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
 - Forever raids: drops the site recorded in `Amisia-Website/data/forever.js` for a zone that
   `tools/forever_zones.json` marks `"raid": true` (with `"instance"` and `"area"` where known) become
   raid sources (`X`). Mark a new Forever raid there once the site has its loot, then rebuild.
-- `GearData.lua` carries `game = "forever"`, `cap = 60`; it and `GearWeights.lua` are loaded through
-  the TOC condition `[AllowLoadGameType camelot]`.
+- The quest scan by id (D-104, D-107): a quest's reward and choice items (lines of layout 2,
+  `scan_quest_rewards`) become its quest source for each item no quest source names yet: AllTheThings'
+  record of the quest where it has one, else the collector's, else the scan's title and level without a
+  faction. Without such lines nothing changes (`test_an_empty_scan_part_changes_nothing`).
+- `Amisia/Data/GearNoSource.lua` (`--nosrc-out`, lazy `GEAR_NOSRC`, D-107): the scanned gear no source
+  names, for the planner's "+ N weitere ohne bekannte Quelle" (F-175). `no_source` leaves out an item any
+  source names (also one left out of `GearData.lua` for its source), no gear, quality below uncommon, a test
+  or placeholder name (`NOSRC_JUNK`, `is_junk`, `TEST_ITEMS`), Classic gear above item level 65 and an item
+  without a scored stat; a required level of 0 stays (the planner's level is the item level less five).
+  Class limits and weapon speeds come from the client's ItemSparse (`--wago`). The log line "without a known
+  source" gives the count, the size and what each rule left out. An id is never in both files.
+- `GearData.lua` carries `game = "forever"`, `cap = 60`; it, `GearNoSource.lua` and `GearWeights.lua` are
+  loaded through the TOC condition `[AllowLoadGameType camelot]`.
 
 Runs on the N100. On the PC it also takes the installed client's SavedVariables. `AMISIA_WOW_ROOT`
 overrides the WoW install path. Requires `lupa`.
