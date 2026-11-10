@@ -560,6 +560,18 @@ S.STATES = {
         NS.LineupInv._reset()
         NS.ShowLineup("invite", "2026-12-24")
     end },
+    -- F-165: the view "Rollen" with its three lists (the longest status: the client refused the main tanks)
+    { page = "lineup", name = "lineup-roles", open = function()
+        S.lineup()
+        local RO = NS.LineupRoles
+        RO._reset()
+        RO.SetList("tanks", "Bob Eisherz, Grimm Felsfaust, Lina Sonnfeld")
+        RO.SetList("assist", "Mara Quell, Tobi Hain, Rurik Stahl, Ella Licht")
+        RO.SetList("ml", "Vuloo, Mara Quell")
+        RO.SetAuto(true)
+        STUB.fire("ADDON_ACTION_FORBIDDEN", "Amisia", "SetPartyAssignment()")
+        NS.ShowLineup("roles", NS.LineupTonight())
+    end },
     -- the lineup with the calendar: the events to choose, then the rows with their sources
     { page = "lineup", name = "lineup-calendar", open = function() S.lineup(); S.calendar(); NS.ShowLineup("calendar"); STUB.tick(1) end },
     { page = "lineup", name = "lineup-sources", open = function()

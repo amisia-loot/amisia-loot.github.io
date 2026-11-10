@@ -45,6 +45,9 @@ GT.FUNCTIONS = {
     { L["Ausrüstung"], { "GetInventoryItemLink", "GetInventoryItemDurability", "GetAverageItemLevel", "C_TooltipInfo.GetInventoryItem" } },
     -- F-164: the client's countdown of the pull timer; F-163: accepting an invite and closing its window
     { L["Pull-Countdown, Einladung annehmen"], { "C_PartyInfo.DoCountdown", "AcceptGroup", "StaticPopup_Hide" } },
+    -- F-165: the lineup's view "Rollen" (main tanks; master loot: the C_PartyInfo form or the global)
+    { L["Rollen: Haupttank, Plündermeister"], { "SetPartyAssignment", "GetPartyAssignment", "C_PartyInfo.SetLootMethod", "SetLootMethod",
+        "C_PartyInfo.GetLootMethod", "GetLootMethod", "SetLootThreshold", "GetLootThreshold" } },
 }
 -- The system message templates the invite status would read (check 10).
 GT.TEMPLATES = { "ERR_INVITE_PLAYER_S", "ERR_DECLINE_GROUP_S", "ERR_ALREADY_IN_GROUP_S", "ERR_BAD_PLAYER_NAME_S", "ERR_GROUP_FULL",

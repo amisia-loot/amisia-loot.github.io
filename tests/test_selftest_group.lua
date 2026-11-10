@@ -54,6 +54,14 @@ local function makeClient(opts)
     C_PartyInfo.DoCountdown = function() error("DoCountdown called") end
     _G.AcceptGroup = function() error("AcceptGroup called") end
     _G.StaticPopup_Hide = function() end
+    -- F-165: the roles of the lineup, only looked up
+    _G.SetPartyAssignment = function() error("SetPartyAssignment called") end
+    _G.GetPartyAssignment = function() error("GetPartyAssignment called") end
+    C_PartyInfo.SetLootMethod = function() error("C_PartyInfo.SetLootMethod called") end
+    _G.SetLootMethod = function() error("SetLootMethod called") end
+    _G.GetLootMethod = function() error("GetLootMethod called") end
+    _G.SetLootThreshold = function() error("SetLootThreshold called") end
+    _G.GetLootThreshold = function() error("GetLootThreshold called") end
     _G.RequestRaidInfo = function()
         W.requested = W.requested + 1
         C_Timer.After(0.5, function() STUB.fire("UPDATE_INSTANCE_INFO") end)
@@ -136,6 +144,7 @@ assert(has(text, "OK     Raid-IDs: alle 4 vorhanden"), text)
 assert(has(text, "OK     Auren: alle 5 vorhanden"), text)
 assert(has(text, "OK     Ausrüstung: alle 4 vorhanden"), text)
 assert(has(text, "OK     Pull-Countdown, Einladung annehmen: alle 3 vorhanden"), text)
+assert(has(text, "OK     Rollen: Haupttank, Plündermeister: alle 8 vorhanden"), text)
 assert(has(text, "CanInvite true, AllowedToDoPartyConversion(true) false"), text)
 assert(has(text, [[WERT   ERR_BAD_PLAYER_NAME_S: "Spieler '%s' nicht gefunden."]]), text)
 -- auras

@@ -18,6 +18,8 @@
 -- chooses a name, the next click on a place puts it there; a name not on the list joins it then);
 -- the view "Vorlagen" (the saved templates: load, save under a name, delete); "Mehr": the groups of
 -- the raid, clear the groups, the night as the block to copy (the view "export").
+-- F-165 (D-95): the view "Rollen" (the link "Rollen" in the head row; Raid/LineupRoles.lua): main tanks, assistants and master looters as
+-- lists of names with their switches, the loot threshold, "Automatisch setzen"; "Rollen jetzt setzen".
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -53,13 +55,15 @@ local CELL_W = math.floor((GRID_W - (GRID_COLS - 1) * GRID_GAP) / GRID_COLS)
 local GRID_INFO_W = 22
 -- the view "Vorlagen": one row per template
 local SET_ROWS, SET_ROW_H, SET_NAME_W = 15, 22, 170
+-- the view "Rollen": the label before each field, the field, the threshold picker
+local ROLE_LABEL_W, ROLE_EDIT_W, ROLE_PICK_W = 168, 250, 130
 local SET_COLS = { { "name", 6, 220 }, { "size", 230, 50, justify = "RIGHT" }, { "count", 290, 60, justify = "RIGHT" },
                    { "at", 366, 80 }, { "by", 450, 140 } }
 local RELOAD_GAP = 5       -- the calendar is read again at most this often while the page is open
 local POLL = 30            -- and every this many seconds (the client does not tell every change)
 
 local page
-local view = "match"      -- "match", "planner", "invite", "paste", "calendar", "sets" or "export"
+local view = "match"      -- "match", "planner", "invite", "roles", "paste", "calendar", "sets" or "export"
 local night               -- the night shown (nil: tonight)
 -- the entry a click chose (swap and move), by its lower-case name: a list index would point at
 -- another player once the list changes between the two clicks (a sync, a sign-up, a removal)
@@ -867,7 +871,7 @@ ns._lineupPlayers = function(on) grid.on = on and true or false end
 -- Opens the page (the officers only), in a view when given ("match", "planner", "paste", "invite",
 -- "sets", "export").
 function ns.ShowLineup(which, key)
-    if which == "match" or which == "planner" or which == "paste" or which == "invite" or which == "sets" then view = which end
+    if which == "match" or which == "planner" or which == "paste" or which == "invite" or which == "sets" or which == "roles" then view = which end
     if which == "export" then
         -- the block of the night to copy (nothing to show: the view stays)
         exportText = ns.LineupExport(key or curNight())
@@ -999,6 +1003,13 @@ local function buildTools(f)
         ns.Refresh()
     end)
     W.FitChip(f.setsBtn)
+    -- F-165: the view "Rollen" (main tanks, assistants, master looter)
+    f.rolesLink = W.Link(f, L["Rollen##Aufstellung"], function()
+        view = view == "roles" and "match" or "roles"
+        ns.Refresh()
+    end)
+    W.FitChip(f.rolesLink)
+    W.Tooltip(f.rolesLink, L["Rollen##Aufstellung"], L["Haupttanks, Assistenten und Plündermeister nach Namenslisten im Raid setzen (als Raidleiter)."])
     W.Tooltip(f.setsBtn, L["Vorlagen"], L["Gespeicherte Aufstellungen: die Gruppen einer Nacht unter einem Namen ablegen und an einem anderen Abend wieder laden."])
     f.moreBtn = W.Link(f, L["Mehr"], function(self)
         local c = ns.LineupCounts(curNight())
@@ -1145,6 +1156,107 @@ local function buildGridAndSets(f, top, sideTop)
     f.export:SetPoint("BOTTOMRIGHT", 0, f:Bottom())
 end
 
+-- The view "Rollen" (F-165, D-95, Raid/LineupRoles.lua): per list its switch, its name, the field
+-- and its grey line; "Aus dem Planer" beside the main tanks, the threshold beside the master looters;
+-- the automatic switch; the red "Rollen jetzt setzen" sits in the views' band.
+local ROLE_BLOCKS = {
+    { "tanks", L["Haupttanks, in Reihenfolge"], L["Die Haupttanks des Raids, in dieser Reihenfolge gesetzt. Namen mit Komma getrennt, höchstens 10."] },
+    { "assist", L["Assistenten"], L["Wer im Raid Assistent wird. Namen mit Komma getrennt, höchstens 10."] },
+    { "ml", L["Plündermeister"], L["Der Erste dieser Liste, der im Raid ist, wird Plündermeister (Plündermethode Plündermeister). Namen mit Komma getrennt, höchstens 10."] },
+}
+
+local function buildRoles(f, top)
+    local RO = ns.LineupRoles
+    local RV = W.Page(f, { view = true, top = top })
+    f.roles = RV
+    RV:Bands({ "line", "row", "line", "row", "line", "row", "line", "row" })
+    RV.intro = RV:Line(1)
+    RV.intro:SetText(L["Setzt die Rollen im Raid, solange du Raidleiter bist. Namen mit Komma getrennt."])
+    RV.blocks = {}
+    for k, def in ipairs(ROLE_BLOCKS) do
+        local key, label = def[1], def[2]
+        local b = {}
+        b.on = W.Toggle(RV, function(on)
+            RO.SetOn(key, on)
+            ns.Refresh()
+        end)
+        W.Tooltip(b.on, label, L["An: \"Rollen jetzt setzen\" und das automatische Setzen nehmen diese Liste mit."])
+        b.label = W.Text(RV, T.FONT.text, ROLE_LABEL_W)
+        b.label:SetText(label)
+        b.edit = W.LineEdit(RV, ROLE_EDIT_W, function(text)
+            local count, dropped = RO.SetList(key, text)
+            if dropped > 0 then
+                ns.msg(L["%s: %d Namen, %d weggelassen (kein Name, doppelt oder mehr als %d)."]:format(label, count, dropped, RO.MAX))
+            end
+            ns.Refresh()
+        end)
+        W.Tooltip(b.edit, label, def[3])
+        b.status = RV:Line(2 * k + 1)
+        RV.blocks[key] = b
+    end
+    local tanks, assist, ml = RV.blocks.tanks, RV.blocks.assist, RV.blocks.ml
+    tanks.planner = W.Link(RV, L["Aus dem Planer"], function()
+        local count, why = RO.FromPlanner(curNight())
+        ns.msg(count and L["Haupttanks aus dem Planer: %s."]:format(RO.ListText("tanks")) or why)
+        ns.Refresh()
+    end)
+    W.FitChip(tanks.planner)
+    W.Tooltip(tanks.planner, L["Aus dem Planer"], L["Füllt das Feld mit den Tanks der gezeigten Nacht, die im Planer in einer Gruppe stehen, nach Gruppe geordnet."])
+    ml.quality = W.Picker(RV, ROLE_PICK_W, function(v)
+        RO.SetQuality(v)
+        ns.Refresh()
+    end)
+    W.Tooltip(ml.quality, L["Plündergrenze"], L["Ab dieser Qualität verteilt der Plündermeister; darunter würfelt die Gruppe wie gewohnt."])
+    RV.auto = W.Toggle(RV, function(on)
+        RO.SetAuto(on)
+        ns.Refresh()
+    end)
+    RV.autoLabel = W.Text(RV, T.FONT.text, 360)
+    RV.autoLabel:SetText(L["Automatisch setzen, wenn jemand beitritt"])
+    W.Tooltip(RV.auto, L["Automatisch setzen, wenn jemand beitritt"], L["Als Raidleiter setzt Amisia die Rollen für jeden, der beitritt, 2 Sekunden nach der Änderung, einmal pro Name und Raid, nicht im Kampf. Eine Zeile im Chat nur, wenn es etwas gesetzt hat."])
+    RV:Place(2, { tanks.on, tanks.label, tanks.edit, tanks.planner })
+    RV:Place(4, { assist.on, assist.label, assist.edit })
+    RV:Place(6, { ml.on, ml.label, ml.edit, ml.quality })
+    RV:Place(8, { RV.auto, RV.autoLabel })
+    f.rolesBtn = W.Button(f, L["Rollen jetzt setzen"], 160, function()
+        -- a field still being typed in counts as it stands
+        for key, b in pairs(RV.blocks) do
+            if b.edit:HasFocus() then
+                RO.SetList(key, b.edit:GetText())
+                b.edit:ClearFocus()
+            end
+        end
+        local ok, why = ns.LineupRolesSet()
+        if not ok then say(nil, why) end
+        ns.Refresh()
+    end)
+    W.Tooltip(f.rolesBtn, L["Rollen jetzt setzen"], L["Befördert die Assistenten, setzt die Haupttanks und den Plündermeister der Listen, die im Raid sind. Nimmt niemandem etwas weg. Nur als Raidleiter, nicht im Kampf."])
+end
+
+-- The view "Rollen" on a refresh: the switches, the fields (not while one is typed in), the grey
+-- lines, the button with the reason when it may not.
+local function fillRoles(f, shown)
+    f.roles:SetShown(shown)
+    f.rolesBtn:SetShown(shown)
+    if not shown then return end
+    local RO = ns.LineupRoles
+    local cfg = RO.Get()
+    for key, b in pairs(f.roles.blocks) do
+        b.on:SetChecked(cfg[key].on)
+        if not b.edit:HasFocus() then b.edit:SetText(RO.ListText(key)) end
+        b.status:SetText(GREY .. RO.Status(key) .. "|r")
+    end
+    local values = {}
+    for _, q in ipairs(RO.QUALITIES) do values[#values + 1] = { value = q, text = RO.QUALITY_NAME[q] } end
+    f.roles.blocks.ml.quality:SetValues(values)
+    f.roles.blocks.ml.quality:SetValue(cfg.q)
+    f.roles.auto:SetChecked(cfg.auto)
+    local _, why = RO.Blocked()
+    f.rolesBtn:SetText(why or L["Rollen jetzt setzen"])
+    f.rolesBtn:SetEnabled(not why and RO.HasWork())
+    W.FitChip(f.rolesBtn, 100)
+end
+
 ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Raid kommt, wer fehlt und wer eingeladen wird."], icon = "Interface\\Icons\\INV_Misc_GroupNeedMore", order = 12, group = "raid",
     officer = true, available = function() return ns.LineupAllowed() end,
     create = function(parent)
@@ -1185,7 +1297,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         W.FitChip(f.auto)
         W.Tooltip(f.auto, L["Automatisch einteilen"], L["Tanks ab Gruppe 1, ein Heiler pro Gruppe, Nahkampf zusammen mit einem Schamanen oder Krieger, Fernkampf zusammen. Festgehaltene bleiben stehen."])
         buildTools(f)
-        f:Place(1, { f.night }, { f.setsBtn, f.calBtn, f.pasteBtn, f.moreBtn, f.auto })
+        f:Place(1, { f.night }, { f.rolesLink, f.setsBtn, f.calBtn, f.pasteBtn, f.moreBtn, f.auto })
         f.counts = f:Line(2)
         f.calLine = f:Line(3)
         f.views = {
@@ -1289,6 +1401,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         iheads.tries:SetText(L["Versuche"])
         iheads.tries:SetJustifyH("RIGHT")
         f.invRows = f.inv:List(INV_ROWS, INV_ROW_H, buildInv, fillInv)
+        buildRoles(f, top)
         f.empty = f:Empty()
         -- the calendar of the shown night is read again now and then while the page is open
         C_Timer.NewTicker(POLL, function()
@@ -1325,7 +1438,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         local has = #f.list > 0
         local paste, calendar = view == "paste", view == "calendar"
         local setsView, export = view == "sets", view == "export"
-        local other = paste or calendar or setsView or export
+        local other = paste or calendar or setsView or export or view == "roles"
         local shown = view
         -- the planner's player list: on a night without a list it opens by itself (there is nothing
         -- else to show) and stays until "Spieler" is clicked off
@@ -1342,6 +1455,8 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.auto:SetEnabled(has and not other)
         f.setsBtn:SetText(setsView and L["Zurück"] or L["Vorlagen"])
         W.FitChip(f.setsBtn)
+        f.rolesLink:SetText(view == "roles" and L["Zurück"] or L["Rollen##Aufstellung"])
+        W.FitChip(f.rolesLink)
         f.moreBtn:SetEnabled(not other)
         -- the counts
         local c = ns.LineupCounts(key)
@@ -1391,6 +1506,9 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         -- the planner: why "Gruppen sortieren" is off
         local sblock = (has and shown == "planner") and select(2, ns.LineupLeadBlocked(true)) or nil
         if sblock then parts[#parts + 1] = RED .. L["Sortieren: %s"]:format(sblock) .. "|r" end
+        -- the view "Rollen" (F-165): why "Rollen jetzt setzen" is off
+        local rblock = shown == "roles" and select(2, ns.LineupRoles.Blocked()) or nil
+        if rblock then parts[#parts + 1] = RED .. L["Rollen: %s##Grund"]:format(rblock) .. "|r" end
         f.calLine:SetText(table.concat(parts, " · "))
         -- the view's buttons on the right of the last band
         local prev = not has and not other and previousNight() or nil
@@ -1403,7 +1521,8 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.bench:SetShown(has and shown == "planner")
         f.bench:SetEnabled(key == ns.LineupTonight() and (c.bench > 0))
         f.take:SetShown(paste)
-        f.cancel:SetShown(other)
+        -- the view "Rollen" leaves through its head link ("Zurück"): "Abbrechen" beside its button would read as undoing it
+        f.cancel:SetShown(other and view ~= "roles")
         f.calTake:SetShown(calendar)
         -- the view "Vorlagen": the name and "Speichern" on the left, the chosen template on the right
         local sets = setsView and ns.LineupSets() or {}
@@ -1442,6 +1561,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.views.match:SetShown(not other)
         f.views.planner:SetShown(not other)
         f.views.invite:SetShown(not other)
+        fillRoles(f, shown == "roles")
         -- the raid ID marks: the instances somebody known holds an ID for
         local insts = ns.RaidIDsInstances and ns.RaidIDsInstances() or {}
         local idValues = { { value = 0, text = L["Raid-ID: aus"] } }
@@ -1451,7 +1571,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.raidIdPick:SetValue(f.raidId or 0)
         f.raidIdPick:SetShown(shown == "match" and has and #insts > 0)
         f:Place(4, { f.views.match, f.views.planner, f.views.invite, f.raidIdPick, f.guildRank, f.setName, f.setSave },
-            { f.copy, f.rematch, f.gridBtn, f.sortBtn, f.bench, f.cancel, f.setDelete, f.setLoad, f.take, f.calTake, f.guildInv, f.again, f.inviteAll }, { shown = true })
+            { f.copy, f.rematch, f.gridBtn, f.sortBtn, f.bench, f.cancel, f.setDelete, f.setLoad, f.take, f.calTake, f.guildInv, f.again, f.inviteAll, f.rolesBtn }, { shown = true })
         f.paste:SetShown(paste)
         f.export:SetShown(export)
         if export then
@@ -1479,7 +1599,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
                 or L["\"Einfügen\" nimmt den Text eines Anmelde-Bots aus Discord, Zeilen wie \"Anna Tank\" oder den Block #AMISIA-RAID. Ohne Liste: im \"Planer\" von Hand, aus einer Vorlage oder aus dem Raid (\"Mehr\")."])
         end
         f.empty:SetShown((calendar and (not calList or #calList == 0)) or (setsView and #sets == 0)
-            or (not has and not other and shown ~= "planner" and shown ~= "invite"))
+            or (not has and not other and shown ~= "planner" and shown ~= "invite" and shown ~= "roles"))
         if paste then
             f.hint:SetText(L["Discord-Text eines Anmelde-Bots (Überschriften wie \"Tanks\", \"Heiler\", \"Ersatz\", \"Abgemeldet\"), Zeilen wie \"Anna Tank\" oder \"Bob, Nahkampf\", oder der Block #AMISIA-RAID. Dann \"Übernehmen\"."])
         elseif calendar then
@@ -1490,6 +1610,8 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
             f.hint:SetText(L["Strg+C kopiert den Block. Ein anderer Offizier fügt ihn auf seiner Seite Aufstellung unter \"Einfügen\" ein."])
         elseif gridOn then
             f.hint:SetText(L["Klick auf einen Namen, dann auf einen Platz: der Spieler steht dort (Ziehen geht auch). Grau mit Zahl: schon in dieser Gruppe. Rechtsklick auf einen Namen der Liste: Rolle, Ersatz, Festhalten, Entfernen."])
+        elseif shown == "roles" then
+            f.hint:SetText(L["Vor- und Nachname wie im Spiel, höchstens 10 pro Liste. Amisia fügt nur hinzu: niemand wird herabgestuft, keine Markierung entfernt. Nur als Raidleiter in deinem Raid, nicht im Kampf."])
         elseif shown == "invite" then
             f.hint:SetText(L["Status aus den Meldungen des Spiels; ohne Antwort nach 90 Sekunden \"keine Antwort\". Offline wird nicht eingeladen, Gäste nur mit der Einstellung. Höchstens 3 Einladungen pro Name und Abend."])
         elseif shown == "planner" then
@@ -1497,7 +1619,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         else
             f.hint:SetText(has and L["Gelb: ein Klick bestätigt. Orange: den Richtigen wählen. Rot: den Namen eintippen (Amisia merkt ihn sich). Rechtsklick: Rolle, Ersatz, Festhalten, Entfernen."] or "")
         end
-        if calendar or setsView or export or (not has and shown ~= "planner" and shown ~= "invite") then return end
+        if calendar or setsView or export or shown == "roles" or (not has and shown ~= "planner" and shown ~= "invite") then return end
         -- the rows of both views
         local matchItems, open, bench, absent = {}, {}, {}, {}
         for i, e in ipairs(f.list) do

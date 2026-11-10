@@ -103,6 +103,8 @@ local function cleanName(raw)
     if not name or #name > NAME_MAX or name:find("[%d%c|]") then return nil end
     return name
 end
+-- F-165: the lists of the view "Rollen" (Raid/LineupRoles.lua) clean their names the same way
+ns.LineupCleanName = cleanName
 
 -- A word of a name: letters (the bytes of umlauts and accents too), a dash or an apostrophe inside.
 local function nameWord(w)
@@ -474,7 +476,7 @@ end
 
 ---------------------------------------------------------------------------
 -- Storage: AmisiaDB.lineup = { v = 1, nights = { [yyyy-mm-dd] = { at, by, title, size, list } },
--- sets = { { name, at, by, size, list } } (the saved templates, F-161) }
+-- sets = { { name, at, by, size, list } } (the saved templates, F-161), roles (the view "Rollen", F-165) }
 ---------------------------------------------------------------------------
 local function db(create)
     local DB = AmisiaDB
@@ -486,6 +488,7 @@ local function db(create)
     if type(DB.lineup.nights) ~= "table" then DB.lineup.nights = {} end
     return DB.lineup
 end
+ns.LineupStore = db
 
 local function tonight() return ns.NightOf(time()) end
 ns.LineupTonight = tonight
@@ -719,7 +722,9 @@ function ns.LineupLoaded(root)
                               cal = cleanCal(n.cal), gone = cleanGone(n.gone) }
         end
     end
-    root.lineup = { v = 1, nights = nights, sets = cleanSets(d.sets) }
+    -- F-165: the lists of the view "Rollen" (Raid/LineupRoles.lua, loaded by now)
+    local roles = ns.LineupRoles and ns.LineupRoles.Clean(d.roles) or nil
+    root.lineup = { v = 1, nights = nights, sets = cleanSets(d.sets), roles = roles }
     local all = {}
     for night in pairs(nights) do all[#all + 1] = night end
     table.sort(all, function(a, b) return a > b end)

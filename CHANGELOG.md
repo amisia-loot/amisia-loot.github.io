@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(lineup): set raid roles from name lists (F-165)
+
+  The Lineup page has a new view, "Roles" (a link in its head row): lists of main tanks (in order, "From the planner" fills it
+  with the night's tanks), assistants and master looters (the first one in the raid gets it) with the loot
+  threshold. "Set roles now" promotes, marks and sets master loot for the listed raiders, as raid leader
+  and out of combat; it never demotes or clears. An optional switch does the same for each player who
+  joins. If the game does not let addons set a role, the chat says so once and that list is skipped.
+
 - feat(lineup): invite the guild by rank, own whisper keywords, accept invites (F-163)
 
   The Lineup page's "Invite" view (officers) has a rank picker and "Invite guild": after a question with

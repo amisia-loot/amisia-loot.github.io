@@ -39,6 +39,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-165 Raid-Rollen: Haupttanks, Assistenten, Plündermeister
+- Version: -
+- Status: geplant
+- Braucht: Raid
+- Prüfung: Wenn du als Offizier unter Aufstellung oben "Rollen" klickst, bei "Assistenten" zwei Namen aus dem Raid mit Komma einträgst, Enter drückst und als Raidleiter "Rollen jetzt setzen" klickst, dann sind beide Assistent, und im Chat steht "Rollen: Assistenten: 2 befördert." (bzw. "... schon Assistent", "... nicht im Raid").
+- Prüfung: Wenn du bei "Haupttanks, in Reihenfolge" "Aus dem Planer" klickst und dann "Rollen jetzt setzen", dann sind die Tanks im Raidfenster Haupttank, und im Chat steht "Haupttanks: N gesetzt"; lässt das Spiel es nicht zu, steht stattdessen "Haupttanks: Das Spiel lässt Addons das nicht setzen. Setze sie im Raidfenster von Hand." (bitte genau diese Zeile und die Meldung des Spiels über ein blockiertes Addon melden).
+- Prüfung: Wenn bei "Plündermeister" zuerst ein Name steht, der nicht im Raid ist, dann einer im Raid, und die Plündergrenze "Rar (blau)" ist, dann ist nach "Rollen jetzt setzen" der zweite Plündermeister ab Rar, und im Chat steht "Plündermeister: <Name>, ab Rar (blau)"; ein zweiter Klick setzt nichts neu ("ist es schon"). Kommt "Plündermeister: Das Spiel lässt Addons das nicht setzen ...", die Zeile melden.
+- Prüfung: Wenn du nur Assistent bist, dann steht auf dem grauen Knopf "Nur als Raidleiter"; im Kampf "Nicht im Kampf".
+- Prüfung: Wenn "Automatisch setzen, wenn jemand beitritt" an ist und ein Genannter dem Raid beitritt, dann hat er etwa 2 Sekunden später seine Rolle und im Chat steht eine Zeile "Rollen: ..."; tritt jemand Ungenanntes bei, steht nichts. Vorher `/amisia selbsttest gruppe`: die Zeile "Rollen: Haupttank, Plündermeister" sagt, welche Funktionen das Spiel hat.
+- Notiz: Spec docs/specs/2026-11-10-raid-rollen.md; DECISIONS D-95. Nimmt nichts weg: niemand wird herabgestuft, kein Haupttank entfernt. Ob Forever Addons Haupttanks und Plündermeister setzen lässt, ist ungeprüft; ein verweigerter Teil wird bis /reload nicht mehr versucht.
+
 ### F-164 Pull- und Pausen-Timer
 - Version: -
 - Status: geplant

@@ -64,6 +64,7 @@ Raid\CalendarWrite.lua
 Raid\Lineup.lua
 Raid\LineupInvite.lua
 Raid\LineupSort.lua
+Raid\LineupRoles.lua
 Raid\GroupAccept.lua
 Raid\PullTimer.lua
 Raid\Signup.lua

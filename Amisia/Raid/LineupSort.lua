@@ -232,6 +232,8 @@ local function promote(name)
     if type(_G.PromoteToAssistant) == "function" then return pcall(_G.PromoteToAssistant, name) end
     return false
 end
+-- F-165: the view "Rollen" (Raid/LineupRoles.lua) promotes its list through the same call
+SO.Promote = promote
 
 -- An officer of the own guild under exactly this spelling (any case): true, false, or nil while the
 -- roster cannot be read. The first name alone (ns.GuildMember's match when one side has no surname)
