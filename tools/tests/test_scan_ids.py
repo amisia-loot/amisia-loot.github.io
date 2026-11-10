@@ -77,7 +77,11 @@ def test_id_scans_for_the_builders(tmp_path):
     got = sa.id_scans(str(path), [DE])
     assert got['quests']['deDE'][2] == {'title': 'Im Verlies', 'level': 24, 'qlevel': 26, 'tag': 'D', 'group': 0, 'obj': ''}
     assert got['quests']['enUS'][1]['title'] == 'The Kobolds'
-    assert got['npcs']['deDE'][261306] == {'name': 'Faldrim Ambossmar', 'sub': '<Thane>'}
+    assert got['npcs']['deDE'][261306] == {'name': 'Faldrim Ambossmar', 'sub': '<Thane>', 'rank': '', 'kind': ''}
+    # a line of the layout since 2.74.1: the title, the rank of the level line and the kind
+    assert sa.npc_fields('Flintauge\tRagefire-Häuptling\tElite\tHumanoid') == {
+        'name': 'Flintauge', 'sub': 'Ragefire-Häuptling', 'rank': 'Elite', 'kind': 'Humanoid'}
+    assert sa.npc_fields('Gill\t\tRar') == {'name': 'Gill', 'sub': '', 'rank': 'Rar', 'kind': ''}
     assert 115 in got['npc_empty']['deDE']
     # the real archive has no scan by id yet: nothing for the builders
     real = sa.id_scans(REAL_ARCHIVE, [])

@@ -46,13 +46,15 @@ GT.FUNCTIONS = {
     -- F-164: the client's countdown of the pull timer; F-163: accepting an invite and closing its window
     { L["Pull-Countdown, Einladung annehmen"], { "C_PartyInfo.DoCountdown", "AcceptGroup", "StaticPopup_Hide" } },
     -- F-165: the lineup's view "Rollen" (main tanks; master loot: the C_PartyInfo form or the global)
-    { L["Rollen: Haupttank, Plündermeister"], { "SetPartyAssignment", "GetPartyAssignment", "C_PartyInfo.SetLootMethod", "SetLootMethod",
-        "C_PartyInfo.GetLootMethod", "GetLootMethod", "SetLootThreshold", "GetLootThreshold" } },
+    -- "A|B": one function under two names, either is enough (the client of 2026-11-10 has only the C_PartyInfo forms)
+    { L["Rollen: Haupttank, Plündermeister"], { "SetPartyAssignment", "GetPartyAssignment", "C_PartyInfo.SetLootMethod|SetLootMethod",
+        "C_PartyInfo.GetLootMethod|GetLootMethod", "SetLootThreshold", "GetLootThreshold" } },
     -- F-167: a shared point's link (only of the client's own waypoint) and where the player stands
     { L["Routen: Kartenlink, Position"], { "C_Map.GetUserWaypointHyperlink", "C_Map.GetUserWaypoint", "C_Map.GetBestMapForUnit",
         "C_Map.GetPlayerMapPosition", "IsMouseButtonDown" } },
     -- F-172: the scans by id (/amisia selbsttest daten says whether they answer)
-    { L["Daten per Nummer"], { "C_TooltipInfo.GetHyperlink", "C_QuestLog.RequestLoadQuestByID", "C_QuestLog.HaveQuestData",
+    -- (C_QuestLog.HaveQuestData is not on this client and not needed: the scan asks every quest)
+    { L["Daten per Nummer"], { "C_TooltipInfo.GetHyperlink", "C_QuestLog.RequestLoadQuestByID",
         "C_QuestLog.GetTitleForQuestID", "C_QuestLog.GetQuestDifficultyLevel", "C_QuestLog.GetQuestTagInfo" } },
 }
 -- The system message templates the invite status would read (check 10).
@@ -154,7 +156,11 @@ local function sectionFunctions(P)
     for _, group in ipairs(GT.FUNCTIONS) do
         local lack = {}
         for _, path in ipairs(group[2]) do
-            if not fn(path) then lack[#lack + 1] = path end
+            local any = false
+            for one in path:gmatch("[^|]+") do
+                if fn(one) then any = true break end
+            end
+            if not any then lack[#lack + 1] = path end
         end
         K.listLine(R, group[1], #group[2], lack, L["vorhanden"])
     end

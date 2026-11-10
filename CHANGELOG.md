@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(scan): the NPC scan keeps titles, ranks and kinds (F-172)
+
+  The first run of the data check in the game showed how this client writes an NPC's tooltip: a title
+  without angle brackets, then the level line with the rank ("Elite", "Rare") and the kind of creature.
+  The NPC scan now saves all of it, so rares can be told from the rank, and asks again what an older scan
+  saved. The check itself now counts a model's display id and no longer reports a function as missing
+  that exists under its other name.
+
 ## [v2.74.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.74.0) (2026-11-10)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.73.1...v2.74.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

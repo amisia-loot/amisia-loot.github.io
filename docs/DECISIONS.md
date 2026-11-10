@@ -2534,6 +2534,13 @@ Kampf, Instanz, eigener Tooltip), `tests/test_scan_trim_ids.lua` (Aufräumen je 
 `tools/tests/test_scan_ids.py` (Archiv je Sprache, Marker, Aufräumen im Addon, Listen und Namen, die Builds
 mit Stufen, Arten und Boss-Nummern, ein leerer Teil ändert nichts), `tools/tests/test_scan_archive.py::test_the_committed_marker_is_current`.
 
+Nachtrag 2026-11-11 (Datenprüfung des Nutzers im Spiel, Client 1.60.1.70862, deDE, Berichte vom 2026-11-10 21:03 bis 21:05):
+- **NPC per Nummer geht**, auch für neue Forever-NPCs: der Name kommt sofort oder beim zweiten Fragen nach 1 s, über `C_TooltipInfo.GetHyperlink` wie über den eigenen Tooltip; zehn hintereinander: 5 sofort, alle nach 1 s, keiner ohne Namen. Die Zeilen: Name, eine Titelzeile ohne spitze Klammern, wo der NPC eine hat ("Ragefire-Häuptling"), "Stufe ?? (Elite)", die Art ("Humanoid"). Der Scan speichert deshalb seit 2.74.1 je NPC `Name, Titel, Rang, Art` (Rang = das Wort in der Klammer der Stufenzeile, so sind Rares am Rang zu erkennen); Zeilen eines älteren Scans fragt er neu (`scan.npcs.v = 2`).
+- **Quest per Nummer geht**: `QUEST_DATA_LOAD_RESULT` nach 0,0 bis 0,2 s, Titel deutsch, `GetQuestDifficultyLevel` ist die Queststufe (33, 11, 18, 40), der Tag nur bei Dungeonquests (81); `C_QuestLog.HaveQuestData` und `GetQuestLevel` gibt es auf diesem Client nicht (beide waren schon wahlweise). Der Quest-Tooltip nennt die Ziele als Text.
+- **Modell per Nummer geht**: `SetCreature` setzt ein Modell auch für eine nie gesehene Kreatur; `GetModelFileID` bleibt nil, `GetDisplayInfo` nennt die Anzeige-ID (260042 -> 142144). Das Urteil der Prüfung zählt seit 2.74.1 die Anzeige-ID.
+- `C_QuestLog.GetQuestsOnMap` liefert Quests mit Ort (8 auf Karte 2548), `C_TaxiMap.GetTaxiNodesForMap` 36 Knoten ohne offene Flugkarte; das Dungeonjournal ist leer (`EJ_GetNumTiers` 0), Vignetten waren keine da.
+- Die Gruppen-Prüfung: `C_PartyInfo.DoCountdown`, `AcceptGroup`, `SetPartyAssignment`, `SetLootThreshold` und die `C_PartyInfo`-Formen von `SetLootMethod`/`GetLootMethod` sind da, die gleichnamigen globalen Funktionen und `PickupContainerItem` (global) nicht. Die Prüfung meldet zwei Schreibweisen einer Funktion seit 2.74.1 als eine.
+
 ## D-105 Questgegenstände aufräumen: drei Gruppen, gelöscht wird nur, was sicher ist
 
 **Datum:** 2026-11-10

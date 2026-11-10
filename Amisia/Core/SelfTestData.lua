@@ -321,7 +321,7 @@ local function sectionModels(P)
         elseif not e.set then
             add(R, "WERT", label, L["SetCreature fehlt oder wirft einen Fehler"])
         else
-            add(R, (tonumber(e.GetModelFileID) or 0) > 0 and "OK" or "WERT", label,
+            add(R, ((tonumber(e.GetModelFileID) or 0) > 0 or (tonumber(e.GetDisplayInfo) or 0) > 0) and "OK" or "WERT", label,
                 L["nach %d s: GetModelFileID %s, GetDisplayInfo %s"]:format(DT.MODEL_WAIT, show(e.GetModelFileID), show(e.GetDisplayInfo)))
         end
     end
@@ -434,7 +434,8 @@ local function verdicts(P)
     v.questTip = tipLines and "ok" or "none"
     local seenModel, newModel
     for _, e in ipairs(P.models) do
-        local okModel = (tonumber(e.GetModelFileID) or 0) > 0
+        -- the client of 2026-11-10 gives no file id but the display id, also for a creature never seen
+        local okModel = (tonumber(e.GetModelFileID) or 0) > 0 or (tonumber(e.GetDisplayInfo) or 0) > 0
         if e.kind == "new" then newModel = okModel else seenModel = okModel end
     end
     if newModel ~= nil then v.model = newModel and "ok" or (seenModel and "retry" or "none") end

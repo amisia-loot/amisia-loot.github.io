@@ -110,8 +110,30 @@ function SB.Route()
     return (type(api) == "table" and type(api.GetHyperlink) == "function") and "info" or "tip"
 end
 
--- An NPC's name and title from tooltip lines: the first line, and the second when it is a title in
--- angle brackets ("<Scharfrichter>"); nil for no name or the client's "unknown".
+-- Whether a tooltip line is the unit's level line ("Stufe ?? (Elite)"): it starts as the client's
+-- TOOLTIP_UNIT_LEVEL does before its number.
+local function levelLine(s)
+    if type(s) ~= "string" or s == "" then return false end
+    local tpl = rawget(_G, "TOOLTIP_UNIT_LEVEL")
+    local head = type(tpl) == "string" and tpl:match("^(.-)%%") or nil
+    -- (head may be nil: no ipairs over a list with a hole)
+    if type(head) == "string" and head ~= "" and s:sub(1, #head) == head then return true end
+    return s:sub(1, 6) == "Stufe " or s:sub(1, 6) == "Level "   -- l10n-ok: the client's own words, compared, never shown
+end
+
+-- A field of a saved scan line: no tab, no line break, not endless.
+local function field(s)
+    if type(s) ~= "string" then return nil end
+    s = s:gsub("[%c]", " "):match("^%s*(.-)%s*$")
+    if s == "" or #s > 60 then return nil end
+    return s
+end
+
+-- An NPC from tooltip lines (as the client of 2026-11-10 writes them: name, a title line where the
+-- NPC has one, "Stufe ?? (Elite)", the kind of creature): the name, the title (the second line when
+-- it is in angle brackets or the level line follows it), the rank in the level line's brackets
+-- ("Elite", "Rar", "Boss"; the client's word) and the kind ("Humanoid"). nil for no name or the
+-- client's "unknown".
 function SB.NpcFrom(lines)
     if type(lines) ~= "table" then return nil end
     local name = lines[1]
@@ -120,9 +142,22 @@ function SB.NpcFrom(lines)
     for _, u in ipairs(unknown) do
         if type(u) == "string" and name == u then return nil end
     end
-    local sub = lines[2]
-    if type(sub) ~= "string" or not sub:match("^<.+>$") then sub = nil end
-    return name, sub
+    local sub, at = nil, nil
+    if levelLine(lines[2]) then
+        at = 2
+    elseif levelLine(lines[3]) then
+        sub, at = field(lines[2]), 3
+    elseif type(lines[2]) == "string" and lines[2]:match("^<.+>$") then
+        sub = field(lines[2])
+    end
+    local rank, kind
+    if at then
+        rank = field(lines[at]:match("%(([^()]*)%)%s*$"))
+        local k = lines[at + 1]
+        -- the kind is one or two plain words; another addon's line ("NpcID") or a number is none
+        if type(k) == "string" and not k:find("[%d:]") and #k <= 30 then kind = field(k) end
+    end
+    return name, sub, rank, kind
 end
 
 ---------------------------------------------------------------------------

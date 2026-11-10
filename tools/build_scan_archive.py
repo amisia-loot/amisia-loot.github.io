@@ -21,7 +21,7 @@ SavedVariables of 2026-10-07 were 2.3 MB and cost about 7 MB of Lua memory at ev
   SavedVariables together (`with_archive`, `overlay`), so a trimmed file builds the same data.
 - The scans by id (D-104): `scan.quests` (/amisia scan quests: per quest id "title\tdifficulty
   level\tquest level\ttype\tgroup\tobjectives" and the ids without an answer, `none`) and `scan.npcs`
-  (/amisia scan npcs: per NPC id "name\t<title>" and the ids without a name, `empty`), each in the
+  (/amisia scan npcs: per NPC id "name\ttitle\trank\tkind" and the ids without a name, `empty`), each in the
   client's language `loc`. The archive keeps them per language (`quests`, `quest_none`, `npcs`,
   `npc_empty`: a German title never replaces an English one); the marker lists their hashes and
   ranges per language (QL, QE, NL, NE, only when there are any); `id_scans()` hands them to the
@@ -246,9 +246,11 @@ def quest_fields(line):
 
 
 def npc_fields(line):
-    """An NPC scan line as {'name', 'sub'}."""
-    f = line.split('\t') + ['']
-    return {'name': f[0], 'sub': f[1]}
+    """An NPC scan line as {'name', 'sub' (the title), 'rank' (the client's word in the level line's
+    brackets: Elite, Rar, Boss ...), 'kind' (the creature type)}; older lines hold the name and maybe a
+    title in angle brackets only."""
+    f = line.split('\t') + [''] * 3
+    return {'name': f[0], 'sub': f[1], 'rank': f[2], 'kind': f[3]}
 
 
 def id_scans(path=ARCHIVE, dbs=()):

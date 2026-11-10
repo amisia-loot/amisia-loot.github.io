@@ -9,7 +9,7 @@
 -- name came, resumable, never in combat or in an instance.
 --
 -- AmisiaDB.scan.npcs = { loc, a (next index of NA), b (next id of phase B), n, at, doneA, doneB,
--- list = { [npcID] = "name\t<title>" }, empty = ranges of ids that gave no name }.
+-- list = { [npcID] = "name\ttitle\trank\tkind" }, empty = ranges of ids that gave no name, v = 2 }.
 -- tools/build_scan_archive.py keeps it in tools/scan_archive.json (per language);
 -- Collect/ScanTrim.lua takes out what the archive holds.
 local ADDON, ns = ...
@@ -19,6 +19,7 @@ local SB = ns.ScanById
 local NS_ = {}
 ns.NpcScan = NS_
 
+NS_.LAYOUT = 2         -- the layout of a saved line (see NS_.DB)
 NS_.RETRY = 1          -- seconds until the second ask of an id without a name
 NS_.MINI_WAIT = { 1, 3 }   -- the mini-probe asks again after these seconds
 NS_.MISS_BACKOFF = 5   -- known NPCs (phase A) empty in a row: half the rate, ask them once more
@@ -46,13 +47,19 @@ function NS_.DB()
     if not ns.Int(q.a, 1) then q.a = 1 end
     if q.b ~= nil and not ns.Int(q.b, 1) then q.b = nil end
     if type(q.loc) ~= "string" then q.loc = nil end
+    -- layout 2 (2.74.1): a line also holds the title without brackets, the rank and the kind; what
+    -- an older scan left is asked again
+    if q.v ~= NS_.LAYOUT then
+        q.list, q.empty, q.a, q.b, q.doneA, q.doneB, q.n = {}, "", 1, nil, nil, nil, 0
+        q.v = NS_.LAYOUT
+    end
     -- counted once; the scan keeps it up to date, the trim sets it again
     if not ns.Int(q.n, 0) then q.n = ns.Count(q.list) end
     s.npcs = q
     return q
 end
 
--- The name and title of an NPC now, or nil.
+-- The name, title, rank and kind of an NPC now, or nil.
 function NS_.Ask(id)
     local lines = SB.Lines(SB.NpcLink(id))
     return SB.NpcFrom(lines)
@@ -79,10 +86,13 @@ local function finish(why)
     if ns.Refresh then ns.Refresh() end
 end
 
-local function store(id, name, sub)
+-- "name\ttitle\trank\tkind", the empty ones at the end left out.
+local function store(id, name, sub, rank, kind)
     local q = NS_.DB()
     if not q.list[id] then q.n = q.n + 1 end
-    q.list[id] = sub and (name .. "\t" .. sub) or name
+    local f = { name, sub or "", rank or "", kind or "" }
+    while #f > 1 and f[#f] == "" do f[#f] = nil end
+    q.list[id] = table.concat(f, "\t")
 end
 
 -- An id without a name after the second ask: remembered as empty; in phase A, known NPCs empty in a
@@ -102,8 +112,8 @@ local function empty(id, phase)
     end
 end
 
-local function named(id, name, sub)
-    store(id, name, sub)
+local function named(id, name, sub, rank, kind)
+    store(id, name, sub, rank, kind)
     misses = {}
     hits = hits + 1
     if hits >= NS_.RECOVER and rate < settingRate() then
@@ -171,17 +181,17 @@ local function tick()
         if credit < 1 then break end
         waiting[id] = nil
         credit = credit - 1
-        local name, sub = NS_.Ask(id)
-        if name then named(id, name, sub) else empty(id, running) end
+        local name, sub, rank, kind = NS_.Ask(id)
+        if name then named(id, name, sub, rank, kind) else empty(id, running) end
     end
     while credit >= 1 do
         local id, repeated = nextId(q)
         if not id then break end
         credit = credit - 1
         if not q.list[id] then
-            local name, sub = NS_.Ask(id)
+            local name, sub, rank, kind = NS_.Ask(id)
             if name then
-                named(id, name, sub)
+                named(id, name, sub, rank, kind)
             else
                 waiting[id] = { at = t + NS_.RETRY, index = (running == "A" and not repeated) and q.a - 1 or nil }
             end

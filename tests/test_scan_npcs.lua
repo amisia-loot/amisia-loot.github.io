@@ -63,6 +63,18 @@ assert(q.list[20] == "Edwin van Cleef\t<Defias-Bruderschaft>", tostring(q.list[2
 assert(not q.list[30], "30 waits for its second ask")
 -- the second line only when it is a title in angle brackets
 assert(not q.list[10]:find("Stufe", 1, true))
+-- the client's lines of 2026-11-10: a plain title before the level line, the rank in its brackets, the kind
+local n1, t1, r1, k1 = SB.NpcFrom({ "Flintauge", "Ragefire-Häuptling", "Stufe ?? (Elite)", "Humanoid" })
+assert(n1 == "Flintauge" and t1 == "Ragefire-Häuptling" and r1 == "Elite" and k1 == "Humanoid", tostring(t1) .. tostring(r1) .. tostring(k1))
+local n2, t2, r2, k2 = SB.NpcFrom({ "Zul'Alai", "Stufe ?? (Elite)", "Untoter", "NpcID" })
+assert(n2 == "Zul'Alai" and t2 == nil and r2 == "Elite" and k2 == "Untoter", "no title: the level line is the second")
+local _, t3, r3, k3 = SB.NpcFrom({ "Josef Gregorian", "Schneiderfachmann", "Stufe ??", "Humanoid" })
+assert(t3 == "Schneiderfachmann" and r3 == nil and k3 == "Humanoid", "no rank without brackets")
+local _, t4, r4, k4 = SB.NpcFrom({ "Gill", "Stufe 38 (Rar)", "NpcID: 5" })
+assert(t4 == nil and r4 == "Rar" and k4 == nil, "another addon's line is no kind")
+local n5, t5 = SB.NpcFrom({ "Npc", "irgendetwas" })
+assert(n5 == "Npc" and t5 == nil, "no level line and no brackets: no title")
+assert(q.v == 2, "the layout of the saved lines")
 
 -- pause and resume: an id waiting for its second ask is asked again
 NP.Command("stop")
