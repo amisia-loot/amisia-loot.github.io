@@ -50,6 +50,10 @@ local function makeClient(opts)
     _G.DoReadyCheck = function() error("DoReadyCheck called") end
     _G.GetReadyCheckStatus = function() return nil end
     _G.ConfirmReadyCheck = function() error("ConfirmReadyCheck called") end
+    -- F-163/F-164: only looked up, never called by the probe
+    C_PartyInfo.DoCountdown = function() error("DoCountdown called") end
+    _G.AcceptGroup = function() error("AcceptGroup called") end
+    _G.StaticPopup_Hide = function() end
     _G.RequestRaidInfo = function()
         W.requested = W.requested + 1
         C_Timer.After(0.5, function() STUB.fire("UPDATE_INSTANCE_INFO") end)
@@ -131,6 +135,7 @@ assert(has(text, "OK     Bereitschaftscheck: alle 3 vorhanden"), text)
 assert(has(text, "OK     Raid-IDs: alle 4 vorhanden"), text)
 assert(has(text, "OK     Auren: alle 5 vorhanden"), text)
 assert(has(text, "OK     Ausrüstung: alle 4 vorhanden"), text)
+assert(has(text, "OK     Pull-Countdown, Einladung annehmen: alle 3 vorhanden"), text)
 assert(has(text, "CanInvite true, AllowedToDoPartyConversion(true) false"), text)
 assert(has(text, [[WERT   ERR_BAD_PLAYER_NAME_S: "Spieler '%s' nicht gefunden."]]), text)
 -- auras

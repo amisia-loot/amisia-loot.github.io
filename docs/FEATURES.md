@@ -39,6 +39,25 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-164 Pull- und Pausen-Timer
+- Version: -
+- Status: geplant
+- Braucht: Gruppe
+- Prüfung: Wenn du allein `/amisia pull` tippst, dann steht im Chat "Pull in 10 Sekunden (nur bei dir: du bist in keiner Gruppe)", unten links in Amisia zählt "Pull in 9 s" herunter, und nach 10 Sekunden steht "Pull!" im Chat.
+- Prüfung: Wenn du als Gruppenleiter `/amisia pull 15` tippst, dann sieht jeder der Gruppe die großen Zahlen des Spiels (falls der Client sie hat, `/amisia selbsttest gruppe` sagt es unter "Pull-Countdown") und im Gruppenchat "Pull in 15 Sekunden"; ohne die Zahlen des Spiels zählt der Chat 5 4 3 2 1 und "Pull!".
+- Prüfung: Wenn du als Gruppenleiter unten links auf die Statuszeile klickst und "Pause (5 min)" wählst, dann steht im Gruppenchat "Pause: 5 Minuten (bis HH:MM)", eine Minute vor Ende "Pause: noch 1 Minute" und am Ende "Pause vorbei"; im Menü heißt der Eintrag solange "Pause abbrechen".
+- Prüfung: Wenn du im Kampf `/amisia pull` tippst, dann steht "Nicht im Kampf" und nichts geht an die Gruppe; `/amisia pull stop` bricht einen laufenden ab ("Pull abgebrochen!").
+- Notiz: Spec docs/specs/2026-11-10-pull-timer.md; DECISIONS D-94. Der Befehl der Pause heißt `/amisia raidpause` (en `break`), weil `/amisia pause` schon die Aufnahme pausiert; `/amisia pause 5` (mit Zahl) ist die Pause.
+
+### F-163 Einladen: Gilde nach Rang, eigene Stichwörter, Einladungen annehmen
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du als Offizier unter Aufstellung (auch ohne Liste) "Einladen" klickst, "bis Veteran" wählst und "Gilde einladen" klickst, dann fragt Amisia "N Gildenmitglieder bis Rang Veteran einladen?" und lädt nach "Einladen" einen nach dem anderen ein; die Liste zeigt sie mit "eingeladen" und "über Gilde einladen".
+- Prüfung: Wenn du unter Einstellungen, Raid-Aufstellung "Stichwörter zum Einladen" auf "raid, komm" setzt, "Einladen auf Flüstern" anschaltest und dir ein Gildenmitglied "komm" flüstert, dann wird es eingeladen; "inv" lädt dann nicht mehr ein.
+- Prüfung: Wenn du unter Einstellungen, Gruppeneinladungen "Einladungen von Gilde und Freunden annehmen" anschaltest und dich ein Gildenmitglied einlädt, dann bist du ohne Klick in der Gruppe, das Fenster des Spiels ist zu, und im Chat steht "Einladung von <Name> angenommen (Gilde)."; die Einladung eines Fremden fragt das Spiel wie immer.
+- Notiz: Spec docs/specs/2026-11-10-einladen-gilde.md; DECISIONS D-93. "Gilde einladen" nutzt dieselben Grenzen wie "Alle einladen": einer alle 0,5 Sekunden, Raid nach dem ersten Beitritt, 3 Einladungen pro Name und Abend, nur heute, nie im Kampf, nur als Leiter oder Assistent.
+
 ### F-162 Autor-Charakter: Aufstellung und Raid-Check ohne Offiziersrang
 - Version: 2.73.1
 - Status: gebaut

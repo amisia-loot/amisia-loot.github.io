@@ -104,6 +104,8 @@ Raid\CalendarWrite.lua
 Raid\Lineup.lua
 Raid\LineupInvite.lua
 Raid\LineupSort.lua
+Raid\GroupAccept.lua
+Raid\PullTimer.lua
 Raid\Signup.lua
 Raid\RaidCalendar.lua
 Raid\RaidCheckRead.lua

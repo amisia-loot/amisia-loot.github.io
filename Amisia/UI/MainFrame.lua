@@ -166,6 +166,9 @@ local function updateHeader()
     else
         statusText:SetText("|cffe0a344" .. L["Aufnahme pausiert"] .. "|r")
     end
+    -- a running pull or break timer (F-164) after the recording state
+    local timer = ns.PullTimerStatus and ns.PullTimerStatus()
+    if timer then statusText:SetText(statusText:GetText() .. " · |cffffd100" .. timer .. "|r") end
     viewText:SetText(("%s · %s"):format(ns.IsOfficerView() and L["Offiziersansicht"] or L["Raider-Ansicht"],
         L["Version %s"]:format(ns.VERSION or "?")))
     settingsBtn:SetShown(current ~= "settings" and ns.SettingsSectionsOf ~= nil and #ns.SettingsSectionsOf(current) > 0)
@@ -207,10 +210,13 @@ local function headMenu()
             or L["Die Raid-Aufnahme ist pausiert. \"Aufnahme fortsetzen\" schaltet sie wieder an; sie startet dann von selbst in einer Raidinstanz mit Raidgruppe."] },
     }
     -- the switch only for whoever may have the officer view (D-87)
-    if not ns.MayOfficerView() then return menu end
-    menu[#menu + 1] =
-        { ns.IsOfficerView() and L["Zur Raider-Ansicht"] or L["Zur Offiziersansicht"], function() ns.ToggleView() end,
-          tip = L["Ein Klick zeigt die andere Ansicht: Raider sehen ihre Seiten, Offiziere auch Rolls, Punkte, das Raid-Archiv und den Export. Für die Gilde bist du dadurch kein Offizier; Rechte prüft Amisia am Rang. Die Ansicht nach Rang (Automatisch) stellst du unter Einstellungen, Oberfläche ein."] }
+    if ns.MayOfficerView() then
+        menu[#menu + 1] =
+            { ns.IsOfficerView() and L["Zur Raider-Ansicht"] or L["Zur Offiziersansicht"], function() ns.ToggleView() end,
+              tip = L["Ein Klick zeigt die andere Ansicht: Raider sehen ihre Seiten, Offiziere auch Rolls, Punkte, das Raid-Archiv und den Export. Für die Gilde bist du dadurch kein Offizier; Rechte prüft Amisia am Rang. Die Ansicht nach Rang (Automatisch) stellst du unter Einstellungen, Oberfläche ein."] }
+    end
+    -- the pull and the break timer (F-164): start, or cancel while one runs
+    for _, e in ipairs(ns.PullTimerMenu and ns.PullTimerMenu() or {}) do menu[#menu + 1] = e end
     return menu
 end
 
@@ -1426,6 +1432,8 @@ end
 
 ns.Listen("SETTING", function() ns.RefreshSoon() end)
 ns.Listen("DATA_CHANGED", function() ns.RefreshSoon() end)
+-- the pull or break timer ticks (F-164): only the status line
+ns.Listen("PULLTIMER", function() if F and F:IsShown() then updateHeader() end end)
 
 local VIEW_WORDS = { offizier = "officer", officer = "officer", raider = "raider", auto = "auto", automatisch = "auto" }   -- l10n-ok: typed words
 ns.RegisterSlash("ansicht", { en = "view", args = L["[offizier|raider|auto]"], desc = L["Offiziers- oder Raider-Ansicht"],

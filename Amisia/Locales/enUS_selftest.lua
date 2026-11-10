@@ -397,3 +397,4 @@ L["keine Slot-Knöpfe gefunden (kein Rechtsklick auf Slots)"] = "no slot buttons
 L["Symbole der Seitenleiste"] = "Side bar symbols"
 L["fehlen: %s"] = "missing: %s"
 L["GetFileIDFromPath fehlt, nicht prüfbar"] = "GetFileIDFromPath missing, cannot check"
+L["Pull-Countdown, Einladung annehmen"] = "Pull countdown, accepting an invite"

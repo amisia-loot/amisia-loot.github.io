@@ -813,16 +813,33 @@ local function buildInv(row)
     wire(row, function(self) return self.item and self.item.i and { i = self.item.i } or nil end, true)
 end
 
+-- where an invite not placed on the lineup came from (F-163): "Gilde einladen" or a whisper
+local BY_WORD = { guild = L["über Gilde einladen"], inv = L["auf Flüstern"] }
+
 local function fillInv(row, it)
     local e = it.e
+    if it.extra then
+        -- invited through "Gilde einladen" or a whisper, not placed, not in the group yet (F-163)
+        local r = it.extra
+        local p = page.people[r.n:lower()]
+        row.g:SetText("")
+        row.r:SetText("")
+        row.name:SetText(classColored(r.n, p and p.class, p ~= nil and not p.online))
+        row.st:SetText(INVITE[r.st] or "")
+        row.tries:SetText(r.tries > 0 and ("%d/%d"):format(r.tries, ns.LineupInv.MAX_TRIES) or "")
+        row.act:SetText(GREY .. (BY_WORD[r.by] or "") .. "|r")
+        row.chip:Hide()
+        return
+    end
     if not e then
-        -- in the raid, not on the list: stays where it is
+        -- in the raid, not on the list: stays where it is; invited by Amisia: says how (F-163)
+        local by = it.by and BY_WORD[it.by]
         row.g:SetText(it.sub and tostring(it.sub) or "")
         row.r:SetText("")
         row.name:SetText(GREY .. it.name .. "|r")
-        row.st:SetText(GREY .. L["nicht angemeldet"] .. "|r")
+        row.st:SetText(by and INVITE.R or (GREY .. L["nicht angemeldet"] .. "|r"))
         row.tries:SetText("")
-        row.act:SetText("")
+        row.act:SetText(by and (GREY .. by .. "|r") or "")
         row.chip:Hide()
         return
     end
@@ -1048,6 +1065,48 @@ local function buildSetTools(f)
     for _, b in ipairs({ f.setSave, f.setLoad, f.setDelete }) do W.FitChip(b, 80) end
 end
 
+-- "Gilde einladen" (F-163, D-93): the rank picker and the link of the view "Einladen".
+local function guildInviteAsk()
+    local key = curNight()
+    local rank = ns.Get("lineup.inviteRank")
+    local items, why = ns.LineupGuildTargets(key, rank)
+    if not items then return ns.msg(why) end
+    if #items == 0 then return ns.msg(L["Gilde einladen: niemand bis %s ist online und nicht in der Gruppe."]:format(ns.LineupRankText(rank))) end
+    W.Confirm(L["Gilde einladen"], L["%d Gildenmitglieder bis Rang %s einladen? Sie bekommen eine Einladung nach der anderen, wie bei \"Alle einladen\"."]:format(
+        #items, ns.LineupRankText(rank)), L["Einladen"], function()
+        local count, err = ns.LineupInviteGuild(key, rank)
+        if count then ns.msg(L["Gilde einladen: %d Spieler, einer alle %s Sekunden."]:format(count, ns.Num(ns.LineupInv.GAP, 1))) else say(nil, err) end
+        ns.Refresh()
+    end)
+end
+
+local function buildGuildInvite(f)
+    f.guildRank = W.Picker(f, 110, function(v)
+        ns.Set("lineup.inviteRank", v)
+        ns.Refresh()
+    end)
+    W.Tooltip(f.guildRank, L["Gilde einladen"], L["Bis zu welchem Rang \"Gilde einladen\" einlädt: dieser Rang und alle höheren."])
+    f.guildInv = W.Link(f, L["Gilde einladen"], guildInviteAsk)
+    W.FitChip(f.guildInv)
+    W.Tooltip(f.guildInv, L["Gilde einladen"], L["Lädt alle Gildenmitglieder bis zum gewählten Rang ein, die online und noch nicht in der Gruppe sind, nach einer Nachfrage. Wie \"Alle einladen\": einer alle 0,5 Sekunden, nach dem ersten Beitritt wird es ein Raid, höchstens 3 Einladungen pro Name und Abend. Geht auch ohne Aufstellung."])
+end
+
+-- The rank picker's values and the link's state (refresh of the view "Einladen").
+local function fillGuildInvite(f, shown, blocked)
+    local ranks = shown and ns.RankList() or nil
+    local values = {}
+    for _, r in ipairs(ranks or {}) do
+        values[#values + 1] = { value = r.rank, text = L["bis %s"]:format(r.name) }
+    end
+    f.guildRank:SetShown(#values > 0)
+    f.guildInv:SetShown(shown)
+    if #values > 0 then
+        f.guildRank:SetValues(values)
+        f.guildRank:SetValue(math.min(ns.Get("lineup.inviteRank"), #values))
+    end
+    f.guildInv:SetEnabled(shown and not blocked and not ns.LineupInviteRunning() and #values > 0)
+end
+
 -- The player list under the groups, the view "Vorlagen" and the block to copy.
 local function buildGridAndSets(f, top, sideTop)
     -- the player list in the place of the two lists (F-161): its filters, then the names
@@ -1182,6 +1241,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         end)
         W.Tooltip(f.sortBtn, L["Gruppen sortieren"], L["Schiebt jeden Raider in die Gruppe aus dem Planer; wer nicht auf der Liste steht, bleibt. Nur im Raid als Leiter oder Assistent, nicht im Kampf. Sortiert gerade nur dein Client: sprecht euch ab, wer sortiert."])
         buildSetTools(f)
+        buildGuildInvite(f)
         f.calTake = W.Button(f, L["Übernehmen"], 110, takeCalendar)
         W.Tooltip(f.calTake, L["Übernehmen"], L["Liest die Teilnehmerliste des gewählten Ereignisses in die Aufstellung seiner Nacht. Bleibt die Seite offen, liest Amisia sie bei Änderungen neu."])
         for _, b in ipairs({ f.rematch, f.bench, f.take, f.cancel, f.calTake, f.inviteAll, f.again, f.sortBtn }) do W.FitChip(b, 100) end
@@ -1316,12 +1376,16 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
             end
         end
         -- the invite view: its counts and why the buttons are off
-        local ic = (has and shown == "invite") and ns.LineupInviteCounts(key) or nil
+        local ic = (shown == "invite") and ns.LineupInviteCounts(key) or nil
         local _, blocked = ns.LineupInviteBlocked(key)
         f.invBlocked = blocked
-        if ic then
+        if ic and has then
             parts = { L["Im Raid %d · eingeladen %d · abgelehnt %d · keine Antwort %d · offline %d · noch einzuladen %d"]:format(
                 ic.R, ic.I, ic.D, ic.N, ic.O, ic.todo) }
+            if blocked then parts[#parts + 1] = RED .. blocked .. "|r" end
+        elseif ic then
+            -- a night without a lineup: only "Gilde einladen" (F-163)
+            parts = { L["Ohne Aufstellung: \"Gilde einladen\" lädt die Gilde bis zu einem Rang ein."] }
             if blocked then parts[#parts + 1] = RED .. blocked .. "|r" end
         end
         -- the planner: why "Gruppen sortieren" is off
@@ -1358,6 +1422,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         local isInv, isPlan = has and shown == "invite", has and shown == "planner"
         f.inviteAll:SetShown(isInv)
         f.again:SetShown(isInv)
+        fillGuildInvite(f, shown == "invite" and not other, blocked)
         f.sortBtn:SetShown(isPlan)
         if isInv then
             local running = ns.LineupInviteRunning()
@@ -1385,8 +1450,8 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.raidId = (#insts > 0 and not f.raidIdOff) and ns.RaidIDsChosen() or nil
         f.raidIdPick:SetValue(f.raidId or 0)
         f.raidIdPick:SetShown(shown == "match" and has and #insts > 0)
-        f:Place(4, { f.views.match, f.views.planner, f.views.invite, f.raidIdPick, f.setName, f.setSave },
-            { f.copy, f.rematch, f.gridBtn, f.sortBtn, f.bench, f.cancel, f.setDelete, f.setLoad, f.take, f.calTake, f.again, f.inviteAll }, { shown = true })
+        f:Place(4, { f.views.match, f.views.planner, f.views.invite, f.raidIdPick, f.guildRank, f.setName, f.setSave },
+            { f.copy, f.rematch, f.gridBtn, f.sortBtn, f.bench, f.cancel, f.setDelete, f.setLoad, f.take, f.calTake, f.guildInv, f.again, f.inviteAll }, { shown = true })
         f.paste:SetShown(paste)
         f.export:SetShown(export)
         if export then
@@ -1397,7 +1462,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         if setsView then f.setRows:SetItems(sets) end
         f.match:SetShown(shown == "match" and has)
         f.plan:SetShown(shown == "planner")
-        f.inv:SetShown(shown == "invite" and has)
+        f.inv:SetShown(shown == "invite")
         f.cal:SetShown(calendar and calList ~= nil and #calList > 0)
         if calendar then
             if not calList then
@@ -1414,7 +1479,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
                 or L["\"Einfügen\" nimmt den Text eines Anmelde-Bots aus Discord, Zeilen wie \"Anna Tank\" oder den Block #AMISIA-RAID. Ohne Liste: im \"Planer\" von Hand, aus einer Vorlage oder aus dem Raid (\"Mehr\")."])
         end
         f.empty:SetShown((calendar and (not calList or #calList == 0)) or (setsView and #sets == 0)
-            or (not has and not other and shown ~= "planner"))
+            or (not has and not other and shown ~= "planner" and shown ~= "invite"))
         if paste then
             f.hint:SetText(L["Discord-Text eines Anmelde-Bots (Überschriften wie \"Tanks\", \"Heiler\", \"Ersatz\", \"Abgemeldet\"), Zeilen wie \"Anna Tank\" oder \"Bob, Nahkampf\", oder der Block #AMISIA-RAID. Dann \"Übernehmen\"."])
         elseif calendar then
@@ -1432,7 +1497,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         else
             f.hint:SetText(has and L["Gelb: ein Klick bestätigt. Orange: den Richtigen wählen. Rot: den Namen eintippen (Amisia merkt ihn sich). Rechtsklick: Rolle, Ersatz, Festhalten, Entfernen."] or "")
         end
-        if calendar or setsView or export or (not has and shown ~= "planner") then return end
+        if calendar or setsView or export or (not has and shown ~= "planner" and shown ~= "invite") then return end
         -- the rows of both views
         local matchItems, open, bench, absent = {}, {}, {}, {}
         for i, e in ipairs(f.list) do
@@ -1460,11 +1525,20 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
                 if a.e.g ~= b.e.g then return a.e.g < b.e.g end
                 return a.i < b.i
             end)
+            -- invited through "Gilde einladen" or a whisper, not placed and not in the group yet (F-163)
+            for _, r in ipairs(ns.LineupInviteExtra(key)) do items[#items + 1] = { extra = r } end
             local _, unlisted = ns.LineupSortPlan(key)
             local subs = {}
             for _, r in ipairs(ns.LineupSortState.Rows()) do subs[r.name] = r.sub end
-            for _, name in ipairs(unlisted) do items[#items + 1] = { name = name, sub = subs[name] } end
+            for _, name in ipairs(unlisted) do
+                local r = states[name:lower()]
+                items[#items + 1] = { name = name, sub = subs[name], by = r and r.by }
+            end
             f.invRows:SetItems(items)
+            if #items == 0 and not has then
+                f.empty:Set(L["Niemand eingeladen"], L["\"Gilde einladen\" lädt alle Gildenmitglieder bis zum gewählten Rang ein, die online und noch nicht in der Gruppe sind. Wer eingeladen ist, steht hier mit seinem Status."])
+                f.empty:Show()
+            end
         elseif shown == "match" then
             f.mlist:SetItems(matchItems)
         elseif shown == "planner" then

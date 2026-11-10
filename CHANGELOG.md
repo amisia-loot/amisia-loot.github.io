@@ -5,6 +5,22 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(lineup): invite the guild by rank, own whisper keywords, accept invites (F-163)
+
+  The Lineup page's "Invite" view (officers) has a rank picker and "Invite guild": after a question with
+  the number of players it invites every online guild member of that rank or higher who is not in the
+  group, one every 0.5 seconds as with "Invite all", also on a night without a lineup; the list shows
+  them with their status. The whisper invite takes your own keywords ("inv, invite" by default). A new
+  setting for everyone, "Accept invites from guild and friends", joins a group of a guild member or
+  friend without a click.
+
+- feat(raid): pull and break timer (F-164)
+
+  `/amisia pull [seconds]` counts down to the pull for the group with the game's own countdown (when the
+  client has it) and a raid warning; `/amisia break [minutes]` announces a break with its end, one
+  minute before and when it is over. As leader or assistant; alone only for you. The status line shows
+  the running timer, and its menu starts or cancels both.
+
 ## [v2.73.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.73.1) (2026-11-10)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.73.0...v2.73.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

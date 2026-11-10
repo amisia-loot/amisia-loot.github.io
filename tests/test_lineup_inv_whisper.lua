@@ -198,3 +198,37 @@ STUB.instance = { name = "Shattrath", type = "none", id = 0 }
 _G.IsInRaid, _G.IsInGroup, C_PartyInfo.ConvertToRaid = realRaid, realGroup, realConv
 STUB.roster = {}
 NS.Set("lineup.inv", false)
+
+-- own keywords (F-163, D-93): lineup.invWords, a comma separated list; the whole whisper must be one
+-- of them, any case; the old words no longer count once the list does not name them
+assert(NS.Get("lineup.invWords") == "inv, invite", "the default")
+NS.Set("lineup.inv", true)
+assert(NS.Set("lineup.invWords", "  Raid , INV2,raid ") and NS.Get("lineup.invWords") == "raid, inv2", NS.Get("lineup.invWords"))
+IV._reset()
+STUB.tick(61)
+INV = {}
+whisper("inv", "Anna Bergmann")
+assert(#INV == 0, "inv is no keyword any more")
+whisper("RAID", "Anna Bergmann")
+assert(#INV == 1 and INV[1] == "Anna Bergmann", "the own word, any case")
+whisper("inv2", "Bob Eisherz")
+assert(#INV == 2 and INV[2] == "Bob Eisherz", "the second word")
+whisper("raid bitte", "Carl Eiche")
+assert(#INV == 2, "only the whole text")
+-- refused lists keep the stored one: too many words, too short, too long, not letters or digits, empty
+for _, bad in ipairs({ "a1, b2, c3, d4, e5, f6", "x", "abcdefghijklm", "in-v", "inv!", "", " , " }) do
+    local ok = NS.Set("lineup.invWords", bad)
+    assert(not ok and NS.Get("lineup.invWords") == "raid, inv2", "refused: " .. bad)
+end
+assert(NS.Set("lineup.invWords", "a1, b2, c3, d4, e5"), "five words")
+NS.Reset("lineup.invWords")
+-- a stored list that no longer passes falls back to the default words
+AmisiaDB.settings.lineup.invWords = "?!"
+IV._reset()
+STUB.tick(61)
+INV = {}
+whisper("invite", "Anna Bergmann")
+assert(#INV == 1, "the default words for a broken stored list")
+NS.Reset("lineup.invWords")
+NS.Set("lineup.inv", false)
+print("lineup inv words ok")

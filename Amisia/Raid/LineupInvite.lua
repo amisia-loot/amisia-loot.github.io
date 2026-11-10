@@ -15,6 +15,11 @@
 -- per sender every INV_GAP seconds, INV_PER_MIN a minute (members only); lines only in the own chat,
 -- for a stranger one per STRANGER_GAP. A whisper never converts a party into a raid (a full party:
 -- a line) and does nothing in a party instance.
+-- The words are the setting lineup.invWords since F-163 (default "inv, invite", D-93).
+-- "Gilde einladen" (F-163, D-93): every guild member of a rank down to the chosen one (lineup.inviteRank)
+-- who is online and not in the group, through the same run, gap, tries and checks as "Alle einladen";
+-- also on a night without a lineup. Names it invites that are not placed carry by = "guild" (whisper
+-- invites by = "inv") and the page lists them with their status.
 -- The states live in memory only (D-41: never saved); a /reload rebuilds them from the roster.
 local ADDON, ns = ...
 local L = ns.L
@@ -28,7 +33,8 @@ local CONVERT_WAIT = 10    -- seconds the run waits for the raid after ConvertTo
 local INV_GAP = 30         -- whisper "inv": one per sender in this many seconds
 local INV_PER_MIN = 10     -- and this many a minute in all (members only: checked after the roster)
 local STRANGER_GAP = 300   -- a non-member: one line in the own chat per sender in this many seconds
-local INV_WORDS = { inv = true, invite = true }
+local INV_WORDS_MAX = 5     -- words of lineup.invWords
+local INV_WORD_MIN, INV_WORD_LEN = 2, 12   -- letters or digits of one word
 -- the system messages the status reads: template global -> status (nil: no name in it)
 local MESSAGES = {
     { "ERR_INVITE_PLAYER_S", "I" }, { "ERR_DECLINE_GROUP_S", "D" }, { "ERR_ALREADY_IN_GROUP_S", "G" },
@@ -190,11 +196,20 @@ local function sync(night)
             r.st, r.back = "P", true
         end
     end
-    -- whisper invites of tonight that are not on the lineup
-    for _, r in pairs(nights[night] or {}) do
-        if r.by == "inv" and not r.inGroup and inSet(group, r.n) then
-            r.st, r.inGroup = "R", true
-            joined[#joined + 1] = r.n
+    -- whisper and guild invites of tonight that are not placed on the lineup (by "inv" / "guild")
+    local isPlaced = {}
+    for _, it in ipairs(placed(n)) do isPlaced[it.e.n:lower()] = true end
+    for low, r in pairs(nights[night] or {}) do
+        if r.by and not isPlaced[low] then
+            if inSet(group, r.n) then
+                if not r.inGroup then
+                    r.st, r.inGroup = "R", true
+                    joined[#joined + 1] = r.n
+                end
+            elseif r.inGroup then
+                -- left the group again
+                r.st, r.inGroup = "P", nil
+            end
         end
     end
     if #joined > 0 then ns.Fire("LINEUP_JOINED", night, joined) end
@@ -449,6 +464,82 @@ function ns.LineupInviteOne(night, name)
 end
 
 ---------------------------------------------------------------------------
+-- "Gilde einladen" (F-163, D-93): the guild down to a rank, through the same run
+---------------------------------------------------------------------------
+-- The text of a rank for the setting and the page: its name, the lowest one "(alle)".
+function ns.LineupRankText(v)
+    v = tonumber(v) or 10
+    local ranks = ns.RankList and ns.RankList() or nil
+    if ranks and #ranks > 0 then
+        if v >= #ranks then return L["%s (alle Ränge)"]:format(ranks[#ranks].name) end
+        if ranks[v] then return ranks[v].name end
+    end
+    return L["Rang %d"]:format(v)
+end
+
+-- The guild members a click on "Gilde einladen" would invite for night: rank order rank or higher (1
+-- is the guild master), online, not in the group, not the player, under three invites, no invite
+-- waiting. { { n = name, g = group on the lineup or nil } }, or nil and the reason.
+function ns.LineupGuildTargets(night, rank)
+    night = night or tonight()
+    rank = tonumber(rank) or tonumber(ns.Get("lineup.inviteRank")) or 10
+    if not ns.InGuild() then return nil, L["Du bist in keiner Gilde."] end
+    local roster = ns.GuildRoster()
+    if not roster then return nil, L["Die Gildenliste ist noch nicht gelesen. Gleich nochmal versuchen."] end
+    sync(night)
+    local group = groupSet()
+    local groupOf = {}
+    for _, it in ipairs(placed(ns.LineupNight(night, false))) do groupOf[it.e.n:lower()] = it.e.g end
+    local out = {}
+    for _, m in ipairs(roster) do
+        if m.online and m.rank and m.rank <= rank and not isMe(m.name) and not inSet(group, m.name) then
+            local r = rec(night, m.name, false)
+            if not r or (r.tries < MAX_TRIES and r.st ~= "I" and r.st ~= "R") then
+                out[#out + 1] = { n = m.name, g = groupOf[m.name:lower()] }
+            end
+        end
+    end
+    table.sort(out, function(a, b) return a.n < b.n end)
+    return out
+end
+
+-- "Gilde einladen": the targets of ns.LineupGuildTargets into the run (the gap, the conversion into a
+-- raid, the combat and lead checks of "Alle einladen"). Returns the number queued, or nil and the reason.
+function ns.LineupInviteGuild(night, rank)
+    night = night or tonight()
+    local _, text = ns.LineupInviteBlocked(night)
+    if text then return nil, text end
+    if run and not run.quiet then return nil, L["Einladen läuft schon"] end
+    if run and run.night ~= night then return nil, L["Einladen läuft schon"] end
+    local items, why = ns.LineupGuildTargets(night, rank)
+    if not items then return nil, why end
+    if #items == 0 then return nil, L["Niemand einzuladen"] end
+    for _, it in ipairs(items) do
+        local r = rec(night, it.n, true)
+        -- not placed on the lineup: the page lists it among the guild's invites
+        if not it.g and not r.by then r.by = "guild" end
+    end
+    started[night] = true
+    enqueue(night, items, false)
+    return #items
+end
+
+-- The invites of night that are not placed on its lineup (by whisper "inv" or "Gilde einladen") and
+-- not in the group: { rec } sorted by name, for the page.
+function ns.LineupInviteExtra(night)
+    night = night or tonight()
+    sync(night)
+    local isPlaced = {}
+    for _, it in ipairs(placed(ns.LineupNight(night, false))) do isPlaced[it.e.n:lower()] = true end
+    local out = {}
+    for low, r in pairs(nights[night] or {}) do
+        if r.by and not isPlaced[low] and r.st ~= "R" then out[#out + 1] = r end
+    end
+    table.sort(out, function(a, b) return a.n < b.n end)
+    return out
+end
+
+---------------------------------------------------------------------------
 -- The answers: system messages (read through the client's templates) and the roster
 ---------------------------------------------------------------------------
 -- The record a captured name means: the same spelling, else a first name only one tracked name
@@ -555,6 +646,38 @@ ns.OnEvent("ADDON_RESTRICTION_STATE_CHANGED", function() C_Timer.After(0, change
 ---------------------------------------------------------------------------
 local invLast, invTimes, strangerSaid = {}, {}, {}
 
+-- The words of lineup.invWords checked (F-163): a comma separated list of at most INV_WORDS_MAX words,
+-- each INV_WORD_MIN to INV_WORD_LEN letters or digits; returns the list written again ("inv, invite",
+-- lower case, each word once) and a set of the words, or nil when the text does not pass.
+function ns.LineupInvWordsCheck(text)
+    if type(text) ~= "string" then return nil end
+    local list, set = {}, {}
+    for part in (text .. ","):gmatch("([^,]*),") do
+        local w = part:match("^%s*(.-)%s*$"):lower()
+        if w ~= "" then
+            if #w < INV_WORD_MIN or #w > INV_WORD_LEN or not w:match("^%w+$") then return nil end
+            if not set[w] then
+                set[w] = true
+                list[#list + 1] = w
+            end
+        end
+    end
+    if #list == 0 or #list > INV_WORDS_MAX then return nil end
+    return table.concat(list, ", "), set
+end
+
+-- The set of the words a whisper invite takes now (the setting, else its default).
+local wordsText, wordsSet
+local function invWords()
+    local text = ns.Get("lineup.invWords")
+    if text ~= wordsText then
+        local _, set = ns.LineupInvWordsCheck(text)
+        if not set then _, set = ns.LineupInvWordsCheck("inv, invite") end
+        wordsText, wordsSet = text, set
+    end
+    return wordsSet
+end
+
 local function invGate(key)
     local t = GetTime()
     if invLast[key] and t - invLast[key] < INV_GAP then return false end
@@ -627,12 +750,13 @@ local function invTake(night, name)
     end
 end
 
--- The whisper itself: the whole text "inv" or "invite"; secret whispers (the lockdown) are skipped.
+-- The whisper itself: the whole text one of the words of lineup.invWords (default "inv" or "invite");
+-- secret whispers (the lockdown) are skipped.
 function IV.Whisper(text, sender)
     text, sender = ns.Plain(text), ns.Plain(sender)
     if type(text) ~= "string" or type(sender) ~= "string" or sender == "" then return end
     local word = text:match("^%s*(%S+)%s*$")
-    if not word or not INV_WORDS[word:lower()] then return end
+    if not word or not invWords()[word:lower()] then return end
     if not invOn() or ns.LineupLeadBlocked() then return end
     local name = ns.TrustName(sender) or ns.StripOwnRealm(sender) or ns.FullName(sender)
     if not name or isMe(name) then return end
@@ -671,8 +795,8 @@ IV._reset = function()
     invLast, invTimes, strangerSaid = {}, {}, {}
     if ticker then ticker:Cancel() ticker = nil end
 end
-IV._set = function(night, name, st, tries)
+IV._set = function(night, name, st, tries, by)
     local r = rec(night or tonight(), name, true)
-    r.st, r.tries, r.at = st, tries or r.tries, GetTime()
+    r.st, r.tries, r.at, r.by = st, tries or r.tries, GetTime(), by or r.by
 end
 IV._run = function() return run end

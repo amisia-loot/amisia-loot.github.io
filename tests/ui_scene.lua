@@ -543,6 +543,23 @@ S.STATES = {
         IV._set(nil, "Rurik Stahl", "D", 3)
         NS.ShowLineup("invite")
     end },
+    -- F-163: the guild's invites beside the lineup's (rank picker, "Gilde einladen", the rows "über Gilde
+    -- einladen" and "auf Flüstern"); a night without a lineup shows the view with its empty state
+    { page = "lineup", name = "lineup-invite-guild", open = function()
+        S.lineup()
+        local IV = NS.LineupInv
+        IV._reset()
+        IV._set(nil, "Bob Eisherz", "I", 1)
+        IV._set(nil, "Gerda Gildenmeisterin", "I", 1, "guild")
+        IV._set(nil, "Olaf Offizier", "D", 2, "guild")
+        IV._set(nil, "Rudi Rekrut", "N", 1, "inv")
+        NS.ShowLineup("invite", NS.LineupTonight())
+    end },
+    { page = "lineup", name = "lineup-invite-empty", open = function()
+        S.lineup()
+        NS.LineupInv._reset()
+        NS.ShowLineup("invite", "2026-12-24")
+    end },
     -- the lineup with the calendar: the events to choose, then the rows with their sources
     { page = "lineup", name = "lineup-calendar", open = function() S.lineup(); S.calendar(); NS.ShowLineup("calendar"); STUB.tick(1) end },
     { page = "lineup", name = "lineup-sources", open = function()

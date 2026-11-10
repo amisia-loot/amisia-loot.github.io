@@ -1285,7 +1285,12 @@ end)
 ---------------------------------------------------------------------------
 -- Slash command
 ---------------------------------------------------------------------------
-ns.RegisterSlash("pause", { desc = L["Aufnahme pausieren oder fortsetzen"], run = function() ns.SetEnabled(not ns.IsEnabled()) end })
+-- alone the recording's switch; with minutes or "stop" the break timer of Raid/PullTimer.lua (F-164,
+-- D-94: "/amisia pause 5" announces a break, as /amisia raidpause does)
+ns.RegisterSlash("pause", { desc = L["Aufnahme pausieren oder fortsetzen"], run = function(rest)
+    if type(rest) == "string" and rest:match("%S") and ns.PullTimer then return ns.PullTimer.Slash("break", rest) end
+    ns.SetEnabled(not ns.IsEnabled())
+end })
 ns.RegisterSlash("spaet", { en = "late", args = L["<HH:MM>|aus"], desc = L["Raidbeginn für die Zu-spät-Markierung"],
     run = function(rest)
         if rest == "" then
