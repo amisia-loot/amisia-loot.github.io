@@ -459,6 +459,35 @@ function S.dungeonBar(list)
     return AmisiaDungeonBar
 end
 
+-- The window "Questgegenstände aufräumen" (F-173): two sure items (one in two stacks), a likely one, two
+-- unclear ones and a kept one; their quest marks and the client's quest flags.
+function S.questItems()
+    local function qitem(id, name)
+        STUB.item(id, name, 1)
+        STUB.items[id].classID, STUB.items[id].equipLoc = 12, ""
+    end
+    qitem(77001, "Altes Siegel der Wacht"); qitem(77002, "Krokodilträne"); qitem(77003, "Gnollpfote")
+    qitem(77004, "Schlammprobe aus dem Tal"); qitem(77005, "Seltsamer Stein"); qitem(77006, "Familienring")
+    STUB.bags[4] = { 77001, 77002, 77002, 77003, 77004, 77005, 77006 }
+    STUB.bagInfo[4] = { [2] = { count = 4 }, [3] = { count = 2 } }
+    C_Container.GetContainerItemQuestInfo = function(bag, slot)
+        if bag == 4 and slot == 1 then return { isQuestItem = true, questID = 77501 } end
+        return { isQuestItem = false }
+    end
+    _G.GetCursorInfo = _G.GetCursorInfo or function() return nil end
+    _G.DeleteCursorItem = _G.DeleteCursorItem or function() end
+    local titles = { [77501] = "Die Wacht am Fluss", [77502] = "Tränen des Krokodils", [77503] = "Gnolle vertreiben",
+        [77504] = "Schlamm im Tal" }
+    C_QuestLog.GetTitleForQuestID = function(q) return titles[q] end
+    for _, q in ipairs({ 77501, 77502, 77503 }) do STUB.questsDone[q] = true end
+    NS.QUEST_ITEMS = { built = "2026-11-10", count = 3, I = { [77003] = "D77503", [77004] = "D77504", [77006] = "D77503" } }
+    STUB.fire("QUEST_LOG_UPDATE")
+    NS.QuestItems.Learn(77002, 77502)
+    NS.QuestItems.SetKeep(77006, true)
+    NS.QuestItemsWindow.Show()
+    return AmisiaQuestItems
+end
+
 -- Further states of pages, shot after the pages themselves (in every view the page shows in):
 -- { page, name, open = fn() } opens the page in that state through its public entry point.
 S.STATES = {
@@ -967,6 +996,8 @@ S.WINDOWS = {
         NS.SelfTest.Show()
         return AmisiaSelfTestFrame
     end },
+    -- the quest items to clear away (F-173)
+    { key = "questitems", view = "raider", open = function() return S.questItems() end },
     -- the dungeon bar (F-168), last (it stands in a dungeon): every segment, then each list open
     { key = "dungeonbar", view = "raider", open = function() return S.dungeonBar() end },
     { key = "dungeonbar-bosses", view = "raider", open = function() return S.dungeonBar("bosses") end },

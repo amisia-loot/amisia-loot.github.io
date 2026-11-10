@@ -76,6 +76,7 @@ Data\DungeonData.lua [AllowLoadGameType camelot]
 Data\DungeonQuestData.lua [AllowLoadGameType camelot]
 Data\ProfessionData.lua [AllowLoadGameType camelot]
 Data\QuestData.lua [AllowLoadGameType camelot]
+Data\QuestItemData.lua [AllowLoadGameType camelot]
 Data\TalentData.lua [AllowLoadGameType camelot]
 Data\MageScrollData.lua [AllowLoadGameType camelot]
 Data\DungeonArt.lua [AllowLoadGameType camelot]
@@ -128,6 +129,8 @@ Gear\MapPlaces.lua [AllowLoadGameType camelot]
 Gear\Routes.lua [AllowLoadGameType camelot]
 Gear\RouteMap.lua [AllowLoadGameType camelot]
 Gear\DungeonBar.lua [AllowLoadGameType camelot]
+Gear\QuestItems.lua [AllowLoadGameType camelot]
+Gear\QuestItemsWindow.lua [AllowLoadGameType camelot]
 UI\Search.lua
 UI\MainFrame.lua
 UI\Pages\Overview.lua

@@ -29,6 +29,38 @@ maproot(MAP.TEST_ISLE, {
 				races = { SKYBORNE_HORDE },
 				lvl = 5,
 			}),
+			q(73102, {	-- Isle Supplies
+				qg = 83101,	-- Isle Keeper
+				provider = { "i", 63101 },	-- Isle Writ
+				qis = { 63102, 63103 },	-- Empty Crate, Tally Sheet (PQI!)
+				lvl = 6,
+				groups = {
+					objective(1, {	-- 0/6 Driftwood
+						providers = {
+							{ "i", 63104 },	-- Driftwood
+							{ "o", 93101 },
+						},
+					}),
+					{
+						objective(2, {	-- 0/1 Gull Egg
+							provider = { "i", 63105 },	-- Gull Egg
+						}),
+					},
+					objective(3, {	-- 0/4 Isle Crab slain
+						provider = { "n", 83102 },	-- Isle Crab
+					}),
+					i(63106),	-- Isle Boots
+					q(73103, {	-- Isle Follow-up
+						qg = 83101,	-- Isle Keeper
+						lvl = 7,
+						groups = {
+							objective(1, {	-- 0/1 Sealed Letter
+								provider = { "i", 63107 },	-- Sealed Letter
+							}),
+						},
+					}),
+				},
+			}),
 		}),
 	},
 });

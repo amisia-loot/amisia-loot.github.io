@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-173 Questgegenstände aufräumen: sicher, wahrscheinlich, unklar
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du `/amisia questitems` eingibst (oder auf der Seite Quests oben rechts "Aufräumen" klickst), dann öffnet sich "Questgegenstände aufräumen" mit deinen Questgegenständen unter "Sicher überflüssig", "Wahrscheinlich überflüssig" und "Unklar", jeder mit Symbol, Anzahl und Grund ("startet die Quest ... (abgeschlossen)", "laut Daten für ...", "Quest ... nicht im Log"); keine Rüstung, kein Schlüssel, nichts aus der Bank.
+- Prüfung: Wenn du die Maus auf einen Questgegenstand hältst (Tasche oder Liste), dann steht im Tooltip "Quest: Name (abgeschlossen)" bzw. "(im Log)" oder "(nicht im Log)", bei einem überflüssigen grün "wird nicht mehr gebraucht" oder gelb "wahrscheinlich nicht mehr gebraucht"; Einstellungen > Quests > "Questgegenstände im Tooltip" aus nimmt die Zeile weg.
+- Prüfung: Wenn du bei einem sicheren Gegenstand auf "Löschen" klickst, dann fragt ein Fenster mit Name, Anzahl, Grund und "Gelöschte Questgegenstände lassen sich nicht zurückholen."; "Abbrechen" löscht nichts, "Löschen" einen Stapel, danach steht im Chat "Gelöscht: Name xN." (oder, wenn das Spiel es Addons verbietet, einmal "Das Spiel lässt Addons keine Gegenstände löschen: ..." und die Knöpfe verschwinden: bitte melden, welches von beiden kam).
+- Prüfung: Wenn du von einem Questgegenstand mehr gesammelt hast als nötig und die Quest abgibst, dann steht der Rest nach etwa einer Sekunde unter "Sicher überflüssig" mit "war Ziel der Quest ... (abgeschlossen), von Amisia gesehen".
+- Prüfung: Wenn du auf eine Zeile rechtsklickst und "Behalten" wählst, dann steht sie unter "Behalten" und "Nächsten sicheren löschen (N)" zählt sie nicht mehr; "Nicht mehr behalten" holt sie zurück.
+- Notiz: Spec docs/specs/2026-11-10-questgegenstaende.md; DECISIONS D-105. Gelöscht wird nur aus "sicher", nur im Klick, ein Stapel je Klick, nie im Kampf, nie bei offener Bank, Post oder Handel. Ob Forever Addons `DeleteCursorItem` erlaubt, ist offen: `/amisia selbsttest` nennt unter "Wahlweise vorhanden" `DeleteCursorItem`, `GetCursorInfo` und `C_Container.GetContainerItemQuestInfo`. Nichts wird gesendet.
+
 ### F-172 Daten per Nummer: Datenprüfung, Quest-Scan, NPC-Scan
 - Version: -
 - Status: geplant

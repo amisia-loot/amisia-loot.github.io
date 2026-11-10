@@ -144,6 +144,7 @@ function ns.ResetPositions()
     if ns.ResetLootToastPosition then ns.ResetLootToastPosition() end
     if ns.ResetRunTimerPosition then ns.ResetRunTimerPosition() end
     if ns.ResetDungeonBarPosition then ns.ResetDungeonBarPosition() end
+    if ns.ResetQuestItemsPosition then ns.ResetQuestItemsPosition() end
     ns.msg(L["Fensterposition zurückgesetzt."])
 end
 

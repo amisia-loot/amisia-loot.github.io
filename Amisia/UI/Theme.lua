@@ -448,6 +448,14 @@ T.RUNTIMER = { W = 260, PAD = 12, TOP = 30, TOTAL_H = 22, LINE_H = 16, ROW_H = 1
 -- (AmisiaDungeonBarList) hangs LIST_GAP under it, LIST_W wide: rows ROW_H high PAD from its edges, the
 -- name ROW_NAME_W, the note ROW_NOTE_W at the right end; at most MAX_ROWS rows. TICK: the clock's
 -- and the quest log's refresh while the bar shows.
+-- The window "Questgegenstände aufräumen" (F-173, Gear/QuestItemsWindow.lua, AmisiaQuestItems): W wide;
+-- under the title (TOP) the status line and the red button "Nächsten sicheren löschen" in one band HEAD_H
+-- high; the list LIST_GAP under it, ROWS rows of ROW_H (a group's head, or an item: its icon ICON square at
+-- ICON_X, its name and count over the reason from TEXT_X, the link "Löschen" at the right end, LINK_W);
+-- SCROLL room for the list's bar; the hint line in BOTTOM_H at the bottom.
+T.QUESTITEMS = { W = 460, PAD = 12, TOP = 30, HEAD_H = 24, LIST_GAP = 6, ROWS = 10, ROW_H = 34, ICON = 24, ICON_X = 4,
+    TEXT_X = 34, LINK_W = 70, SCROLL = 16, BOTTOM_H = 30 }
+
 T.DUNGEONBAR = { H = 26, PAD = 6, GAP = 10, NAME_W = 130, CLOSE = 14, SHADE = 0.78, LIST_GAP = 2, LIST_W = 300, ROW_H = 18,
     ROW_NAME_W = 196, ROW_NOTE_W = 84, MAX_ROWS = 20, TICK = 0.5 }
 

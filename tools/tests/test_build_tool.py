@@ -137,12 +137,13 @@ def test_check_utf8(tmp_path):
 # ---------------------------------------------------------------- data
 def test_data_steps_order():
     names = [s[0] for s in build.data_steps()]
-    assert names == ['scan archive', 'dungeons', 'gear', 'map', 'dungeon quests', 'quests', 'professions', 'talents',
+    assert names == ['scan archive', 'dungeons', 'gear', 'map', 'dungeon quests', 'quests', 'quest items', 'professions', 'talents',
                      'mage scrolls', 'raid check', 'enchants', 'dungeon art', 'bis', 'scan lists']
     steps = {s[0]: s for s in build.data_steps(sv='/x/Amisia.lua', wago='/w', refresh_att=True)}
     assert steps['gear'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua', '--refresh-att']
     assert steps['bis'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua']
     assert steps['dungeon quests'][2] == ['--sv', '/x/Amisia.lua'], "the collector's own quest observations"
+    assert steps['quest items'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua'], 'the own item links (F-173)'
     assert steps['scan archive'][2] == ['update', '--wago', '/w', '--sv', '/x/Amisia.lua']
     # the scans by id (D-104): boss NPCs from the NPC scan, the lists and names last
     assert steps['dungeons'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua']

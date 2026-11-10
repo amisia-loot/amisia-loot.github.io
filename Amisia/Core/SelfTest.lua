@@ -893,6 +893,11 @@ local OPTIONAL = {
     "NotifyInspect", "CanInspect", "ClearInspectPlayer",
     -- the player tooltip's gear line (UnitInfo.lua, F-169): another player's items, the inspect range
     "GetInventoryItemID", "CheckInteractDistance", "C_Item.GetDetailedItemLevelInfo", "GetAverageItemLevel",
+    -- clearing quest items away (QuestItems.lua, F-173): the bag slot's quest mark, the turn-in's items,
+    -- the log's objectives, the cursor and deleting it (only looked up here, never called)
+    "C_Container.GetContainerItemQuestInfo", "GetQuestID", "GetNumQuestItems",
+    "C_QuestLog.GetQuestObjectives", "C_QuestLog.GetNumQuestLogEntries", "GetCursorInfo", "DeleteCursorItem",
+    "PickupContainerItem",
 }
 ST.OPTIONAL = OPTIONAL
 

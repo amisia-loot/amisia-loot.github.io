@@ -2532,3 +2532,55 @@ anhalten, die 50 ohne Antwort, Kampf, Instanz, Sprache, die Seite Werkzeuge), `t
 Kampf, Instanz, eigener Tooltip), `tests/test_scan_trim_ids.lua` (Aufräumen je Sprache, Bereiche),
 `tools/tests/test_scan_ids.py` (Archiv je Sprache, Marker, Aufräumen im Addon, Listen und Namen, die Builds
 mit Stufen, Arten und Boss-Nummern, ein leerer Teil ändert nichts), `tools/tests/test_scan_archive.py::test_the_committed_marker_is_current`.
+
+## D-105 Questgegenstände aufräumen: drei Gruppen, gelöscht wird nur, was sicher ist
+
+**Datum:** 2026-11-10
+**Entscheidung:** Amisia sagt je Questgegenstand der Taschen, ob er noch gebraucht wird (F-173, Spec
+`docs/specs/2026-11-10-questgegenstaende.md`, Module `Gear/QuestItems.lua` und `Gear/QuestItemsWindow.lua`), in
+drei Gruppen, und löscht nur aus der ersten:
+- **Sicher überflüssig**: (1) der Gegenstand startet eine Quest (der Quest-Vermerk des Taschenplatzes,
+  `C_Container.GetContainerItemQuestInfo`, oder die Client-Tabelle ItemSparse, Art S der Daten), die dieser
+  Charakter abgeschlossen hat; oder (2) Amisia sah auf diesem Account, dass er zu Quest Q gehört (am Abgabefenster
+  verlangt, oder Gegenstandsziel von Q im Questlog und dem Gegenstand der Tasche nach Namen zugeordnet), und Q ist
+  abgeschlossen; jeweils nur, wenn keine andere bekannte, nicht abgeschlossene Quest den Gegenstand nutzt (auch
+  keine der anderen Fraktion).
+- **Wahrscheinlich überflüssig**: jede Quest, die die Daten nennen (AllTheThings; die Art O der Datei, die vom Konto
+  des Autors stammt, zählt hier wie Daten), ist abgeschlossen oder laut Questdaten nichts für diesen Charakter
+  (Fraktion, Klasse, Volk).
+- **Unklar**: keine Quest bekannt, oder eine genannte Quest ist weder abgeschlossen noch im Log (z. B. abgebrochen:
+  sie würde wieder gebraucht).
+- Gar nicht angeboten ("noch gebraucht"): eine genannte Quest steht im Log, oder der Gegenstand startet eine Quest,
+  die der Charakter nicht gemacht hat. Abgeschlossen heißt nur der Vermerk des Spiels
+  (`C_QuestLog.IsQuestFlaggedCompleted`), erst nach dem ersten `QUEST_LOG_UPDATE` der Sitzung; eine wiederholbare
+  Quest (Daten-Markierung R) gilt nie als abgeschlossen. "Behalten" (je Account, `AmisiaDB.questItems.keep`) nimmt
+  einen Gegenstand aus dem Angebot, bis es zurückgenommen wird.
+- Nur Gegenstände der Klasse Quest (12) oder mit dem Quest-Vermerk des Taschenplatzes, nie Waffen, Rüstung,
+  Schlüssel oder Angelegtes, nur die Taschen 0 bis 4.
+- **Löschen** nur im Klick des Spielers (die Frage `W.Confirm`, ohne sie nur mit `quests.itemNoAsk`), ein Stapel je
+  Klick, nie im Kampf oder in der Bosssperre, nie wenn die Maus etwas hält oder Bank, Briefkasten, Händler, Handel
+  oder Gildenbank offen sind; direkt davor neu bewertet, dann den Platz aufnehmen, `GetCursorInfo` muss genau
+  diesen Gegenstand nennen, dann `DeleteCursorItem`; sonst Maus leeren und eine Zeile. Erst die Taschenmeldung
+  bestätigt das Löschen. Eine Ablehnung des Spiels (`ADDON_ACTION_FORBIDDEN`/`_BLOCKED` für Amisia) schaltet das
+  Löschen bis zum nächsten Login ab und sagt es einmal. Nichts wird gesendet, keine Nachricht.
+
+**Grund:** Nutzer 2026-11-10: "... wirklich 100 % sicher ist, dass die Items gelöscht werden können ..."; auf den
+Vorschlag der drei Gruppen: "Ja, so bauen". Sicher ist nur, was das Spiel selbst sagt oder dieser Account selbst
+sah; die Daten können fehlen oder irren (eine zweite Quest am Gegenstand, die keiner kennt), darum löscht Amisia aus
+"wahrscheinlich" und "unklar" nie, auch nicht auf Wunsch.
+
+**Folge:** Die Daten (`Data/QuestItemData.lua`, `tools/build_questitems.py`, 40 KB) verbinden für Build
+1.60.1.70888 2332 Gegenstände mit Quests: 344 mit S (ItemSparse), 1994 mit D (AllTheThings: Provider der Quest,
+`qi`/`qis`, Provider der Ziele), 0 mit O (noch keine eigene Beobachtung); 210 mit mehr als einer Quest. Ob Forever
+Addons `DeleteCursorItem` im Klick erlaubt, ist ungeprüft: der Selbsttest nennt die Funktionen, die Ablehnung ist
+abgefangen. `tools/att_data.py` liefert je Quest `items`; die eigenen Zuordnungen kommen über die SavedVariables in
+`tools/quest_item_archive.json` (bleiben für immer, das Addon kürzt auf 2000).
+
+**Durchgesetzt durch:** `tests/test_quest_items.lua` (jede Gruppe, Startquest aus Taschenplatz und Daten,
+Abgabefenster und Questlog, die O-Art der Datei nur wahrscheinlich, andere Fraktion, wiederholbar, vor der Antwort
+des Spiels, Rüstung, Schlüssel, Bank, Stapel, Ladungen, Abgabe bei offenem Fenster, Behalten, Frage und Klick,
+Kampf, Bosssperre, Maus, Bank und Briefkasten, weg, nicht mehr sicher, falscher Gegenstand, Taschenmeldung ja und
+nein, Ablehnung, ohne Nachfrage, nächster sicherer, Tooltip, Zahl der Seite Quests, Befehl, Platz, Aufräumen des
+Schlüssels), `tools/tests/test_build_questitems.py` (Client-Tabellen, eigene Zuordnungen, Archiv, Arten, nur
+Questklasse, Datei), `tools/tests/test_att_data.py::test_the_items_a_quest_works_with`, `tests/ui_scene.lua`
+(Fenster `questitems`).

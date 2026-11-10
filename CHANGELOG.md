@@ -5,6 +5,17 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(quests): clear away quest items you no longer need: sure, likely, unclear (F-173)
+
+  `/amisia questitems` (or "Clear away" on the Quests page, with the number of sure ones) lists the quest items in
+  your bags in three groups with the reason in words: surely unneeded (the item starts a quest you completed, or
+  Amisia saw it belong to a quest you completed, and no other open quest uses it), probably unneeded (the data says
+  so, every linked quest is completed or not for your faction or class) and unclear. Only sure items can be deleted,
+  one stack per click after a question (or without one with a setting), never in combat or with the bank, mail or a
+  trade open; if the game does not let addons delete items, Amisia says so once and you drag them out yourself. A
+  right click keeps an item for good, and a quest item's tooltip says which quest it belongs to and whether you still
+  need it.
+
 - feat(data): ask the game for quests and NPCs by id: a data probe, a quest scan and an NPC scan (F-172)
 
   `/amisia selftest data` checks what this client answers when Amisia asks for an NPC's name, a quest or a model

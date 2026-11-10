@@ -255,6 +255,19 @@ def test_race_lists_specializations_start_items_and_objects(new):
     assert att_data.empty_db()['npc_names'] == {} and att_data.empty_db()['object_names'] == {}
 
 
+def test_the_items_a_quest_works_with(new, db):
+    """F-173: a quest's own provider items, the items it hands out and its objectives' provider items
+    (a providers list, an objective in a plain group), not a kill objective, a reward or a nested quest's."""
+    q = new['quests']
+    assert q[73102]['items'] == [63101, 63102, 63103, 63104, 63105], q[73102]['items']
+    assert q[73103]['items'] == [63107], 'the nested quest keeps its own objective'
+    assert q[73006]['items'] == [63005], 'qi: an item the quest hands out'
+    assert q[73001]['items'] == [], 'qs (the start item) is no provider: the client table names start items'
+    assert q[73101]['items'] == []
+    assert db['quests'][71001]['items'] == [61008], 'the objective item, not the rewards'
+    assert db['quests'][71001]['rewards'] == [61001, 61002, 61003]
+
+
 def test_the_cache_folder_can_be_pointed_elsewhere(tmp_path):
     import subprocess
     code = 'import att_data; print(att_data.ATT_CACHE)'

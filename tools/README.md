@@ -19,7 +19,7 @@ python3 tools/build.py errors [--sv FILE] [--all]
 ```
 
 - `data` runs the data builds in dependency order: `build_scan_archive.py update`, `build_dungeons.py --wago`, `build_gear.py`,
-  `build_map.py`, `build_dungeonquests.py`, `build_quests.py`, `build_professions.py`,
+  `build_map.py`, `build_dungeonquests.py`, `build_quests.py`, `build_questitems.py`, `build_professions.py`,
   `build_talents.py`, `build_magescrolls.py`, `build_raidcheck.py`, `build_enchants.py`, `build_dungeonart.py --wago`, `build_bis.py`,
   `build_scan_lists.py` (last: it reads the NPC ids of the files before it). It stops at the first build
   that fails and ends with `git diff --stat` of `Amisia/Data` and `tools`. Without `--wago` it first
@@ -27,7 +27,7 @@ python3 tools/build.py errors [--sv FILE] [--all]
   the file it took (version, rows, source); `--wago DIR` reads only that folder instead. Professions, talents, mage scrolls and the raid check are skipped with a
   note naming the missing tables (`build.py tables`, or export them on the PC with `tools/export_db2.ps1 -Tables ...`),
   dungeons and dungeon art fall back to their kept snapshots. `--sv` goes to `build_gear.py`,
-  `build_map.py` (learned entrances), `build_professions.py` (trainers read in the game), `build_dungeonquests.py` (the collector's own quest observations),
+  `build_map.py` (learned entrances), `build_professions.py` (trainers read in the game), `build_dungeonquests.py` (the collector's own quest observations), `build_questitems.py` (the own links of quest items, F-173),
   `build_bis.py`, `build_scan_archive.py`, `build_dungeons.py` and `build_scan_lists.py` (the scans by id, D-104;
   default: what each finds, e.g. `~/addons/_SavedVariables/Amisia.lua`);
   `--att DIR` builds every step from another AllTheThings download (it sets `AMISIA_ATT_CACHE`, see
@@ -230,7 +230,7 @@ them in dependency order; `build.py check` fails when a file is missing from it.
 
 ### Lazy data
 
-The big generated files (`GearData`, `GearWeights`, `MapData`, `QuestData`, `ProfessionData`, `TalentData`, `MageScrollData`, `RaidCheckData`, `ScanDone`)
+The big generated files (`GearData`, `GearWeights`, `MapData`, `QuestData`, `QuestItemData`, `ProfessionData`, `TalentData`, `MageScrollData`, `RaidCheckData`, `ScanDone`)
 hand their table to `ns.LazyData("KEY", [=[ return { ... } ]=], N)` as text (`tools/lua_data.py`:
 `lazy()` in the generators, `eager()` and `load()` for the tools and tests that read a data file;
 N is the generator's count of entries; the long string's level is 1 at least, as Lua 5.1 refuses a
@@ -487,7 +487,9 @@ the licence text ships in `Amisia/LICENSES/AllTheThings-MIT.txt`, approved by th
   such as `ALLIANCE_PALADINS` from `.config/constants/races.lua`, run before the data files). A race
   without a race id (Skyborne) gives its faction and no race mask; a blacksmith or engineer
   specialization (`ARMORSMITH`, `GNOMISH_ENGINEERING`, ...) counts as its profession. `qs` is the item
-  that starts a quest; `qi`/`qis` are items it hands out (no start). An NPC under a profession in the
+  that starts a quest; `qi`/`qis` are items it hands out (no start). A quest's `items` (F-173) are the items it
+  works with: its own provider items, `qi`/`qis` and the provider items of its `objective(...)` entries (a
+  `providers` list too, objectives inside plain groups; never a nested quest's, never a kill objective). An NPC under a profession in the
   header PROFESSIONS (`n(PROFESSIONS, { prof(ALCHEMY, { n(4611, ...) }) })`) is a trainer: its record gets
   `profs`, the set of those professions (`build_professions.py` writes them as `TR`). Raids ATT keeps commented out
   (Molten Core, Blackwing Lair, Zul'Gurub, Ahn'Qiraj, Naxxramas in the 2026-11-05 data) are not read.
@@ -884,6 +886,31 @@ Runs on the N100 (no WoW install needed). Rebuild with `--refresh-att` when the 
 dungeons, then commit. Requires `lupa`. Tests: `tools/tests/test_build_dungeonquests.py` on
 hand-made fixtures in the builder language (`tools/tests/fixtures/att`, `tools/tests/fixtures/att_new`,
 no real data) and hand-made collector records.
+
+## build_questitems.py
+
+Builds `Amisia/Data/QuestItemData.lua` (lazy `QUEST_ITEMS`, F-173, D-105) for the window "Questgegenstände
+aufräumen" and the quest item line of the item tooltip: per quest item the quests that use it.
+
+```
+python tools/build_questitems.py [--att DIR] [--wago DIR] [--sv FILE...] [--archive tools/quest_item_archive.json] [--empty]
+```
+
+- `I = { [item] = "<kind><quest>,..." }`, at most 8 quests per item by id, each quest once with the strongest kind:
+  S the item starts the quest (client table ItemSparse `StartQuestID`), O Amisia saw it on the author's account (the
+  turn-in dialog's required quest items, the log's item objectives: `AmisiaDB.questItems.links` of `--sv`, joined into
+  `tools/quest_item_archive.json`, committed, a link once seen stays; `--archive ""` for none), D AllTheThings (the
+  quests' `items` of `att_data.py`). Only items of the item class Quest (12) by the client table Item, else
+  AllTheThings' item export; an item neither knows stays (the addon checks the class itself).
+- What the addon needs besides (done, in the log, repeatable, faction, class, race) comes from the client and from
+  `Data/QuestData.lua` under the same quest ids; nothing of it is repeated here. The addon counts O and D of this file
+  as data: only the client's start quest and its own links on the player's account make an item sure.
+- Without the client tables it builds from AllTheThings and the own links; without AllTheThings from the tables and the
+  own links. The log names the numbers by kind (2026-11-10, build 1.60.1.70888: 2332 items, S 344, D 1994, O 0, 40 KB).
+  The date alone does not rewrite the file.
+
+Tests: `tools/tests/test_build_questitems.py` (the tables, the own links checked as the addon checks them, the archive,
+the kinds, the class filter, the file, the shipped one with TOC and licence).
 
 ## build_professions.py
 

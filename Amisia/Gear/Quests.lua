@@ -889,6 +889,11 @@ ns.RegisterSettings{ key = "quests", label = "Quests", order = 49, group = "dung
           if not v then index, indexData, listKey = nil, nil, nil end
           bump()
       end },
+    -- F-173: the quest items to clear away (Gear/QuestItems.lua)
+    { key = "quests.itemTooltip", type = "toggle", label = L["Questgegenstände im Tooltip"], default = true,
+      tip = L["Im Tooltip eines Questgegenstands: zu welcher Quest er gehört, ob sie abgeschlossen ist und ob du ihn noch brauchst."] },
+    { key = "quests.itemNoAsk", type = "toggle", label = L["Questgegenstände ohne Nachfrage löschen"], default = false,
+      tip = L["Im Fenster \"Questgegenstände aufräumen\" löscht ein Klick auf \"Löschen\" einen sicher überflüssigen Stapel ohne Frage. Gelöschte Gegenstände lassen sich nicht zurückholen."] },
 } }
 
 -- The page's window state: settings.questsPage (search, zone, show, chains, upgrades, mine,

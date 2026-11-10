@@ -254,6 +254,8 @@ local function refresh(f)
     f.upgrades:SetOn(s.upgrades and true or false)
     f.mine:SetOn(s.mine and true or false)
     f.counts:SetText(countsText(counts))
+    local safe = ns.QuestItems and ns.QuestItems.SafeCount() or 0
+    f.clean:SetText(safe > 0 and L["Aufräumen (%d)"]:format(safe) or L["Aufräumen"])
     -- every filter, the status chips too: a change starts the list at the top
     local key = table.concat({ tostring(s.zone), s.search, tostring(s.chains), tostring(s.upgrades), tostring(s.mine),
         tostring(s.show.open), tostring(s.show.active), tostring(s.show.locked), tostring(s.show.done) }, "|")
@@ -295,7 +297,12 @@ local function create(parent)
         state().search = (text or ""):match("^%s*(.-)%s*$") or ""
         ns.Refresh()
     end, L["Quest, Questgeber, Zone"])
-    f:Place(1, { f.zone, f.search })
+    -- F-173: the window "Questgegenstände aufräumen", with the count of the sure ones
+    f.clean = W.Link(f, L["Aufräumen"], function()
+        if ns.QuestItemsWindow then ns.QuestItemsWindow.Toggle() end
+    end)
+    W.Tooltip(f.clean, L["Questgegenstände aufräumen"], L["Welche Questgegenstände in deinen Taschen du nicht mehr brauchst. Die Zahl: so viele sind sicher überflüssig."])
+    f:Place(1, { f.zone, f.search }, { f.clean })
 
     -- the status chips, then the filters
     f.show = {}
@@ -378,6 +385,7 @@ local schedule = W.RefreshWhileShown(shown, GAP)
 
 ns.Listen("QUESTS_CHANGED", schedule)
 ns.Listen("BIS_CHANGED", schedule)
+ns.Listen("QUEST_ITEMS", schedule)
 ns.Listen("COLLECT_CHANGED", function(kind) if kind == nil or kind == "q" then schedule() end end)
 ns.OnEvent("ZONE_CHANGED_NEW_AREA", function()
     if AmisiaDB and AmisiaDB.settings and Q.PageState().zone == "here" then
