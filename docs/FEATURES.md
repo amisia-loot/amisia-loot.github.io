@@ -40,15 +40,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-176 Twitch und Discord in der Fußzeile
-- Version: -
-- Status: geplant
+- Version: 2.75.0
+- Status: gebaut
 - Prüfung: Wenn du das Amisia-Fenster öffnest, dann stehen unten rechts neben "Offiziersansicht · Version ..." zwei kleine Symbole, Twitch und Discord; die Maus darauf nennt den Namen und "Klick: zeigt den Link zum Kopieren.".
 - Prüfung: Wenn du auf das Discord-Symbol klickst, dann öffnet sich ein kleines Fenster "Discord" mit dem Link https://discord.gg/mxhvFBSXSf, schon markiert; Strg+C kopiert ihn, Tippen ändert ihn nicht, Escape schließt das Fenster. Das Twitch-Symbol zeigt https://www.twitch.tv/mrvulo.
 - Notiz: DECISIONS D-108. Neue Texturen: nach dem Release WoW ganz neu starten.
 
 ### F-175 Ausrüstungsplaner: Items ohne bekannte Quelle zuschaltbar
-- Version: -
-- Status: geplant
+- Version: 2.75.0
+- Status: gebaut
 - Prüfung: Wenn du mit einem Priester der Stufe 42 im Ausrüstungsplaner auf den Platz Waffenhand klickst (Meine Stufe), dann steht am Ende der Vorschläge grau "+ N weitere ohne bekannte Quelle"; ein Klick darauf zeigt sie in der Liste nach Zuwachs einsortiert, darunter "Schattenlichtathame" mit "Stufe 40 · Quelle unbekannt", ihrem Zuwachs in Prozent und einem grauen "?" statt des Quellsymbols; die Zeile am Ende heißt dann "ohne bekannte Quelle ausblenden".
 - Prüfung: Wenn du die Maus auf "Schattenlichtathame" hältst, dann steht im Tooltip "Amisia kennt die Werte aus dem Item-Scan, aber nicht, woher es kommt. Tötet jemand mit Amisia den Boss oder gibt eine Quest es als Belohnung, lernt Amisia die Quelle."; ein Klick auf das "?" öffnet nichts.
 - Prüfung: Wenn du "Optionen" anklickst, dann steht dort "Items ohne bekannte Quelle" mit Haken, solange sie gezeigt werden; ein Klick schaltet um, und nach `/reload` ist die Wahl noch da (auch unter Einstellungen > Ausrüstung und Wünsche > "Items ohne bekannte Quelle vorschlagen", aus von Haus aus).
@@ -57,8 +57,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: DECISIONS D-107, erweitert D-59 (F-132). Keine Spec (kein neuer gespeicherter Schlüssel, kein neuer Abschnitt: die Einstellung `bis.noSource` steht im Abschnitt "bis"). Die Daten: `Data/GearNoSource.lua` (lazy `GEAR_NOSRC`, 1670 Items, 189 KB Text) aus dem Item-Scan, nur die Ausrüstung, die keine Quelle nennt; Test- und Platzhalter-Items (215), Qualität unter Ungewöhnlich, Items ohne gewerteten Wert und alte Raid-Ausrüstung fallen weg. Bekommt ein Item später eine Quelle (ein Kill, eine Questbelohnung des Quest-Scans, AllTheThings), steht es nach dem nächsten Datenbau normal in den Vorschlägen. Nur die Vorschläge zeigen sie; Ziele, Sets und die Suche nach Namen nicht (ein Item-Link oder eine ID in der Suche geht wie bisher).
 
 ### F-174 Scharlachrotes Kloster als vier Dungeons
-- Version: -
-- Status: geplant
+- Version: 2.75.0
+- Status: gebaut
 - Prüfung: Wenn du die Seite Dungeons öffnest, dann stehen dort statt eines Klosters vier Karten "Scharlachrotes Kloster: Friedhof" (Stufe 30-38), "...: Bibliothek" (33-41), "...: Waffenkammer" (36-44) und "...: Kathedrale" (38-46); Waffenkammer und Kathedrale tragen in der Spalte Schlüssel das Symbol von "The Scarlet Key" (grau, solange du ihn nicht hast), Friedhof und Bibliothek keins.
 - Prüfung: Wenn du einen Flügel öffnest (Teil Übersicht), dann stehen links nur seine Bosse in der Reihenfolge des Spiels, jeder mit Porträt: Friedhof Interrogator Vishas und Bloodmage Thalnos (dazu die Seltenen Ironspine, Azshir the Sleepless, Fallen Champion und Scorn mit Beute), Bibliothek Houndmaster Loksey und Arcanist Doan, Waffenkammer Herod, Kathedrale High Inquisitor Fairbanks, High Inquisitor Whitemane und Scarlet Commander Mograine.
 - Prüfung: Wenn du in der Waffenkammer auf Herod klickst, dann stehen rechts seine drei Items (eine Zweihandaxt, Schultern und ein Helm, Stufe 37), und im Friedhof, in der Bibliothek und der Kathedrale kommt Herod nicht vor.
