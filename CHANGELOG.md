@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.74.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.74.0) (2026-11-10)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.73.1...v2.74.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(quests): clear away quest items you no longer need: sure, likely, unclear (F-173)
 
   `/amisia questitems` (or "Clear away" on the Quests page, with the number of sure ones) lists the quest items in
