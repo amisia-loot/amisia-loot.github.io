@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.73.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.73.0) (2026-11-10)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.72.0...v2.73.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(lineup): build a raid lineup without a sign-up list (F-161)
 
   The Lineup page (officers) now works from scratch: the planner opens on an empty night and
