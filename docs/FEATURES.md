@@ -39,6 +39,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-169 Spieler-Tooltip: Gearscore, Itemstufe und Berufe
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du die Maus auf deinen eigenen Charakter hältst (oder ihn als Ziel nimmst und die Maus auf das Zielfenster hältst), dann steht im Tooltip unter den Zeilen des Spiels grau "Gearscore N · Itemstufe N", die Gearscore-Zahl in der Farbe deiner Ausrüstung (grün, blau, lila), die Itemstufe weiß und gleich der Zahl im Charakterfenster (bitte melden, wenn sie abweicht oder eine Fehlermeldung kommt).
+- Prüfung: Wenn du einen Beruf im Berufsfenster einmal geöffnet hast und dich wieder mit der Maus ansiehst, dann steht über der Gearscore-Zeile eine Reihe kleiner Berufssymbole, die Hauptberufe vor Kochen, Erste Hilfe und Angeln; bei einem Gildenmitglied mit Berufen in der Gildennotiz (oder im Rezeptaustausch) ebenso.
+- Prüfung: Wenn du die Maus auf einen anderen Spieler in deiner Nähe hältst (braucht: einen anderen Spieler in der Nähe), dann erscheint die Gearscore-Zeile nach einem kurzen Moment von selbst, ohne dass sich das Betrachten-Fenster öffnet; ein zweites Mal sofort; ist das Betrachten-Fenster offen oder bist du im Kampf, bleibt sie weg.
+- Prüfung: Wenn du unter Einstellungen > Allgemein > Oberfläche "Dafür Spieler unter der Maus ansehen" ausschaltest, dann kommt die Zeile nur noch bei dir und bei Spielern, die Amisia in den letzten zehn Minuten schon angesehen hat; "Gearscore und Itemstufe im Spieler-Tooltip" aus nimmt die Zeile ganz weg, "Berufe im Spieler-Tooltip" aus die Symbole.
+- Notiz: DECISIONS D-99. Keine Spec (keine neue Nachricht, kein gespeicherter Schlüssel, keine Seite, kein neuer Abschnitt). Gearscore ist Amisias eigene Rechnung (Summe aus Itemstufe mal Gewicht des Platzes), nicht die Zahl eines anderen Addons. Gearscore-Zeile auch auf TBC und Era, die Berufe nur auf Forever. Ob Forever `GetInventoryItemID`, `CheckInteractDistance` und `C_Item.GetDetailedItemLevelInfo` hat, sagt `/amisia selbsttest`.
+
 ### F-168 Dungeon-Leiste: Bosse, Quests, Zeit und Route
 - Version: -
 - Status: geplant

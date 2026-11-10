@@ -33,6 +33,7 @@ Core\Comm.lua
 Core\Trust.lua
 Core\Version.lua
 Core\Feedback.lua
+Core\Inspect.lua
 UI\Theme.lua
 UI\Widgets.lua
 Raid\Awards.lua
@@ -88,6 +89,7 @@ UI\Pages\SoftRes.lua
 UI\SoftResImport.lua
 UI\Pages\Bank.lua
 UI\Pages\Members.lua
+UI\UnitInfo.lua
 UI\Pages\Settings.lua
 UI\Pages\About.lua
 UI\Pages\Feedback.lua

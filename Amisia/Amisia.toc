@@ -32,6 +32,7 @@ Core\Comm.lua
 Core\Trust.lua
 Core\Version.lua
 Core\Feedback.lua
+Core\Inspect.lua
 Core\Duels.lua [AllowLoadGameType camelot]
 UI\Theme.lua
 UI\Widgets.lua
@@ -151,6 +152,7 @@ UI\Pages\MageScrolls.lua [AllowLoadGameType camelot]
 UI\Pages\Export.lua [AllowLoadGameType camelot]
 UI\Pages\Bank.lua
 UI\Pages\Members.lua
+UI\UnitInfo.lua
 UI\DuelInfo.lua [AllowLoadGameType camelot]
 UI\Pages\Duels.lua [AllowLoadGameType camelot]
 UI\Pages\Tools.lua [AllowLoadGameType camelot]

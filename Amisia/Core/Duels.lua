@@ -399,25 +399,26 @@ function D.LearnOwnSpec(force)
 end
 
 -- The others by inspecting them (duels.inspect): a unit of a duellist (target, mouseover, a name
--- plate) whose tree was not read this session waits in the queue; one NotifyInspect every
--- INSPECT_GAP seconds, out of combat, outside the lockdown, never while the inspect window is
--- open; INSPECT_READY for that character reads the trees. Another inspect request in between (the
--- player's own, another addon's) makes Amisia drop its answer.
+-- plate) whose tree was not read this session waits in the queue; one request every INSPECT_GAP
+-- seconds through the shared helper Core/Inspect.lua (out of combat, outside the lockdown, never while
+-- the inspect window is open, one at a time; another inspect request in between makes Amisia drop its
+-- answer); the answer for that character reads the trees.
 local queue = {}        -- { unit, low, at } oldest first
-local pendingInspect    -- { guid, low, class, at } Amisia's request that waits for its answer
-local inspectAt         -- GetTime() of Amisia's last request
+local inspectAt         -- GetTime() of the last request of the duels
 local readAt = {}       -- lower name -> GetTime() its tree was read this session
 local triedAt = {}      -- lower name -> GetTime() of the last request for it
-local ownCall, hooked, pumpOn
+local pumpOn
+local In = ns.Inspect
 
 local function wantsSpec(low)
     if not low or readAt[low] then return false end
     return not triedAt[low] or GetTime() - triedAt[low] > INSPECT_RETRY
 end
 
-local function inspectFrameShown()
-    local f = _G.InspectFrame
-    return type(f) == "table" and f.IsShown and f:IsShown() and true or false
+-- The duels' request that waits for its answer ({ low, class }), nil when none.
+local function pendingSpec()
+    local p = In.Pending()
+    return p and type(p.tag) == "table" and p.tag.duels and p.tag or nil
 end
 
 -- Whether unit still is the player of key low.
@@ -425,6 +426,19 @@ local function unitIs(unit, low)
     if type(UnitExists) == "function" and not ns.Plain(UnitExists(unit)) then return false end
     local n, s = UnitName(unit)
     return keyOf(ns.FullName(ns.Plain(n), ns.Plain(s))) == low
+end
+
+-- The answer for the character of tag: its tree from the inspected talents.
+local function onSpec(guid, unit, tag)
+    local tree = dominant(ns.Talents and ns.Talents.InspectTrees(tag.class))
+    if tree then
+        readAt[tag.low] = GetTime()
+        index()
+        if players[tag.low] then
+            D.Learn(players[tag.low], tag.class)
+            D.LearnSpec(players[tag.low], tree)
+        end
+    end
 end
 
 local pump
@@ -443,11 +457,12 @@ pump = function()
         return
     end
     local now = GetTime()
-    if pendingInspect and now - pendingInspect.at < INSPECT_WAIT then return schedule(pendingInspect.at + INSPECT_WAIT - now) end
-    pendingInspect = nil
+    local p = In.Pending()
+    if p then return schedule(p.at + INSPECT_WAIT - now) end
     if inspectAt and now - inspectAt < INSPECT_GAP then return schedule(inspectAt + INSPECT_GAP - now) end
-    local blocked = (type(UnitAffectingCombat) == "function" and ns.Plain(UnitAffectingCombat("player")))
-        or inspectFrameShown() or (ns.ChatLocked and ns.ChatLocked())
+    if In.Wait() > 0 then return schedule(In.Wait()) end
+    local blocked = In.Blocked()
+    local sent = false
     while #queue > 0 do
         local e = table.remove(queue, 1)
         if now - e.at <= QUEUE_AGE and wantsSpec(e.low) then
@@ -458,30 +473,22 @@ pump = function()
             local guid = unitIs(e.unit, e.low) and ns.Plain(UnitGUID(e.unit))
             local _, class = UnitClass(e.unit)
             class = ns.Plain(class)
-            if type(guid) == "string" and CLASSES[class]
-                and (type(CanInspect) ~= "function" or ns.Plain(CanInspect(e.unit))) then
-                if not hooked and type(hooksecurefunc) == "function" then
-                    hooked = true
-                    hooksecurefunc("NotifyInspect", function() if not ownCall then pendingInspect = nil end end)
-                end
+            if type(guid) == "string" and CLASSES[class] and In.CanInspect(e.unit) then
                 triedAt[e.low], inspectAt = now, now
-                pendingInspect = { guid = guid, low = e.low, class = class, at = now }
-                ownCall = true
-                local ok = pcall(_G.NotifyInspect, e.unit)
-                ownCall = nil
-                if not ok then pendingInspect = nil end
+                sent = In.Request(e.unit, guid, onSpec, { duels = true, low = e.low, class = class })
                 break
             end
         end
     end
-    if pendingInspect then schedule(INSPECT_WAIT) elseif #queue > 0 then schedule(INSPECT_GAP) end
+    if sent then schedule(INSPECT_WAIT) elseif #queue > 0 then schedule(INSPECT_GAP) end
 end
 
 consider = function(unit, name)
     if unit == "player" or (type(UnitIsUnit) == "function" and ns.Plain(UnitIsUnit(unit, "player"))) then return end
     index()
     local low = keyOf(name)
-    if not wantsSpec(low) or (pendingInspect and pendingInspect.low == low) then return end
+    local p = pendingSpec()
+    if not wantsSpec(low) or (p and p.low == low) then return end
     for _, e in ipairs(queue) do
         if e.low == low then
             e.unit, e.at = unit, GetTime()
@@ -492,22 +499,6 @@ consider = function(unit, name)
     queue[#queue + 1] = { unit = unit, low = low, at = GetTime() }
     schedule(0.2)
 end
-
-ns.OnEvent("INSPECT_READY", function(guid)
-    local p = pendingInspect
-    if not p or ns.Plain(guid) ~= p.guid then return end
-    pendingInspect = nil
-    local tree = dominant(ns.Talents and ns.Talents.InspectTrees(p.class))
-    if tree then
-        readAt[p.low] = GetTime()
-        index()
-        if players[p.low] then
-            D.Learn(players[p.low], p.class)
-            D.LearnSpec(players[p.low], tree)
-        end
-    end
-    if type(ClearInspectPlayer) == "function" and not inspectFrameShown() then pcall(ClearInspectPlayer) end
-end)
 
 ns.OnEvent("PLAYER_TARGET_CHANGED", function() index() learnUnit("target") end)
 ns.OnEvent("UPDATE_MOUSEOVER_UNIT", function() index() learnUnit("mouseover") end)

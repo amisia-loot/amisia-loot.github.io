@@ -534,6 +534,11 @@ T.PROFPAGE = {
 
 -- the page Duelle (tab PvP, F-106): three lists on the page's 590 px. The history: two lines per row
 -- (the name in class colour, under it the class); the leaderboard and the classes: one line each.
+-- The player tooltip's lines (UI/UnitInfo.lua, F-169): the words in Amisia's tooltip grey, the item
+-- level white, the gear score in the colour of the gear's average quality (SCORE without one); the
+-- profession icons ICON px high.
+T.UNITINFO = { WORDS = { 0.56, 0.53, 0.64 }, ILVL = "ffffffff", SCORE = "ffffd100", ICON = 14 }
+
 T.DUELS = {
     CLASS_W = 130, SEARCH_W = 140, RANGE_W = 110,  -- the second head row's class and time pickers, search box
     -- the card under the client's duel request (UI/DuelInfo.lua): below the request window, without

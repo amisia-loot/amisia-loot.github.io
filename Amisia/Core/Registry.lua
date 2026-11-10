@@ -544,6 +544,13 @@ ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, group = "
     { key = "ui.talentScale", forever = true, type = "slider", label = L["Größe des Talentfensters (%)"], default = 100, min = 70, max = 150, step = 5,
       tip = L["Das große Talentfenster (Talentrechner). Strg + Mausrad über dem Fenster ändert die Größe auch."],
       onChange = function(v) if ns.ApplyTalentScale then ns.ApplyTalentScale(v) end end },
+    -- F-169: the player tooltip's lines (UI/UnitInfo.lua)
+    { key = "ui.unitGear", type = "toggle", label = L["Gearscore und Itemstufe im Spieler-Tooltip"], default = true,
+      tip = L["Eine Zeile im Tooltip jedes Spielers: Gearscore und durchschnittliche Itemstufe der angelegten Ausrüstung. Gearscore ist die Summe aus Itemstufe mal Gewicht des Platzes; eigene Rechnung von Amisia, nicht vergleichbar mit anderen Addons."] },
+    { key = "ui.unitInspect", type = "toggle", label = L["Dafür Spieler unter der Maus ansehen"], default = true,
+      tip = L["Kennt Amisia die Ausrüstung eines Spielers unter der Maus noch nicht, betrachtet es ihn wie \"Betrachten\": höchstens einmal pro Sekunde, nur in Reichweite, nicht im Kampf und nicht bei offenem Betrachten-Fenster. Aus: nur dein Charakter und Spieler, die Amisia in den letzten zehn Minuten schon betrachtet hat."] },
+    { key = "ui.unitProfs", forever = true, type = "toggle", label = L["Berufe im Spieler-Tooltip"], default = true,
+      tip = L["Eine Reihe Berufssymbole im Tooltip deiner Charaktere und der Gildenmitglieder, deren Berufe Amisia kennt (Rezeptaustausch, Gildennotiz). Nichts wird dafür gesendet."] },
     { key = "ui.resetPosition", type = "button", label = L["Fensterposition zurücksetzen"],
       run = function() if ns.ResetPositions then ns.ResetPositions() end end, tip = L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner, Raid-Kalender, Lauf-Zeiten, Dungeon-Leiste und die Item-Anzeige an ihren Standardplatz zurück."] },
     { key = "ui.view", type = "choice", label = L["Ansicht"], default = "auto",

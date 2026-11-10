@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(ui): gear score, item level and professions in the player tooltip (F-169)
+
+  Hovering a player now shows "Gear score 374 · item level 33" under the game's lines: the item level is the
+  average of the equipped gear (your own is the game's number), the gear score is Amisia's own sum of item level
+  times the slot's weight, coloured by the gear's average quality. For other players Amisia quietly inspects the
+  player under the mouse (in range, out of combat, never while the inspect window is open, at most once a second)
+  and remembers the result for ten minutes. Above it, a row of profession icons for your characters and guild
+  members whose professions Amisia knows. Three new switches under Settings, Interface.
+
 - feat(dungeons): a small dungeon bar with bosses, quests, time and route (F-168)
 
   Inside a dungeon a small movable bar shows by itself and goes when you leave: the dungeon's name, "Bosses 2/5"

@@ -91,6 +91,7 @@ end
 local NOTE_SKILL = { alchemy = 171, blacksmithing = 164, enchanting = 333, engineering = 202, leatherworking = 165,
     tailoring = 197, cooking = 185, firstaid = 129, fishing = 356, herbalism = 182, mining = 186, skinning = 393,
     poisons = 40 }
+Pr.SKILL_LINES = NOTE_SKILL   -- profession key -> skill line (the player tooltip's icons, UI/UnitInfo.lua)
 -- A word that starts with one of these stems names the profession (German and English, common short forms).
 local NOTE_STEMS = {
     { "alch", "alchemy" }, { "schmied", "blacksmithing" }, { "blacksmith", "blacksmithing" },

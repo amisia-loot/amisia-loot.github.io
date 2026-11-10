@@ -651,3 +651,11 @@ L["Wie sich eine Zeile bewegt, während sie ausblendet."] = "How a line moves wh
 L["Wo die Zeilen in der Anzeige stehen."] = "Where the lines stand in the display."
 L["Zeigt die Anzeige mit Rahmen und Beispielzeilen. Zieh sie mit der Maus an ihren Platz und klick auf \"Fertig\"."] = "Shows the display with a frame and example lines. Drag it to its place with the mouse and click \"Done\"."
 L["Zeilen gleichzeitig"] = "Lines at once"
+-- F-169: the player tooltip's lines (UI/UnitInfo.lua)
+L["Gearscore %s · Itemstufe %s"] = "Gear score %s · item level %s"
+L["Gearscore und Itemstufe im Spieler-Tooltip"] = "Gear score and item level in the player tooltip"
+L["Eine Zeile im Tooltip jedes Spielers: Gearscore und durchschnittliche Itemstufe der angelegten Ausrüstung. Gearscore ist die Summe aus Itemstufe mal Gewicht des Platzes; eigene Rechnung von Amisia, nicht vergleichbar mit anderen Addons."] = "A line in every player's tooltip: gear score and average item level of the equipped gear. The gear score is the sum of item level times the slot's weight; Amisia's own calculation, not comparable with other addons."
+L["Dafür Spieler unter der Maus ansehen"] = "Inspect the player under the mouse for it"
+L["Kennt Amisia die Ausrüstung eines Spielers unter der Maus noch nicht, betrachtet es ihn wie \"Betrachten\": höchstens einmal pro Sekunde, nur in Reichweite, nicht im Kampf und nicht bei offenem Betrachten-Fenster. Aus: nur dein Charakter und Spieler, die Amisia in den letzten zehn Minuten schon betrachtet hat."] = "When Amisia does not know the gear of a player under the mouse yet, it inspects him like \"Inspect\" does: at most once a second, only in range, not in combat and not while the inspect window is open. Off: only your character and players Amisia inspected in the last ten minutes."
+L["Berufe im Spieler-Tooltip"] = "Professions in the player tooltip"
+L["Eine Reihe Berufssymbole im Tooltip deiner Charaktere und der Gildenmitglieder, deren Berufe Amisia kennt (Rezeptaustausch, Gildennotiz). Nichts wird dafür gesendet."] = "A row of profession icons in the tooltip of your characters and of the guild members whose professions Amisia knows (recipe exchange, guild note). Nothing is sent for it."

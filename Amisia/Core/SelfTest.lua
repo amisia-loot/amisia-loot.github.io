@@ -891,6 +891,8 @@ local OPTIONAL = {
     "C_EncounterJournal.GetDungeonEntrancesForMap", "C_TaxiMap.GetTaxiNodesForMap",
     -- the duellists' specialisation: inspecting them (Duels.lua, F-114)
     "NotifyInspect", "CanInspect", "ClearInspectPlayer",
+    -- the player tooltip's gear line (UnitInfo.lua, F-169): another player's items, the inspect range
+    "GetInventoryItemID", "CheckInteractDistance", "C_Item.GetDetailedItemLevelInfo", "GetAverageItemLevel",
 }
 ST.OPTIONAL = OPTIONAL
 
