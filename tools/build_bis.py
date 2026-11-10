@@ -2301,7 +2301,51 @@ def boss_npcs(facts, att, gear):
             out.setdefault(key, [])
             if nid not in [x[0] for x in out[key]]:
                 out[key].append((nid, bname))
+    more_boss_npcs(facts, att, gear, keys, out)
     return out
+
+
+def more_boss_npcs(facts, att, gear, keys, out):
+    """Adds to out what the instance-name match of boss_npcs() leaves out (D-100), never changing what
+    it found: the NPC of each boss of the game's order (the merged facts' npcs, tools/build_dungeons.py),
+    named as AllTheThings names that NPC, and each boss the item data (GearData's D records) or the facts
+    name that an NPC of the dungeon's ATT instance carries by name (att_data.find_boss, in any wing: the
+    item data's plain "Blackrock Spire" records stand under Lower Blackrock Spire, the NPC is the same),
+    named as the item data writes it, so the addon joins its loot to the NPC. An NPC already in the list is not added a second time."""
+    import att_data
+    import build_dungeons
+    index = att_data.boss_index(att)
+    item_names = {}
+    for rec in gear['S'] if gear else []:
+        if rec[0] == 'D' and len(rec) > 2 and isinstance(rec[2], str):
+            for k in keys.get(norm(rec[1]), []):
+                if rec[2] not in item_names.setdefault(k, []):
+                    item_names[k].append(rec[2])
+    for e in facts['dungeons']:
+        key = e['key']
+        have = out.get(key) or []
+        ids = {n for n, _ in have}
+        known = {att_data.boss_key(n) for _, n in have}
+        added = []
+        for name, npc in zip(e.get('order') or [], e.get('npcs') or []):
+            if isinstance(npc, int) and not isinstance(npc, bool) and npc > 0 and npc not in ids:
+                bname = (att['npcs'].get(npc) or {}).get('name') or name
+                ids.add(npc)
+                known.add(att_data.boss_key(bname))
+                added.append((npc, bname))
+        iid = build_dungeons.att_instance(att, e, e.get('inst'))
+        if iid is not None:
+            for name in list(e.get('bosses') or []) + item_names.get(key, []):
+                if not isinstance(name, str) or att_data.boss_key(name) in known:
+                    continue
+                npc, _, _ = att_data.find_boss(index, iid, name)
+                if npc is None or npc in ids:
+                    continue
+                ids.add(npc)
+                known.add(att_data.boss_key(name))
+                added.append((npc, name))
+        if added:
+            out[key] = have + added
 
 
 FACT_FIELDS = ('key', 'name', 'kind', 'min', 'max', 'size', 'inst', 'area', 'from', 'aliases', 'part', 'lvl')
@@ -2333,16 +2377,24 @@ def build_dungeons(facts, bosses, gd):
 
 
 # ---------------------------------------------------------------- the drop base stock
-def encounter_npcs(gd, dg):
+def encounter_npcs(gd, dg, facts=None):
     """{encounter id: boss NPC id} (ns.BIS.EN): the client's encounters (DungeonEncounter) matched by name
     to the bosses of the dungeons with an NPC id (dg's bossNames). A name several dungeons share is
-    matched on the encounter's map (the dungeon's instance id); one that stays ambiguous is left out."""
+    matched on the encounter's map (the dungeon's instance id); one that stays ambiguous is left out.
+    Before the names: the merged facts' enc and npcs (tools/build_dungeons.py), one NPC per encounter of
+    the order, where an encounter of the client's table has that id."""
+    out = {}
+    for e in (facts or {}).get('dungeons') or []:
+        for eid, npc in zip(e.get('enc') or [], e.get('npcs') or []):
+            if eid in (gd.get('enc') or {}) and isinstance(npc, int) and not isinstance(npc, bool) and npc > 0:
+                out.setdefault(eid, npc)
     by_name = {}
     for d in dg:
         for npc, name in (d.get('bossNames') or {}).items():
             by_name.setdefault(norm(name), []).append((npc, d.get('inst')))
-    out = {}
     for eid, (name, mapid) in sorted((gd.get('enc') or {}).items()):
+        if eid in out:
+            continue
         cands = {npc for npc, _ in by_name.get(norm(name), [])}
         if len(cands) > 1:
             cands = {npc for npc, inst in by_name[norm(name)] if inst == mapid}
@@ -2681,13 +2733,13 @@ def run(wago=WAGO, gamedata_path=GAMEDATA, measured_path=MEASURED, gear_path=GEA
     # tools/forever_dungeons_client.json)
     import build_dungeons as dungeon_facts
     if wago and find_csv(wago, 'LFGDungeons'):
-        client = dungeon_facts.client_facts(facts, (wago,))
+        client = dungeon_facts.client_facts(facts, (wago,), att)
     else:
         client = dungeon_facts.load_client()
     facts = dict(facts, dungeons=dungeon_facts.merge(facts, client))
     bosses = boss_npcs(facts, att, gear)
     dg = build_dungeons(facts, bosses, gd)
-    en = encounter_npcs(gd, dg)
+    en = encounter_npcs(gd, dg, facts)
     archive = {'k': {}}
     if archive_path and os.path.exists(archive_path):
         import build_scan

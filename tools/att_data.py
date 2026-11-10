@@ -481,7 +481,12 @@ local function walk(v, ctx, depth)
         c.quest = id
     elseif kind == "n" or kind == "e" or kind == "header" then
         local npc
-        if kind == "e" then npc = ids(t.creatureID)[1] or ids(t.crs)[1]
+        if kind == "e" then
+            npc = ids(t.creatureID)[1] or ids(t.crs)[1]
+            -- the encounter itself: its creatures (creatureID, then crs; a group encounter lists several)
+            local cr = ids(t.creatureID)
+            for _, x in ipairs(ids(t.crs)) do cr[#cr + 1] = x end
+            if type(id) == "number" then emit("encs", { id = id, file = ctx.file, inst = ctx.inst, crs = cr, wing = ctx.wing }) end
         elseif kind == "n" and type(id) == "number" and id > 0 then npc = id end
         if npc then
             local nk
@@ -492,12 +497,16 @@ local function walk(v, ctx, depth)
             elseif ctx.inst and (ctx.hdr == nil or ctx.hdr == "COMMON_BOSS_DROPS") then nk = "boss"
             else nk = "npc" end
             emit("npcs", { id = npc, file = ctx.file, zone = ctx.zone, inst = ctx.inst, kind = nk, pts = points(t),
-                           races = c.races, encounter = kind == "e" and id or nil, prof = ctx.prof, hdr = ctx.hdr })
+                           races = c.races, encounter = kind == "e" and id or nil, prof = ctx.prof, hdr = ctx.hdr,
+                           wing = ctx.wing })
             c.npc, c.npcKind, c.enc = npc, nk, kind == "e" and id or nil
         elseif kind == "e" then
             c.npc, c.npcKind, c.enc = nil, "boss", id
         else
             c.hdr = headerName(id) or ctx.hdr
+            -- a wing: the instance's own header (createHeader, "Hordemar City (Lower)" of Blackrock
+            -- Spire, "Graveyard" of the Scarlet Monastery); everything below it stands in that wing
+            if plain(id) and id._kind == nil then c.wing = c.hdr end
         end
     elseif kind == "fp" and type(id) == "number" then
         -- a flight path: its flight master (cr) and where he stands, the faction by races
@@ -527,7 +536,7 @@ local function walk(v, ctx, depth)
     for _, x in ipairs(t) do walk(x, c, depth + 1) end
 end
 
-function S.new() return { insts = {}, quests = {}, npcs = {}, objs = {}, items = {}, fps = {} } end
+function S.new() return { insts = {}, quests = {}, npcs = {}, objs = {}, items = {}, fps = {}, encs = {} } end
 -- runs one data file and walks what it handed to root(); the records go into out. Returns the
 -- error text when the file failed (what it recorded before still counts)
 function S.run(src, name, out)
@@ -833,8 +842,11 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
                      'races' (mask, bit race id - 1, 0 any of the faction), 'skill' (skill line or 0),
                      'breadcrumb', 'repeatable', 'maps' (uiMapIDs the data names for the quest),
                      'startItems' (the items that start it)}},
-     'npcs': {id: {'name', 'title', 'points', 'zone', 'faction', 'kinds' (set), 'inst', 'old',
+     'npcs': {id: {'name', 'title', 'points', 'zone', 'faction', 'kinds' (set), 'inst', 'old', 'wing' (only
+                   inside an instance's own header: its readable name, "Hordemar City (Lower)"),
                    'profs' (only a trainer: the set of ATT profession names it stands under, 'ALCHEMY')}},
+     'encounters': {encounter id (the client's DungeonEncounter id): {'name' (from the comment), 'npcs'
+                    (its creatures: creatureID, then crs), 'inst' (ATT instance id), 'wing', 'file', 'old'}},
      'drops': [(item, npc id or None, kind, ATT instance id or None, zone uiMapID or None, old, encounter name)],
      'zone_drops': [(item, [npc ids], ATT instance id or None, zone, old)],
      'sold': [(item, vendor id, old)], 'gathered': {item: {'skill' (herbalism, mining, skinning, fishing),
@@ -943,6 +955,8 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
                                'old': old(r['file'])}
         elif rec['old'] != old(r['file']):
             continue
+        if r.get('wing') and not rec.get('wing'):
+            rec['wing'] = r['wing']
         rec['kinds'].add(r['kind'])
         # a trainer: an NPC under a profession in the header PROFESSIONS (ATT's zone files)
         if r.get('hdr') == 'PROFESSIONS' and r.get('prof'):
@@ -1036,6 +1050,18 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
                 for p in drop_points.get(item, []):
                     if p not in rec['points']:
                         rec['points'].append(p)
+    # the encounters (e(id, ...)): the encounter id is the client's DungeonEncounter id; npcs its creatures
+    # as the data lists them (creatureID first, then crs; a group encounter lists several). A Forever
+    # file's record wins over an old one.
+    encounters = {}
+    for r in raw.get('encs') or []:
+        eid = int(r['id'])
+        have = encounters.get(eid)
+        if have is not None and not (have['old'] and not old(r['file'])):
+            continue
+        encounters[eid] = {'name': (names.get(('e', eid)) or (None,))[0], 'npcs': [int(c) for c in r.get('crs') or []],
+                           'inst': _int(r.get('inst')), 'wing': r.get('wing') or None, 'file': r['file'],
+                           'old': old(r['file'])}
     flights = {}
     for r in raw.get('fps') or []:
         fid = int(r['id'])
@@ -1048,7 +1074,7 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
                         'old': old(r['file'])}
     db = {'commit': commit_of(base), 'files': files, 'errors': errors, 'maps': _py(S.mapNames()),
           'instances': instances, 'quests': quests, 'npcs': npcs, 'drops': drops, 'zone_drops': zone_drops,
-          'sold': sold, 'sold_cost': sold_cost, 'gathered': gathered, 'world': sorted(set(world)), 'pvp': sorted(set(pvp)), 'crafted': sorted(set(crafted)),
+          'encounters': encounters, 'sold': sold, 'sold_cost': sold_cost, 'gathered': gathered, 'world': sorted(set(world)), 'pvp': sorted(set(pvp)), 'crafted': sorted(set(crafted)),
           'items': read_itemdb(base, S) if items else {}, 'uimap_instance': uimap_instance,
           'item_names': {i: v[0] for (k, i), v in names.items() if k == 'i'}, 'flights': flights,
           'npc_names': {i: v[0] for (k, i), v in names.items() if k == 'n'},
@@ -1056,8 +1082,82 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
     return db
 
 
+# ---------------------------------------------------------------- the bosses of an instance
+# The order in which an NPC's kinds count when several NPCs of an instance share a boss's name.
+BOSS_KIND_RANK = ('boss', 'rare', 'npc', 'mob', 'giver', 'vendor')
+# A shortened name ("Kirtonos" for "Kirtonos the Herald") counts from this many letters on.
+BOSS_PREFIX_MIN = 6
+
+
+def boss_key(name):
+    """A boss name compared without case, blanks and punctuation ("Edwin van Cleef" = "Edwin VanCleef")."""
+    return re.sub(r'[^a-z0-9]+', '', str(name or '').lower())
+
+
+def _kind_rank(kinds):
+    return min((BOSS_KIND_RANK.index(k) for k in kinds or () if k in BOSS_KIND_RANK), default=len(BOSS_KIND_RANK))
+
+
+def boss_index(db):
+    """{ATT instance id: {'encs': [(encounter id, key of its name, [npc ids], wing)], 'npcs': [(npc id,
+    [keys of its names], rank of its kinds, wing)]}} of a neutral form (load()): the encounters in the
+    files' order, the NPCs by id. An NPC name with a slash ("Fras Siabi / Ezra Grimm", "Fel Steed/Shadow
+    Charger") counts by each part as well."""
+    out = {}
+    for eid, e in (db.get('encounters') or {}).items():
+        if e.get('inst') is not None and e.get('npcs'):
+            out.setdefault(e['inst'], {'encs': [], 'npcs': []})['encs'].append(
+                (eid, boss_key(e.get('name')), list(e['npcs']), e.get('wing')))
+    for nid, n in sorted((db.get('npcs') or {}).items()):
+        if n.get('inst') is None or not n.get('name'):
+            continue
+        keys = [boss_key(n['name'])] + [boss_key(p) for p in re.split(r'\s*/\s*', n['name']) if '/' in n['name']]
+        out.setdefault(n['inst'], {'encs': [], 'npcs': []})['npcs'].append(
+            (nid, [k for k in keys if k], _kind_rank(n.get('kinds')), n.get('wing')))
+    return out
+
+
+def find_boss(index, inst, name, enc=None, others=()):
+    """(npc id, how, wing) of a boss of ATT instance inst by its name (an encounter's or an NPC's, as the
+    client tables or the item data write it), or (None, None, None). In this order:
+
+      'enc'    the encounter with the client's encounter id enc (Forever's new dungeons: ATT's e() id is
+               the client's DungeonEncounter id; ATT's Classic ids are other ids, so the encounter must
+               lie in this instance and its name must be no other boss of others, the rest of the order);
+      'encname' an encounter of the instance with that name;
+      'npc'    an NPC of the instance with that name (of several the best kind: boss, rare, npc, ...;
+               then the smallest id);
+      'prefix' the one boss or rare of the instance whose name begins with the other ("Kirtonos" for
+               "Kirtonos the Herald", "Ras Frostwhisperer" for "Ras Frostwhisper"), both of at least
+               BOSS_PREFIX_MIN letters.
+
+    An encounter stands for its first creature (creatureID, else the first of crs): a group encounter
+    ("Deathless Guardians", "Ring of Law") shows the creature ATT lists first."""
+    x = index.get(inst)
+    k = boss_key(name)
+    if not x or not k:
+        return None, None, None
+    other = {boss_key(o) for o in others} - {k}
+    if enc:
+        for eid, ek, npcs, wing in x['encs']:
+            if eid == enc and ek not in other:
+                return npcs[0], 'enc', wing
+    for eid, ek, npcs, wing in x['encs']:
+        if ek == k:
+            return npcs[0], 'encname', wing
+    hits = sorted((rank, nid, wing) for nid, keys, rank, wing in x['npcs'] if k in keys)
+    if hits:
+        return hits[0][1], 'npc', hits[0][2]
+    if len(k) >= BOSS_PREFIX_MIN:
+        pre = [(nid, wing) for nid, keys, rank, wing in x['npcs'] if rank <= 1 and len(keys[0]) >= BOSS_PREFIX_MIN
+               and keys[0] != k and (keys[0].startswith(k) or k.startswith(keys[0]))]
+        if len(pre) == 1:
+            return pre[0][0], 'prefix', pre[0][1]
+    return None, None, None
+
+
 def empty_db():
     """The neutral form without any data (tests, or a build without a download)."""
-    return {'commit': None, 'files': [], 'errors': {}, 'maps': {}, 'instances': {}, 'quests': {}, 'npcs': {},
+    return {'commit': None, 'files': [], 'errors': {}, 'maps': {}, 'instances': {}, 'quests': {}, 'npcs': {}, 'encounters': {},
             'drops': [], 'zone_drops': [], 'sold': [], 'sold_cost': {}, 'gathered': {}, 'world': [], 'pvp': [], 'crafted': [], 'items': {},
             'uimap_instance': {}, 'item_names': {}, 'flights': {}, 'npc_names': {}, 'object_names': {}}

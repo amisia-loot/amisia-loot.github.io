@@ -19,6 +19,7 @@ NS.GEAR = { built = "test-boss-view", Z = {}, I = {}, S = {
     { "D", "Hall of Thanes", "Plunder", nil },                         -- 3
     { "D", "Ruins of Lordaeron", "The Baron", nil },                   -- 4
     { "D", "Ruins of Lordaeron", "Witherfang", nil },                  -- 5
+    { "D", "Hall of Thanes", "Durgen Dirgehammer", nil },              -- 6
 } }
 local function gear(id, name, loc, strength, level, sources, quality)
     STUB.item(id, name, quality or 3)
@@ -39,12 +40,23 @@ gear(504, "Plünderstiefel", "FEET", 30, 16, { 3 })
 gear(509, "Baronsschultern", "SHOULDER", 10, 17, { 4 })
 gear(512, "Fanghelm", "HEAD", 2, 16, { 5 })
 gear(510, "Alter Helm", "HEAD", 10, 10)
+-- Durgen: one helm worse than the worn one, not wished (no loot for the character, F-170)
+gear(513, "Dirgehelm", "HEAD", 1, 16, { 6 })
 STUB.worn[1] = STUB.items[510].link
 NS.Gear._reset()
 STUB.fire("PLAYER_EQUIPMENT_CHANGED")
 for i = 0, 7 do assert(NS.WishAdd(520 + i)) end
 assert(NS.WishAdd(512))
 
+-- the build's NPC of Magmatus (BisData.lua bossNames): the client's "Infurnus" of the game's order is
+-- him (the same NPC in the facts' npcs, F-170)
+NS.BIS = { DG = {} }
+for _, e in ipairs(NS.DUNGEON_FACTS.list) do
+    local c = {}
+    for k, v in pairs(e) do c[k] = v end
+    if e.key == "thanes" then c.bossNames = { [261316] = "Magmatus" } end
+    NS.BIS.DG[#NS.BIS.DG + 1] = c
+end
 NS.ShowDungeon("thanes")
 local D = NS.PageFrame("dungeons")
 assert(D.chosen == "thanes", "the thanes' detail")
@@ -71,12 +83,15 @@ local function lootIds(P)
 end
 
 ---------------------------------------------------------------------------
--- the bosses in the game's order, the first with an upgrade chosen
+-- the bosses in the game's order, the first with an upgrade chosen; every boss of the order, also
+-- those without loot for the character (F-170): Magmatus at Infurnus' place by his NPC
 ---------------------------------------------------------------------------
 local order = {}
 for _, h in ipairs(V.list.items) do order[#order + 1] = h.n .. "." .. h.text end
 order = table.concat(order, ",")
-assert(order == "1.Faldrim Anvilmar,2.Magmatus,3.Plunder", order)
+assert(order == "1.Faldrim Anvilmar,2.Magmatus,3.Plunder,4.Durgen Dirgehammer", order)
+local dr = bossRow(D, "Durgen Dirgehammer")
+assert(plain(dr.sub:GetText()) == "1 Item · nichts für dich", plain(dr.sub:GetText()))
 assert(chosen(D).text == "Faldrim Anvilmar" and lootIds(D) == "501", "Faldrim chosen: " .. lootIds(D))
 local fr = bossRow(D, "Faldrim Anvilmar")
 assert(fr.sel:IsShown() and not bossRow(D, "Magmatus").sel:IsShown(), "the chosen row lit")
@@ -89,7 +104,7 @@ assert(fr.port.ring.vertexColor[1] == NS.W.GOLD[1], "a gold ring")
 assert(fr.port.skull:IsShown() and not fr.port.model:IsShown(), "no model in the stub: the skull")
 -- the head: the chosen boss's name and its place
 assert(plain(V.head.name:GetText()) == "Faldrim Anvilmar", plain(V.head.name:GetText()))
-assert(has(plain(V.head.sub:GetText()), "Boss 1 von 3"), plain(V.head.sub:GetText()))
+assert(has(plain(V.head.sub:GetText()), "Boss 1 von 4"), plain(V.head.sub:GetText()))
 assert(not V.none:IsShown(), "loot known")
 
 ---------------------------------------------------------------------------
@@ -104,7 +119,17 @@ D.bossView.list:Redraw()
 assert(m.creature == 4711 and m.zoom == BV.ZOOM and m:IsShown() and not p.skull:IsShown(), "the boss's model, zoomed")
 D.bossView.list.items[1].b.npc = nil
 D.bossView.list:Redraw()
+assert(m.creature == 261306 and m:IsShown(), "without its own the NPC of the facts' order (F-170)")
+D.bossView.list.items[1].npc = nil
+D.bossView.list:Redraw()
 assert(not m:IsShown() and p.skull:IsShown(), "back to the skull")
+D.bossView.list.items[1].npc = 261306
+-- a boss of the order without loot rows has its portrait too
+local dp = bossRow(D, "Durgen Dirgehammer").port
+dp.model.SetCreature = function(self, id) self.creature = id end
+D.bossView.list:Redraw()
+assert(dp.model.creature == 261319 and dp.model:IsShown(), "Durgen's NPC from the facts' order")
+dp.model.SetCreature = nil
 m.SetCreature, m.SetPortraitZoom = nil, nil
 
 ---------------------------------------------------------------------------
@@ -113,7 +138,12 @@ m.SetCreature, m.SetPortraitZoom = nil, nil
 local mr = bossRow(D, "Magmatus")
 mr:Click()
 assert(chosen(D).text == "Magmatus" and #V.loot.items == 8, "Magmatus' eight helms")
-assert(has(plain(V.head.sub:GetText()), "Boss 2 von 3"))
+assert(has(plain(V.head.sub:GetText()), "Boss 2 von 4"))
+-- Durgen chosen: no loot rows, the text says the loot is not for the character
+bossRow(D, "Durgen Dirgehammer"):Click()
+assert(#V.loot.items == 0 and V.none:IsShown() and plain(V.none:GetText()) == "Von diesem Boss kennt Amisia keine Beute für dich.",
+    plain(V.none:GetText()))
+bossRow(D, "Magmatus"):Click()
 V.loot:Fit(8)
 local Q = T.QUALITY_RGB
 for j, r in ipairs(V.loot.rows) do
@@ -270,4 +300,5 @@ assert(#P.bossView.list.items == 0, "no bosses known yet")
 P.back:Click()
 assert(not P.bossView:IsShown(), "no boss view on the raids' table")
 
-print("boss view: order, default, portrait, model, loot, star, clicks, layout, per dungeon, parts, empty, raids")
+NS.BIS = nil
+print("boss view: order, all bosses, default, portrait, model, loot, star, clicks, layout, per dungeon, parts, empty, raids")

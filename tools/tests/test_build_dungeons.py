@@ -117,8 +117,17 @@ def test_blackrock_spire_hosts_two_dungeons():
     assert [e['key'] for e in entries() if e.get('part')] == ['lbrs', 'ubrs']
     text = build_dungeons.render(facts())
     assert 'aliases = { "Blackrock Spire" }, part = "Blackrock Spire" }' in text
-    assert re.search(r'\{ key = "ubrs", name = "Upper Blackrock Spire", kind = "party", lvl = 53, inst = 229, (order = \{[^}]*\}, enc = \{[^}]*\}, )?'
-                     r'part = "Blackrock Spire" \},', text)
+    assert re.search(r'\{ key = "ubrs", name = "Upper Blackrock Spire", kind = "party", lvl = 53, inst = 229, (order = \{[^}]*\}, enc = \{[^}]*\}, '
+                     r'(npcs = \{[^}]*\}, )?)?part = "Blackrock Spire" \},', text)
+    # one order for both halves, each NPC only in its own half (att_wing; false: the other half's boss, F-170)
+    c = client()['dungeons']
+    assert c['lbrs']['order'] == c['ubrs']['order']
+    lower = dict(zip(c['lbrs']['order'], c['lbrs']['npcs']))
+    upper = dict(zip(c['ubrs']['order'], c['ubrs']['npcs']))
+    assert lower['Highlord Omokk'] == 9196 and upper['Highlord Omokk'] is False
+    assert upper['General Drakkisath'] == 10363 and lower['General Drakkisath'] is False
+    assert all((lower[n] is False) != (upper[n] is False) for n in c['lbrs']['order']), 'each boss in one half'
+    assert ', npcs = { 9196, 9236, 9237, 10596, 10584, 9736, 10220, 10268, 9568, false, false, false, false, false }, ' in text
     assert '_src' not in text, 'the labels stay in the JSON'
 
 
@@ -155,7 +164,10 @@ def test_no_loot_table_and_no_link():
     text = open(FACTS, encoding='utf-8').read()
     for e in entries():
         assert not set(e) - {'key', 'name', 'kind', 'src', 'min', 'max', 'size', 'inst', 'area', 'from', 'bosses',
-                              'aliases', 'part', 'bosses_src', 'aliases_src', 'inst_src'}, e
+                              'aliases', 'part', 'bosses_src', 'aliases_src', 'inst_src', 'order', 'order_src', 'enc',
+                              'enc_src', 'boss_alias', 'boss_alias_src', 'att_wing', 'att_wing_src'}, e
+        # a boss alias names another boss name, never an NPC id (the ids come from AllTheThings, D-100)
+        assert all(isinstance(a, str) and isinstance(b, str) for a, b in (e.get('boss_alias') or {}).items()), e
     assert 'http' not in text and 'www.' not in text
     text.encode('latin-1')
 
@@ -212,8 +224,13 @@ def test_the_client_levels_and_instance_ids():
     keys = {e['key'] for e in entries()}
     assert set(c['tables']) == {'LFGDungeons', 'ContentTuning', 'AreaTable', 'DungeonEncounter', 'UiMapAssignment'}
     assert set(c['dungeons']) <= keys
+    by = {e['key']: e for e in entries()}
     for k, v in c['dungeons'].items():
-        assert set(v) <= {'lvl', 'inst', 'lfg', 'order', 'enc', 'maps'}, v
+        assert set(v) <= {'lvl', 'inst', 'lfg', 'order', 'enc', 'npcs', 'order_src', 'maps'}, v
+        assert v.get('order_src') in (None, 'att'), (k, v)
+        if 'npcs' in v:
+            order = v.get('order') or by[k].get('order')
+            assert len(v['npcs']) == len(order), (k, v)
         assert v.get('lvl') is None or 1 <= v['lvl'] <= 60, (k, v)
     by = {e['key']: e for e in entries()}
     # the client's level is the low end of the public range wherever both are known
@@ -221,7 +238,8 @@ def test_the_client_levels_and_instance_ids():
     assert len(both) >= 4 and all(c['dungeons'][k]['lvl'] == by[k]['min'] for k in both), both
     assert c['dungeons']['deadmines'] == {'lvl': 16, 'lfg': ['Deadmines'], 'inst': 36, 'order': [
         "Rhahk'Zor", 'Sneed', 'Miner Johnson', 'Gilnid', 'Captain Greenskin', 'Mr. Smite', 'Cookie', 'Edwin VanCleef'],
-        'enc': [2741, 2742, 3676, 2743, 2744, 2745, 2746, 2747]}, \
+        'enc': [2741, 2742, 3676, 2743, 2744, 2745, 2746, 2747],
+        'npcs': [644, 643, 3586, 1763, 647, 646, 645, 639]}, \
         "the bosses in the game's order (F-139)"
     assert c['dungeons']['dire']['lfg'] == ['Dire Maul - East', 'Dire Maul - West', 'Dire Maul - North']
     assert c['dungeons']['lbrs']['inst'] == c['dungeons']['ubrs']['inst'] == 229, 'one instance, two dungeons'
@@ -265,3 +283,55 @@ def test_reading_the_client_tables():
 def test_without_client_tables_the_build_stops(tmp_path):
     with pytest.raises(SystemExit):
         build_dungeons.main(['--wago', str(tmp_path)])
+
+
+# ---------------------------------------------------------------- AllTheThings' encounters (F-170, D-100)
+def fake_att():
+    return {'instances': {10: {'name': 'The Test Halls', 'mapID': 4777}, 11: {'name': 'New Place', 'mapID': 4900},
+                          12: {'name': 'Test Raid', 'mapID': 4003}},
+            'encounters': {50: {'name': 'Second Boss', 'npcs': [9002], 'inst': 10},
+                           3001: {'name': 'New One', 'npcs': [9101], 'inst': 11},
+                           3002: {'name': 'New Pair', 'npcs': [9102, 9103], 'inst': 11},
+                           3003: {'name': 'Raid Boss', 'npcs': [9201], 'inst': 12, 'wing': 'Upper'}},
+            'npcs': {9001: {'name': 'First Boss', 'kinds': {'npc'}, 'inst': 10},
+                     9003: {'name': 'Third Boss the Long', 'kinds': {'boss'}, 'inst': 10},
+                     9101: {'name': 'New One', 'kinds': {'boss'}, 'inst': 11}}}
+
+
+def test_the_bosses_npcs_and_the_order_of_a_dungeon_the_client_lacks():
+    facts_ = {'dungeons': [
+        {'key': 'halls', 'name': 'Test Halls', 'kind': 'party', 'min': 13, 'max': 18, 'boss_alias': {'Third Boss': 'Third Boss the Long'}},
+        {'key': 'new', 'name': 'New Place', 'kind': 'party', 'inst': 4900},
+        {'key': 'raid', 'name': 'Test Raid', 'kind': 'raid', 'inst': 999},
+        {'key': 'upper', 'name': 'Upper Test', 'kind': 'party', 'part': 'Test Raid', 'att_wing': 'Lower'},
+    ]}
+    c = build_dungeons.client_facts(facts_, [WAGO], fake_att())
+    d = c['dungeons']
+    assert d['halls']['order'] == ['First Boss', 'Second Boss', 'Third Boss'] and d['halls']['npcs'] == [9001, 9002, 9003], \
+        "the client's order, an NPC by name, by the encounter's name, by the facts' alias"
+    assert d['new'] == {'order': ['New One', 'New Pair'], 'enc': [3001, 3002], 'order_src': 'att', 'npcs': [9101, 9102]}, \
+        "no client rows: ATT's encounters in its order, a group by its first creature"
+    assert d['upper']['npcs'] == [False], 'a boss of the other wing of the instance'
+    merged = {e['key']: e for e in build_dungeons.merge(facts_, c)}
+    assert merged['new']['order'] == ['New One', 'New Pair'] and merged['new']['npcs'] == [9101, 9102]
+    text = build_dungeons.render({'checked': 'x', 'dungeons': facts_['dungeons']}, c, {})
+    assert 'order = { "New One", "New Pair" }, enc = { 3001, 3002 }, npcs = { 9101, 9102 } },' in text
+    assert 'npcs = { false }' in text
+    # without ATT as before: no npcs, no order of its own
+    assert 'npcs' not in build_dungeons.client_facts(facts_, [WAGO])['dungeons']['halls']
+
+
+def test_every_boss_of_the_order_has_its_npc():
+    """Of the game's order of every dungeon only the bosses no source names stay without an NPC (D-100)."""
+    c = client()['dungeons']
+    by = {e['key']: e for e in entries()}
+    missing = []
+    for k, v in c.items():
+        order = v.get('order') or by[k].get('order') or []
+        missing += [f'{k}: {n}' for n, npc in zip(order, v.get('npcs') or []) if npc is not False and npc == 0]
+    assert missing == ['scholo: Lady Illucia Barov'], missing
+    drowned = c['drowned']
+    assert by['drowned']['order'][0] == "Zul'Alai" and drowned['inst'] == 2970
+    assert drowned['npcs'] == [258905, 258924, 260213, 260042, 273738, 260243]
+    for k in ('kroldok', 'alcaz', 'blackmaw', 'shaper'):
+        assert c[k].get('order_src') == 'att' and all(n > 0 for n in c[k]['npcs']), k

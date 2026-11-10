@@ -384,7 +384,12 @@ the licence text ships in `Amisia/LICENSES/AllTheThings-MIT.txt`, approved by th
   (`gathered`: herbs, ore, gems, leather, fish with their zones; `appendAllGroups(...)` joins all its
   lists, the nodes first), the items of the export, instances (name, area id, uiMaps, entrance, instance map id), flight paths (`fp()`: the
   place from the comment, the flight master's NPC id and name, points, faction), the names of NPCs,
-  game objects and items from the comments (`npc_names`, `object_names`, `item_names`). A record of a
+  game objects and items from the comments (`npc_names`, `object_names`, `item_names`), the encounters
+  (`encounters`: `e(id, ...)` with its creatures, `creatureID` then `crs`; in Forever's new dungeons the
+  id is the client's `DungeonEncounter` id, in the Classic ones another) and the wing of an NPC or
+  encounter (`wing`: the readable name of the instance's own `createHeader` above it, "Graveyard",
+  "Hordemar City (Lower)"). `boss_index()`/`find_boss()` look a boss name up in an instance (F-170,
+  D-100: the encounter by the client's id, an encounter or NPC by name, a shortened name). A record of a
   Forever folder wins over the same quest or NPC in a zzOLD folder.
 - What ATT does not give: a quest's own level (the minimum level stands in), NPC levels, recipe
   skill levels, spawn points of mobs it only names, measured entrances of some dungeons (the new
@@ -536,7 +541,7 @@ opening date and instance id where known. Facts only, never a loot table or a dr
 entry names its source in `src`, explained in the file's `sources` block with the date of the check.
 
 ```
-python tools/build_dungeons.py [--wago [DIR ...]]
+python tools/build_dungeons.py [--wago [DIR ...]] [--no-att]
 ```
 
 - `--wago` reads the client tables (default `~/addons/_wago`, then ATT's copies in
@@ -546,6 +551,17 @@ python tools/build_dungeons.py [--wago [DIR ...]]
   (`AreaTable`). Forever's `LFGDungeons` (1.60.1.70235) has no level range, map or group size of its own; the tuning level is one number, the low end of the range
   (it equals the public minimum of Hall of Thanes, Ruins of Lordaeron, Excavation Site and City of
   Dalaran). Without `--wago` the JSON file is used as it is.
+- With `--wago` also AllTheThings' encounters and NPCs (its cache, `tools/att_data.py`; `--no-att` leaves
+  them out), F-170, D-100: ATT's `AreaTable` copy counts after the user's tables (the user's export lacks
+  the rows of the new dungeons: Drowned City, Krol'dok, Alcaz, Blackmaw, Shaper's Terrace); an instance
+  without `DungeonEncounter` rows takes ATT's encounters in its file's order (`order`, `enc`,
+  `order_src: "att"`); and every boss of the order gets its NPC (`npcs`, lined up with `order`: 0
+  unknown, `false` a boss of the other half of the same instance) through `att_data.find_boss` (the
+  encounter with the client's id in the same instance, an encounter or NPC of that name, a shortened
+  name) and the facts' `boss_alias` (a name of the order -> the name ATT lists the boss under; group
+  encounters: The Lost Dwarves -> Baelog). `att_wing` splits Blackrock Spire's shared order by ATT's
+  wing headers. The facts may give `order`/`enc` by hand (the Drowned City, from the user's screenshot
+  where ATT confirms the boss); then the client's order does not replace it.
 - The hand facts win: the client's values fill only what `forever_dungeons.json` leaves open (`lvl`, and
   `inst` where the facts have none); differences are printed. The addon takes `lvl` as the low end of a
   dungeon without a fact range and the required levels of its items for the high end ("~16-20").
@@ -645,7 +661,8 @@ What it does:
   goes into `SC` instead; an effect whose spell has no tooltip text (a hidden condition of another
   effect) is left out. No proc value: chances and durations are not in the exported tables
   (`SpellAuraOptions`, `SpellDuration`), so a proc stays unscored and named.
-- **Encounters** (`EN`, encounter id -> boss NPC id): `DungeonEncounter` names matched to the
+- **Encounters** (`EN`, encounter id -> boss NPC id): first the facts' `enc` and `npcs`
+  (`build_dungeons.py`, one NPC per encounter of the order), then `DungeonEncounter` names matched to the
   dungeons' bosses (`bossNames`; a name two dungeons share by the encounter's map = instance id).
   A drop record known only by its encounter (NPC 0) counts under that boss in the base stock (`O`)
   and in the addon (`ns.DropsBossOf`: rates, the boss list, the dungeon planner).
@@ -653,7 +670,10 @@ What it does:
   (MinLevelSquish = MaxLevelSquish); that is `lvl` (the low end), not a range. `DG`'s `min`/`max` take
   the client's values only where a table has a real range (none in 1.60.1.70235).
 - **Sets** (`SET`), **random suffixes** seen on links (`RP`), **dungeons** (`DG`: the facts with
-  `bosses` as NPC ids and `bossNames`), the **drop base stock** (`O`, `OT`, `OI`) and the **effort**
+  `bosses` as NPC ids and `bossNames`: ATT's bosses of the instance, then `more_boss_npcs` (F-170,
+  D-100): the NPC of each boss of the order under ATT's name of it, and each boss of the item data an
+  NPC of the instance carries by name, under the item data's name; nothing found before changes,
+  `tools/tests/fixtures/boss_npcs_2026-11-10.json` keeps the ids of 2026-11-10), the **drop base stock** (`O`, `OT`, `OI`) and the **effort**
   per source kind (`EF`).
 
 **BiS picks** (`tools/bis_picks.json`, hand-kept): best-in-slot items the stat scoring alone misses

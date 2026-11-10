@@ -174,22 +174,23 @@ assert(boss(NS.DungeonInfo("barrow"), "Onyxia") == nil, "a record goes to its ow
 ---------------------------------------------------------------------------
 STUB.level = 16
 STUB.fire("PLAYER_LEVEL_UP")
-NS.DropsLearnNames({ [9001] = "Faldrim Anvilmar", [9002] = "Unbekannter Boss" }, { [2834] = { "party", "Halle der Thane" } })
+NS.DropsLearnNames({ [261306] = "Faldrim Anvilmar", [9002] = "Unbekannter Boss" }, { [2834] = { "party", "Halle der Thane" } })
 local function kill(h, npc, items)
     assert(NS.DropsMerge({ h = h, npc = npc, inst = 2834, diff = 1, day = today, o = "aaaaaaaa", src = "G", it = items }) == "new")
 end
-kill("0f000001", 9001, { [501] = 1, [530] = 1 })
-kill("0f000002", 9001, { [501] = 1 })
-kill("0f000003", 9001, {})
-kill("0f000004", 9001, {})
+kill("0f000001", 261306, { [501] = 1, [530] = 1 })
+kill("0f000002", 261306, { [501] = 1 })
+kill("0f000003", 261306, {})
+kill("0f000004", 261306, {})
 kill("0f000005", 9002, { [531] = 1 })
 thanes = find(NS.DungeonList(), "thanes")
 faldrim = boss(thanes, "Faldrim Anvilmar")
-assert(faldrim.npc == 9001, "the boss by its name")
+-- (Faldrim with his real NPC: the facts' order gives it since F-170, the records join it by name and id)
+assert(faldrim.npc == 261306, "the boss by its name")
 assert(near(item(faldrim, 501).p, (2 + 3 * 0.2) / (4 + 3)), "two of four kills with the source's chance: " .. item(faldrim, 501).p)
-assert(item(faldrim, 501).rate == NS.DropRateText(9001, 501, 0.2) and item(faldrim, 501).K == 4 and item(faldrim, 501).n == 2)
+assert(item(faldrim, 501).rate == NS.DropRateText(261306, 501, 0.2) and item(faldrim, 501).K == 4 and item(faldrim, 501).n == 2)
 -- expected chance without a source chance: one of six rare items (the boss has three known: 501, 508, 530)
-assert(item(faldrim, 530) and near(item(faldrim, 530).p, (NS.DropRate(9001, 530, 1 / 6))), "an item only the guild saw")
+assert(item(faldrim, 530) and near(item(faldrim, 530).p, (NS.DropRate(261306, 530, 1 / 6))), "an item only the guild saw")
 local other = boss(thanes, "Unbekannter Boss")
 assert(other and other.npc == 9002 and item(other, 531), "a boss of the same instance, found through the shared items")
 assert(boss(ruins, "Unbekannter Boss") == nil)
@@ -233,9 +234,9 @@ assert(NS.DungeonInfo("nosuch") == nil)
 ---------------------------------------------------------------------------
 -- the build's facts win
 ---------------------------------------------------------------------------
-NS.BIS = { DG = { { key = "thanes", name = "Hall of Thanes", kind = "party", min = 13, max = 18, inst = 2834, bosses = { 9001 } } } }
+NS.BIS = { DG = { { key = "thanes", name = "Hall of Thanes", kind = "party", min = 13, max = 18, inst = 2834, bosses = { 261306 } } } }
 list = NS.DungeonList()
-assert(#list == 1 and list[1].key == "thanes" and boss(list[1], "Faldrim Anvilmar").npc == 9001, "DG from the build")
+assert(#list == 1 and list[1].key == "thanes" and boss(list[1], "Faldrim Anvilmar").npc == 261306, "DG from the build")
 NS.BIS = nil
 assert(#NS.DungeonList() > 1, "the hand facts again")
 

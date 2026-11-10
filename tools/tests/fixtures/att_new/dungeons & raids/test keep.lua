@@ -57,6 +57,14 @@ instanceroot(9201, {	-- Test Keep
 				creatureID = 83010,	-- Warden Grim
 				groups = { i(63010) },	-- Warden's Key
 			}),
+			e(3202, {	-- Twin Guards
+				crs = {
+					83011,	-- Twin Guard
+					83012,	-- Twin Guard
+				},
+			}),
+		}),
+		n(83013, {	-- Kirtonos the Tester
 		}),
 	},
 });

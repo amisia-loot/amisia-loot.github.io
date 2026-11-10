@@ -71,8 +71,8 @@ assert(BL.offset == 1, "the same dungeon keeps its scroll position")
 
 -- an NPC only the guild's records know: listed with its kills, not counted
 local today = NS.DropsToday()
-NS.DropsLearnNames({ [7777] = "Lordaeron Ghoul" }, { [3001] = { "party", "Ruins of Lordaeron" } })
-assert(NS.DropsMerge({ h = "0e000001", npc = 7777, inst = 3001, diff = 1, day = today, o = "aaaaaaaa", src = "G", it = { [531] = 1 } }) == "new")
+NS.DropsLearnNames({ [7777] = "Lordaeron Ghoul" }, { [2999] = { "party", "Ruins of Lordaeron" } })
+assert(NS.DropsMerge({ h = "0e000001", npc = 7777, inst = 2999, diff = 1, day = today, o = "aaaaaaaa", src = "G", it = { [531] = 1 } }) == "new")
 rows.lordaeron:Click()
 for _ = 1, 20 do wheel(BL, -1) end
 local ghoulRow

@@ -7,6 +7,7 @@ import csv
 import json
 import math
 import os
+import re
 import sys
 
 import pytest
@@ -957,3 +958,43 @@ def test_build_dungeons_reads_the_same_tuning():
     rows = [{'ID': '5', 'MinLevelSquish': '17', 'MaxLevelSquish': '17'}, {'ID': '6', 'MinLevel': '20', 'MaxLevel': '25'},
             {'ID': '7', 'MinLevelSquish': '0', 'MaxLevelSquish': '0'}]
     assert build_dungeons.tuning_levels(rows) == {5: (17, 17), 6: (20, 25)}
+
+
+# ---------------------------------------------------------------- every boss its NPC (F-170, D-100)
+def test_more_boss_npcs_from_the_order_and_the_item_data():
+    facts = {'dungeons': [
+        {'key': 'thanes', 'name': 'Hall of Thanes', 'kind': 'party', 'order': ['Faldrim Anvilmar', 'Infurnus'],
+         'npcs': [261306, 261316]},
+        {'key': 'sm', 'name': 'Scarlet Monastery', 'kind': 'party', 'inst': 189},
+    ]}
+    att = {'instances': {1: {'name': 'Hall of Thanes'}, 316: {'name': 'Scarlet Monastery', 'mapID': 189}},
+           'encounters': {},
+           'npcs': {261306: {'name': 'Faldrim Anvilmar', 'kinds': {'boss'}, 'inst': 1},
+                    261316: {'name': 'Magmatus', 'kinds': {'boss'}, 'inst': 1},
+                    3977: {'name': 'High Inquisitor Whitemane', 'kinds': {'npc'}, 'inst': 316, 'wing': 'Cathedral'},
+                    9: {'name': 'Somebody Else', 'kinds': {'npc'}, 'inst': 316}}}
+    gear = {'S': [['D', 'Scarlet Monastery', 'High Inquisitor Whitemane'], ['D', 'Scarlet Monastery', 'Scorn']]}
+    bosses = bb.boss_npcs(facts, att, gear)
+    assert bosses['thanes'] == [(261306, 'Faldrim Anvilmar'), (261316, 'Magmatus')], \
+        "the instance's bosses first, then the order's NPC by ATT's name of it (the client's Infurnus)"
+    assert bosses['sm'] == [(3977, 'High Inquisitor Whitemane')], \
+        'an item-data boss by its NPC in a wing of the instance; one ATT does not know stays out'
+
+
+def test_no_boss_lost_its_npc():
+    """Every NPC id of the build's dungeons before F-170 stays, under the same name (D-100)."""
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fixtures', 'boss_npcs_2026-11-10.json'),
+              encoding='utf-8') as fh:
+        base = json.load(fh)['dungeons']
+    with open(os.path.join(ROOT, 'Amisia', 'Data', 'BisData.lua'), encoding='utf-8') as fh:
+        text = fh.read()
+    dg = {}
+    for line in text.splitlines():
+        key, names = re.search(r'\bkey = "([a-z0-9]+)"', line), re.search(r'\bbossNames = \{ (.*?) \}, bosses = ', line)
+        if key and names:
+            dg[key.group(1)] = {int(i): n.replace('\\"', '"')
+                                for i, n in re.findall(r'\[(\d+)\] = "((?:[^"\\]|\\.)*)"', names.group(1))}
+    lost = [(k, int(i), n, dg.get(k, {}).get(int(i))) for k, v in base.items() for i, n in v.items()
+            if dg.get(k, {}).get(int(i)) != n]
+    assert not lost, lost
+    assert sum(len(v) for v in base.values()) == 210 and sum(len(v) for v in dg.values()) >= 270

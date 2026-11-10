@@ -189,15 +189,18 @@ local function itemQuality(id)
 end
 
 -- The rows of the chosen dungeon: a row per boss with its items below it (the boss row keeps its
--- item rows in .items, in the same order, for the folded strip).
+-- item rows in .items, in the same order, for the folded strip). Every boss of the game's order, in
+-- that order (F-170): those without loot for the character without item rows (ns.Dungeons.JournalBosses);
+-- npc: the boss's NPC for the portrait.
 local function detailItems(e)
     local c = cached()
     c.detail = c.detail or {}
     local out = c.detail[e]
     if out then return out end
     out = {}
-    for _, b in ipairs(e.bosses or {}) do
-        local head = { kind = "boss", text = b.name, b = b, items = {} }
+    for _, jb in ipairs(ns.Dungeons.JournalBosses(e.key, e.bosses)) do
+        local b = jb.b
+        local head = { kind = "boss", text = b.name, b = b, npc = jb.npc, items = {} }
         out[#out + 1] = head
         for _, it in ipairs(b.items) do
             local row = { kind = "item", id = it.id, it = it, rec = it.rec, wished = it.wished, owned = it.owned }
@@ -232,7 +235,7 @@ local function bossHeads(B, e)
     local heads = {}
     for _, row in ipairs(detailItems(e)) do
         if row.kind == "boss" then
-            heads[#heads + 1] = { kind = "boss", text = row.text, b = row.b, items = row.items, n = #heads + 1,
+            heads[#heads + 1] = { kind = "boss", text = row.text, b = row.b, npc = row.npc, items = row.items, n = #heads + 1,
                 killed = JP.BossKilled(e.key, row.text) }
         end
     end
@@ -623,6 +626,8 @@ local BTEXT = {
     ups = L["%d Upgrades"], oneUp = L["1 Upgrade"],
     of = L["Boss %d von %d"], killed = L["getötet"],
     none = L["Für diesen Boss kennt Amisia keine Beute."],
+    noneForYou = L["Von diesem Boss kennt Amisia keine Beute für dich."],
+    nothingForYou = L["nichts für dich"],
     noBosses = L["Für diese Instanz kennt Amisia keine Bosse."],
     bossTip = L["Klick: seine Beute rechts. Rechtsklick: als getötet markieren oder nicht."],
     wishOn = L["Von der Wunschliste nehmen"], wishOff = L["Auf die Wunschliste"],
@@ -687,6 +692,11 @@ end
 local function bossLine(h)
     if h.b.tentative then return bossRate(h.b) end
     local n = #(h.items or {})
+    -- a boss of the game's order without loot for the character (F-170): what the item data knows of it
+    local known = h.b.known or 0
+    if n == 0 and known > 0 then
+        return GREY .. (known == 1 and BTEXT.oneItem or BTEXT.items:format(known)) .. " · " .. BTEXT.nothingForYou .. "|r"
+    end
     if n == 0 then return GREY .. BTEXT.noLoot .. "|r" end
     local text = GREY .. (n == 1 and BTEXT.oneItem or BTEXT.items:format(n)) .. "|r"
     local ups = 0
@@ -699,7 +709,7 @@ end
 
 local function fillBossRow(r, h)
     r.sel:SetShown(h.on and true or false)
-    setPortrait(r.port, h.b.npc)
+    setPortrait(r.port, h.b.npc or h.npc)
     r.port:SetAlpha(h.killed and 0.5 or 1)
     local name = h.killed and (KILLED .. GREY .. h.text .. "|r") or ((h.on and GOLD_TEXT or "|cffffffff") .. h.text .. "|r")
     r.name:SetText(GREY .. h.n .. ".|r " .. name)
@@ -718,7 +728,7 @@ fillBossView = function(B, h, n)
         V.none:Hide()
         return
     end
-    setPortrait(head.port, h.b.npc)
+    setPortrait(head.port, h.b.npc or h.npc)
     head.port:SetAlpha(h.killed and 0.5 or 1)
     head.name:SetText(GOLD_TEXT .. h.text .. "|r")
     local parts = { BTEXT.of:format(h.n, n) }
@@ -726,6 +736,7 @@ fillBossView = function(B, h, n)
     if rate ~= "" then parts[#parts + 1] = rate end
     if h.killed then parts[#parts + 1] = KILLED .. BTEXT.killed end
     head.sub:SetText(table.concat(parts, GREY .. " · |r"))
+    V.none:SetText((h.b.known or 0) > 0 and BTEXT.noneForYou or BTEXT.none)
     V.none:SetShown(#(h.items or {}) == 0)
 end
 
@@ -781,7 +792,7 @@ local function buildBossView(B, top)
         r:SetScript("OnEnter", function(self)
             local h = self.item
             if not h then return end
-            B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry, h.b))
+            B.art:SetModelNpc(ns.Dungeons.ModelNpc(B.entry, h.b.npc and h.b or h))
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine(h.text, 1, 0.82, 0)
             GameTooltip:AddLine(BTEXT.bossTip, 0.6, 0.6, 0.6, true)

@@ -5,6 +5,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): a portrait for every boss, every boss in the game's order, the Drowned City (F-170)
+
+  The overview of Dungeons and Raids now lists every boss of the game's order, also those without loot for you
+  ("4 items · nothing for you" or "no known loot"), and 231 of 232 bosses have their model as a portrait instead
+  of the skull: the Scarlet Monastery, both halves of Blackrock Spire (each with its own bosses only), group
+  fights such as the Ring of Law or the Lost Dwarves, renamed bosses and the client's own spellings. The Drowned
+  City has its instance, its six bosses with their encounters, its loot and ten quests; Krol'dok Stronghold,
+  Alcaz Prison, Blackmaw Hold and Shaper's Terrace have their bosses in order (from AllTheThings until the game's
+  tables have them). The dungeon bar and the run times now work in those dungeons too.
+
 - feat(ui): gear score, item level and professions in the player tooltip (F-169)
 
   Hovering a player now shows "Gear score 374 · item level 33" under the game's lines: the item level is the

@@ -85,8 +85,8 @@ end
 ---------------------------------------------------------------------------
 local nextBefore, whyBefore = NS.DungeonNext()
 local upsBefore, runBefore = ruins.upgrades, ruins.perRun
-NS.DropsLearnNames({ [7777] = "Lordaeron Ghoul" }, { [3001] = { "party", "Ruins of Lordaeron" } })
-kill(7777, 3001, { [531] = 1 })
+NS.DropsLearnNames({ [7777] = "Lordaeron Ghoul" }, { [2999] = { "party", "Ruins of Lordaeron" } })
+kill(7777, 2999, { [531] = 1 })
 ruins = find(NS.DungeonList(), "lordaeron")
 local ghoul = boss(ruins, "Lordaeron Ghoul")
 assert(ghoul and item(ghoul, 531), "the NPC and its item are shown")
@@ -96,16 +96,16 @@ assert(ghoul.perRun == 0 and ruins.upgrades == upsBefore and near(ruins.perRun, 
 local nextAfter, whyAfter = NS.DungeonNext()
 assert(nextAfter == nil and nextBefore == nil or (nextAfter.key == nextBefore.key and whyAfter == whyBefore),
     "the recommendation does not move: " .. tostring(whyAfter))
-kill(7777, 3001, {})
+kill(7777, 2999, {})
 assert(boss(find(NS.DungeonList(), "lordaeron"), "Lordaeron Ghoul").tentative, "two kills: still not counted")
-kill(7777, 3001, { [531] = 1 })
+kill(7777, 2999, { [531] = 1 })
 ruins = find(NS.DungeonList(), "lordaeron")
 ghoul = boss(ruins, "Lordaeron Ghoul")
 assert(not ghoul.tentative and ghoul.perRun > 0 and ruins.upgrades == upsBefore + 1, "from three kills it counts")
 -- a boss of the item data counts from its first kill
-kill(7778, 3001, { [532] = 1 })
+kill(7778, 2999, { [532] = 1 })
 NS.DropsLearnNames({ [7778] = "The Baron" })
-kill(7778, 3001, {})
+kill(7778, 2999, {})
 local baron = boss(find(NS.DungeonList(), "lordaeron"), "The Baron")
 assert(baron and baron.npc == 7778 and not baron.tentative and item(baron, 532) and item(baron, 532).p, "a known boss counts")
 
@@ -128,25 +128,29 @@ assert(boss(find(NS.DungeonList(), "thanes"), "Boss 9301") == nil, "the list too
 kill(9302, 3100, { [531] = 1 })
 assert(bossNpc(NS.DungeonInfo("thanes"), 9302) == nil, "an unknown instance stays apart")
 NS.DropsLearnNames({ [9302] = "Plunder" }, { [3100] = { "party", "Hall of Thanes" } })
-assert(boss(NS.DungeonInfo("thanes"), "Plunder") and boss(NS.DungeonInfo("thanes"), "Plunder").npc == 9302,
-    "the instance's learned name places the NPC")
+-- (Plunder has its NPC from the facts' order since F-170: the kill joins by name, the facts' NPC stays)
+local plunder = boss(NS.DungeonInfo("thanes"), "Plunder")
+assert(plunder and item(plunder, 531) and plunder.npc == 261311, "the instance's learned name places the NPC's kill")
 
 ---------------------------------------------------------------------------
 -- 2. one instance, two dungeons: Blackrock Spire
 ---------------------------------------------------------------------------
 STUB.level = 60
 STUB.fire("PLAYER_LEVEL_UP")
-NS.DropsLearnNames({ [10363] = "General Drakkisath", [9101] = "Highlord Omokk", [9102] = "Spire Spider" },
+NS.DropsLearnNames({ [10363] = "General Drakkisath", [9196] = "Highlord Omokk", [9102] = "Spire Spider" },
     { [229] = { "party", "Blackrock Spire" } })
 for _ = 1, 3 do kill(10363, 229, { [602] = 1 }) end
-kill(9101, 229, { [601] = 1 })
+kill(9196, 229, { [601] = 1 })
 kill(9103, 229, { [603] = 1 })                -- nameless, with War Master Voone's boots
 for _ = 1, 3 do kill(9102, 229, { [604] = 1 }) end -- neither half lists it
 local lbrs, ubrs = NS.DungeonInfo("lbrs"), NS.DungeonInfo("ubrs")
 assert(bossNpc(ubrs, 10363) and bossNpc(ubrs, 10363).name == "General Drakkisath", "Drakkisath stands in the upper spire")
 assert(bossNpc(lbrs, 10363) == nil and boss(lbrs, "General Drakkisath") == nil, "not in the lower spire")
-assert(bossNpc(lbrs, 9101) and bossNpc(lbrs, 9101).name == "Highlord Omokk" and bossNpc(ubrs, 9101) == nil, "Omokk below")
-assert(bossNpc(lbrs, 9103) and bossNpc(ubrs, 9103) == nil, "by the half whose items it dropped")
+assert(bossNpc(lbrs, 9196) and bossNpc(lbrs, 9196).name == "Highlord Omokk" and bossNpc(ubrs, 9196) == nil, "Omokk below")
+-- the nameless NPC joins War Master Voone, who keeps the NPC of the facts' order (F-170)
+local voone = boss(lbrs, "War Master Voone")
+assert(voone and voone.npc == 9237 and item(voone, 603) and boss(ubrs, "War Master Voone") == nil and bossNpc(ubrs, 9103) == nil,
+    "by the half whose items it dropped")
 assert(bossNpc(lbrs, 9102) == nil and bossNpc(ubrs, 9102) == nil, "an NPC of neither half stays unassigned")
 
 -- the same for any instance the facts give several dungeons

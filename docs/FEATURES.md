@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-170 Boss-Porträts für alle Dungeons, Drowned City
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du auf der Seite Dungeons das Scharlachrote Kloster (Scarlet Monastery) öffnest (Teil Übersicht), dann stehen links alle sieben Bosse in der Reihenfolge des Spiels (Interrogator Vishas bis High Inquisitor Whitemane), jeder mit dem runden Porträt seines Modells statt des Totenkopfs; ein Boss ohne Beute für dich steht grau mit "N Items · nichts für dich" oder "keine Beute bekannt" da.
+- Prüfung: Wenn du Lower und Upper Blackrock Spire öffnest, dann hat jede nur ihre eigenen Bosse (unten Highlord Omokk bis Overlord Wyrmthalak, oben Pyroguard Emberseer bis Lord Valthalak), alle mit Porträt.
+- Prüfung: Wenn du die Drowned City öffnest, dann steht dort Stufe 35-40 und links stehen Zul'Alai, Var'Taka, Deathless Guardians, Captain Dreadrise, Primeval Elemental und Min'loth the Serpent mit Porträt; Teil Quests zeigt ihre Quests (auch "The Saltseer Captain" und "The Web of Magic"); in der Drowned City zeigt sich die Dungeon-Leiste mit "Bosse 0/6".
+- Prüfung: Wenn du Krol'dok Stronghold, Alcaz Prison, Blackmaw Hold oder Shaper's Terrace öffnest, dann stehen ihre Bosse mit Porträt da; bitte melden, wenn die Reihenfolge nicht die des Spiels ist (sie stammt dort aus AllTheThings, nicht aus dem Spiel).
+- Prüfung: Wenn ein Boss trotz Namen noch den Totenkopf zeigt, dann kennt das Spiel sein Modell vielleicht noch nicht (es zeigt nur Kreaturen, die der Client schon gesehen hat): bitte melden, welcher Boss in welchem Dungeon, auch nach einem Lauf dort.
+- Notiz: DECISIONS D-100. Keine Spec (neue Daten aus den bekannten Quellen). Vorher hatten 164 von 214 Bossen der Reihenfolgen ein NPC, jetzt 231 von 232; ohne bleibt Lady Illucia Barov (Scholomance: keine Quelle nennt ihr NPC). Die Seltenen der Drowned City aus dem Bildschirmfoto (Gill, Umbra, Zin'aka) fehlen, weil keine erlaubte Quelle sie kennt. Barrow Deeps und Hyjal Summit haben noch keine Bosse in den Quellen.
+
 ### F-169 Spieler-Tooltip: Gearscore, Itemstufe und Berufe
 - Version: -
 - Status: geplant

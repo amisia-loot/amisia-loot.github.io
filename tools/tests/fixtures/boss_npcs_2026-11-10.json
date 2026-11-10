@@ -1,0 +1,265 @@
+{
+ "_comment": "The bosses' NPC ids of ns.BIS.DG (Amisia/Data/BisData.lua, bossNames) as the build gave them on 2026-11-10 before F-170 (AllTheThings 35d1d5640e): tools/tests/test_build_bis.py checks that every later build keeps each of them under the same name (D-100). Add to it, never take from it.",
+ "dungeons": {
+  "rfc": {
+   "11517": "Oggleflint",
+   "11518": "Jergosh the Invoker",
+   "11519": "Bazzalan",
+   "11520": "Taragaman the Hungerer"
+  },
+  "wc": {
+   "3653": "Kresh",
+   "3654": "Mutanus the Devourer",
+   "3669": "Lord Cobrahn",
+   "3670": "Lord Pythas",
+   "3671": "Lady Anacondra",
+   "3673": "Lord Serpentis",
+   "3674": "Skum",
+   "5775": "Verdan the Everliving"
+  },
+  "deadmines": {
+   "639": "Edwin VanCleef",
+   "642": "Sneed's Shredder",
+   "643": "Sneed",
+   "644": "Rhahk'Zor",
+   "645": "Cookie",
+   "646": "Mr. Smite",
+   "647": "Captain Greenskin",
+   "1763": "Gilnid"
+  },
+  "thanes": {
+   "261306": "Faldrim Anvilmar",
+   "261311": "Plunder",
+   "261316": "Magmatus",
+   "261319": "Durgen Dirgehammer"
+  },
+  "sfk": {
+   "3864": "Fel Steed/Shadow Charger",
+   "3886": "Razorclaw the Butcher",
+   "3887": "Baron Silverlaine",
+   "3914": "Rethilgore",
+   "3927": "Wolf Master Nandos",
+   "4274": "Fenrus the Devourer",
+   "4275": "Archmage Arugal",
+   "4278": "Commander Springvale",
+   "4279": "Odo the Blindwatcher",
+   "4627": "Arugal's Voidwalker"
+  },
+  "lordaeron": {
+   "250483": "Witherfang",
+   "250631": "The Abandoned",
+   "250657": "Rath'mael",
+   "250660": "The Baron",
+   "255699": "Lordaeron Captain",
+   "256035": "Viktor the Vile",
+   "256097": "Bjork"
+  },
+  "bfd": {
+   "4829": "Aku'mai",
+   "4830": "Old Serra'kis",
+   "4831": "Lady Sarevess",
+   "4832": "Twilight Lord Kelris",
+   "4887": "Ghamoo-ra",
+   "6243": "Gelihast",
+   "12876": "Baron Aquanis",
+   "12902": "Lorgus Jett"
+  },
+  "stockade": {
+   "1663": "Dextren Ward",
+   "1666": "Kam Deepfury",
+   "1696": "Targorr the Dread",
+   "1716": "Bazil Thredd",
+   "1717": "Hamhock",
+   "1720": "Bruegal Ironknuckle"
+  },
+  "gnomer": {
+   "6229": "Crowd Pummeler 9-60",
+   "6231": "Techbot",
+   "6235": "Electrocutioner 6000",
+   "7079": "Viscous Fallout",
+   "7361": "Grubbis",
+   "7800": "Mekgineer Thermaplugg"
+  },
+  "rfk": {
+   "4420": "Overlord Ramtusk",
+   "4421": "Charlga Razorflank",
+   "4422": "Agathelos the Raging",
+   "4424": "Aggem Thorncurse",
+   "4428": "Death Speaker Jargba",
+   "4438": "Razorfen Spearhide",
+   "6168": "Roogug"
+  },
+  "excavation": {
+   "260322": "Saltspine",
+   "260325": "Shadetooth",
+   "260326": "Relic Guardian",
+   "260808": "Highland Horror"
+  },
+  "dalaran": {
+   "245999": "Arcane Anomaly",
+   "246003": "Fel Ancient",
+   "246008": "Mana Devourer",
+   "246016": "Arcanic Enigma",
+   "246017": "Unstable Sentinel",
+   "246020": "Shade of the Archmage",
+   "246931": "Mana Wraith",
+   "247032": "Lyn the Ignored",
+   "247126": "Atrexis the Grave Knight"
+  },
+  "rfd": {
+   "7354": "Ragglesnout",
+   "7355": "Tuten'kash",
+   "7356": "Plaguemaw the Rotting",
+   "7357": "Mordresh Fire Eye",
+   "7358": "Amnennar the Coldbringer",
+   "7895": "Ambassador Bloodrage",
+   "8567": "Glutton",
+   "8696": "Henry Stern"
+  },
+  "ulda": {
+   "2748": "Archaedas",
+   "4854": "Grimlok",
+   "6906": "Baelog",
+   "6907": "Eric \"The Swift\"",
+   "6908": "Olaf",
+   "6910": "Revelosh",
+   "6912": "Remains of a Paladin",
+   "7023": "Obsidian Sentinel",
+   "7206": "Ancient Stone Keeper",
+   "7228": "Ironaya",
+   "7291": "Galgann Firehammer"
+  },
+  "kroldok": {
+   "258964": "Nar'gurk",
+   "258966": "Slavecrusher Grox",
+   "258968": "Overlord Mugg",
+   "258972": "Twilight Commander Zarmok",
+   "259281": "War Handler Ashka"
+  },
+  "zf": {
+   "7267": "Chief Ukorz Sandscalp",
+   "7271": "Witch Doctor Zum'rah",
+   "7272": "Theka the Martyr",
+   "7273": "Gahz'rilla",
+   "7275": "Shadowpriest Sezz'ziz",
+   "7604": "Sergeant Bly",
+   "7607": "Weegli Blastfuse",
+   "7795": "Hydromancer Velratha",
+   "7796": "Nekrum Gutchewer",
+   "7797": "Ruuzlu",
+   "8127": "Antu'sul"
+  },
+  "mara": {
+   "12201": "Princess Theradras",
+   "12203": "Landslide",
+   "12225": "Celebras the Cursed",
+   "12236": "Lord Vyletongue",
+   "12258": "Razorlash",
+   "13282": "Noxxion",
+   "13596": "Rotgrip",
+   "13601": "Tinkerer Gizlock"
+  },
+  "alcaz": {
+   "255702": "Blazeroar",
+   "255997": "Tidemistress Ca'zass",
+   "256236": "The Questioner",
+   "257016": "Katerina the Cleaner"
+  },
+  "brd": {
+   "8983": "Golem Lord Argelmach",
+   "9016": "Bael'Gar",
+   "9017": "Lord Incendius",
+   "9018": "High Interrogator Gerstahn",
+   "9019": "Emperor Dagran Thaurissan",
+   "9024": "Pyromancer Loregrain",
+   "9025": "Lord Roccor",
+   "9033": "General Angerforge",
+   "9039": "Doom'rel",
+   "9041": "Warder Stilgiss",
+   "9056": "Fineous Darkvire",
+   "9156": "Ambassador Flamelash",
+   "9319": "Houndmaster Grebmar",
+   "9499": "Plugger Spazzring",
+   "9502": "Phalanx",
+   "9537": "Hurley Blackbreath",
+   "9543": "Ribbly Screwspigot",
+   "9938": "Magmus",
+   "10096": "High Justice Grimstone"
+  },
+  "blackmaw": {
+   "247195": "Withermaw",
+   "247198": "Bonesnout the Unbroken",
+   "247206": "Impaan the Imprisoner",
+   "247207": "Blackmaw Behemoth",
+   "247209": "Elder Shaman Bloodmane",
+   "247231": "Unbound Spirit",
+   "247234": "Varrox Bleakhoof"
+  },
+  "lbrs": {
+   "9196": "Highlord Omokk",
+   "9236": "Shadow Hunter Vosh'gajin",
+   "9237": "War Master Voone",
+   "9568": "Overlord Wyrmthalak",
+   "10268": "Gizrul the Slavener",
+   "10596": "Mother Smolderweb"
+  },
+  "dire": {
+   "11486": "Prince Tortheldrin",
+   "11487": "Magister Kalendris",
+   "11488": "Illyanna Ravenoak",
+   "11489": "Tendris Warpwood",
+   "11490": "Zevrim Thornhoof",
+   "11491": "Old Ironbark",
+   "11492": "Alzzin the Wildshaper",
+   "11496": "Immol'thar",
+   "11501": "King Gordok",
+   "13280": "Hydrospawn",
+   "14321": "Guard Fengus",
+   "14322": "Stomper Kreeg",
+   "14323": "Guard Slip'kik",
+   "14324": "Cho'Rush the Observer",
+   "14325": "Captain Kromcrush",
+   "14326": "Guard Mol'dar",
+   "14327": "Lethtendris",
+   "14349": "Pimgib",
+   "14354": "Pusillin",
+   "14506": "Lord Hel'nurath",
+   "16032": "Falrin Treeshaper",
+   "16097": "Isalien"
+  },
+  "scholo": {
+   "1853": "Darkmaster Gandling",
+   "10432": "Vectus",
+   "10433": "Marduk Blackpool",
+   "10503": "Jandice Barov",
+   "10504": "Lord Alexei Barov",
+   "10505": "Instructor Malicia",
+   "10506": "Kirtonos the Herald",
+   "10507": "The Ravenian",
+   "10508": "Ras Frostwhisper",
+   "10901": "Lorekeeper Polkelt",
+   "11261": "Doctor Theolen Krastinov",
+   "11622": "Rattlegore",
+   "14516": "Death Knight Darkreaver",
+   "14861": "Blood Steward of Kirtonos",
+   "16118": "Kormok"
+  },
+  "strat": {
+   "10435": "Magistrate Barthilas",
+   "10436": "Baroness Anastari",
+   "10437": "Nerub'enkan",
+   "10438": "Maleki the Pallid",
+   "10439": "Ramstein the Gorger",
+   "10440": "Baron Rivendare",
+   "10516": "The Unforgiven",
+   "10558": "Hearthsinger Forresten",
+   "10808": "Timmy the Cruel",
+   "10811": "Archivist Galford",
+   "10813": "Balnazzar",
+   "10997": "Cannon Master Willey"
+  },
+  "onyxia": {
+   "10184": "Onyxia"
+  }
+ }
+}

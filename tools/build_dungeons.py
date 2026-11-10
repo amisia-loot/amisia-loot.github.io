@@ -17,9 +17,13 @@ tools/forever_dungeons_client.json: per dungeon of the facts the level the clien
 its instance id (AreaTable) and its bosses in the game's order (DungeonEncounter: the rows of the
 instance, by OrderIndex; F-139) with their encounter ids (enc, one per name of order, what ENCOUNTER_END
 and BOSS_KILL report) and the UI maps of its floors (UiMapAssignment: every uiMap of the instance's map
-id; maps). Without --wago that file is read as it is. The hand facts win: the
-client's values only fill what the JSON leaves open (lvl always; inst where the facts have none;
-order, enc and maps always: the planner sorts the bosses it knows by order).
+id; maps). With --wago it also reads AllTheThings' encounters and NPCs (its cache, tools/att_data.py;
+--no-att leaves them out; F-170, D-100): ATT's AreaTable copy after the user's tables, ATT's encounters
+as the order of an instance the client has no DungeonEncounter rows of (order_src "att"), and each
+boss's NPC id (npcs, one per name of order; npcs_of). Without --wago that file is read as it is. The
+hand facts win: the client's values only fill what the JSON leaves open (lvl always; inst where the
+facts have none; order and enc where the facts give none; npcs and maps always: the planner sorts the
+bosses it knows by order).
 
 The generated table is ns.DUNGEON_FACTS. Once tools/build_bis.py writes ns.BIS.DG (task 2 of the
 2.3 design: the same facts plus the level ranges of the client's LFGDungeons table and the bosses'
@@ -49,10 +53,11 @@ LFG_SKIP_TYPES = ('4', '5')
 # written. part: the client's name of an instance that hosts several dungeons (Blackrock Spire).
 # lvl: the level the client tunes the dungeon to (forever_dungeons_client.json).
 # order: the bosses' English names in the game's order (DungeonEncounter, forever_dungeons_client.json);
-# enc: their encounter ids, one per name of order. maps: the uiMap ids of the instance's floors.
+# enc: their encounter ids, one per name of order; npcs: their NPC ids, one per name of order (0 unknown,
+# false: a boss of the other dungeon of the same instance). maps: the uiMap ids of the instance's floors.
 # keys: the key and attunement items (forever_dungeon_keys.json), each with the fields of KEY_FIELDS.
 FIELDS = ('key', 'name', 'kind', 'min', 'max', 'lvl', 'size', 'inst', 'area', 'from', 'bosses', 'order', 'enc',
-          'maps', 'aliases', 'part', 'keys')
+          'npcs', 'maps', 'aliases', 'part', 'keys')
 KEY_FIELDS = ('item', 'need', 'why', 'quests', 'questsA', 'questsH')
 KEY_NEED = ('required', 'optional')
 KEY_WHY = ('door', 'part', 'summon', 'attune', 'boss')
@@ -107,15 +112,21 @@ def tuning_levels(rows):
     return out
 
 
-def client_facts(facts, dirs=WAGO_DIRS):
-    """{'tables': {table: file name}, 'dungeons': {fact key: {'lvl', 'inst', 'lfg', 'order'}}, 'unmatched': [names]}
-    from the client tables in dirs (the first folder holding a table wins, its newest build).
+def client_facts(facts, dirs=WAGO_DIRS, att=None):
+    """{'tables': {table: file name}, 'dungeons': {fact key: {'lvl', 'inst', 'lfg', 'order', 'enc', 'npcs',
+    'order_src', 'maps'}}, 'unmatched': [names]} from the client tables in dirs (the first folder holding a
+    table wins, its newest build) and, with att (att_data.load()), AllTheThings' encounters and NPCs.
 
     lvl: LFGDungeons' ContentTuningID -> ContentTuning's MinLevelSquish (or MinLevel in tables of
     other builds); a dungeon split into wings ("Dire Maul - East") counts for the facts' dungeon.
     inst: the AreaTable row of the dungeon's name (an area at the top whose map is no continent).
+    With att the AreaTable copy AllTheThings ships counts after dirs: the user's export lacks the rows of
+    the dungeons the base data of the build does not have yet (the Drowned City and the other new ones).
     order: the DungeonEncounter rows of its instance (the facts' inst, else the client's) of the normal
-    difficulty (0 and 1) by OrderIndex, each name once (only the first folder holding the table counts)."""
+    difficulty (0 and 1) by OrderIndex, each name once (only the first folder holding the table counts);
+    an instance without rows there takes ATT's encounters of the instance in its file's order
+    (order_src 'att': ATT's e() id is the client's encounter id in Forever's new dungeons).
+    npcs: the boss NPC of each name of the order (the facts' own order where they have one; see npcs_of())."""
     tables = {}
     for t in ('LFGDungeons', 'ContentTuning', 'AreaTable', 'DungeonEncounter', 'UiMapAssignment'):
         for d in dirs:
@@ -146,7 +157,8 @@ def client_facts(facts, dirs=WAGO_DIRS):
             rec.setdefault('lvl', lvl)
             rec.setdefault('lfg', [])
             rec['lfg'].append(raw)
-    _, by_name = att_data.read_area_instances(*dirs)
+    area_dirs = tuple(dirs) + (tuple(d for d in WAGO_DIRS[1:] if d not in dirs) if att else ())
+    _, by_name = att_data.read_area_instances(*area_dirs)
     for e in facts['dungeons']:
         names = [e['name']] + list(e.get('aliases') or []) + ([e['part']] if e.get('part') else [])
         inst = next((by_name[att_data.name_key(n)] for n in names if att_data.name_key(n) in by_name), None)
@@ -176,6 +188,23 @@ def client_facts(facts, dirs=WAGO_DIRS):
             if names:
                 out.setdefault(e['key'], {})['order'] = names
                 out[e['key']]['enc'] = enc
+    if att:
+        index = att_data.boss_index(att)
+        for e in facts['dungeons']:
+            rec = out.get(e['key']) or {}
+            inst = e.get('inst') or rec.get('inst')
+            iid = att_instance(att, e, inst)
+            if iid is None:
+                continue
+            if not rec.get('order') and not e.get('order'):
+                encs = [(eid, x['name']) for eid, x in att.get('encounters', {}).items()
+                        if x.get('inst') == iid and x.get('name') and not x.get('old')]
+                if encs:
+                    rec = out.setdefault(e['key'], rec)
+                    rec['order'], rec['enc'], rec['order_src'] = [n for _, n in encs], [i for i, _ in encs], 'att'
+            order = e.get('order') or rec.get('order')
+            if order:
+                out.setdefault(e['key'], rec)['npcs'] = npcs_of(e, order, e.get('enc') or rec.get('enc'), index, iid)
     if tables.get('UiMapAssignment'):
         out_maps = uimap_floors(next(d for d in dirs if att_data.wago_csv(d, 'UiMapAssignment')))
         for e in facts['dungeons']:
@@ -183,6 +212,40 @@ def client_facts(facts, dirs=WAGO_DIRS):
             if out_maps.get(inst):
                 out.setdefault(e['key'], {})['maps'] = out_maps[inst]
     return {'tables': tables, 'dungeons': {k: out[k] for k in sorted(out)}, 'unmatched': sorted(set(unmatched))}
+
+
+def att_instance(att, e, inst):
+    """The ATT instance id of fact e: the one whose map id is the dungeon's instance id, else the one
+    whose name is the dungeon's name, an alias or its part (att_data.name_key: "The Drowned City" =
+    "Drowned City"); None without one."""
+    insts = att.get('instances') or {}
+    if inst:
+        hit = sorted(iid for iid, x in insts.items() if x.get('mapID') == inst and not x.get('old'))
+        if hit:
+            return hit[0]
+    names = {att_data.name_key(n) for n in [e['name']] + list(e.get('aliases') or []) + ([e['part']] if e.get('part') else [])}
+    hit = sorted(iid for iid, x in insts.items() if att_data.name_key(x.get('name')) in names and not x.get('old'))
+    return hit[0] if hit else None
+
+
+def npcs_of(e, order, enc, index, iid):
+    """The boss NPC of each name of order (att_data.find_boss in ATT instance iid; a name of the facts'
+    boss_alias is looked up by its alias where its own name finds none), lined up with order: the NPC id,
+    0 where no source names one, False where the boss stands in the wing of another dungeon of the same
+    instance (the facts' att_wing: the two halves of Blackrock Spire)."""
+    alias = e.get('boss_alias') or {}
+    wing = e.get('att_wing')
+    out = []
+    for i, name in enumerate(order):
+        eid = enc[i] if enc and i < len(enc) else None
+        npc, _, at = att_data.find_boss(index, iid, name, eid, order)
+        if npc is None and alias.get(name):
+            npc, _, at = att_data.find_boss(index, iid, alias[name], None, order)
+        if npc is not None and wing and at and at != wing:
+            out.append(False)
+        else:
+            out.append(npc or 0)
+    return out
 
 
 def uimap_floors(folder):
@@ -222,8 +285,8 @@ def load_client(path=CLIENT):
 
 def merge(facts, client, keys=None):
     """The facts with the client's values filled in: lvl, and inst where the facts give none; order,
-    enc and maps; the key items of keys (forever_dungeon_keys.json's dungeons). The hand facts never
-    change. enc lines up with order: one encounter id per boss name."""
+    enc, npcs and maps; the key items of keys (forever_dungeon_keys.json's dungeons). The hand facts never
+    change. enc and npcs line up with order: one encounter id and one NPC id per boss name."""
     cd = (client or {}).get('dungeons') or {}
     keys = keys or {}
     out = []
@@ -240,6 +303,8 @@ def merge(facts, client, keys=None):
                 m['enc'] = c['enc']
         if m.get('enc') is not None and len(m['enc']) != len(m.get('order') or []):
             raise ValueError('%s: %d encounter ids for %d bosses' % (e['key'], len(m['enc']), len(m.get('order') or [])))
+        if c.get('npcs') and len(c['npcs']) == len(m.get('order') or []):
+            m['npcs'] = c['npcs']
         if c.get('maps'):
             m['maps'] = c['maps']
         if keys.get(e['key']):
@@ -271,12 +336,15 @@ def render(facts, client=None, keys=None):
     lines = [
         '-- GENERATED by tools/build_dungeons.py from tools/forever_dungeons.json and',
         '-- tools/forever_dungeons_client.json. The keys from tools/forever_dungeon_keys.json. Do not edit; rebuild instead.',
+        '-- The bosses\' NPC ids (npcs) and the encounters of dungeons the client tables lack from AllTheThings\' Forever',
+        '-- data (MIT, Copyright (c) 2026 AllTheThings WoW Addon; see LICENSES/AllTheThings-MIT.txt).',
         '-- Facts only (names, level ranges, sizes, bosses known so far, opening dates), checked by hand on '
         + facts['checked'] + ';',
         '-- the sources of every entry are named in the JSON file. lvl is the level the client tunes a dungeon',
         "-- to (its LFGDungeons and ContentTuning tables), the low end of its range; dungeons without a fact",
         '-- range take the high end from their items meanwhile. order: the bosses in the game\'s order, enc their',
-        '-- encounter ids (DungeonEncounter, one per name of order); maps: the uiMap ids of the floors',
+        '-- encounter ids (DungeonEncounter, else AllTheThings\' encounters; one per name of order), npcs their NPC ids',
+        '-- (AllTheThings; 0 unknown, false a boss of the other dungeon of the same instance); maps: the uiMap ids of the floors',
         '-- (UiMapAssignment, empty in the Forever tables so far); keys: the key and attunement items, checked',
         '-- by hand (item, need required/optional, why door/part/summon/attune/boss, quests or questsA/questsH',
         '-- leading to it).',
@@ -303,7 +371,10 @@ def write_client(client, path=CLIENT):
                        'CSV downloads, or the copies AllTheThings ships): per dungeon of tools/forever_dungeons.json '
                        'the level the client tunes it to (LFGDungeons, ContentTuning), its instance id '
                        '(AreaTable), its bosses in the game\'s order with their encounter ids (DungeonEncounter) and '
-                       'the uiMaps of its floors (UiMapAssignment). Game data, no loot. Do not edit; rebuild instead.',
+                       'the uiMaps of its floors (UiMapAssignment); where the client has no encounters of an instance, '
+                       'AllTheThings\' encounters (order_src "att"), and per name of the order its boss NPC from '
+                       'AllTheThings (npcs: 0 unknown, false a boss of the other dungeon of the same instance). '
+                       'Game data, no loot. Do not edit; rebuild instead.',
            **client}
     text = json.dumps(doc, indent=1, sort_keys=False, ensure_ascii=False) + '\n'
     old = None
@@ -320,11 +391,17 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--wago', nargs='*', default=None,
                     help='read the client tables first (default folders: ~/addons/_wago, then ATT\'s copies)')
+    ap.add_argument('--no-att', action='store_true',
+                    help='with --wago: without AllTheThings\' encounters and NPCs (default: its cache, see tools/att_data.py)')
     args = ap.parse_args(argv)
     with open(FACTS, encoding='utf-8') as fh:
         facts = json.load(fh)
     if args.wago is not None:
-        client = client_facts(facts, args.wago or WAGO_DIRS)
+        att = None
+        if not args.no_att and att_data.commit_of(att_data.ATT_CACHE):
+            att = att_data.load(att_data.ATT_CACHE, items=False)
+            print('AllTheThings %s: %d encounters' % ((att.get('commit') or '?')[:10], len(att.get('encounters') or {})))
+        client = client_facts(facts, args.wago or WAGO_DIRS, att)
         if not client['tables'].get('LFGDungeons') and not client['tables'].get('AreaTable'):
             raise SystemExit('no LFGDungeons or AreaTable CSV in ' + ', '.join(args.wago or WAGO_DIRS))
         print('client tables: ' + ', '.join(f'{t} {n}' for t, n in sorted(client['tables'].items())))

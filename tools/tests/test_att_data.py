@@ -264,3 +264,46 @@ def test_the_cache_folder_can_be_pointed_elsewhere(tmp_path):
     env = {k: v for k, v in os.environ.items() if k != 'AMISIA_ATT_CACHE'}
     out = subprocess.run([sys.executable, '-c', code], capture_output=True, text=True, cwd=os.path.dirname(HERE), env=env)
     assert out.stdout.strip() == os.path.expanduser('~/addons/_cache/att')
+
+
+# ---------------------------------------------------------------- the bosses of an instance (F-170, D-100)
+def test_encounters_wings_and_their_creatures(new):
+    enc = new['encounters']
+    assert enc[3201] == {'name': 'Warden Grim', 'npcs': [83010], 'inst': 9201, 'wing': 'Inner Ward',
+                         'file': 'dungeons & raids/test keep.lua', 'old': False}
+    assert enc[3202]['npcs'] == [83011, 83012] and enc[3202]['name'] == 'Twin Guards', 'a group encounter lists all'
+    assert new['npcs'][83003]['wing'] == 'Inner Ward', "inside the instance's own header"
+    assert new['npcs'][83013].get('wing') is None, 'outside it no wing'
+    assert att_data.empty_db()['encounters'] == {}
+
+
+def test_find_boss_by_encounter_name_npc_and_prefix(new):
+    ix = att_data.boss_index(new)
+    assert att_data.find_boss(ix, 9201, 'Whatever The Client Says', 3201) == (83010, 'enc', 'Inner Ward'), \
+        "the client's encounter id: a renamed boss"
+    assert att_data.find_boss(ix, 9201, 'Twin Guards') == (83011, 'encname', 'Inner Ward'), \
+        'a group encounter stands for the creature ATT lists first'
+    assert att_data.find_boss(ix, 9201, 'Keep Prisoner') == (83003, 'npc', 'Inner Ward')
+    assert att_data.find_boss(ix, 9201, 'Kirtonos') == (83013, 'prefix', None), 'a boss whose name begins with it'
+    assert new['npcs'][83013]['kinds'] == {'boss'}
+    # an encounter id that names another boss of the order is no match (ATT's Classic ids are other ids)
+    assert att_data.find_boss(ix, 9201, 'Twin Guards', 3201, others=['Warden Grim', 'Twin Guards'])[1] == 'encname'
+    assert att_data.find_boss(ix, 9201, 'Nobody') == (None, None, None)
+    assert att_data.find_boss(ix, 4242, 'Warden Grim') == (None, None, None), 'another instance'
+
+
+def test_find_boss_rules_on_a_made_index():
+    db = {'encounters': {}, 'npcs': {
+        10506: {'name': 'Kirtonos the Herald', 'kinds': {'boss'}, 'inst': 1},
+        14861: {'name': 'Blood Steward of Kirtonos', 'kinds': {'npc'}, 'inst': 1},
+        10508: {'name': 'Ras Frostwhisper', 'kinds': {'boss'}, 'inst': 1},
+        11058: {'name': 'Fras Siabi / Ezra Grimm', 'kinds': {'npc'}, 'inst': 1},
+        3872: {'name': 'Deathsworn Captain', 'kinds': {'rare'}, 'inst': 1},
+        3871: {'name': 'Deathsworn Captain', 'kinds': {'mob'}, 'inst': 1},
+        5: {'name': 'Ab', 'kinds': {'boss'}, 'inst': 1}}}
+    ix = att_data.boss_index(db)
+    assert att_data.find_boss(ix, 1, 'Kirtonos') == (10506, 'prefix', None)
+    assert att_data.find_boss(ix, 1, 'Ras Frostwhisperer') == (10508, 'prefix', None), "the client's longer spelling"
+    assert att_data.find_boss(ix, 1, 'Ezra Grimm') == (11058, 'npc', None), 'each part of a slashed name'
+    assert att_data.find_boss(ix, 1, 'deathsworn captain')[0] == 3872, 'of two with the name the better kind'
+    assert att_data.find_boss(ix, 1, 'A')[0] is None, 'no prefix match of a short name'

@@ -822,6 +822,9 @@ L["Boss %d von %d"] = "Boss %d of %d"
 L["getötet"] = "killed"
 L["Für diesen Boss kennt Amisia keine Beute."] = "Amisia knows no loot of this boss."
 L["Für diese Instanz kennt Amisia keine Bosse."] = "Amisia knows no bosses of this instance."
+-- every boss of the game's order (F-170)
+L["Von diesem Boss kennt Amisia keine Beute für dich."] = "Amisia knows no loot of this boss for you."
+L["nichts für dich"] = "nothing for you"
 L["Klick: seine Beute rechts. Rechtsklick: als getötet markieren oder nicht."] = "Click: its loot on the right. Right-click: mark it killed or not."
 -- the page Ausrüstungsplaner (F-149)
 L["Ausrüstungsplaner"] = "Gear Planner"

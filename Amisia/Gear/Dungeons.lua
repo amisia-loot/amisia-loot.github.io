@@ -52,6 +52,54 @@ local FIT_ORDER = { fit = 1, soon = 2 }
 
 local function lower(s) return type(s) == "string" and s:lower() or nil end
 
+-- A name for matching: lower case without spaces, dots, dashes and apostrophes ("Edwin van Cleef" =
+-- "Edwin VanCleef").
+local function nameKey(s)
+    if type(s) ~= "string" then return nil end
+    local k = s:lower():gsub("[%s%.%-'`]", "")
+    return k ~= "" and k or nil
+end
+
+-- The entry of key dkey in a list of facts, or nil.
+local function factIn(list, dkey)
+    if type(list) ~= "table" then return nil end
+    for _, e in ipairs(list) do
+        if type(e) == "table" and e.key == dkey then return e end
+    end
+    return nil
+end
+
+-- The NPC id of boss name in dungeon dkey (F-170, D-100): the one the facts give its name in the game's
+-- order (DungeonData.lua: npcs, one per name of order), else the build's NPC of that name (BisData.lua:
+-- bossNames), else the id in the name the item data gives an NPC nobody named ("NPC 4442"); nil
+-- without one. Names compare by nameKey.
+function D.BossNpc(dkey, name)
+    local k = nameKey(name)
+    if not k then return nil end
+    local F = ns.DUNGEON_FACTS
+    local f = factIn(type(F) == "table" and F.list, dkey)
+    if f and type(f.order) == "table" and type(f.npcs) == "table" then
+        for i, n in ipairs(f.order) do
+            if nameKey(n) == k then
+                local npc = f.npcs[i]
+                if type(npc) == "number" and npc > 0 then return npc end
+                break
+            end
+        end
+    end
+    local B = ns.BIS
+    local e = factIn(type(B) == "table" and B.DG, dkey)
+    if e and type(e.bossNames) == "table" then
+        local best
+        for npc, n in pairs(e.bossNames) do
+            if type(npc) == "number" and nameKey(n) == k and (not best or npc < best) then best = npc end
+        end
+        if best then return best end
+    end
+    local id = tonumber(name:match("^NPC (%d+)$"))
+    return id and id > 0 and id or nil
+end
+
 local report = ns.ReportError
 
 ---------------------------------------------------------------------------
@@ -280,7 +328,7 @@ local function buildIndex(facts)
             local names = type(e.bossNames) == "table" and e.bossNames or {}
             for _, b in ipairs(type(e.bosses) == "table" and e.bosses or {}) do
                 if type(b) == "string" then
-                    addBoss(x, b)
+                    addBoss(x, b, D.BossNpc(e.key, b))
                 elseif type(b) == "number" and type(names[b]) == "string" then
                     addBoss(x, names[b], b)
                 end
@@ -297,7 +345,7 @@ local function buildIndex(facts)
             local inst = place and tonumber(place:match("^I:(%d+)$"))
             -- the instance decides only where it hosts one dungeon; else the source's own name
             if inst and instKeys[inst] and #instKeys[inst] == 1 then key = instKeys[inst][1] end
-            if key then srcTo[n] = { key = key, boss = addBoss(idx.byKey[key], rec[3]), rec = rec } end
+            if key then srcTo[n] = { key = key, boss = addBoss(idx.byKey[key], rec[3], D.BossNpc(key, rec[3])), rec = rec } end
         elseif rec[1] == "Q" then
             local qid = type(rec[7]) == "number" and rec[7] > 0 and rec[7] or nil
             if qid then srcQid[n] = qid end
@@ -398,6 +446,24 @@ local function getIndex(facts)
         index, indexGear, indexFacts, indexQuests = buildIndex(facts), ns.Data("GEAR"), facts, ns.DUNGEON_QUESTS
     end
     return index
+end
+
+-- How many items the item data knows of boss name in dungeon dkey (its dungeon sources; F-170): 0
+-- for a boss without any (or an unknown dungeon). Names compare as the index does (lower case), then
+-- by nameKey.
+function D.KnownLoot(dkey, name)
+    local facts = D.Facts()
+    if not facts or not ns.Data("GEAR") or type(name) ~= "string" then return 0 end
+    local x = getIndex(facts).byKey[dkey]
+    if not x then return 0 end
+    local b = x.byL[lower(name)]
+    if not b then
+        local k = nameKey(name)
+        for _, o in ipairs(x.order) do
+            if nameKey(o.name) == k then b = o; break end
+        end
+    end
+    return b and #b.ids or 0
 end
 
 -- The dungeon or raid key of a D or X source record of the gear data (F-157): the one key its
@@ -2124,14 +2190,6 @@ function D.QuestWorth(q, path)
     return w
 end
 
--- A name for matching: lower case without spaces, dots, dashes and apostrophes ("Edwin van Cleef" =
--- "Edwin VanCleef").
-local function nameKey(s)
-    if type(s) ~= "string" then return nil end
-    local k = s:lower():gsub("[%s%.%-'`]", "")
-    return k ~= "" and k or nil
-end
-
 -- The bosses' names in the game's order (DungeonData.lua, from the client's DungeonEncounter); nil
 -- without one.
 function D.BossOrder(dkey)
@@ -2156,7 +2214,7 @@ function D.BossTrack(dkey, entry)
     for i, b in ipairs(entry and entry.bosses or {}) do
         local k = nameKey(b.name)
         if k and not b.tentative and b.name ~= "Trash" and not byKey[k] then
-            local t = { name = b.name, npc = b.npc, b = b, ups = 0, at = i }
+            local t = { name = b.name, npc = b.npc or D.BossNpc(dkey, b.name), b = b, ups = 0, at = i }
             for _, it in ipairs(b.items or {}) do
                 if it.upgrade then t.ups = t.ups + 1 end
             end
@@ -2168,7 +2226,7 @@ function D.BossTrack(dkey, entry)
         for _, name in ipairs(D.BossOrder(dkey) or {}) do
             local k = nameKey(name)
             if k and not byKey[k] then
-                local t = { name = name, ups = 0, at = #out + 1 }
+                local t = { name = name, npc = D.BossNpc(dkey, name), ups = 0, at = #out + 1 }
                 byKey[k] = t
                 out[#out + 1] = t
             end
@@ -2181,6 +2239,53 @@ function D.BossTrack(dkey, entry)
         return x.at < y.at
     end)
     return out, byKey
+end
+
+-- The bosses of the part Übersicht (F-154, F-170): the given bosses (an entry's, those with loot for
+-- the character) and every other boss of the game's order (DungeonData.lua) without loot rows, all in
+-- the game's order. A given boss takes its place by its name or by its NPC (the client's "Infurnus" is
+-- the item data's "Magmatus"), the others after the order's in their own order; a boss of the other
+-- dungeon of the same instance (npcs false: the other half of Blackrock Spire) is added only when
+-- given. { { name, npc, b } }: b the given boss, or { name, npc, items = {}, perRun = 0, known (the items
+-- the item data knows of it, D.KnownLoot) } for an added one.
+function D.JournalBosses(dkey, bosses)
+    local F = ns.DUNGEON_FACTS
+    local f = factIn(type(F) == "table" and F.list, dkey)
+    local order = f and type(f.order) == "table" and f.order or {}
+    local npcs = f and type(f.npcs) == "table" and f.npcs or {}
+    local byKey, byNpc = {}, {}
+    for i, name in ipairs(order) do
+        local k = nameKey(name)
+        if k and not byKey[k] then byKey[k] = i end
+        local npc = npcs[i]
+        if type(npc) == "number" and npc > 0 and not byNpc[npc] then byNpc[npc] = i end
+    end
+    local out, taken, seen = {}, {}, {}
+    for i, b in ipairs(bosses or {}) do
+        local k = nameKey(b.name)
+        local npc = b.npc or D.BossNpc(dkey, b.name)
+        local r = k and byKey[k] or npc and byNpc[npc] or nil
+        if r and taken[r] then r = nil end
+        if r then taken[r] = true end
+        if k then seen[k] = true end
+        out[#out + 1] = { name = b.name, npc = npc, b = b, rank = r, at = i }
+    end
+    for i, name in ipairs(order) do
+        local k = nameKey(name)
+        if k and not taken[i] and not seen[k] and npcs[i] ~= false then
+            seen[k] = true
+            local npc = D.BossNpc(dkey, name)
+            out[#out + 1] = { name = name, npc = npc, rank = i, at = #out + 1,
+                b = { name = name, npc = npc, items = {}, perRun = 0, known = D.KnownLoot(dkey, name) } }
+        end
+    end
+    local big = #order + 1
+    table.sort(out, function(x, y)
+        local rx, ry = x.rank or big, y.rank or big
+        if rx ~= ry then return rx < ry end
+        return x.at < y.at
+    end)
+    return out
 end
 
 -- Whether objective text names a boss: its name as whole words (case and punctuation aside), or a long
