@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-08",
+ "updated": "2026-11-10",
  "entrances": {
   "33": {
    "map": 1421,
@@ -17,6 +17,14 @@
    "kind": "party",
    "seen": 1794145460
   },
+  "129": {
+   "map": 1414,
+   "x": 5326,
+   "y": 7117,
+   "name": "Hügel von Razorfen",
+   "kind": "party",
+   "seen": 1794255244
+  },
   "389": {
    "map": 1454,
    "x": 5335,
@@ -24,6 +32,14 @@
    "name": "Ragefireabgrund",
    "kind": "party",
    "seen": 1793908133
+  },
+  "2970": {
+   "map": 1434,
+   "x": 2143,
+   "y": 2789,
+   "name": "Die Versunkene Stadt",
+   "kind": "party",
+   "seen": 1794249463
   }
  }
 }
