@@ -17,13 +17,14 @@ ns.JournalParts = P
 ---------------------------------------------------------------------------
 -- Tabs
 ---------------------------------------------------------------------------
-local PART_TEXT = { bosses = L["Übersicht"], map = L["Karte"], quests = "Quests", wish = L["Wunschliste"], access = L["Zugang"] }
+local PART_TEXT = { bosses = L["Übersicht"], map = L["Karte"], quests = "Quests", wish = L["Wunschliste"], access = L["Zugang"], times = L["Zeiten"] }
 local PART_TIP = {
     bosses = L["Die Bosse mit ihrer Beute und dein Lauf: welche Bosse du schon getötet hast."],
     map = L["Die Karte der Instanz aus dem Spiel, mit ihren Ebenen. Mausrad: zoomen, Ziehen: verschieben."],
     quests = L["Die Quests des Dungeons mit Stufe, Weg (erledigte Schritte der Vorquests) und Start. Klick auf eine Quest zeigt ihren Questweg: jeden Schritt mit Annehmen, Abgeben, Voraussetzung und Karte."],
     wish = L["Was du dir aus dieser Instanz wünschst und was deine Ausrüstungsplanung empfiehlt, nach Boss."],
     access = L["Die Schlüssel der Instanz: ob du sie hast und die Quests, die zu ihnen führen."],
+    times = L["Deine Lauf-Zeiten in dieser Instanz: der beste Lauf mit seinen Zwischenzeiten, die beste Zeit je Boss und die letzten Läufe."],
 }
 
 -- The tabs of page B in band top (a SetPoint offset), one per key; field: the key in settings.bis
@@ -48,7 +49,7 @@ function P.PlaceTabs(B)
 end
 
 -- The chosen part of page B for entry e: the saved one when it is a tab of the page and possible
--- (Zugang only with a key), else Übersicht. Marks its tab (the page shows the tabs in its detail).
+-- (Zugang only with a key, Zeiten only with the bosses' encounters), else Übersicht. Marks its tab (the page shows the tabs in its detail).
 function P.PartOf(B, e)
     local p = K.state()[B.partField]
     local keys = e and P.Keys(e.key) or nil
@@ -56,7 +57,7 @@ function P.PartOf(B, e)
     for _, k in ipairs(B.partKeys) do
         if k == p then ok = true end
     end
-    if not ok or (p == "access" and not keys) then p = "bosses" end
+    if not ok or (p == "access" and not keys) or (p == "times" and not (e and ns.Runs.Encounters(e.key))) then p = "bosses" end
     for k, tab in pairs(B.parts) do tab:SetOn(k == p) end
     return p
 end
@@ -463,4 +464,101 @@ function P.FillAccess(B, e)
     local rows = e and accessRows(e.key) or {}
     B.accessView:SetItems(rows)
     B.accessView.empty:SetShown(#rows == 0)
+end
+
+---------------------------------------------------------------------------
+-- The times (F-166, Gear/RunTimes.lua)
+---------------------------------------------------------------------------
+P.TIMES_HINT = L["Die Uhr läuft ab dem ersten Kampf nach dem Betreten und hält beim letzten Boss; draußen und ausgeloggt läuft sie weiter. Zwischenzeit: seit dem Start. Nicht beendete Läufe zählen nie als Bestzeit. /amisia zeiten zeigt das Fenster."]
+local TTEXT = {
+    best = L["Bester Lauf"], bosses = L["Bestzeit je Boss"], runs = L["Letzte Läufe"],
+    boss = L["Boss"], split = L["Im besten Lauf"], seg = L["Schnellste Strecke"],
+    when = L["Wann"], total = L["Zeit"], size = L["Gruppe"], who = L["Charakter"],
+    players = L["%d Spieler"], open = L["nicht beendet"], kills = L["%d/%d Bosse"],
+    none = L["Noch keine Zeiten für diese Instanz. Die Uhr läuft ab dem ersten Kampf nach dem Betreten und hält beim letzten Boss."],
+    clear = L["Zeiten löschen"],
+    clearTip = L["Löscht nach einer Rückfrage Bestzeit, Zeiten je Boss und Verlauf dieser Instanz."],
+    segTip = L["Schnellste Strecke: die kürzeste Zeit vom Boss davor (oder vom Start) bis zu diesem Boss, aus allen beendeten Läufen."],
+}
+
+-- The rows of the times of dkey: the best run, the bosses with the best run's split and the fastest
+-- segment, the last runs (date, time or "nicht beendet", group size, character).
+local function timesRows(dkey)
+    local RT = ns.RunTimes
+    local times = RT.Of(dkey)
+    if not times then return {} end
+    local out = {}
+    local encs = ns.Runs.Encounters(dkey) or {}
+    local best = times.best
+    if best then
+        out[#out + 1] = { kind = "head", cells = { TTEXT.best, TTEXT.total, TTEXT.size, TTEXT.who } }
+        out[#out + 1] = { kind = "row", cells = { ns.FmtDayTime(best.at), RT.Fmt(best.t), TTEXT.players:format(best.n), best.c } }
+    end
+    out[#out + 1] = { kind = "head", cells = { TTEXT.bosses, TTEXT.split, TTEXT.seg, "" }, tip = TTEXT.segTip }
+    for i, x in ipairs(RT.Lines(dkey, nil)) do
+        out[#out + 1] = { kind = "row", cells = { ("%d. %s"):format(i, x.name), x.best and RT.Fmt(x.best) or (GREY .. "-|r"),
+            x.seg and RT.Fmt(x.seg) or (GREY .. "-|r"), "" } }
+    end
+    if #times.runs > 0 then
+        out[#out + 1] = { kind = "head", cells = { TTEXT.runs, TTEXT.total, TTEXT.size, TTEXT.who } }
+        for _, r in ipairs(times.runs) do
+            local kills = 0
+            for _ in pairs(r.s) do kills = kills + 1 end
+            local t = r.d and RT.Fmt(r.t) or (GREY .. TTEXT.open .. " · " .. TTEXT.kills:format(kills, #encs) .. "|r")
+            out[#out + 1] = { kind = "row", cells = { ns.FmtDayTime(r.at), t, TTEXT.players:format(r.n), r.c } }
+        end
+    end
+    return out
+end
+P.TimesRows = timesRows
+
+-- The times view on B from top: a list of four cells per row (gold heads), and the link "Zeiten
+-- löschen" (B.clearTimes, in the header's line beside the run).
+function P.BuildTimes(B, top)
+    local X = D.TIMES
+    local list = W.List(B, 5, X.ROW_H, function(r)
+        r.cells = {}
+        for i = 1, 4 do
+            local fs = W.Text(r, T.FONT.text, X.W[i])
+            fs:SetPoint("LEFT", X.X[i], 0)
+            r.cells[i] = fs
+        end
+        r:SetScript("OnEnter", function(self)
+            local e = self.item
+            if not (e and e.tip) then return end
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(e.tip, 0.85, 0.85, 0.85, true)
+            GameTooltip:Show()
+        end)
+        r:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    end, function(r, e)
+        for i = 1, 4 do
+            r.cells[i]:SetFontObject(e.kind == "head" and T.FONT.head or T.FONT.text)
+            r.cells[i]:SetText(e.cells[i] or "")
+        end
+    end)
+    list:SetPoint("TOPLEFT", 0, top)
+    list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, top)
+    W.FillTo(list, B, top, 5, X.ROW_H)
+    list.empty = W.Text(list, T.FONT.dim, 400, true)
+    list.empty:SetPoint("TOP", 0, -T.LAYOUT.EMPTY_Y)
+    list.empty:SetText(TTEXT.none)
+    list:Hide()
+    B.timesView = list
+    B.clearTimes = W.Link(B, TTEXT.clear, function()
+        if B.entry then ns.RunTimes.ConfirmClear(B.entry.key) end
+    end)
+    W.Tooltip(B.clearTimes, TTEXT.clear, TTEXT.clearTip)
+    B.clearTimes:Hide()
+    return list
+end
+
+-- The times of e on B; on: the part Zeiten shows (the link only then, and only with times).
+function P.FillTimes(B, e, on)
+    local rows = (e and on) and timesRows(e.key) or {}
+    if on then
+        B.timesView:SetItems(rows)
+        B.timesView.empty:SetShown(#rows == 0)
+    end
+    B.clearTimes:SetShown(on and #rows > 0 or false)
 end

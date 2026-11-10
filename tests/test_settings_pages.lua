@@ -53,7 +53,7 @@ assert(AmisiaDB.settings.window.section == "map", "remembered")
 
 -- the side bar under "Einstellungen": the tabs, the chosen one open (the map's section in Dungeons & Raids since D-73)
 local nav = navShown()
-assert(has(nav, "settings gear dungeons -drops -map -quests -collect prof raid guild amisia"), nav)
+assert(has(nav, "settings gear dungeons -drops -map -quests -collect -runtimes prof raid guild amisia"), nav)
 for _, e in ipairs(F.navOrder) do
     if e.entry.kind == "group" and e.entry.key == "guild" then e.button:Click() break end
 end

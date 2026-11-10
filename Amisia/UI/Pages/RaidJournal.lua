@@ -155,7 +155,7 @@ local function create(parent)
     B.header = W.SectionHeader(B, "", false)
     B.header:SetPoint("TOPLEFT", 0, headerTop)
     B.header:SetPoint("TOPRIGHT", -132, headerTop)
-    JP.BuildTabs(B, tabTop, { "bosses", "map", "wish", "access" }, "rpart")
+    JP.BuildTabs(B, tabTop, { "bosses", "map", "wish", "access", "times" }, "rpart")
     B.way = W.Link(B, L["Wegpunkt"], function()
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
@@ -163,7 +163,9 @@ local function create(parent)
     W.Row(B, { B.way }, 0, 0, tabTop - 1, { right = true })
     -- the run (D-72) at the right end of the header's line
     JP.BuildRun(B)
-    B.partRow = { B.runBar, { B.resetRun, gap = G.ITEM_GAP } }
+    -- the times (F-166): the list where the others are, "Zeiten löschen" in the header's line
+    JP.BuildTimes(B, headerTop - T.HEADER_H - G.GAP)
+    B.partRow = { B.runBar, { B.resetRun, gap = G.ITEM_GAP }, { B.clearTimes, gap = G.ITEM_GAP } }
     function B:PlaceParts() J.placeParts(self, headerTop) end
     B:PlaceParts()
     B.detail = J.buildDetail(B, DETAIL_ROWS, headerTop - T.HEADER_H - G.GAP)
@@ -178,7 +180,7 @@ local function create(parent)
     B.detailParts = { B.back, B.header, B.way }
     for _, k in ipairs(B.partKeys) do B.detailParts[#B.detailParts + 1] = B.parts[k] end
     -- shown by the part (refresh): the list, the bosses, the map, the keys, the run
-    B.partViews = { B.detail, B.bossView, B.mapView, B.accessView, B.runBar, B.resetRun }
+    B.partViews = { B.detail, B.bossView, B.mapView, B.accessView, B.runBar, B.resetRun, B.timesView, B.clearTimes }
     return B
 end
 
@@ -231,11 +233,13 @@ local function refresh(B)
     B.detailEntry = e
     if detail then
         B.parts.access:SetShown(JP.Keys(e.key) ~= nil)
+        B.parts.times:SetShown(ns.Runs.Encounters(e.key) ~= nil)
         JP.PlaceTabs(B)
         B.detail:SetShown(part == "wish")
         B.bossView:SetShown(part == "bosses")
         B.mapView:SetShown(part == "map")
         B.accessView:SetShown(part == "access")
+        B.timesView:SetShown(part == "times")
     end
     B.way:SetEnabled(e ~= nil and ns.DungeonEntrance(e.key) ~= nil)
     if e and part == "wish" then
@@ -247,6 +251,8 @@ local function refresh(B)
     elseif e and part == "access" then
         B.header:SetHeaderText(L["Zugang"])
         JP.FillAccess(B, e)
+    elseif e and part == "times" then
+        B.header:SetHeaderText(L["Zeiten"])
     elseif e then
         B.header:SetHeaderText(L["Bosse"])
         J.showBosses(B, e)
@@ -255,6 +261,7 @@ local function refresh(B)
         J.showBosses(B, nil)
     end
     JP.FillRun(B, detail and e or nil, part == "bosses")
+    JP.FillTimes(B, detail and e or nil, detail and part == "times")
     B:PlaceParts()
     local hint = L["Je Lauf: Zuwachs der Upgrades mal Dropchance. Beute und Chance aus den Drop-Aufzeichnungen der Gilde."]
     if not detail then
@@ -266,6 +273,9 @@ local function refresh(B)
         return
     elseif part == "map" or part == "access" then
         B.hint:SetText(part == "map" and J.MAP_HINT or J.ACCESS_HINT)
+        return
+    elseif part == "times" then
+        B.hint:SetText(JP.TIMES_HINT)
         return
     end
     if e and #B.bossView.list.items == 0 then hint = L["Für diesen Raid kennt Amisia noch keine Beute."] .. " " .. hint end

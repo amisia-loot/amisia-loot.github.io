@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): run times with splits, best time and history (F-166)
+
+  A small "Run times" window opens with the first fight in a dungeon (and raid): the running time, each
+  boss's split with the difference to your best run in green or red, the next boss's target, and at the end
+  "New best time!" or the difference, with one chat line. Runs that are reset or left unfinished stay in the
+  history but never count as a best. The Dungeons and Raids pages have a new "Times" tab with the best run,
+  the best time per boss and the latest runs; `/amisia times` opens the window, `/amisia times stop` stops
+  the clock.
+
 - feat(lineup): set raid roles from name lists (F-165)
 
   The Lineup page has a new view, "Roles" (a link in its head row): lists of main tanks (in order, "From the planner" fills it

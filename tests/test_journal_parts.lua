@@ -20,7 +20,7 @@ assert(B and B.chosen == "thanes" and B.art:IsShown(), "the thanes' detail")
 -- the tabs: Übersicht first and chosen, Zugang hidden without a key
 local tabs = {}
 for _, k in ipairs(B.partKeys) do tabs[#tabs + 1] = k .. (B.parts[k]:IsShown() and "" or "-") end
-assert(table.concat(tabs, " ") == "bosses map quests wish access-", table.concat(tabs, " "))
+assert(table.concat(tabs, " ") == "bosses map quests wish access- times", table.concat(tabs, " "))
 assert(B.parts.bosses.on and B.parts.bosses:GetText() == "Übersicht" and B.header.ButtonText:GetText() == "Bosse")
 assert(B.bossView:IsShown() and not B.detail:IsShown() and not B.mapView:IsShown() and not B.accessView:IsShown())
 -- no run here: no "1/4", no reset

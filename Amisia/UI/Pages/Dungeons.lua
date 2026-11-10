@@ -2488,7 +2488,7 @@ local function create(parent)
     B.header:SetPoint("TOPRIGHT", -244, headerTop)
     -- the parts of the detail as tabs under the image (D-72): Übersicht (the bosses and their loot),
     -- Karte, Quests, Wunschliste, Zugang (only with a key); the last one stays in settings.bis.dpart
-    JP.BuildTabs(B, tabTop, { "bosses", "map", "quests", "wish", "access" }, "dpart")
+    JP.BuildTabs(B, tabTop, { "bosses", "map", "quests", "wish", "access", "times" }, "dpart")
     B.way = W.Link(B, L["Wegpunkt"], function()
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
@@ -2496,7 +2496,9 @@ local function create(parent)
     -- the run (D-72): "1/4" with its bar and "Lauf zurücksetzen", only in the part Übersicht, at the
     -- right end of the header's line; the waypoint at the tabs' right end
     JP.BuildRun(B)
-    B.partRow = { B.runBar, { B.resetRun, gap = G.ITEM_GAP } }
+    -- the times (F-166): the list where the others are, "Zeiten löschen" in the header's line
+    JP.BuildTimes(B, headerTop - T.HEADER_H - G.GAP)
+    B.partRow = { B.runBar, { B.resetRun, gap = G.ITEM_GAP }, { B.clearTimes, gap = G.ITEM_GAP } }
     function B:PlaceParts() placeParts(self, headerTop) end
     W.Row(B, { B.way }, 0, 0, tabTop - 1, { right = true })
     B:PlaceParts()
@@ -2530,7 +2532,7 @@ local function create(parent)
     B.detailParts = { B.back, B.art, B.header, B.way, B.detail }
     for _, k in ipairs(B.partKeys) do B.detailParts[#B.detailParts + 1] = B.parts[k] end
     -- shown by the part (refresh): the run's parts, the bosses, the map and the keys
-    B.planParts = { B.emptyGrid, B.runBar, B.resetRun, B.bossView, B.mapView, B.accessView }
+    B.planParts = { B.emptyGrid, B.runBar, B.resetRun, B.bossView, B.mapView, B.accessView, B.timesView, B.clearTimes }
     for _, f in ipairs(B.startParts) do B.planParts[#B.planParts + 1] = f end
     for _, f in ipairs(B.detailParts) do B.planParts[#B.planParts + 1] = f end
     for _, chip in ipairs(sortRow) do B.planParts[#B.planParts + 1] = chip end
@@ -2650,13 +2652,16 @@ local function refresh(B)
         -- the part's view (D-72): the list, the map or the keys; the tabs (Zugang only with a key)
         if detail then
             B.parts.access:SetShown(JP.Keys(e.key) ~= nil)
+            B.parts.times:SetShown(ns.Runs.Encounters(e.key) ~= nil)
             JP.PlaceTabs(B)
             B.detail:SetShown(part == "quests" or part == "wish")
             B.bossView:SetShown(part == "bosses")
             B.mapView:SetShown(part == "map")
             B.accessView:SetShown(part == "access")
+            B.timesView:SetShown(part == "times")
         end
         JP.FillRun(B, detail and e or nil, part == "bosses")
+        JP.FillTimes(B, detail and e or nil, detail and part == "times")
         B:PlaceParts()
     else
         B.art:Hide()
@@ -2694,6 +2699,9 @@ local function refresh(B)
         B.header:SetHeaderText(L["Zugang"])
         JP.FillAccess(B, e)
         B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
+    elseif e and part == "times" then
+        B.header:SetHeaderText(L["Zeiten"])
+        B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
     elseif e then
         B.header:SetHeaderText(L["Bosse"])
         showBosses(B, e)
@@ -2717,6 +2725,8 @@ local function refresh(B)
         hint = (#B.detail.items == 0 and (L["Aus dieser Instanz wünschst du dir nichts."] .. " ") or "") .. WISH_HINT
     elseif part == "map" or part == "access" then
         hint = part == "map" and MAP_HINT or ACCESS_HINT
+    elseif part == "times" then
+        hint = JP.TIMES_HINT
     else
         hint = L["Je Lauf: Zuwachs der Upgrades mal Dropchance, ohne Mitbewerber in der Gruppe. Wert: offene Dungeon-Quests plus zwei Läufe."]
         if e and e.computed and #B.bossView.list.items == 0 then hint = L["In diesem Dungeon gibt es nichts mehr für dich."] .. " " .. hint end
@@ -2736,12 +2746,14 @@ end
 -- Opens the page Dungeons with that dungeon or raid chosen (a click on its entrance on the world
 -- map). While the world map shows, the window stays under it (F-011). Returns true when the window
 -- shows.
-function ns.ShowDungeon(key)
+-- part: the part to show ("times" for /amisia zeiten, F-166), else the last one.
+function ns.ShowDungeon(key, part)
     if type(key) ~= "string" then return false end
     -- a raid opens on the page Raids
-    if ns.ShowRaid and ns.Dungeons.IsRaid(key) then return ns.ShowRaid(key) end
+    if ns.ShowRaid and ns.Dungeons.IsRaid(key) then return ns.ShowRaid(key, part) end
     holdHere(false)   -- asked for: no jump to the instance stood in (D-72)
     state().dungeon = key
+    if part then state().dpart = part end
     asked = key
     view = "detail"
     if ns.ShowPage then ns.ShowPage("dungeons") end

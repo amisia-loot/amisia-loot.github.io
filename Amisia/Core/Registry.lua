@@ -545,7 +545,7 @@ ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, group = "
       tip = L["Das große Talentfenster (Talentrechner). Strg + Mausrad über dem Fenster ändert die Größe auch."],
       onChange = function(v) if ns.ApplyTalentScale then ns.ApplyTalentScale(v) end end },
     { key = "ui.resetPosition", type = "button", label = L["Fensterposition zurücksetzen"],
-      run = function() if ns.ResetPositions then ns.ResetPositions() end end, tip = L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner, Raid-Kalender und die Item-Anzeige an ihren Standardplatz zurück."] },
+      run = function() if ns.ResetPositions then ns.ResetPositions() end end, tip = L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner, Raid-Kalender, Lauf-Zeiten und die Item-Anzeige an ihren Standardplatz zurück."] },
     { key = "ui.view", type = "choice", label = L["Ansicht"], default = "auto",
       values = { { "auto", L["Automatisch"] }, { "officer", L["Offizier"] }, { "raider", "Raider" } },
       available = function() return ns.MayOfficerView() end,

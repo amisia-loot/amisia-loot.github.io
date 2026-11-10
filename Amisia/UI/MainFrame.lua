@@ -142,6 +142,7 @@ function ns.ResetPositions()
     if ns.ResetTalentWindowPosition then ns.ResetTalentWindowPosition() end
     if ns.ResetRaidCalendarPosition then ns.ResetRaidCalendarPosition() end
     if ns.ResetLootToastPosition then ns.ResetLootToastPosition() end
+    if ns.ResetRunTimerPosition then ns.ResetRunTimerPosition() end
     ns.msg(L["Fensterposition zurückgesetzt."])
 end
 

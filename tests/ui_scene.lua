@@ -407,6 +407,28 @@ function S.feedback(author)
     STUB.player = player
 end
 
+-- Run times (F-166): the Deadmines with a best run, two more runs (one not finished) and, for the
+-- window, a running clock 12:34 in with three bosses down (Miner Johnson skipped).
+local DM = { 2741, 2742, 3676, 2743, 2744, 2745, 2746, 2747 }
+function S.runTimes(live)
+    local now = math.floor(STUB.now)
+    local function run(at, t, splits, d, c)
+        local s = {}
+        for i, v in ipairs(splits) do if v then s[DM[i]] = v end end
+        return { at = at, t = t, s = s, n = 5, c = c or "Vuloo", d = d }
+    end
+    local best = run(now - 86400, 1452, { 90, 250, false, 420, 610, 800, 1010, 1452 }, true)
+    AmisiaDB.runTimes = { v = 1, live = {}, last = {}, inst = { deadmines = { nm = "Die Todesminen", best = best,
+        seg = { [2741] = { t = 85, at = now - 3 * 86400, c = "Fraktur" }, [2742] = { t = 150, at = best.at, c = "Vuloo" } },
+        runs = { run(now - 3600, 610, { 100, 270, false, 455, 610 }, nil, "Vuloo"), best,
+                 run(now - 3 * 86400, 1530, { 85, 300, 410, 520, 700, 880, 1100, 1530 }, true, "Fraktur") } } } }
+    NS.RunTimes.Loaded()
+    if live then
+        AmisiaDB.runTimes.live[NS.UnitFullName("player")] = { k = "deadmines", i = 36, nm = "Die Todesminen", at = now - 754, r = 1,
+            s = { [2741] = 95, [2742] = 238, [2743] = 431 }, n = 5 }
+    end
+end
+
 -- Further states of pages, shot after the pages themselves (in every view the page shows in):
 -- { page, name, open = fn() } opens the page in that state through its public entry point.
 S.STATES = {
@@ -481,6 +503,11 @@ S.STATES = {
     end },
     -- the detail view of a raid (F-143): the link back, the image, the bosses
     { page = "raidjournal", name = "raidjournal-detail", open = function() NS.ShowRaid("onyxia") end },
+    -- the part Zeiten (F-166): the best run, the bosses' best splits and segments, the latest runs
+    { page = "dungeons", name = "dungeons-times", open = function()
+        S.runTimes()
+        NS.ShowDungeon("deadmines", "times")
+    end },
     { page = "professions", name = "professions-camp", open = function() NS.ShowProfessions("lager") end },
     { page = "professions", name = "professions-favor", open = function() NS.ShowProfessions("gunst") end },
     { page = "professions", name = "professions-tailoring", open = function() NS.ShowProfessions("schneiderei") end },
@@ -801,6 +828,12 @@ S.WINDOWS = {
         NS._rollWindow.refresh()
         STUB.chatLock = false
         return AmisiaRollWindow
+    end },
+    { key = "runtimer", view = "raider", open = function()
+        -- the run timer (F-166): a running clock in the Deadmines against the best run
+        S.runTimes(true)
+        NS.RunTimer.Show("deadmines")
+        return AmisiaRunTimer
     end },
     { key = "tradehelper", view = "raider", open = function()
         -- the trade window with Anna: the helper beside it

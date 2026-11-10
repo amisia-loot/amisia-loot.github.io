@@ -415,7 +415,17 @@ T.DPART = {
     RUN = { W = 124, H = 14, TEXT_W = 40, BAR_W = 80, BAR_H = 6 },
     MAP = { BAR_H = 22, ARROW = 18, LABEL_W = 260, GAP = 4, ZOOM_MAX = 6, WHEEL = 1.25, PIN = 16, HINT_W = 220 },
     ACCESS = { ROW_H = 22, ICON = 16, TEXT_X = 24, STEP_X = 24, STATE_W = 110 },
+    -- the part Zeiten (F-166): rows ROW_H high, four cells at X with widths W (the first from TEXT_X)
+    TIMES = { ROW_H = 22, X = { 4, 220, 330, 440 }, W = { 210, 104, 104, 130 } },
 }
+
+-- The run timer window (F-166, Gear/RunTimer.lua, AmisiaRunTimer): W wide, the content PAD from the
+-- edges and TOP under the window's top; the total in the big font (TOTAL_H), a hint line (LINE_H),
+-- one row per boss (ROW_H: name NAME_W, the split SPLIT_W and the difference DIFF_W at the right end),
+-- the result line and the link at the bottom (BOTTOM_H); at most MAX_ROWS bosses; the live total is
+-- drawn every TICK seconds.
+T.RUNTIMER = { W = 260, PAD = 12, TOP = 30, TOTAL_H = 22, LINE_H = 16, ROW_H = 16, NAME_W = 132, SPLIT_W = 44, DIFF_W = 44,
+    GAP = 4, BOTTOM_H = 40, MAX_ROWS = 16, TICK = 0.2 }
 
 -- the part Übersicht of the detail views of Dungeons and Raids (F-154, D-85): left the bosses (LIST_W
 -- wide with the list's bar, rows ROW_H high: the boss's model PORTRAIT square at PORT_X on a black
