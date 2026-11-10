@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-162 Autor-Charakter: Aufstellung und Raid-Check ohne Offiziersrang
-- Version: -
-- Status: geplant
+- Version: 2.73.1
+- Status: gebaut
 - Prüfung: Wenn du mit Vulo Vultrox einloggst (auch ohne Offiziersrang), dann stehen im Reiter Raid links "Aufstellung" und "Raid-Check", und unter Einstellungen gibt es "Raid-Aufstellung".
 - Prüfung: Wenn du mit Vulo Vultrox unten links "Zur Raider-Ansicht" wählst, dann fehlen beide Seiten wieder.
 - Notiz: DECISIONS D-92. Nur die eigenen Seiten: was andere Clients annehmen (Abgleich, Vergaben, Punkte), hängt weiter am Offiziersrang in der Gilde.
