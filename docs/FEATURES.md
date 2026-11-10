@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-168 Dungeon-Leiste: Bosse, Quests, Zeit und Route
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du allein einen Dungeon betrittst, dann steht oben in der Mitte eine kleine Leiste mit seinem Namen, "Bosse 0/n" und (wenn du dort Quests hast oder bekommen kannst) "Quests n"; läufst du hinaus, ist sie weg (bitte melden, wenn sie etwas verdeckt oder eine Fehlermeldung kommt).
+- Prüfung: Wenn du den ersten Boss tötest, dann steht "Bosse 1/n"; ein Klick auf "Bosse" zeigt darunter die Liste mit Haken beim ersten und dem nächsten gold "als Nächstes"; ein Klick auf einen Boss öffnet die Seite Dungeons auf ihm; ein zweiter Klick auf "Bosse" oder Escape schließt die Liste, die Leiste bleibt.
+- Prüfung: Wenn du eine Quest dieses Dungeons im Log hast und sie fertig ist, dann steht grün "(1 fertig)" hinter "Quests n", in der Liste steht sie oben mit dem gelben "?", und ein Klick öffnet ihren Weg im Quest-Journal der Seite Dungeons.
+- Prüfung: Wenn im Dungeon der erste Kampf beginnt, dann steht "Zeit 0:00" in der Leiste und läuft; ein Klick darauf verbirgt das Fenster "Lauf-Zeiten", ein zweiter zeigt es wieder.
+- Prüfung: Wenn du die Leiste am Namen verschiebst, `/reload` machst und wieder einen Dungeon betrittst, dann steht sie am neuen Platz; das rote x verbirgt sie, `/amisia leiste` zeigt sie wieder, "Fensterposition zurücksetzen" stellt sie oben in die Mitte.
+- Notiz: Spec docs/specs/2026-11-10-dungeon-leiste.md; DECISIONS D-98. "Route 2/5" erscheint, solange du einer eigenen Route folgst (F-167, Rechtsklick: nächster Stopp); in Raids nur mit "Auch in Raids" (Einstellungen, Dungeon-Leiste). Nichts wird gesendet.
+
 ### F-167 Eigene Routen auf der Karte: Stopps, Zeichnen, Teilen
 - Version: -
 - Status: geplant

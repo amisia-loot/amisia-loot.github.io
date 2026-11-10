@@ -461,7 +461,7 @@ L["Schreibt jede Sync-Nachricht in den Chat. Nur zur Fehlersuche."] = "Writes ev
 L["So viele Raids bleiben gespeichert, die ältesten gehen zuerst. In der Offiziersansicht bleibt ein Raid, den die Website noch nicht hat (bis zu 200 Raids)."] = "This many raids stay saved, the oldest go first. In the officer view a raid the site does not have yet stays (up to 200 raids)."
 -- Core/Registry.lua
 L["Größe des Amisia-Fensters in Prozent."] = "Size of the Amisia window in percent."
-L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner, Raid-Kalender, Lauf-Zeiten und die Item-Anzeige an ihren Standardplatz zurück."] = "Resets the main window, the gear table, the roll window, the talent calculator, the raid calendar, the run times and the item display to their default places."
+L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner, Raid-Kalender, Lauf-Zeiten, Dungeon-Leiste und die Item-Anzeige an ihren Standardplatz zurück."] = "Resets the main window, the gear table, the roll window, the talent calculator, the raid calendar, the run times, the dungeon bar and the item display to their default places."
 -- Core/Version.lua
 L["Ein Hinweis im Chat, wenn jemand in Gilde oder Gruppe eine neuere Amisia-Version hat."] = "A note in the chat when someone in your guild or group has a newer Amisia version."
 

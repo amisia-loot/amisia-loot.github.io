@@ -222,7 +222,8 @@ local function bossUpgrade(b)
 end
 
 -- The boss rows of e on page B (n: the place in the game's order, on: the chosen one) and the chosen one.
--- An item asked for from elsewhere (F-157, the source symbol of the gear planner): { key, id, scroll }.
+-- An item asked for from elsewhere (F-157, the source symbol of the gear planner): { key, id, scroll };
+-- a boss asked for (F-168, the dungeon bar): { key, boss = its place in the game's order }.
 -- The next showing of that instance chooses the boss that drops it, scrolls its loot row into view
 -- and marks it; choosing another boss or instance ends it.
 local focus
@@ -239,6 +240,8 @@ local function bossHeads(B, e)
     if focus and focus.key == e.key and not focus.chosen then
         focus.chosen = true
         for _, h in ipairs(heads) do
+            -- a boss asked for by its place in the game's order (F-168, the dungeon bar)
+            if focus.boss and JP.BossIndex(e.key, h.text) == focus.boss then B.bossSel[e.key] = h.text end
             for _, row in ipairs(h.items) do
                 if row.id == focus.id then B.bossSel[e.key] = h.text end
             end
@@ -744,7 +747,7 @@ local function fillLootRow(r, e)
     r.sub:SetText(table.concat(parts, GREY .. " · |r"))
     r.rate:SetText(it.rate or "")
     setWishStar(r.star, e.wished and true or false)
-    r.sel:SetShown(focus ~= nil and focus.id == e.id)
+    r.sel:SetShown(focus ~= nil and focus.id ~= nil and focus.id == e.id)
 end
 
 -- The view of the part Übersicht on page B at top (a SetPoint offset) down to the page's bottom:
@@ -2770,6 +2773,16 @@ end
 function ns.ShowDungeonItem(key, id)
     if type(key) ~= "string" then return false end
     focus = type(id) == "number" and { key = key, id = id, scroll = true } or nil
+    if ns.Dungeons.IsRaid(key) then return ns.ShowRaid ~= nil and ns.ShowRaid(key, "bosses") or false end
+    state().dpart = "bosses"
+    return ns.ShowDungeon(key)
+end
+
+-- Opens the dungeon or raid key on the part Übersicht with its i-th boss of the game's order chosen
+-- (F-168: a click on a boss in the dungeon bar). Returns true when the window shows.
+function ns.ShowDungeonBoss(key, i)
+    if type(key) ~= "string" then return false end
+    focus = type(i) == "number" and { key = key, boss = i } or nil
     if ns.Dungeons.IsRaid(key) then return ns.ShowRaid ~= nil and ns.ShowRaid(key, "bosses") or false end
     state().dpart = "bosses"
     return ns.ShowDungeon(key)

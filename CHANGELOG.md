@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): a small dungeon bar with bosses, quests, time and route (F-168)
+
+  Inside a dungeon a small movable bar shows by itself and goes when you leave: the dungeon's name, "Bosses 2/5"
+  (a click lists them with a tick on the killed ones and the next in gold; a click on one opens it on the Dungeons
+  page), "Quests 3" with the ready ones counted in green (the list shows the journal's marks; a click opens the
+  quest's path), "Time 12:40" while the run's clock runs (a click shows or hides the run times window) and
+  "Route 3/7" while you follow a route (a right click goes to the next stop). The x hides it until the next
+  dungeon, `/amisia bar` shows or hides it, and the settings "Dungeon bar" turn it or its parts off or on in raids.
+
 - feat(map): your own routes on the world map, shared with your group (F-167)
 
   A small bar at the lower left of the world map turns on route mode: "Stop" sets numbered stops with a

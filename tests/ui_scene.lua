@@ -429,6 +429,36 @@ function S.runTimes(live)
     end
 end
 
+-- The dungeon bar (F-168): in the Hall of Thanes after the first fight (the clock runs) and the first
+-- boss, following a route of three stops on its second; list: the segment whose list is open (the
+-- list's frame is the shot).
+function S.dungeonBar(list)
+    if not (NS.DungeonBar.Shown() == "thanes") then
+        STUB.instance = { name = "Halle der Thane", type = "party", id = 3065 }
+        STUB.fire("PLAYER_LEAVING_WORLD")
+        STUB.fire("PLAYER_ENTERING_WORLD")
+        STUB.fire("PLAYER_REGEN_DISABLED"); STUB.fire("PLAYER_REGEN_ENABLED")
+        STUB.tick(754)
+        STUB.fire("ENCOUNTER_END", 3493, "Faldrim Anvilmar", 1, 5, 1)
+        if NS.RunTimer then NS.RunTimer.Hide() end
+        STUB.maps[1426] = STUB.maps[1426] or { name = "Dun Morogh", mapType = 3 }
+        local R = NS.Routes
+        R._reset()
+        R.AddStop(1426, 0.2, 0.3)
+        R.AddStop(1426, 0.4, 0.35)
+        R.AddStop(1426, 0.5, 0.6)
+        R.Follow()
+        R.Next()
+    end
+    NS.DungeonBar.Update()
+    if list then
+        NS.DungeonBar.Toggle(list)
+        return AmisiaDungeonBarList
+    end
+    if AmisiaDungeonBarList then AmisiaDungeonBarList:Hide() end
+    return AmisiaDungeonBar
+end
+
 -- Further states of pages, shot after the pages themselves (in every view the page shows in):
 -- { page, name, open = fn() } opens the page in that state through its public entry point.
 S.STATES = {
@@ -937,6 +967,10 @@ S.WINDOWS = {
         NS.SelfTest.Show()
         return AmisiaSelfTestFrame
     end },
+    -- the dungeon bar (F-168), last (it stands in a dungeon): every segment, then each list open
+    { key = "dungeonbar", view = "raider", open = function() return S.dungeonBar() end },
+    { key = "dungeonbar-bosses", view = "raider", open = function() return S.dungeonBar("bosses") end },
+    { key = "dungeonbar-quests", view = "raider", open = function() return S.dungeonBar("quests") end },
 }
 
 return S

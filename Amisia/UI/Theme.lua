@@ -442,6 +442,15 @@ T.ROUTE = {
 T.RUNTIMER = { W = 260, PAD = 12, TOP = 30, TOTAL_H = 22, LINE_H = 16, ROW_H = 16, NAME_W = 132, SPLIT_W = 44, DIFF_W = 44,
     GAP = 4, BOTTOM_H = 40, MAX_ROWS = 16, TICK = 0.2 }
 
+-- The dungeon bar (F-168, Gear/DungeonBar.lua, AmisiaDungeonBar): one row H high on a dark ground
+-- (SHADE) with a gold edge; the instance's name (at most NAME_W, the drag handle) PAD from the left,
+-- the segments (text tabs) GAP apart, the close circle CLOSE square PAD from the right. Its list
+-- (AmisiaDungeonBarList) hangs LIST_GAP under it, LIST_W wide: rows ROW_H high PAD from its edges, the
+-- name ROW_NAME_W, the note ROW_NOTE_W at the right end; at most MAX_ROWS rows. TICK: the clock's
+-- and the quest log's refresh while the bar shows.
+T.DUNGEONBAR = { H = 26, PAD = 6, GAP = 10, NAME_W = 130, CLOSE = 14, SHADE = 0.78, LIST_GAP = 2, LIST_W = 300, ROW_H = 18,
+    ROW_NAME_W = 196, ROW_NOTE_W = 84, MAX_ROWS = 20, TICK = 0.5 }
+
 -- the part Übersicht of the detail views of Dungeons and Raids (F-154, D-85): left the bosses (LIST_W
 -- wide with the list's bar, rows ROW_H high: the boss's model PORTRAIT square at PORT_X on a black
 -- disc in the gold RING, "n. Name" from TEXT_X over its grey line), GAP, right the chosen boss: its head

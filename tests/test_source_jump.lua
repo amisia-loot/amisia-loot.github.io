@@ -87,6 +87,12 @@ assert(marked(D) == "", "another dungeon: no mark")
 assert(NS.ShowDungeonItem("thanes", 999999))
 assert(D.chosen == "thanes" and chosen(D) ~= nil and marked(D) == "", "unknown item: the dungeon only")
 assert(not NS.ShowDungeonItem(nil, 504), "no key")
+-- a boss by its place in the game's order (F-168, the dungeon bar): Plunder is the third; no row marked
+NS.Set("bis.dpart", "quests")
+assert(NS.ShowDungeonBoss("thanes", 3), "the window shows")
+assert(D.chosen == "thanes" and D.bossView:IsShown() and chosen(D).text == "Plunder" and marked(D) == "", "the third boss chosen")
+assert(NS.ShowDungeonBoss("thanes", 1) and chosen(D).text == "Faldrim Anvilmar", "the first")
+assert(not NS.ShowDungeonBoss(nil, 1), "no key")
 
 -- a raid opens on the page Raids at its part Übersicht
 NS.DropsLearnNames({ [10184] = "Onyxia" }, { [249] = { "raid", "Onyxias Hort" } })
