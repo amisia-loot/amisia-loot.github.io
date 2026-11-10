@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-161 Raid-Aufstellung: Vorlagen, aus dem Raid, Spielerliste, Leeren, Export
-- Version: -
-- Status: geplant
+- Version: 2.73.0
+- Status: gebaut
 - Prüfung: Wenn du als Offizier unter Aufstellung in einer Nacht ohne Liste "Planer" klickst, dann siehst du die leeren Gruppen und darunter die Spieler der Gilde; klickst du einen Namen an und dann einen freien Platz, steht der Spieler dort und im Raster grau mit der Gruppennummer.
 - Prüfung: Wenn du "Vorlagen" klickst, oben links "Stamm" eintippst und "Speichern" klickst, dann steht "Stamm" mit Größe und Spielerzahl in der Liste, auch nach /reload; wählst du eine andere Nacht, die Zeile "Stamm" und "Laden", dann zeigt der Planer dieselben Gruppen.
 - Prüfung: Wenn du "Mehr" > "Als Text exportieren" klickst, dann steht ein Block, der mit "#AMISIA-RAID 1 forever" beginnt; kopierst du ihn, wählst eine leere Nacht (oder leerst die Gruppen) und fügst ihn unter "Einfügen" ein, dann stehen alle wieder in ihren Gruppen.
