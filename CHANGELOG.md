@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.76.2](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.76.2) (2026-11-11)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.76.1...v2.76.2) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - fix(dungeons): the run window shows the boss portraits, coin icons and a grip to make it smaller (F-180)
 
     The round portraits in the window "Lauf-Zeiten" stayed black: the dark veil and the desaturation that
