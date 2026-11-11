@@ -617,7 +617,8 @@ def test_scanned_rewards_become_quest_sources_where_none_is_known():
 
 
 def test_an_empty_scan_part_changes_nothing(tmp_path):
-    """No scan with rewards yet (the real archive today): the build and its file stay byte for byte."""
+    """A scan without rewards (the archive before 2026-11-11): the build and its file stay byte for byte.
+    The committed archive's own rewards have the form the build reads."""
     a = att(quests={500: quest('The Quest', 24, 'A', 1436, rewards=[40])})
     scan = {40: scan_item('I40', q=3), 41: scan_item('I41', q=3)}
     old = scanned_quests({500: 'Die Quest\t24', 9: 'Alt\t3\t0\t\t0\tZiele'})
@@ -631,7 +632,9 @@ def test_an_empty_scan_part_changes_nothing(tmp_path):
     assert outs[0] == outs[1] == outs[2]
     import build_scan_archive as sa
     real = build_gear.scan_quest_rewards(sa.id_scans(sa.ARCHIVE, []))
-    assert real == {}, 'the committed archive has no rewards yet'
+    for qid, row in real.items():
+        assert isinstance(qid, int) and row['items'] and all(isinstance(i, int) and i > 0 for i in row['items']), (qid, row)
+        assert isinstance(row['title'], str) and row['title'], (qid, row)
 
 
 # ---------------------------------------------------------------- gear without a known source (D-107)

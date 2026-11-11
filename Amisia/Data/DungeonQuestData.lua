@@ -15,7 +15,7 @@ local _, ns = ...
 -- in the dungeon where the start item can lie ({ { German, English }, ... }, hand-kept hints, D-65) }.
 -- Names and places the Amisia collector saw itself go first (German where it saw them); nil is unknown.
 ns.DUNGEON_QUESTS = {
-    built = "2026-11-10", source = "007a0073a4",
+    built = "2026-11-11", source = "007a0073a4",
     D = {
         bfd = { 908, 971, 1198, 1199, 1200, 1275, 3765, 6561, 6562, 6563, 6564, 6565, 6921, 6922 },
         brd = { 3701, 3702, 3801, 3802, 3906, 3907, 3981, 3982, 4001, 4002, 4003, 4004, 4022, 4023, 4024, 4061, 4062, 4063, 4081, 4082, 4083, 4121, 4122, 4123, 4126, 4128, 4132, 4133, 4134, 4136, 4182, 4183, 4184, 4185, 4186, 4201, 4223, 4224, 4241, 4242, 4262, 4263, 4264, 4282, 4286, 4295, 4322, 4324, 4341, 4342, 4361, 4362, 4363, 6402, 6403, 6501, 6642, 6643, 6644, 6645, 6646, 7201 },
@@ -160,7 +160,7 @@ ns.DUNGEON_QUESTS = {
         [2398] = { "The Lost Dwarves", 35, 40, "A", 0, "O", "Prospector Stormpike", "1455:7460:1170", nil, nil, "ulda", nil, { 2240 }, true, nil, nil, 0, 0 },
         [2439] = { "The Platinum Discs (3/3)", 40, 47, "A", 0, "O", "High Explorer Magellas", "1455:6990:1860", { 2279 }, nil, "ulda", { 9587 }, nil, nil, nil, nil, 0, 0 },
         [2440] = { "The Platinum Discs (3/3)", 40, 47, "H", 0, "O", "Sage Truthseeker", "1456:3460:4720", { 2280 }, nil, "ulda", { 9587 }, nil, nil, nil, nil, 0, 0 },
-        [2768] = { "Divino-matic Rod", 40, 47, "", 0, "O", "Chief Engineer Bilgewhizzle", "1446:5250:2850", nil, nil, "zf", { 9534, 9533 }, nil, nil, nil, nil, 0, 0 },
+        [2768] = { "Divino-matic Rod", 40, 47, "", 0, "O", "Chefingenieur Bilgewhizzle", "1446:5240:2848", nil, nil, "zf", { 9534, 9533 }, nil, nil, nil, nil, 0, 0, nil, nil, "Bringt die Wünschel-mato-Rute nach Gadgetzan zu Chefingenieur Bilgewhizzle." },
         [2769] = { "The Brassbolts Brothers", 40, 46, "A", 0, "O", "Klockmort Spannerspan", "1455:6820:4620", nil, nil, "zf", nil, { 2770 }, true, nil, nil, 0, 0 },
         [2770] = { "Gahz'rilla", 40, 50, "", 0, "O", "Wizzle Brassbolts", "1441:7819:7705", nil, nil, "zf", { 11122, 9653 }, nil, nil, nil, nil, 0, 0, nil, nil, "Bringt Wizzle Brassbolts in der schimmernden Ebene Gahz'rillas energiegeladene Schuppe." },
         [2841] = { "Rig Wars", 25, 35, "H", 0, "O", "Nogg", "1454:7580:2520", nil, nil, "gnomer", { 9623, 9625, 9624 }, nil, nil, nil, nil, 0, 0 },

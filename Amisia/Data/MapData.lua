@@ -16,7 +16,7 @@ local _, ns = ...
 -- T: docks { uiMapID, x, y, kind Z (zeppelin) / S (ship), faction A/H/N, { { area id, English name }, ... } }.
 ns.LazyData("MAP", [=[
 return {
-game="forever",built="2026-11-10",source="007a0073a4",
+game="forever",built="2026-11-11",source="007a0073a4",
 P={
 ["I:129"]="1413:5091:9288",
 ["I:189"]="1420:8508:3138",
@@ -211,6 +211,7 @@ P={
 ["Q:275"]="1437:5630:4040",
 ["Q:2765"]="1434:5060:2040",
 ["Q:2767"]="1444:5340:5560",
+["Q:2768"]="1446:5250:2850",
 ["Q:2770"]="1441:7800:7700",
 ["Q:2821"]="1444:3060:4270",
 ["Q:2822"]="1444:7440:4280",
@@ -1273,6 +1274,7 @@ G={
 ["Q:275"]="Rethiel the Greenwarden",
 ["Q:2765"]="Galvan the Ancient",
 ["Q:2767"]="Homing Robot OOX-22\\/FE",
+["Q:2768"]="Chief Engineer Bilgewhizzle",
 ["Q:2770"]="Wizzle Brassbolts",
 ["Q:2821"]="Pratt McGrubben",
 ["Q:2822"]="Jangdor Swiftstrider",
@@ -1883,4 +1885,4 @@ T={
 {1445,7160,5640,"S","A",{{150,"Menethil Harbor"}}},
 },
 }
-]=], 1099)
+]=], 1100)

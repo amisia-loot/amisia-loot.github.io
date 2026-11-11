@@ -11,6 +11,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
     after a jump the scan printed one line per id until it had caught up. It now counts the ids it
     has asked: one line every 2000 ids in phase B, every 250 in phase A.
 
+- data(gear): first quest rewards and NPC names from the scans by number (F-172, F-175)
+
+    The data now holds the German names of 2391 NPCs from the NPC scan and the rewards of the first
+    1077 quests of the new quest scan: 14 pieces of gear that had no known source name a quest as
+    their source and show up in the gear planner's suggestions without the switch for source-less items.
+
 ## [v2.75.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.75.0) (2026-11-10)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.74.0...v2.75.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
