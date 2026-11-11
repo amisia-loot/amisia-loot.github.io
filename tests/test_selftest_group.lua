@@ -57,6 +57,13 @@ local function makeClient(opts)
     for _, name in ipairs({ "RequestLoadQuestByID", "HaveQuestData", "GetTitleForQuestID", "GetQuestDifficultyLevel", "GetQuestTagInfo" }) do
         C_QuestLog[name] = function() error(name .. " called") end
     end
+    -- F-178: the group's quest state and the quest share, only looked up here
+    C_QuestLog.IsComplete = function() return false end
+    C_QuestLog.GetLogIndexForQuestID = function() return nil end
+    C_QuestLog.SetSelectedQuest = function() error("SetSelectedQuest called") end
+    C_QuestLog.GetSelectedQuest = function() return 0 end
+    C_QuestLog.IsPushableQuest = function() return false end
+    _G.QuestLogPushQuest = function() error("QuestLogPushQuest called") end
     _G.AcceptGroup = function() error("AcceptGroup called") end
     _G.StaticPopup_Hide = function() end
     -- F-165: the roles of the lineup, only looked up
@@ -151,6 +158,7 @@ assert(has(text, "OK     Ausrüstung: alle 4 vorhanden"), text)
 assert(has(text, "OK     Pull-Countdown, Einladung annehmen: alle 3 vorhanden"), text)
 assert(has(text, "OK     Rollen: Haupttank, Plündermeister: alle 6 vorhanden"), text)
 assert(has(text, "OK     Routen: Kartenlink, Position: alle 5 vorhanden"), text)
+assert(has(text, "OK     Gruppen-Queststand, Quest teilen: alle 8 vorhanden"), text)
 assert(has(text, "CanInvite true, AllowedToDoPartyConversion(true) false"), text)
 assert(has(text, [[WERT   ERR_BAD_PLAYER_NAME_S: "Spieler '%s' nicht gefunden."]]), text)
 -- auras

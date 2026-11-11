@@ -1546,6 +1546,36 @@ function D.QuestState(n)
     return "open"
 end
 
+-- The own state of a quest of the quest data by its id alone, for what the group learns (F-178,
+-- Gear/GroupQuests.lua): "done", "ready", "active", "na" (the data says this character can never take
+-- it: faction, class, race; or a quest that excludes it is done), "locked" (the own level below its
+-- minimum, a pre-quest of field 9 open, none of field 10 done) or "open". o: ns.QuestOpts() (faction,
+-- class, race, level). A quest the data lacks reads by the client's flags alone.
+local function hasRaceBit(mask, race) return math.floor(mask / 2 ^ (race - 1)) % 2 == 1 end
+function D.OwnQuestState(qid, o)
+    if questDone(qid) then return "done" end
+    if questActive(qid) then return questReady(qid) and "ready" or "active" end
+    local dq = questData()
+    local r = dq and dq.Q[qid]
+    if type(r) ~= "table" then return "open" end
+    o = o or (ns.QuestOpts and ns.QuestOpts()) or {}
+    if not questFits(r, o) or goneBy(r) then return "na" end
+    if type(r[17]) == "number" and r[17] > 0 and type(o.race) == "number" and not hasRaceBit(r[17], o.race) then return "na" end
+    local my = o.level or tonumber(ns.Plain(UnitLevel("player"))) or 1
+    if (r[2] or 0) > my then return "locked" end
+    for _, p in ipairs(type(r[9]) == "table" and r[9] or {}) do
+        if not questDone(p) then return "locked" end
+    end
+    if type(r[10]) == "table" and #r[10] > 0 then
+        local any = false
+        for _, p in ipairs(r[10]) do
+            if questDone(p) then any = true break end
+        end
+        if not any then return "locked" end
+    end
+    return "open"
+end
+
 -- The client's marks for a quest state, as text: the yellow "!" of a quest to take (grey: not yet),
 -- the "?" of one in the log (yellow: ready to hand in, grey: under way), the ready check's tick for a
 -- done one and its cross for one no longer possible.

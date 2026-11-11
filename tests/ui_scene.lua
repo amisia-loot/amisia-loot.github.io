@@ -774,6 +774,26 @@ S.STATES = {
     -- the page Feedback: a new report with every state of the own reports; the author's inbox
     { page = "feedback", name = "feedback-write", open = function() S.feedback(false) end },
     { page = "feedback", name = "feedback-inbox", open = function() S.feedback(true) end },
+    -- F-178: the Deadmines' quests in a full party of five (the raid becomes a party): Fraktur and
+    -- Chorf with Amisia (every state between them), Anna and Kimtaro without (unknown); four marks a row
+    { page = "dungeons", name = "dungeons-quests-group", open = function()
+        STUB.party = true
+        STUB.roster = { { name = "Vuloo", class = "PRIEST" }, { name = "Fraktur", class = "SHAMAN" },
+            { name = "Chorf", class = "WARRIOR" }, { name = "Anna Bergmann", class = "PRIEST" }, { name = "Kimtaro", class = "ROGUE" } }
+        STUB.fire("GROUP_ROSTER_UPDATE")
+        local GQ = NS.GroupQuests
+        local cycle = { { "ready", "open" }, { "active", "done" }, { "done", "locked" }, { "open", "active" }, { "na", "ready" } }
+        local a, b = {}, {}
+        for i, qid in ipairs(GQ.ListOf("deadmines")) do
+            local c = cycle[(i - 1) % #cycle + 1]
+            a[#a + 1], b[#b + 1] = { qid, c[1] }, { qid, c[2] }
+        end
+        for who, list in pairs({ Fraktur = a, Chorf = b }) do
+            STUB.fire("CHAT_MSG_ADDON", "Amisia", "1QS\tdeadmines\t1\t-\t" .. GQ.Encode(list), "PARTY", who)
+        end
+        AmisiaDB.settings.bis.dpart = "quests"
+        NS.ShowDungeon("deadmines")
+    end },
     -- the scene's priest opens the mage scrolls by command (any class may); last, as the page list
     -- keeps its row from then on
     { page = "scrolls", name = "scrolls", always = true, open = function() NS.ShowMageScrolls() end },

@@ -39,6 +39,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-178 Gruppen-Queststatus im Dungeon
+- Version: -
+- Status: geplant
+- Braucht: Gruppe
+- Prüfung: Wenn du mit einem zweiten Amisia in einer Gruppe die Todesminen (oder einen anderen Dungeon) betrittst und auf der Seite Dungeons den Teil Quests öffnest, dann steht rechts in jeder Zeile sein Anfangsbuchstabe in Klassenfarbe mit dem Questzeichen seines Stands; die Maus auf der Zeile nennt unter "Gruppe:", wer sie im Log hat, abgeben kann, erledigt hat oder braucht.
+- Prüfung: Wenn ein Mitglied kein Amisia hat (oder "Meinen Dungeon-Queststand mit der Gruppe teilen" aus hat), dann steht es grau mit "?" da und im Tooltip unter "Unbekannt (kein Amisia oder Teilen aus)", nie unter "Fehlt".
+- Prüfung: Wenn du eine Quest im Log hast, die dem anderen fehlt, dann zeigt die Dungeon-Leiste bei Quests "· 1 teilen", ihre Liste "fehlt 1", der Tooltip "Kannst du teilen: <Name>", und ein Klick auf "Teilen" in der Zeile (außerhalb des Kampfes) teilt sie.
+- Prüfung: Wenn der andere die Quest annimmt oder fertig macht, dann ändert sich sein Zeichen nach wenigen Sekunden (graues "?" im Log, gelbes "?" fertig).
+- Prüfung: Wenn ihr draußen steht und du den Teil Quests eines Dungeons öffnest, dann kommen die Zeichen der anderen auch ohne Betreten.
+- Notiz: Spec docs/specs/2026-11-11-gruppen-queststatus.md; DECISIONS D-110. Nur in einer eigenen Gruppe (PARTY), nicht im Raid. Ob der Client Quests teilen kann ("Teilen" erscheint nur dann), sagt `/amisia selbsttest gruppe` ("Gruppen-Queststand, Quest teilen").
+
 ### F-177 Dungeonquests aus dem eigenen Quest-Scan
 - Version: -
 - Status: geplant

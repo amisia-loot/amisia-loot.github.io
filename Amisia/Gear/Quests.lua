@@ -894,6 +894,9 @@ ns.RegisterSettings{ key = "quests", label = "Quests", order = 49, group = "dung
       tip = L["Im Tooltip eines Questgegenstands: zu welcher Quest er gehört, ob sie abgeschlossen ist und ob du ihn noch brauchst."] },
     { key = "quests.itemNoAsk", type = "toggle", label = L["Questgegenstände ohne Nachfrage löschen"], default = false,
       tip = L["Im Fenster \"Questgegenstände aufräumen\" löscht ein Klick auf \"Löschen\" einen sicher überflüssigen Stapel ohne Frage. Gelöschte Gegenstände lassen sich nicht zurückholen."] },
+    -- F-178: the group's quest state of a dungeon (Gear/GroupQuests.lua, D-110)
+    { key = "quests.groupShare", type = "toggle", label = L["Meinen Dungeon-Queststand mit der Gruppe teilen"], default = true,
+      tip = L["In einer Gruppe (nicht im Raid) sehen die anderen mit Amisia, welche Quests eines Dungeons du hast, abgeben kannst, erledigt hast oder noch brauchst. Aus: Amisia schickt nichts davon; was die anderen schicken, siehst du weiter."] },
 } }
 
 -- The page's window state: settings.questsPage (search, zone, show, chains, upgrades, mine,

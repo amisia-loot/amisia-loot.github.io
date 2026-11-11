@@ -339,7 +339,7 @@ local function questItems(key)
     local out = {}
     for _, q in ipairs(list) do
         out[#out + 1] = { kind = "quest", text = q.title .. (q.done and L[" (erledigt)"] or q.gone and L[" (nicht mehr möglich)"] or ""),
-            q = q, qid = q.qid, path = ns.Dungeons.QuestPath(q, key) }
+            q = q, qid = q.qid, dkey = key, path = ns.Dungeons.QuestPath(q, key) }
     end
     c.qdetail[key] = { list = list, out = out }
     return out, status
@@ -381,10 +381,13 @@ local CELLS = {
     quest = { name = { 4, 178 }, slot = { 186, 48 }, way = { 236, 58 }, gain = { 298, 34 }, xp = { 336, 56 }, rate = { 398, 188 } },
     other = { name = { 4, 220 }, slot = { 228, 62 }, way = { 236, 58 }, gain = { 292, 40 }, xp = { 336, 56 }, rate = { 398, 188 } },
 }
+-- a quest row in a party (F-178): the start shorter, the members' marks at the right end
+CELLS.questg = { name = { 4, 178 }, slot = { 186, 48 }, way = { 236, 58 }, gain = { 298, 34 }, xp = { 336, 56 }, rate = { 398, 92 },
+    grp = { 492, 94 } }
 -- a boss of the Wunschliste: its name, its gain per run after it
 CELLS.boss = { name = { 4, 220 }, slot = { 228, 62 }, way = { 236, 58 }, gain = { 292, 40 }, xp = { 336, 56 }, rate = { 228, 200 } }
 local function placeCells(r, kind)
-    kind = (kind == "quest" or kind == "boss") and kind or "other"
+    kind = CELLS[kind] and kind or "other"
     if r.cellKind == kind then return end
     r.cellKind = kind
     for key, c in pairs(CELLS[kind]) do
@@ -406,6 +409,8 @@ end
 
 local function fillDetailRow(r, e)
     placeCells(r, e.kind)
+    r.grp:SetText("")
+    if r.share then r.share:Hide() end
     r.xp:SetText("")
     r.way:SetText("")
     if e.kind == "boss" then
@@ -428,8 +433,16 @@ local function fillDetailRow(r, e)
         r.gain:SetText(gainText(it))
         r.rate:SetText(it.upgrade and (GREEN .. "Upgrade|r") or "")
     else
-        -- a quest: state, title, level, the quest path's progress, where it starts
+        -- a quest: state, title, level, the quest path's progress, where it starts; in a party the
+        -- members' marks (F-178)
         local q = e.q
+        local GQ = ns.GroupQuests
+        local grpMarks = GQ and e.dkey and GQ.Marks(e.dkey, q.qid) or ""
+        if grpMarks ~= "" then
+            placeCells(r, "questg")
+            r.grp:SetText(grpMarks)
+        end
+        if r.share then r.share:SetShown(GQ ~= nil and e.dkey ~= nil and GQ.CanShare(e.dkey, q.qid) and GQ.ShareAvailable()) end
         local st = questState(q)
         local icon = ns.Dungeons.QuestStateIcon(st) .. " "
         local title = GOLD_TEXT .. e.text .. "|r"
@@ -498,6 +511,12 @@ local function questTip(self)
         if q.best then gains[#gains + 1] = RTEXT.worthUp end
         GameTooltip:AddDoubleLine(RTEXT.worthTip:format(table.concat(gains, " + ")), VERDICT[w.verdict] or "", 0.85, 0.85, 0.85, 1, 1, 1)
         GameTooltip:AddLine(RTEXT.worthCost:format(w.steps, w.zones), 0.6, 0.6, 0.6)
+    end
+    -- the party's state of it (F-178)
+    if ns.GroupQuests and e.dkey then
+        for i, line in ipairs(ns.GroupQuests.TipLines(e.dkey, q.qid)) do
+            if i == 1 then GameTooltip:AddLine(line, 1, 0.82, 0) else GameTooltip:AddLine(line, 0.85, 0.85, 0.85, true) end
+        end
     end
     if not self.journal then GameTooltip:AddLine(L["Klick: der Questweg mit allen Schritten"], 0.31, 0.82, 0.42) end
     GameTooltip:Show()
@@ -575,6 +594,25 @@ local function itemTip(owner, id)
     GameTooltip:Show()
 end
 
+-- "Teilen" on a quest row (F-178): the client's quest share of the own quest, only on the click.
+local function addShare(r)
+    r.share = W.Link(r, L["Teilen"], function(self)
+        local e = self:GetParent().item
+        if not (e and e.qid and ns.GroupQuests) then return end
+        local ok, why = ns.GroupQuests.Share(e.qid)
+        if ok then
+            ns.msg(L["Quest \"%s\" mit der Gruppe geteilt."]:format(e.q and e.q.title or "?"))
+        elseif why then
+            ns.msg(why)
+        end
+    end)
+    W.FitChip(r.share)
+    r.share:SetPoint("RIGHT", -4, 0)
+    W.Tooltip(r.share, L["Teilen"], L["Teilt die Quest aus deinem Questlog mit der Gruppe (wem sie fehlt, steht im Tooltip der Zeile)."])
+    W.RowAction(r, r.share)
+    r.share:Hide()
+end
+
 local function buildDetail(B, rows, top)
     local list = W.List(B, rows, ROW_H, function(r)
         r.name = col(r, 4, 220, nil, T.FONT.text)
@@ -586,6 +624,9 @@ local function buildDetail(B, rows, top)
         r.rate = col(r, 398, 188, nil, T.FONT.text)
         r.way = col(r, 236, 58, nil, T.FONT.text)
         r.way:SetJustifyH("RIGHT")
+        -- the party's marks of a quest (F-178) and "Teilen" while the mouse is on the row (D-67)
+        r.grp = col(r, 492, 94, nil, T.FONT.text)
+        addShare(r)
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         r:SetScript("OnClick", function(self, button)
             local e = self.item
@@ -2720,6 +2761,8 @@ local function refresh(B)
     B.pathView:Hide()
     if e and part == "quests" then
         local rows
+        -- the party's state of these quests: asked for while a member's is missing (F-178)
+        if ns.GroupQuests then ns.GroupQuests.Look(e.key) end
         rows, status = questItems(e.key)
         B.header:SetHeaderText("Quests")
         B.detail:SetItems(rows)
@@ -2754,7 +2797,9 @@ local function refresh(B)
         if e and #B.detail.items == 0 and hint == "" then hint = L["Für diesen Dungeon kennt Amisia keine Quests."] end
         local xp = e and Dn.XPSumText(Dn.XPSum((ns.DungeonQuests(e.key)))) or ""
         local parts = {}
-        for _, t in ipairs({ xp, hint, L["Klick auf eine Quest: ihr Questweg mit allen Schritten. Weg: erledigte Schritte von allen. Grün: Upgrade für dich."] }) do
+        local grp = ns.GroupQuests and #ns.GroupQuests.Members() > 0
+            and L["Rechts je Mitglied ein Zeichen (Maus auf die Zeile: wer was hat; grau mit \"?\": unbekannt)."] or ""
+        for _, t in ipairs({ xp, hint, L["Klick auf eine Quest: ihr Questweg mit allen Schritten. Weg: erledigte Schritte von allen. Grün: Upgrade für dich."], grp }) do
             if t ~= "" then parts[#parts + 1] = t end
         end
         hint = table.concat(parts, " ")
@@ -2843,6 +2888,8 @@ end
 
 -- the own run changed (a kill, an entry, a reset; Gear/Runs.lua): the cards and the bosses (D-72)
 ns.Listen("RUN", function() if ns.RefreshSoon then ns.RefreshSoon() end end)
+-- a member's quest state came or went (F-178)
+ns.Listen("GROUP_QUESTS", function() if ns.RefreshSoon then ns.RefreshSoon() end end)
 
 -- the journal parts the page Raids shares (UI/Pages/RaidJournal.lua)
 ns.DungeonJournalKit = { buildArt = buildArt, fillArt = fillArt, buildDetail = buildDetail,

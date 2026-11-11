@@ -239,8 +239,11 @@ function entriesOf.quests(k)
     for _, e in ipairs((DBar.Quests(k))) do
         local q = e.q
         local qk = e.key or k
+        -- a quest of the own log a member lacks: "fehlt 2" instead of the level (F-178)
+        local GQ = ns.GroupQuests
+        local lack = GQ and q.qid and GQ.CanShare(qk, q.qid) and #GQ.Lacking(qk, q.qid) or 0
         out[#out + 1] = { text = D.QuestStateIcon(e.state) .. " " .. (e.state == "ready" and GREEN .. q.title .. "|r" or q.title),
-            note = D.QuestLevelText(q), state = e.state, qid = q.qid,
+            note = lack > 0 and (GOLD .. L["fehlt %d##Gruppe"]:format(lack) .. "|r") or D.QuestLevelText(q), state = e.state, qid = q.qid, lack = lack,
             run = function() if ns.ShowDungeonQuest then ns.ShowDungeonQuest(qk, q.qid or q.title) end end }
     end
     return out
@@ -323,7 +326,8 @@ end
 ---------------------------------------------------------------------------
 local TIPS = {
     bosses = { L["Bosse##Leiste"], L["Die Bosse dieses Dungeons in der Reihenfolge des Spiels; ein Klick auf einen öffnet ihn auf der Seite."] },
-    quests = { L["Quests##Leiste"], L["Die Quests dieses Dungeons, die du hast oder noch bekommen kannst; grün: fertig zum Abgeben. Ein Klick auf eine öffnet ihren Weg im Quest-Journal."] },
+    quests = { L["Quests##Leiste"], L["Die Quests dieses Dungeons, die du hast oder noch bekommen kannst; grün: fertig zum Abgeben. Ein Klick auf eine öffnet ihren Weg im Quest-Journal."] ..
+        " " .. L["In einer Gruppe: \"2 teilen\" sind Quests aus deinem Log, die anderen mit Amisia fehlen (\"fehlt 2\" in der Liste)."] },
     time = { L["Zeit##Leiste"], L["Die Uhr dieses Laufs; ein Klick zeigt oder verbirgt das Fenster \"Lauf-Zeiten\"."] },
     route = { L["Route##Leiste"], L["Die Route, der du folgst: Stopp und Anzahl. Rechtsklick: weiter zum nächsten Stopp."] },
 }
@@ -439,6 +443,9 @@ function DBar.Texts(k)
         local qs, ready = DBar.Quests(k)
         if #qs > 0 then
             out.quests = L["Quests %d"]:format(#qs) .. (ready > 0 and " " .. GREEN .. L["(%d fertig)"]:format(ready) .. "|r" or "")
+            -- in a party: how many of the own quests in the log a member lacks (F-178, D-110)
+            local share = ns.GroupQuests and ns.GroupQuests.ShareCount(shownKeys(k)) or 0
+            if share > 0 then out.quests = out.quests .. " " .. GOLD .. L["· %d teilen"]:format(share) .. "|r" end
         end
     end
     if on("time") then
@@ -538,6 +545,7 @@ ns.OnEvent("ZONE_CHANGED_NEW_AREA", function() DBar.Update() end)
 ns.Listen("RUN", function() if bar then DBar.Update() end end)
 ns.Listen("RUNTIMES", function() if key then DBar.Refresh() end end)
 ns.Listen("ROUTES", function(what) if key and what == "follow" then DBar.Refresh() end end)
+ns.Listen("GROUP_QUESTS", function() if key then dirty = true end end)
 for _, e in ipairs({ "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP" }) do
     ns.OnEvent(e, soon)
 end

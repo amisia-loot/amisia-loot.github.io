@@ -33,15 +33,16 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
 -- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
--- a feedback answer per report id
-local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10, IV = 60, SQ = 5, FA = 5 }
+-- a feedback answer per report id; the group quest state per dungeon
+local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10, IV = 60, SQ = 5, FA = 5, QS = 3 }
 local KEYED_MAX = 64        -- keyed gaps remembered per sender before the old ones are cleared
 
--- PARTY only in an own home party (D-97: the routes and points shared with a group of five)
+-- PARTY only in an own home party (D-97: the routes and points shared with a group of five; D-110: the
+-- group's quest state of a dungeon)
 local CHANNELS = { RAID = true, PARTY = true, GUILD = true, WHISPER = true }
 local BLOB_ARTS = { SP = true, SO = true, OP = true, DK = true, CK = true, LC = true, PK = true, KS = true, SR = true }
 -- parts a blob of an art may have (default MAX_PARTS)
@@ -348,6 +349,26 @@ local function lockEntry(e)
 end
 
 -- kind -> fields check; more fields than these are allowed (a later client of the same protocol)
+-- A dungeon key of the quest data (letters, digits, "_", at most 24).
+local function dungeonKey(v) return type(v) == "string" and #v >= 1 and #v <= 24 and v:match("^[%w_]+$") ~= nil end
+-- The quest states of a QS: "-", or 1-100 entries of a base-36 step (1-4 characters, at least 1) and one
+-- of the state characters . < + ! * /, the ids at most 999999.
+local function questStates(v)
+    if v == "-" then return true end
+    if type(v) ~= "string" or v == "" or #v > 240 then return false end
+    local n, at, id = 0, 1, 0
+    while at <= #v do
+        local s, e, d = v:find("^([0-9a-z]+)[%.%+!%*/<]", at)
+        if not s or #d > 4 then return false end
+        local step = tonumber(d, 36)
+        if not step or step < 1 then return false end
+        id, n = id + step, n + 1
+        if n > 100 or id > 999999 then return false end
+        at = e + 1
+    end
+    return true
+end
+
 local VALID = {
     HI = function(f) return #f >= 4 and f[1]:match("^%d+%.%d+%.%d+$") and isNum(f[2], 0, 9) and isFlags(f[3], "OL")
                          and (f[4] == "-" or isKey(f[4])) end,
@@ -487,6 +508,13 @@ local VALID = {
     RX = function(f)
         return #f >= 4 and isNum(f[1], 1, 999999) and isNum(f[2], 0, 10000) and isNum(f[3], 0, 10000) and routeText(f[4], 24)
     end,
+    -- the group quest state (Gear/GroupQuests.lua, D-110): QS <dungeon key> <version> <flags T|-> <list>
+    -- (base-36 id steps, each followed by its state character, or "-"); QR <dungeon keys, comma, max 4>
+    -- <version>
+    QS = function(f)
+        return #f >= 4 and dungeonKey(f[1]) and isNum(f[2], 1, 9) and isFlags(f[3], "T") and questStates(f[4])
+    end,
+    QR = function(f) return #f >= 2 and commaList(f[1], 4, dungeonKey) and isNum(f[2], 1, 9) end,
 }
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end
@@ -773,7 +801,7 @@ local function envelope(kind, fields)
 end
 
 -- Sends one control message. kind: "HI", "VQ", ...; fields: list of strings; chan "GUILD", "RAID",
--- "PARTY" (only the routes, D-97) or "WHISPER" with target. opts.ttl (seconds, default 60), opts.key (a waiting entry with the same
+-- "PARTY" (only the routes, D-97, and the group quest state, D-110) or "WHISPER" with target. opts.ttl (seconds, default 60), opts.key (a waiting entry with the same
 -- key is replaced), opts.jitter (random delay of 0 to n seconds before the first try), opts.low
 -- (lowest priority: goes only while nothing else waits, ttl default 120), opts.when (a function; the
 -- entry waits while it does not return true), opts.sent (a function called once the message went),

@@ -56,6 +56,10 @@ GT.FUNCTIONS = {
     -- (C_QuestLog.HaveQuestData is not on this client and not needed: the scan asks every quest)
     { L["Daten per Nummer"], { "C_TooltipInfo.GetHyperlink", "C_QuestLog.RequestLoadQuestByID",
         "C_QuestLog.GetTitleForQuestID", "C_QuestLog.GetQuestDifficultyLevel", "C_QuestLog.GetQuestTagInfo" } },
+    -- F-178: the group's quest state (the log's flags) and "Teilen" (the client's quest share)
+    { L["Gruppen-Queststand, Quest teilen"], { "C_QuestLog.IsOnQuest", "C_QuestLog.IsComplete", "C_QuestLog.IsQuestFlaggedCompleted",
+        "QuestLogPushQuest", "C_QuestLog.SetSelectedQuest|SelectQuestLogEntry", "C_QuestLog.GetSelectedQuest|GetQuestLogSelection",
+        "C_QuestLog.IsPushableQuest|GetQuestLogPushable", "C_QuestLog.GetLogIndexForQuestID|GetQuestLogIndexByID" } },
 }
 -- The system message templates the invite status would read (check 10).
 GT.TEMPLATES = { "ERR_INVITE_PLAYER_S", "ERR_DECLINE_GROUP_S", "ERR_ALREADY_IN_GROUP_S", "ERR_BAD_PLAYER_NAME_S", "ERR_GROUP_FULL",

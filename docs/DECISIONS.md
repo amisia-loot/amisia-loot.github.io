@@ -2812,3 +2812,66 @@ fällt im Addon die Marke "nur aus dem Quest-Scan" weg.
 `tests/test_dungeon_scanned_quests.lua` (Liste je Fraktion, Titel deutsch und englisch, kein Start, Stufe,
 EP des Scans als Schätzung, Questweg, kein Wegpunkt, kein Kartenschritt, die Marke weg, sobald der Sammler
 den Geber sah, Dungeon-Leiste, Tooltip, Karte).
+
+## D-110 Gruppen-Queststatus: der Stand eines Dungeons an die eigene Gruppe, nur PARTY, nur im Speicher
+
+**Datum:** 2026-11-11
+**Entscheidung:** Wer in der eigenen Gruppe welche Quest eines Dungeons hat, abgeben kann, erledigt hat oder
+noch braucht (F-178, Spec `docs/specs/2026-11-11-gruppen-queststatus.md`), Modul `Gear/GroupQuests.lua`:
+- **Nachrichten** nur an `PARTY` in einer eigenen Gruppe (`ns.HomeGroup`, kein Raid, nie `GUILD`, `WHISPER`,
+  `INSTANCE_CHAT`): `QS <Dungeon> <Version 1> <T|-> <Liste>` ist der eigene Stand jeder Quest der Liste des
+  Dungeons in den eigenen Questdaten (`DUNGEON_QUESTS.D`): die IDs aufsteigend, je als Abstand zur vorigen in
+  Basis 36 und dahinter ein Zeichen (`.` kann sie annehmen, `<` noch nicht: Stufe, Vorquest; `+` im Log, `!`
+  fertig zum Abgeben, `*` erledigt, `/` nie: Fraktion, Klasse, Volk oder eine ausschließende Quest erledigt;
+  `D.OwnQuestState`), `-` für eine leere Liste, `T` wenn sie gekürzt werden musste (höchstens 100 Quests und
+  250 Bytes; Gnomeregan mit 29 Quests braucht 78, die Schwarzfelstiefen mit 63 154 Bytes). `QR <bis zu 4
+  Dungeons mit Komma> <Version 1>` fragt die Gruppe nach ihrem `QS` dieser Dungeons. Eine spätere Version hängt
+  Felder hinten an; die ersten vier behalten ihre Bedeutung.
+- **Wann:** beim Betreten eines Dungeons in einer Gruppe und beim Eintritt in eine Gruppe drinnen (`QS` nach
+  3 s, `QR` nach 3-6 s, solange ein Stand fehlt); bei einer eigenen Änderung (Quest angenommen, fertig,
+  abgegeben, abgebrochen, Stufe; 2 s gesammelt, höchstens 5) für die Dungeons, auf die jemand schaut (drinnen,
+  gefragt in den letzten 30 Minuten), nur wenn sich der Stand geändert hat; als Antwort auf `QR` nach 0,5-3,5 s
+  je Name (`ns.Spread`), keine, wenn der eigene Stand nach der letzten Änderung der Gruppe und vor höchstens
+  10 s ging; ein Neuer in der Gruppe und die Seite Dungeons (Teil Quests eines Dungeons, höchstens einmal je
+  Minute und Dungeon) fragen, solange ein Stand fehlt; eine Frage, die jemand vor höchstens 30 s stellte, stellt
+  keiner nach. Eigene Grenzen: ein `QS` je Dungeon alle 6 s, 12 in der Minute, ein `QR` alle 15 s. Nichts im
+  Kampf, in der Sperre, im Schlachtfeld oder bevor das Questlog einmal antwortete; es wartet und geht danach.
+- **Empfangen:** nur der Absender, den der Server setzt, in der eigenen Gruppe, nur auf `PARTY`, nicht in der
+  eigenen Sperre; der Schlüssel muss in den eigenen Questdaten stehen und kein Raid sein; jedes Feld geprüft
+  (Comm.lua); ein `QS` je Absender und Dungeon alle 3 s, ein `QR` je Absender alle 10 s; vier Dungeons je
+  Mitglied. Gilt nur unter seinem Dungeon (D-106: vor dem ersten Kill schickt ein Client je Flügel einen `QS`).
+- **Gespeichert wird nichts:** der Stand lebt im Speicher, weg wenn ein Mitglied geht, die Gruppe endet oder ein
+  Raid wird, und nach 30 Minuten. Kein `AmisiaDB`-Schlüssel.
+- **Zeigen:** auf der Seite Dungeons (Teil Quests) je Zeile ein Zeichen je Mitglied (Anfangsbuchstabe in
+  Klassenfarbe, das Questzeichen des Spiels; "-" nie; grau mit "?" unbekannt), der Tooltip nach Zustand und
+  "Kannst du teilen"; in der Dungeon-Leiste "· N teilen" und "fehlt N". Ein Mitglied ohne Nachricht ist
+  "unbekannt", nie "fehlt"; nur Klasse (aus der Gruppenliste) und Fraktion der Questdaten sagen dann "nie".
+  Eine Quest, die die Liste des Absenders nicht nennt, ist "unbekannt".
+- **Teilen:** "Teilen" nur auf Klick, nie im Kampf, nie von selbst: `C_QuestLog.SetSelectedQuest` (sonst
+  `SelectQuestLogEntry`), `C_QuestLog.IsPushableQuest` (sonst `GetQuestLogPushable`), `QuestLogPushQuest`, die
+  vorige Auswahl zurück. Ohne diese Aufrufe kein Link; der Tooltip sagt es trotzdem.
+- **Einstellung** im Abschnitt Quests: `quests.groupShare` ("Meinen Dungeon-Queststand mit der Gruppe teilen",
+  an). Aus: kein `QS`; was andere schicken, zeigt Amisia weiter, und es darf fragen (eine Frage verrät keine Quest).
+
+**Grund:** Nutzer 2026-11-11 auf eine Liste von Vorschlägen, Punkt 2: "Gruppen-Queststatus im Dungeon: wer in
+der Gruppe welche Dungeonquest hat, fertig hat oder noch braucht." D-98 hatte das ausgelassen ("Was die Gruppe an
+Quests hat, zeigt sie nicht (das bräuchte Nachrichten)").
+
+**Folge:** Annahmen (nicht gefragt): kein Raid (die Seite Raids hat keine Quests, 40 Zeichen passen nicht, der
+Gruppenkanal eines Raids ist die Untergruppe); eine Liste mit Zustand je Quest statt dreier Listen, weil sie
+zugleich sagt, welche Quests der Absender kennt (ein anderer Datenstand wird "unbekannt" statt "fehlt");
+Fragen mit verteilten Antworten statt ständigem Wiederholen; Senden standardmäßig an; die Zusammenfassung in
+der Dungeon-Leiste statt im Kopf der Seite; Verfall nach 30 Minuten. Eine ältere Amisia kennt `QS`/`QR` nicht,
+verwirft sie (Comm.lua) und zählt als "unbekannt". Ob Forever die Questlog-Ereignisse, `C_QuestLog.IsComplete`
+und den Teilen-Aufruf hat und `PARTY` in Instanzen trägt, ist ungeprüft; `/amisia selbsttest gruppe` meldet die
+Funktionen ("Gruppen-Queststand, Quest teilen"). Die Zeilen bleiben die eigene Questliste: Quests anderer Klassen
+stehen dort weiter nicht.
+
+**Durchgesetzt durch:** `tests/test_group_quests.lua` (Drahtform, eigener Stand, allein und im Raid nichts,
+Betreten in der Fünfergruppe, unbekannt statt fehlt, Klasse und Fraktion ohne Nachricht, Fremde, falscher Kanal,
+zu viele Quests, Abstand 3 s, Flügelregel, Antwort mit Verteilung und Auslassen, Sammeln, Abstand 6 s, Kampf,
+Sperre, Senden aus, Zeichen von vier Mitgliedern in ihrer Breite, Tooltip, "Teilen" mit und ohne Aufruf, Leiste,
+Frage der Seite draußen, Neuer, Gehen, Verfall, Raid, Ende der Gruppe), `tests/test_group_quests_bus.lua` (drei
+Clients und zwei ohne Amisia: Betreten, Senden aus, Annahme kommt an, Neuer fragt, Seite fragt draußen),
+`tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`,
+`tests/ui_scene.lua` (`dungeons-quests-group`).

@@ -5,6 +5,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): the party's quest state of a dungeon (F-178)
+
+    In a party (not a raid) Amisia clients tell each other which quests of a dungeon they have in the log,
+    can turn in, have done or still lack, on entering the dungeon, after a change and when someone opens
+    the dungeon's quests outside. The page Dungeons shows a mark per member on every quest row (grey with
+    "?" for a member without Amisia: never "lacks it"), the row's tooltip lists them by state and whom you
+    can share the quest with, a quiet "Teilen" shares it where the client allows, and the dungeon bar says
+    "· 2 to share". Nothing is sent in combat or during a boss encounter, nothing is saved, and the new
+    setting "Share my dungeon quest state with the party" (on) stops the own state going out.
+
 - feat(dungeons): dungeon quests from the own quest scan (F-177)
 
     Alcaz Prison, Blackmaw Hold and the Shaper's Terrace had no quests and Krol'dok only two. The data

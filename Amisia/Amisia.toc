@@ -131,6 +131,7 @@ Gear\MapPlaces.lua [AllowLoadGameType camelot]
 Gear\Routes.lua [AllowLoadGameType camelot]
 Gear\RouteMap.lua [AllowLoadGameType camelot]
 Gear\DungeonBar.lua [AllowLoadGameType camelot]
+Gear\GroupQuests.lua [AllowLoadGameType camelot]
 Gear\QuestItems.lua [AllowLoadGameType camelot]
 Gear\QuestItemsWindow.lua [AllowLoadGameType camelot]
 UI\Search.lua
