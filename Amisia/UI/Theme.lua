@@ -442,6 +442,18 @@ T.ROUTE = {
     STOP_COLOR = { 0.89, 0.72, 0.34 }, NOW = { 0.3, 0.9, 0.3 }, DONE = { 0.5, 0.5, 0.5 },
 }
 
+-- the dungeon quest givers on the world map (F-179, Gear/QuestGiverPins.lua): the quest giver's "!"
+-- SIZE px, its dungeon or raid badge BADGE px at the lower right corner, the pin OFFSET px up and right
+-- of the giver's point (a quest mark of the client or another addon at the point stays readable), the
+-- "!" of a quest not yet open to the own level shaded SOON (the quest page's grey "!"); the level tag in
+-- the quest log's difficulty colours (LEVEL: red 5 or more levels above, orange 3-4, yellow within 2,
+-- green below, grey once the quest is grey), for a client without GetQuestDifficultyColor
+T.GIVER_PIN = {
+    SIZE = 16, BADGE = 11, OFFSET = 9, SOON = 0.43,
+    LEVEL = { red = { 1, 0.13, 0.13 }, orange = { 1, 0.5, 0.25 }, yellow = { 1, 1, 0 }, green = { 0.25, 0.75, 0.25 },
+        grey = { 0.5, 0.5, 0.5 } },
+}
+
 T.RUNTIMER = { W = 260, PAD = 12, TOP = 30, TOTAL_H = 22, LINE_H = 16, ROW_H = 16, NAME_W = 132, SPLIT_W = 44, DIFF_W = 44,
     GAP = 4, BOTTOM_H = 40, MAX_ROWS = 16, TICK = 0.2 }
 
@@ -963,6 +975,9 @@ T.ATLASES = {
     "auctionhouse-icon-favorite",
     -- the map legend's quest giver mark, the dungeon and raid entrances (Gear/MapPlaces.lua)
     "QuestNormal", "Dungeon", "Raid",
+    -- the quest log's dungeon and raid quest marks: the badge of a dungeon quest giver's pin (F-179,
+    -- Gear/QuestGiverPins.lua; "Dungeon" and "Raid" where the client lacks them)
+    "questlog-questtypeicon-dungeon", "questlog-questtypeicon-raid",
     -- the side bar's symbols (T.NAV_ICONS, D-70): the money frame's gold coin
     "coin-gold",
     -- the raid calendar window: the group finder's role icons (Blizzard_UIPanelTemplates/Camelot,

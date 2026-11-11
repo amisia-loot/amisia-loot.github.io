@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-179 Dungeonquest-Geber auf der Weltkarte
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du (Allianz, Stufe 20) die Weltkarte auf Sturmwind öffnest, dann steht bei Shoni ein kleines gelbes "!" mit Dungeon-Zeichen rechts oberhalb ihres Punktes; die Maus darauf zeigt eine Zeile "[D20] ..." mit den Todesminen und eine "[D30] ..." mit Gnomeregan.
+- Prüfung: Wenn du auf diesen Pin klickst, dann öffnet Amisia unter der Weltkarte die Todesminen im Teil Quests mit dem Questweg der Quest; Shift-Klick setzt stattdessen das Ziel auf den Geber.
+- Prüfung: Wenn du eine der Quests annimmst oder eine Stufe aufsteigst, dann ändern sich Zeilen und Pins nach einer halben Sekunde; eine Quest bis zwei Stufen über dir steht mit "ab N" da, ihr "!" grau, solange keine andere Quest des Gebers schon geht.
+- Prüfung: Wenn du die Karte auf den Kontinent stellst, dann stehen dort keine dieser Pins; die Zonenkarte zeigt sie wieder.
+- Prüfung: Wenn du "Dungeonquest-Geber auf der Karte" (Einstellungen, Karte und Wegpunkt) oder im Rechtsklick-Menü "Dungeonquest-Geber ausblenden" wählst, dann sind diese Pins weg und die übrigen bleiben.
+- Notiz: Spec `docs/specs/2026-11-11-dungeonquest-geber-karte.md`; DECISIONS D-111. Ob der Client das Questlog-Abzeichen `questlog-questtypeicon-dungeon` hat, sagt `/amisia selbsttest` (sonst das Dungeon-Zeichen der Karte). Graue Quests, Starts im Dungeon oder durch einen Gegenstand und Geber ohne bekannten Ort bekommen keinen Pin.
+
 ### F-178 Gruppen-Queststatus im Dungeon
 - Version: -
 - Status: geplant

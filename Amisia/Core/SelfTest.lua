@@ -590,6 +590,8 @@ local ATLASES = {
     "common-dropdown-bg", "common-search-border-left", "common-search-border-middle", "common-search-border-right",
     -- the quest giver marks on the world map, the dungeon and raid entrances (MapPlaces.lua)
     "QuestNormal", "Dungeon", "Raid",
+    -- the badge of the dungeon quest givers on the world map (F-179, Gear/QuestGiverPins.lua)
+    "questlog-questtypeicon-dungeon", "questlog-questtypeicon-raid",
     -- the page list and the search results: the auction house's category bars (W.NavBar)
     "auctionhouse-nav-button", "auctionhouse-nav-button-select", "auctionhouse-nav-button-highlight",
     "auctionhouse-nav-button-secondary", "auctionhouse-nav-button-secondary-select",

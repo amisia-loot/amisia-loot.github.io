@@ -539,6 +539,11 @@ L["Setzt den Pfeil an seinen Standardplatz zurück."] = "Puts the arrow back in 
 L["Zeigt die Orte wieder, die du auf der Karte ausgeblendet hast."] = "Shows the places you hid on the map again."
 L["Eingänge auf der Karte"] = "Entrances on the map"
 L["Die Weltkarte zeigt die Eingänge der Dungeons und Raids. Klick öffnet den Dungeon in Amisia, Shift-Klick setzt das Ziel."] = "The world map shows the entrances of dungeons and raids. A click opens the dungeon in Amisia, shift-click sets the target."
+-- the dungeon quest givers on the world map (F-179, Gear/QuestGiverPins.lua)
+L["Dungeonquest-Geber auf der Karte"] = "Dungeon quest givers on the map"
+L["Die Weltkarte zeigt auf der Zonenkarte die Questgeber der Dungeon- und Raidquests, die du jetzt oder in bis zu zwei Stufen annehmen kannst und die noch Erfahrung bringen, mit Stufe und Dungeon. Klick öffnet die Quests des Dungeons in Amisia. Zeigt ein anderes Addon die Questgeber schon, kannst du das hier ausschalten."] = "On zone maps the world map shows the quest givers of the dungeon and raid quests you can take now or within two levels and that still give experience, with level and dungeon. A click opens the dungeon's quests in Amisia. If another addon already shows the quest givers, you can switch this off here."
+L["Klick: %s in Amisia öffnen. Shift-Klick: Ziel setzen."] = "Click: open %s in Amisia. Shift-click: set target."
+L["Dungeonquest-Geber ausblenden"] = "Hide dungeon quest givers"
 L["Flugmeister auf der Karte"] = "Flight masters on the map"
 L["Die Weltkarte zeigt die Flugmeister deiner Fraktion und die neutralen."] = "The world map shows the flight masters of your faction and the neutral ones."
 L["Zeppeline und Schiffe auf der Karte"] = "Zeppelins and ships on the map"

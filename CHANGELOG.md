@@ -5,6 +5,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(map): dungeon quest givers on the world map (F-179)
+
+    Zone maps of the world map now show a small quest giver "!" with the quest log's dungeon or raid mark at
+    every known giver of a dungeon or raid quest you can take now or within two levels (not yet grey for you,
+    not started inside the dungeon or by an item). Its tooltip lists each quest as "[D35] <title>" in the
+    quest log's colour with its dungeon; a click opens that dungeon's quests in Amisia (a raid's access part),
+    shift-click sets the target. The pin sits slightly off the giver's point so another quest mark stays
+    readable, nothing shows on continent maps, and the new setting "Dungeon quest givers on the map" (on)
+    switches it off.
+
 - feat(dungeons): the party's quest state of a dungeon (F-178)
 
     In a party (not a raid) Amisia clients tell each other which quests of a dungeon they have in the log,

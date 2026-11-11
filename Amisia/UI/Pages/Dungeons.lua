@@ -2882,7 +2882,12 @@ function ns.ShowDungeonQuest(key, qid)
         page.detailKey = nil
         ns.Refresh()
     end
-    local main = _G.AmisiaFrame
+    -- from a pin of the world map (F-179): the window stays under the map, as ns.ShowDungeon keeps it
+    local main, map = _G.AmisiaFrame, _G.WorldMapFrame
+    if main and map and map.IsShown and map:IsShown() and ns.MapLowerMain then
+        ns.MapLowerMain(map, main)
+        if map.Raise then map:Raise() end
+    end
     return main ~= nil and main:IsShown() and true or false
 end
 

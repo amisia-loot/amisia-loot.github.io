@@ -826,6 +826,9 @@ end
 STUB.atlases["QuestNormal"] = { 28, 28 }
 -- the dungeon and raid entrance marks of the world map (Forever has them under these names)
 STUB.atlases["Dungeon"], STUB.atlases["Raid"] = { 32, 32 }, { 32, 32 }
+-- the quest log's dungeon and raid quest marks (the badge of the dungeon quest givers' pins, F-179):
+-- not yet confirmed on Forever; `/amisia selbsttest` reports them, the pins fall back to the two above
+STUB.atlases["questlog-questtypeicon-dungeon"], STUB.atlases["questlog-questtypeicon-raid"] = { 16, 16 }, { 16, 16 }
 -- the side bar's symbols (D-70): the favourite star (AuctionHouseSearchBar) and the gold coin (MoneyFrame), both on Forever
 STUB.atlases["auctionhouse-icon-favorite"], STUB.atlases["coin-gold"] = { 13, 13 }, { 12, 12 }
 -- the group finder's role and class icons (Blizzard_UIPanelTemplates/Camelot, Blizzard_GroupFinder_VanillaStyle)

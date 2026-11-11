@@ -2875,3 +2875,54 @@ Frage der Seite draußen, Neuer, Gehen, Verfall, Raid, Ende der Gruppe), `tests/
 Clients und zwei ohne Amisia: Betreten, Senden aus, Annahme kommt an, Neuer fragt, Seite fragt draußen),
 `tools/tests/test_contracts.py::test_every_message_kind_has_its_row_and_no_row_is_left_over`,
 `tests/ui_scene.lua` (`dungeons-quests-group`).
+
+## D-111 Dungeonquest-Geber auf der Weltkarte: eigene Pins auf der Zonenkarte, "bald" heißt zwei Stufen
+
+**Datum:** 2026-11-11
+**Entscheidung:** Die Geber der Dungeon- und Raidquests, die der eigene Charakter jetzt oder bald annehmen kann,
+stehen auf der Weltkarte (F-179, Spec `docs/specs/2026-11-11-dungeonquest-geber-karte.md`), Modul
+`Gear/QuestGiverPins.lua`:
+- **Welche Quests:** jede Quest der Dungeon-Listen (`DUNGEON_QUESTS.D`) eines bekannten Dungeons oder Raids, deren
+  eigener Stand (`D.OwnQuestState`) "open" ist, oder "locked", wenn sie mit zwei Stufen mehr "open" wäre (allein
+  die Stufe fehlt, höchstens `G.SOON` = 2 Stufen, die Grenze "bald" des Planers); nicht grau für die eigene Stufe
+  (`D.GreyAt`); nicht im Dungeon, nicht durch einen Gegenstand begonnen; mit einem Ort des Gebers (`D.QuestNode`:
+  was der Sammler selbst sah zuerst). Nie erledigt, im Log, "na" (Fraktion, Klasse, Volk, ausschließende Quest)
+  oder mit offener Vorquest.
+- **Ein Pin je Geber und Ort** (Name und Punkt auf 0,1 %), die Quests nach Stufe; höchstens 40 je Karte, die
+  niedrigsten zuerst. **Nur Zonenkarten**: auf dem Kontinent nichts.
+- **Pin:** Amisias eigener Knopf auf Amisias Kartenebene (D-64, Pin-Art "giver", `Map.RegisterPinKind`), 16 px,
+  das "!" des Gesprächsfensters (`Interface\GossipFrame\AvailableQuestIcon`, grau wenn alle Quests erst "bald"
+  sind), unten rechts das Abzeichen `questlog-questtypeicon-dungeon`/`-raid`, sonst `Dungeon`/`Raid`, sonst keins;
+  9 px rechts oberhalb des Punktes (`entry.dx`/`dy`), damit ein Zeichen des Spiels oder eines anderen Addons am
+  selben Geber lesbar bleibt. Kein Mausrad, kein Ziehen, kein Pin der Karte.
+- **Tooltip:** Geber, Zone und Koordinaten, je Quest "[D35] <Titel>" ("[R60]" Raid, "[D?]" unbekannt) in der Farbe
+  des Questlogs (`GetQuestDifficultyColor`, sonst `ns.Theme.GIVER_PIN.LEVEL`), rechts der Dungeon und "· ab N"
+  für eine erst bald mögliche; höchstens sechs Zeilen, sonst fünf und "... und N weitere"; der Klick-Hinweis nennt
+  den Dungeon, den der Klick öffnet.
+- **Klick:** links die erste Quest nach Stufe: `ns.ShowDungeonQuest` (Seite Dungeons, Teil Quests, ihr Questweg),
+  eine Raidquest `ns.ShowRaid(key, "access")`; das Fenster unter der Karte (F-011, jetzt auch in
+  `ns.ShowDungeonQuest`); im Kampf ohne Fenster eine Chatzeile. Shift: das Ziel auf den Geber. Rechts ein Menü:
+  "In Amisia öffnen" je Dungeon, "Ziel setzen", "Dungeonquest-Geber ausblenden".
+- **Neu gebaut** bei `QUESTS_CHANGED` (Quest angenommen, abgegeben, abgebrochen, Stufe), `COLLECT_CHANGED` (q),
+  der Einstellung, der Stufe, der Fraktion oder anderen Daten; gezeichnet eine halbe Sekunde später auf dem
+  Bild der Ebene (`Map.RedrawSoon`), nur bei offener Karte, nie je Bild.
+- **Einstellung** `map.questGivers` ("Dungeonquest-Geber auf der Karte", an) im Abschnitt "Karte und Wegpunkt"
+  nach "Eingänge auf der Karte". Kein gespeicherter Schlüssel, keine Nachricht.
+
+**Grund:** Nutzer 2026-11-11 auf eine Liste von Vorschlägen, Punkt 5: "Dungeonquest-Geber auf der Weltkarte mit
+Stufe, Klick öffnet die Dungeonseite."
+
+**Folge:** Annahmen (nicht gefragt): an von Haus aus; zwei Stufen "bald" wie im Planer, eine offene Vorquest nie
+früh; graue Quests ohne Pin (auf Stufe 60 stünden sonst in jeder Stadt die Geber längst überholter Dungeons);
+nichts auf dem Kontinent (Städte und Lager würden zum Teppich, dort zeigen die Eingänge den Weg); eine Raidquest
+öffnet den Teil Zugang (die Seite Raids hat keinen Teil Quests); an einem Objekt begonnene Quests bekommen einen
+Pin mit dem Namen des Objekts; Shift und Menü wie bei den Eingängen. Die Pins für Quest-Schritte
+(`map.pinsQuests`) bleiben, wie sie sind: am selben Geber steht ihr "!" mittig, dieser Pin klein daneben. Ob
+Forever die Questlog-Abzeichen hat, ist ungeprüft (`/amisia selbsttest` nennt fehlende Atlanten); der Ort der
+Pins auf der echten Karte und das Zusammenspiel mit den Questzeichen des Spiels sind im Spiel zu prüfen.
+
+**Durchgesetzt durch:** `tests/test_quest_giver_pins.lua` (zwei Quests zweier Dungeons an einem Geber, andere
+Fraktion, erledigt, im Log, grau, zwei und drei Stufen voraus, offene Vorquest, Scan-Quest ohne Geber, Start im
+Dungeon und durch einen Gegenstand, nur Zonenkarte, Versatz, Abzeichen und Rückfall, Tooltipzeilen und Deckel,
+Farben, Klickziel Dungeon und Raid, Shift, Menü, Einstellung, neu nach Annahme und Stufenaufstieg),
+`tests/test_map_layer_safe.lua` (nichts an der Karte geschrieben), `tests/test_selftest.lua` (Atlanten).

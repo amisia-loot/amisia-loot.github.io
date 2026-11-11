@@ -575,7 +575,8 @@ end
 
 -- Where the pins stand and how large: normalized x, y times the canvas's size; the canvas's scale is
 -- divided out, so a pin keeps its size on screen and grows only a little as the map zooms in
--- (map.pinScale, 70 % on a continent).
+-- (map.pinScale, 70 % on a continent). An entry's dx, dy (pin pixels, up is plus) move its pin off the
+-- point (the dungeon quest givers, F-179).
 local function layout()
     local w, h, cs = canvas:GetWidth(), canvas:GetHeight(), canvas:GetScale()
     seen.w, seen.h, seen.scale = w, h, cs
@@ -588,7 +589,7 @@ local function layout()
                 local s = base * (e.continent and CONTINENT_SCALE or 1)
                 pin:SetScale(s)
                 pin:ClearAllPoints()
-                pin:SetPoint("CENTER", layer, "TOPLEFT", e.x * w / s, -e.y * h / s)
+                pin:SetPoint("CENTER", layer, "TOPLEFT", e.x * w / s + (e.dx or 0), -e.y * h / s + (e.dy or 0))
             end
         end
     end
@@ -690,6 +691,8 @@ local function scheduleIn(delay)
 end
 local function schedule() scheduleIn(0.5) end
 local function scheduleOwned() scheduleIn(2) end
+-- For the other pin kinds (QuestGiverPins.lua): a change of their data redraws half a second later.
+Map.RedrawSoon = schedule
 
 ns.Listen("BIS_CHANGED", schedule)
 ns.Listen("MAP_MARKS", function()

@@ -948,6 +948,9 @@ ns.RegisterSettings{ key = "map", label = L["Karte und Wegpunkt"], order = 48, g
     { key = "map.pinsContinent", type = "toggle", label = L["Pins auch auf der Kontinentkarte"], default = true, tip = L["Die Pins stehen auch auf der Karte des Kontinents, nicht nur auf der Zonenkarte."] },
     { key = "map.entrances", type = "toggle", label = L["Eingänge auf der Karte"], default = true,
       tip = L["Die Weltkarte zeigt die Eingänge der Dungeons und Raids. Klick öffnet den Dungeon in Amisia, Shift-Klick setzt das Ziel."] },
+    -- the givers of the dungeon quests you can take now or soon (F-179, Gear/QuestGiverPins.lua)
+    { key = "map.questGivers", type = "toggle", label = L["Dungeonquest-Geber auf der Karte"], default = true,
+      tip = L["Die Weltkarte zeigt auf der Zonenkarte die Questgeber der Dungeon- und Raidquests, die du jetzt oder in bis zu zwei Stufen annehmen kannst und die noch Erfahrung bringen, mit Stufe und Dungeon. Klick öffnet die Quests des Dungeons in Amisia. Zeigt ein anderes Addon die Questgeber schon, kannst du das hier ausschalten."] },
     { key = "map.flights", type = "toggle", label = L["Flugmeister auf der Karte"], default = false,
       tip = L["Die Weltkarte zeigt die Flugmeister deiner Fraktion und die neutralen."] },
     { key = "map.transports", type = "toggle", label = L["Zeppeline und Schiffe auf der Karte"], default = false,
