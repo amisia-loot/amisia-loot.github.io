@@ -59,9 +59,9 @@ kill(E2)
 assert(RT.Live().s[E2] == 180)
 -- the bosses as portraits (F-180): in colour once killed, the split in the tooltip
 local rows = W.bosses
-assert(#rows == 4 and rows[1]:IsShown() and not rows[1].dim and rows[1].tip[1] == "Faldrim Anvilmar"
+assert(#rows == 4 and rows[1]:IsShown() and rows[1].done and rows[1].dim and rows[1].tip[1] == "Faldrim Anvilmar"
     and has(rows[1].tip[2], "Zwischenzeit 1:00") and #rows[1].tip == 2, "the first boss")
-assert(rows[3].dim and has(rows[3].tip[1], "Plunder") and has(rows[3].tip[2], "Noch nicht getötet") and #rows[3].tip == 2,
+assert(not rows[3].done and not rows[3].dim and has(rows[3].tip[1], "Plunder") and has(rows[3].tip[2], "Noch nicht getötet") and #rows[3].tip == 2,
     "an open boss without a best")
 -- the live total from GetTime (the window's OnUpdate)
 STUB.tick(1)
@@ -77,7 +77,7 @@ assert(t.best and t.best.t == 240 and t.best.d and t.best.c == ME and t.best.n =
 assert(t.seg[E1].t == 60 and t.seg[E2].t == 120 and t.seg[E4].t == 60 and t.seg[E3] == nil, "the fastest segments")
 assert(#t.runs == 1 and t.runs[1].d, "in the history")
 assert(W:IsShown() and has(W.result:GetText(), "Erste gemessene Zeit") and W.sub:GetText() == "Bestzeit 4:00", W.sub:GetText())
-assert(rows[3].dim and has(rows[3].tip[2], "Übersprungen") and not rows[4].dim, "Plunder skipped, the last one killed")
+assert(not rows[3].done and has(rows[3].tip[2], "Übersprungen") and rows[4].done, "Plunder skipped, the last one killed")
 
 ---------------------------------------------------------------------------
 -- a reset before the end: "nicht beendet", never a best; the window closes
@@ -89,7 +89,7 @@ STUB.tick(50)
 kill(E1)
 assert(has(rows[1].tip[3], NS.Theme.GREEN) and has(rows[1].tip[3], "-0:10 zum besten Lauf"), "faster: green " .. tostring(rows[1].tip[3]))
 -- the next boss shows the best run's split as the target, in grey
-assert(rows[2].dim and has(rows[2].tip[3], NS.Theme.GREY) and has(rows[2].tip[3], "Ziel: 3:00 (bester Lauf)"), tostring(rows[2].tip[3]))
+assert(not rows[2].done and has(rows[2].tip[3], NS.Theme.GREY) and has(rows[2].tip[3], "Ziel: 3:00 (bester Lauf)"), tostring(rows[2].tip[3]))
 assert(#rows[3].tip == 2, "only the next one has a target; Plunder has no split in the best run")
 resetInside()
 assert(RT.Live() == nil and #times().runs == 2 and not times().runs[1].d and times().runs[1].t == 50, "unfinished")

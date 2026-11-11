@@ -36,15 +36,14 @@ _G.GOLD_AMOUNT_SYMBOL, _G.SILVER_AMOUNT_SYMBOL, _G.COPPER_AMOUNT_SYMBOL = nil, n
 ---------------------------------------------------------------------------
 -- the coins' text and the XP text
 ---------------------------------------------------------------------------
-assert(TW.Money(0) == "0" and TW.Money(46) == "46c" and TW.Money(1234) == "12s 34c", TW.Money(1234))
-assert(TW.Money(14620) == "1g 46s" and TW.Money(120745) == "12g 7s" and TW.Money(-5) == "0", "from a gold coin on without copper")
-_G.GOLD_AMOUNT_SYMBOL, _G.SILVER_AMOUNT_SYMBOL, _G.COPPER_AMOUNT_SYMBOL = "G", "S", "K"
-assert(TW.Money(10203) == "1G 2S", "the client's symbols: " .. TW.Money(10203))
+local function coins(text) return (text:gsub("|T[^|]-UI%-(%a)%a+Icon[^|]*|t", function(c) return c:lower() end)) end
+assert(TW.Money(0) == "0" and coins(TW.Money(46)) == "46c" and coins(TW.Money(1234)) == "12s 34c", TW.Money(1234))
+assert(coins(TW.Money(14620)) == "1g 46s" and coins(TW.Money(120745)) == "12g 7s" and TW.Money(-5) == "0", "from a gold coin on without copper")
+assert(has(TW.Money(3676), "36|TInterface\\MoneyFrame\\UI-SilverIcon:14:14:1:0|t 76|TInterface\\MoneyFrame\\UI-CopperIcon:14:14:1:0|t"),
+    "numbers with the client's coin icons: " .. TW.Money(3676))
+-- the client's own coin function is not used (Forever has none; its letters read badly)
 _G.GetCoinTextureString = function(c) return "coins:" .. c end
-assert(TW.Money(14620) == "coins:14600" and TW.Money(99) == "coins:99", "the client's coins")
-STUB.secret["coins:5"] = true
-assert(TW.Money(5) == "5K", "a secret answer: our own text")
-STUB.secret = {}
+assert(not has(TW.Money(99), "coins:"), "never the client's text")
 _G.GetCoinTextureString = nil
 _G.GOLD_AMOUNT_SYMBOL, _G.SILVER_AMOUNT_SYMBOL, _G.COPPER_AMOUNT_SYMBOL = nil, nil, nil
 
@@ -59,9 +58,10 @@ assert(l and l.k == "deadmines" and l.x == 0 and l.g == 0 and next(l.rk) == nil,
 assert(W:IsShown() and W.total:GetText() == "0:00" and W.xp:GetText() == "0" and W.gold:GetText() == "0", W.xp:GetText())
 assert(W.values[1].label:GetText() == (EN and "Time" or "Zeit") and W.values[2].label:GetText() == (EN and "Mob XP" or "Mob-XP")
     and W.values[3].label:GetText() == "Gold", "the three words")
-assert(#W.bosses == 8 and W.bosses[1].dim and W.bosses[8].dim, "every boss grey before its kill")
+assert(#W.bosses == 8 and not W.bosses[1].dim and not W.bosses[8].dim and not W.bosses[1].done and not W.bosses[1].cross:IsShown(),
+    "every boss in colour, no cross, before its kill")
 assert(W.rareHead:IsShown() and W.rareHead:GetText() == (EN and "Rares" or "Rare") and #W.rares == 3, "the three rares")
-for _, p in ipairs(W.rares) do assert(p:IsShown() and p.dim, "grey until seen dead") end
+for _, p in ipairs(W.rares) do assert(p:IsShown() and p.dim and not p.done and not p.cross:IsShown(), "stepped back, no cross until seen dead") end
 assert(W.rares[2].tip[1] == "Marisa du'Paige" and has(W.rares[2].tip[2], EN and "Not killed yet" or "Noch nicht getötet")
     and has(W.rares[2].tip[3], EN and "does not appear in every run" or "nicht in jedem Lauf"), "a rare's tooltip")
 -- the boss's tooltip: its name (the scanned name in the client's language where there is one) and state
@@ -110,7 +110,7 @@ x = live().x
 
 -- gold: rises outside the windows
 money(6234)
-assert(live().g == 1234 and W.gold:GetText() == "12s 34c", W.gold:GetText())
+assert(live().g == 1234 and coins(W.gold:GetText()) == "12s 34c", W.gold:GetText())
 STUB.fire("MERCHANT_SHOW")
 money(11234)             -- sold to a vendor
 money(9234)              -- repaired
@@ -151,15 +151,16 @@ x = live().x
 -- the bosses: in colour once killed, the tooltip with the split
 STUB.tick(95)
 kill(DM_ENC[1])
-assert(not W.bosses[1].dim and W.bosses[2].dim and has(W.bosses[1].tip[2], EN and "Split" or "Zwischenzeit"), "killed: in colour")
+assert(W.bosses[1].done and W.bosses[1].dim and W.bosses[1].cross:IsShown() and not W.bosses[2].done and not W.bosses[2].dim
+    and has(W.bosses[1].tip[2], EN and "Split" or "Zwischenzeit"), "killed: crossed out and stepped back")
 
 -- rares: seen dead as the target, under the mouse, as a loot source
 STUB.targetGUID, STUB.targetDead = "Creature-0-1-36-1-599-00001", false
 STUB.fire("PLAYER_TARGET_CHANGED")
-assert(not live().rk[599] and W.rares[2].dim, "a living rare is not killed")
+assert(not live().rk[599] and not W.rares[2].done, "a living rare is not killed")
 STUB.targetDead = true
 STUB.fire("UNIT_HEALTH", "target")
-assert(live().rk[599] and not W.rares[2].dim and has(W.rares[2].tip[2], EN and "killed" or "getötet"), "dead as the target")
+assert(live().rk[599] and W.rares[2].done and W.rares[2].cross:IsShown() and has(W.rares[2].tip[2], EN and "killed" or "getötet"), "dead as the target")
 STUB.targetGUID = "Creature-0-1-36-1-644-00001"
 STUB.fire("PLAYER_TARGET_CHANGED")
 assert(NS.Count(live().rk) == 1, "a dead boss is no rare")
@@ -169,13 +170,13 @@ _G.UnitIsDead = function(u) if u == "mouseover" then return true end return isDe
 STUB.mouseoverGUID = "Creature-0-1-36-1-596-00002"
 STUB.fire("UPDATE_MOUSEOVER_UNIT")
 _G.UnitIsDead = isDead
-assert(live().rk[596] and not W.rares[1].dim, "dead under the mouse")
+assert(live().rk[596] and W.rares[1].done, "dead under the mouse")
 local link = STUB.item(5195, "Brillant Smallfish", 1)
 STUB.loot = { { link = link, name = "Brillant Smallfish", src = "Creature-0-1-36-1-626-00003" } }
 STUB.fire("LOOT_OPENED")
 STUB.fire("LOOT_CLOSED")
 STUB.loot = {}
-assert(live().rk[626] and not W.rares[3].dim, "its corpse looted")
+assert(live().rk[626] and W.rares[3].done, "its corpse looted")
 
 -- a /reload: the values and the rares stay as the time does, the readings start again
 local before = { x = live().x, g = live().g, at = live().at }
@@ -187,7 +188,7 @@ assert(l.x == before.x and l.g == before.g and l.at == before.at and l.rk[599] a
 bar(3100, 6000)
 assert(live().x == before.x + 100, "counting goes on after the reload")
 TW.Show("deadmines")
-assert(W.xp:GetText() == tostring(before.x + 100) and not W.rares[2].dim, "the window after the reload")
+assert(W.xp:GetText() == tostring(before.x + 100) and W.rares[2].done, "the window after the reload")
 
 -- the end: the values go into the run, the window keeps showing them
 for i = 2, 8 do STUB.tick(10); kill(DM_ENC[i]) end
@@ -195,7 +196,7 @@ assert(live() == nil, "finished")
 local run = RT.Of("deadmines").runs[1]
 assert(run.d and run.x == before.x + 100 and run.g == 1330, "the run keeps XP and gold")
 assert(W:IsShown() and W.xp:GetText() == tostring(run.x) and W.gold:GetText() == TW.Money(1330), "the final values")
-assert(not W.rares[1].dim and not W.bosses[8].dim, "killed stays coloured after the end")
+assert(W.rares[1].done and W.bosses[8].done, "killed stays crossed out after the end")
 -- the saved run: checked on load, an old run without the values stays valid
 AmisiaDB.runTimes.inst.deadmines.runs[2] = { at = run.at - 100, t = 50, s = {}, n = 1, c = "Vuloo" }
 AmisiaDB.runTimes.inst.deadmines.runs[3] = { at = run.at - 200, t = 50, s = {}, n = 1, c = "Vuloo", x = -5, g = "lots" }
@@ -209,7 +210,7 @@ STUB.fire("CHAT_MSG_SYSTEM", "Die Todesminen has been reset.")
 fight()
 l = live()
 assert(l and l.x == 0 and l.g == 0 and next(l.rk) == nil, "a new run resets the values")
-assert(W.xp:GetText() == "0" and W.gold:GetText() == "0" and W.rares[1].dim and W.bosses[1].dim, "and the window")
+assert(W.xp:GetText() == "0" and W.gold:GetText() == "0" and not W.rares[1].done and not W.bosses[1].done, "and the window")
 RT.Stop()
 
 ---------------------------------------------------------------------------
@@ -253,4 +254,41 @@ assert(W:GetHeight() > thanesH + 2 * S.PORT, "the window grows with the rows")
 assert(#W.rares >= 1 and W.rares[1]:IsShown(), "its rare")
 RT.Stop()
 
+-- stepping a portrait back never darkens the model with a veil or its own desaturation (both left the
+-- circles black on the client): only the frame's alpha, the skull and the ring change
+do
+    local p = W.bosses[1]
+    local desat = 0
+    p.model.SetDesaturation = function() desat = desat + 1 end
+    NS.W.DimPortrait(p, true)
+    assert(p.dim and not p.veil and desat == 0 and p.model:GetAlpha() == NS.Theme.DBOSS.DIM_ALPHA, "dimmed by alpha only")
+    NS.W.DimPortrait(p, false)
+    assert(not p.dim and p.model:GetAlpha() == 1, "and back")
+    p.model.SetDesaturation = nil
+end
+
+-- the grip scales the window between the limits, the scale is saved and comes back; a reset puts 1 back
+do
+    local S = NS.Theme.RUNTIMER
+    assert(W.grip and W.grip:IsShown(), "the grip")
+    assert(TW.SetScale(0.8) == 0.8 and W:GetScale() == 0.8 and AmisiaDB.settings.runTimerWindow.scale == 0.8)
+    assert(TW.SetScale(0.1) == S.SCALE_MIN and TW.SetScale(9) == S.SCALE_MAX, "clamped")
+    assert(TW.SetScale(1) == 1 and AmisiaDB.settings.runTimerWindow.scale == nil, "1 is not saved")
+    -- a drag: the right edge follows the cursor, the top left corner stays
+    W._left, W._top = 400, 600
+    UIParent._top = 768
+    STUB.cursorX = 400 + S.W
+    W.grip:GetScript("OnMouseDown")(W.grip, "LeftButton")
+    STUB.cursorX = 400 + S.W * 0.7
+    W.grip:GetScript("OnUpdate")(W.grip, 0.1)
+    assert(math.abs(W:GetScale() - 0.7) < 0.001, "dragged to 0.7: " .. W:GetScale())
+    local point, rel, relPoint, x, y = W:GetPoint(1)
+    assert(point == "TOPLEFT" and rel == UIParent and relPoint == "TOPLEFT", "anchored at the top left")
+    assert(math.abs(x * 0.7 - 400) < 0.01 and math.abs(y * 0.7 - (600 - 768)) < 0.01, "the corner stays: " .. x .. " " .. y)
+    W.grip:GetScript("OnMouseUp")(W.grip, "LeftButton")
+    assert(AmisiaDB.settings.runTimerWindow.scale == 0.7 and AmisiaDB.settings.runTimerWindow.point == "TOPLEFT", "saved")
+    assert(not W.grip:GetScript("OnUpdate"), "the drag ended")
+    NS.ResetRunTimerPosition()
+    assert(W:GetScale() == 1 and AmisiaDB.settings.runTimerWindow.scale == nil, "the reset")
+end
 print(EN and "run window enUS ok" or "run window ok")

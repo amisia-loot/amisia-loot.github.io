@@ -463,7 +463,15 @@ T.GIVER_PIN = {
 -- lower edge. TICK: the live clock's refresh.
 T.RUNTIMER = { W = 300, PAD = 14, TOP = 30, COL_W = { 84, 80, 108 }, LABEL_H = 14, VALUE_H = 20, GAP = 4, LINE_H = 14,
     RULE_GAP = 8, PORT = 32, PORT_GAP = 6, COLS = 7, SECTION_GAP = 8, HEAD_H = 16, RESULT_W = 170, RESULT_Y = 4,
-    BOTTOM_H = 32, TICK = 0.2 }
+    BOTTOM_H = 32, TICK = 0.2,
+    -- the red cross CROSS square over the portrait of a boss killed or a rare seen dead; the coins of
+    -- "Gold" COIN square after their numbers (the client's money icons); the grip GRIP square in the
+    -- lower right corner scales the window between SCALE_MIN and SCALE_MAX (saved; 1 is its own size),
+    -- the link "Alle Zeiten" ends GRIP_ROOM further left so the two do not touch
+    CROSS = 22, CROSS_TEX = "Interface\\RaidFrame\\ReadyCheck-NotReady", COIN = 14,
+    COINS = { { 10000, "Interface\\MoneyFrame\\UI-GoldIcon" }, { 100, "Interface\\MoneyFrame\\UI-SilverIcon" },
+        { 1, "Interface\\MoneyFrame\\UI-CopperIcon" } },
+    GRIP = 16, GRIP_ROOM = 8, GRIP_TEX = "Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-", SCALE_MIN = 0.6, SCALE_MAX = 1.2 }
 
 -- The dungeon bar (F-168, Gear/DungeonBar.lua, AmisiaDungeonBar): one row H high on a dark ground
 -- (SHADE) with a gold edge; the instance's name (at most NAME_W, the drag handle) PAD from the left,
@@ -506,7 +514,7 @@ T.DBOSS = {
     LOOT_H = 36, ICON = 28, ICON_X = 4, LOOT_TEXT_X = 40, LOOT_NAME_Y = -4, LOOT_SUB_Y = -20,
     RATE_W = 72, STAR = 16, END = 6,
     ZOOM = 0.9,                -- the model's portrait zoom (head and shoulders)
-    DIM = 0.55,                -- the veil over a greyed portrait (W.DimPortrait: a boss alive, a rare not killed)
+    DIM_ALPHA = 0.45,          -- the model's (or skull's) alpha in a portrait stepped back (W.DimPortrait)
     RING_DIM = { 0.45, 0.45, 0.45 },
     RING = "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\boss_ring",
     NO_MODEL = "Interface\\TargetingFrame\\UI-TargetingFrame-Skull",

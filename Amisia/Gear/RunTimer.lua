@@ -6,17 +6,19 @@
 -- the XP at the level cap). A grey line with the best time ("Bestzeit 24:12", "Noch keine Bestzeit",
 -- "Bestzeit vorher ...", before the first fight "Die Uhr läuft ab dem ersten Kampf."), a thin gold
 -- rule, the dungeon's bosses as round portraits in the game's order (the kit of the pages, W.Portrait):
--- grey while alive, in colour once killed in this run; the mouse names the boss, its split and the
--- difference to the best run's split (green faster, red slower) or, for the next boss, the best run's
--- split as the target. Under the heading "Rare" the dungeon's rare mobs (DungeonData.lua rares), grey
--- until seen dead in this run; a dungeon without rare data has no such row. At the bottom the result
+-- in colour while alive, crossed out in red and stepped back once killed in this run; the mouse names
+-- the boss, its split and the difference to the best run's split (green faster, red slower) or, for the
+-- next boss, the best run's split as the target. Under the heading "Rare" the dungeon's rare mobs
+-- (DungeonData.lua rares), stepped back, crossed out once seen dead in this run; a dungeon without rare
+-- data has no such row. "Gold" shows numbers with the client's coin icons. At the bottom the result
 -- ("Neue Bestzeit! -0:40", "Erste gemessene Zeit", "+1:40 zur Bestzeit", "Nicht beendet") and the link
 -- "Alle Zeiten" (the part Zeiten of the page). Many bosses wrap into rows (W.Grid); the window grows.
 -- It opens by itself when a clock starts (the settings runtimes.window and, in a raid, runtimes.raids),
 -- stays while the clock runs (a ghost outside too), shows the result until the character leaves the
 -- instance and closes when a clock ends unfinished. A plain frame, nothing secure: it is built on
 -- entering an instance (out of combat), shown in a fight without any protected call. Movable, its
--- place in settings.runTimerWindow; Escape leaves it open.
+-- place in settings.runTimerWindow; the grip in the lower right corner scales it (its scale there
+-- too); Escape leaves it open.
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -50,36 +52,42 @@ local function place()
     if F then W.PlaceWindow(F, windowState(), "RIGHT", UIParent, "RIGHT", -60, 80) end
 end
 
+-- The window's scale (the grip): s between SCALE_MIN and SCALE_MAX, kept in the window's state (nil at 1).
+local function applyScale(s, keep)
+    s = math.max(S.SCALE_MIN, math.min(S.SCALE_MAX, tonumber(s) or 1))
+    if F then F:SetScale(s) end
+    if keep then
+        local st = windowState()
+        if st then st.scale = math.abs(s - 1) > 0.005 and math.floor(s * 100 + 0.5) / 100 or nil end
+    end
+    return s
+end
+function TW.Scale() return F and F:GetScale() or 1 end
+function TW.SetScale(s) return applyScale(s, true) end
+
 function ns.ResetRunTimerPosition()
     local st = windowState()
-    if st then st.point, st.x, st.y = nil, nil, nil end
+    if st then st.point, st.x, st.y, st.scale = nil, nil, nil, nil end
+    applyScale(1)
     place()
 end
 
 ---------------------------------------------------------------------------
 -- Formats
 ---------------------------------------------------------------------------
--- copper as the client's coins (GetCoinTextureString, looked up defensively), from a gold coin on
--- without the copper; without the client's function "1g 46s" (its coin symbols, else g, s, c)
+-- copper as numbers with the client's coin icons ("36 [silver] 76 [copper]"), from a gold coin on
+-- without the copper so it fits its column. Built here from the money frame's three icons: the client's
+-- own GetCoinTextureString is missing on Forever, and the letters of the fallback ("36S 76K") read badly.
 function TW.Money(copper)
     local c = math.max(0, math.floor(tonumber(copper) or 0))
     if c == 0 then return "0" end
     if c >= 10000 then c = c - c % 100 end
-    local fn = _G.GetCoinTextureString
-    if type(fn) == "function" then
-        local ok, s = pcall(fn, c)
-        s = ok and ns.Plain(s) or nil
-        if type(s) == "string" and s ~= "" then return s end
-    end
-    local function sym(name, fallback)
-        local v = _G[name]
-        return type(v) == "string" and v ~= "" and v or fallback
-    end
     local parts = {}
-    local g, sv, cp = math.floor(c / 10000), math.floor(c % 10000 / 100), c % 100
-    if g > 0 then parts[#parts + 1] = g .. sym("GOLD_AMOUNT_SYMBOL", "g") end
-    if sv > 0 then parts[#parts + 1] = sv .. sym("SILVER_AMOUNT_SYMBOL", "s") end
-    if cp > 0 then parts[#parts + 1] = cp .. sym("COPPER_AMOUNT_SYMBOL", "c") end
+    for _, coin in ipairs(S.COINS) do
+        local n = math.floor(c / coin[1])
+        c = c - n * coin[1]
+        if n > 0 then parts[#parts + 1] = ("%d|T%s:%d:%d:1:0|t"):format(n, coin[2], S.COIN, S.COIN) end
+    end
     return table.concat(parts, " ")
 end
 
@@ -118,10 +126,65 @@ end
 
 local function buildPortrait()
     local p = W.Portrait(F, S.PORT)
+    -- the red cross over a boss killed or a rare seen dead
+    p.cross = p.top:CreateTexture(nil, "OVERLAY", nil, 2)
+    p.cross:SetSize(S.CROSS, S.CROSS)
+    p.cross:SetPoint("CENTER")
+    p.cross:SetTexture(S.CROSS_TEX)
+    p.cross:Hide()
     p:EnableMouse(true)
     p:SetScript("OnEnter", showTip)
     p:SetScript("OnLeave", function() GameTooltip:Hide() end)
     return p
+end
+
+-- The grip in the lower right corner (the chat window's size grabber): dragging scales the whole
+-- window between SCALE_MIN and SCALE_MAX; its top left corner stays where it is.
+local function buildGrip()
+    local g = CreateFrame("Button", nil, F)
+    g:SetSize(S.GRIP, S.GRIP)
+    g:SetPoint("BOTTOMRIGHT", -2, 2)
+    g:SetFrameLevel(F:GetFrameLevel() + 20)
+    g:SetNormalTexture(S.GRIP_TEX .. "Up")
+    g:SetPushedTexture(S.GRIP_TEX .. "Down")
+    g:SetHighlightTexture(S.GRIP_TEX .. "Highlight")
+    local drag
+    local function parentScale()
+        local e = UIParent:GetEffectiveScale()
+        return e and e > 0 and e or 1
+    end
+    -- the scale that puts the window's right edge under the cursor (screen x), and the window's top
+    -- left corner back at its screen place
+    local function follow()
+        local x = GetCursorPosition()
+        local pe = parentScale()
+        local s = applyScale(((x or 0) - drag.grab - drag.left) / (S.W * pe))
+        F:ClearAllPoints()
+        F:SetPoint("TOPLEFT", UIParent, "TOPLEFT", drag.left / (pe * s), (drag.top - drag.screenTop) / (pe * s))
+    end
+    g:SetScript("OnMouseDown", function(self, button)
+        if button ~= "LeftButton" then return end
+        local left, top, eff = F:GetLeft(), F:GetTop(), F:GetEffectiveScale()
+        if not (left and top and eff and eff > 0) then return end
+        local x = GetCursorPosition()
+        drag = { left = left * eff, top = top * eff, screenTop = (UIParent:GetTop() or 0) * parentScale() }
+        drag.grab = (x or 0) - (drag.left + S.W * eff)
+        self:SetScript("OnUpdate", follow)
+    end)
+    local function stop(self)
+        if not drag then return end
+        self:SetScript("OnUpdate", nil)
+        drag = nil
+        applyScale(F:GetScale(), true)
+        W.SaveWindowPlace(F, windowState())
+    end
+    g:SetScript("OnMouseUp", function(self, button)
+        if button == "LeftButton" then stop(self) end
+    end)
+    g:SetScript("OnHide", stop)   -- the window closed mid-drag: no mouse up comes
+    W.Tooltip(g, L["Größe ändern"], L["Ziehen: das Fenster kleiner oder größer."])
+    g:Show()
+    return g
 end
 
 local function build()
@@ -150,6 +213,9 @@ local function build()
         local l, secs = RT.Live()
         if l and l.k == shownKey then F.total:SetText(RT.Fmt(secs)) end
     end)
+    F.grip = buildGrip()
+    local st = windowState()
+    applyScale(st and st.scale or 1)
     place()
     return F
 end
@@ -197,7 +263,8 @@ function TW.RareTip(r, killed)
     return { npcName(r[1], r[2]), killed and (GREEN .. TEXT.killed .. "|r") or (GREY .. TEXT.alive .. "|r"), GREY .. TEXT.rareHint .. "|r" }
 end
 
--- Shows list (portraits of pool, made on use) from y down: each item { npc, dim, tip }. Returns the
+-- Shows list (portraits of pool, made on use) from y down: each item { npc, dim (stepped back), done
+-- (crossed out), tip }. Returns the
 -- offset below them (y when none).
 local function fillPortraits(pool, list, y)
     local shown = {}
@@ -206,6 +273,8 @@ local function fillPortraits(pool, list, y)
         pool[i] = p
         W.SetPortrait(p, it.npc)
         W.DimPortrait(p, it.dim)
+        p.cross:SetShown(it.done and true or false)
+        p.done = it.done and true or false
         p.tip = it.tip
         p.key, p.creature = it.key, it.npc
         p:Show()
@@ -252,7 +321,8 @@ local function refresh()
     F.rule:SetPoint("TOPLEFT", S.PAD, y)
     F.rule:SetPoint("TOPRIGHT", -S.PAD, y)
     y = y - 1 - S.RULE_GAP
-    -- the bosses in the game's order: grey until killed in this run
+    -- the bosses in the game's order: in colour while they live, crossed out and stepped back once
+    -- killed in this run (the user's picture of 2026-11-11)
     local lines = RT.Lines(key, rec)
     local passed = false   -- a later boss killed: an earlier one without a split was skipped
     for i = #lines, 1, -1 do
@@ -261,14 +331,14 @@ local function refresh()
     local bosses = {}
     for i, x in ipairs(lines) do
         local tip, npc = TW.BossTip(key, x)
-        bosses[i] = { npc = npc, dim = not x.split, tip = tip, key = x.enc }
+        bosses[i] = { npc = npc, dim = x.split and true or false, done = x.split and true or false, tip = tip, key = x.enc }
     end
     y = fillPortraits(F.bosses, bosses, y)
-    -- the rares: grey until seen dead in this run
+    -- the rares: stepped back (a rare is not there in every run), crossed out once seen dead in this run
     local killed = (mode == "live" and rec and rec.rk) or (mode == "done" and done.rk) or {}
     local rares = {}
     for i, r in ipairs(RT.Rares(key)) do
-        rares[i] = { npc = r[1], dim = not killed[r[1]], tip = TW.RareTip(r, killed[r[1]]), key = r[1] }
+        rares[i] = { npc = r[1], dim = true, done = killed[r[1]] and true or false, tip = TW.RareTip(r, killed[r[1]]), key = r[1] }
     end
     if #rares > 0 then
         y = y - S.SECTION_GAP
@@ -286,7 +356,7 @@ local function refresh()
     F.result:ClearAllPoints()
     F.result:SetPoint("TOPLEFT", S.PAD, y - S.RESULT_Y)
     F.all:ClearAllPoints()
-    F.all:SetPoint("TOPRIGHT", -S.PAD, y)
+    F.all:SetPoint("TOPRIGHT", -(S.PAD + S.GRIP_ROOM), y)   -- clear of the grip in the corner
     F:SetHeight(-y + S.BOTTOM_H)
     TW.mode = mode
 end

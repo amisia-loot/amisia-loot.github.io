@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(dungeons): the run window shows the boss portraits, coin icons and a grip to make it smaller (F-180)
+
+    The round portraits in the window "Lauf-Zeiten" stayed black: the dark veil and the desaturation that
+    marked a living boss blacked the model out. A living boss is now shown in full colour; a killed one
+    is stepped back and crossed out in red, and so is a rare once you have seen it dead. "Gold" shows its
+    numbers with the game's gold, silver and copper coins instead of letters. The grip in the lower right
+    corner scales the window from 60 to 120 percent; the size is kept.
+
 ## [v2.76.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.76.1) (2026-11-11)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.76.0...v2.76.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

@@ -62,7 +62,7 @@ GT.FUNCTIONS = {
         "C_QuestLog.IsPushableQuest|GetQuestLogPushable", "C_QuestLog.GetLogIndexForQuestID|GetQuestLogIndexByID" } },
     -- F-180: the run window's mob XP, gold, coins and rares seen dead
     { L["Lauf-Fenster: XP, Gold, Rare"], { "UnitXP", "UnitXPMax", "GetMaxPlayerLevel", "IsXPUserDisabled", "GetMoney",
-        "GetCoinTextureString", "UnitIsDead", "GetLootSourceInfo" } },
+        "UnitIsDead", "GetLootSourceInfo" } },
     -- F-181: the window of an item that starts a quest (the bag slot's quest mark, the secure use of the
     -- item: the template's parse and use, the setting of the key press)
     { L["Quest-Startgegenstände"], { "C_Container.GetContainerItemQuestInfo",

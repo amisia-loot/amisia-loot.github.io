@@ -50,14 +50,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-11-11-quest-start-item.md`; DECISIONS D-113. Ob der Client für Startgegenstände den Quest-Vermerk liefert und Addons den Gegenstand per sicherem Knopf benutzen lässt, sagt `/amisia selbsttest gruppe` ("Quest-Startgegenstände"); lehnt er ab, informiert das Fenster nur ("Rechtsklick auf den Gegenstand in der Tasche ...").
 
 ### F-180 Lauf-Fenster: Zeit, Mob-XP, Gold, Bosse und Rare
-- Version: 2.76.0
+- Version: 2.76.2
 - Status: gebaut
-- Prüfung: Wenn du in den Todesminen den ersten Kampf beginnst, dann öffnet sich "Lauf-Zeiten" mit "Zeit", "Mob-XP" und "Gold" nebeneinander, darunter acht graue runde Bossporträts und unter "Rare" drei graue Porträts.
+- Prüfung: Wenn du in den Todesminen den ersten Kampf beginnst, dann öffnet sich "Lauf-Zeiten" mit "Zeit", "Mob-XP" und "Gold" nebeneinander, darunter acht runde Bossporträts in Farbe und unter "Rare" drei zurückgenommene Porträts; "Gold" zeigt Zahlen mit Münzsymbolen (z. B. 36 Silber, 76 Kupfer), und der Griff unten rechts zieht das Fenster kleiner oder größer (bleibt nach `/reload` so).
 - Prüfung: Wenn du Mobs tötest und Geld plünderst, dann wachsen "Mob-XP" und "Gold"; gibst du eine Quest ab oder verkaufst und reparierst beim Händler, dann ändern sich beide nicht (bitte melden, wenn ein Wert springt oder nach einem Boss fehlt).
-- Prüfung: Wenn du einen Boss tötest, dann wird sein Porträt farbig und die Maus darauf zeigt seinen Namen und "Zwischenzeit m:ss" (im zweiten Lauf grün oder rot "... zum besten Lauf").
-- Prüfung: Wenn du einen Rare (z. B. Marisa du'Paige) tot im Ziel hast oder seine Leiche plünderst, dann wird sein Porträt unter "Rare" farbig; nach `/reload` stehen Zeit, Mob-XP, Gold und die Farben noch da.
+- Prüfung: Wenn du einen Boss tötest, dann wird sein Porträt blasser und rot durchgekreuzt, und die Maus darauf zeigt seinen Namen und "Zwischenzeit m:ss" (im zweiten Lauf grün oder rot "... zum besten Lauf").
+- Prüfung: Wenn du einen Rare (z. B. Marisa du'Paige) tot im Ziel hast oder seine Leiche plünderst, dann wird sein Porträt unter "Rare" rot durchgekreuzt; nach `/reload` stehen Zeit, Mob-XP, Gold und die Kreuze noch da.
 - Prüfung: Wenn du in Schwarzfelstiefen kämpfst, dann stehen die 21 Bosse in drei Reihen im Fenster, nichts ragt heraus; in der Halle der Thane gibt es keine Reihe "Rare".
-- Notiz: Spec `docs/specs/2026-11-11-lauf-fenster.md`; DECISIONS D-112. Rare-Daten (AllTheThings) für 12 Dungeons; die neuen Forever-Dungeons und Raids haben keine. Ob der Client Münzsymbole (`GetCoinTextureString`) und die Entsättigung der Modelle hat, sagt `/amisia selbsttest gruppe`; sonst "1g 46s" und ein dunkler Schleier.
+- Notiz: Spec `docs/specs/2026-11-11-lauf-fenster.md`; DECISIONS D-112. Rare-Daten (AllTheThings) für 12 Dungeons; die neuen Forever-Dungeons und Raids haben keine. Seit 2.76.2 (D-112 Nachtrag, nach Bildern des Nutzers): lebende Bosse in Farbe, getötete durchgekreuzt; Münzsymbole selbst gesetzt; Größengriff. Vorher blieben die Kreise im Fenster schwarz (Schleier und Entsättigung der Modelle).
 
 ### F-179 Dungeonquest-Geber auf der Weltkarte
 - Version: 2.76.0

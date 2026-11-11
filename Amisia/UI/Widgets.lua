@@ -1123,8 +1123,8 @@ end
 
 -- A creature's round portrait size px square on parent (the bosses of the pages Dungeons and Raids,
 -- F-154, and the window "Lauf-Zeiten", F-180; tokens T.DBOSS): a black disc, the creature's model over
--- it (the client's skull while it has none), on a frame above the model the veil (W.DimPortrait) and
--- the gold ring (a model draws over its parent's textures).
+-- it (the client's skull while it has none), on a frame above the model the gold ring (a model draws
+-- over its parent's textures; W.DimPortrait turns the ring grey).
 function W.Portrait(parent, size)
     local BV = T.DBOSS
     local p = CreateFrame("Frame", nil, parent)
@@ -1179,23 +1179,17 @@ function W.SetPortrait(p, npc)
     p.skull:Show()
 end
 
--- Greys portrait p (on) or shows it in colour (off): a dark veil over the model, the model's own
--- SetDesaturation where the client has one (not every model frame does), the skull desaturated, the
--- ring grey. p.dim keeps the state.
+-- Steps portrait p back (on: a grey ring, the skull grey, the model at DIM_ALPHA over the black disc) or
+-- shows it in full (off: the gold ring). The model is dimmed by the frame's alpha only: a veil over it
+-- and the model's own SetDesaturation left the circles black on the Forever client (seen 2026-11-11 in
+-- the window "Lauf-Zeiten", while the same portraits drew on the page Dungeons); a client that ignores
+-- the alpha just shows the model in full. p.dim keeps the state.
 function W.DimPortrait(p, on)
     on = on and true or false
-    local D = T.DBOSS
-    if not p.veil then
-        p.veil = p.top:CreateTexture(nil, "ARTWORK")
-        p.veil:SetPoint("TOPLEFT", 2, -2)
-        p.veil:SetPoint("BOTTOMRIGHT", -2, 2)
-        p.veil:SetTexture(W.DISC)
-        p.veil:SetVertexColor(0, 0, 0, D.DIM)
-    end
-    p.veil:SetShown(on)
-    if p.model and type(p.model.SetDesaturation) == "function" then pcall(p.model.SetDesaturation, p.model, on and 1 or 0) end
+    if p.model and p.model.SetAlpha then pcall(p.model.SetAlpha, p.model, on and T.DBOSS.DIM_ALPHA or 1) end
     if p.skull.SetDesaturated then p.skull:SetDesaturated(on) end
-    local c = on and D.RING_DIM or GOLD
+    if p.skull.SetAlpha then p.skull:SetAlpha(on and T.DBOSS.DIM_ALPHA or 1) end
+    local c = on and T.DBOSS.RING_DIM or GOLD
     p.ring:SetVertexColor(c[1], c[2], c[3], 1)
     p.dim = on
 end

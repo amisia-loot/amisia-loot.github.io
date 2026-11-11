@@ -907,6 +907,7 @@ L["Noch keine Zeiten. Die Uhr läuft ab dem ersten Kampf in einem Dungeon oder R
 L["[stop]"] = "[stop]"
 L["Lauf-Zeiten: Zwischenzeiten und Bestzeit des Dungeons oder Raids"] = "Run times: splits and best time of the dungeon or raid"
 L["Lauf-Zeiten"] = "Run times"
+L["Ziehen: das Fenster kleiner oder größer."] = "Drag: makes the window smaller or larger."
 L["Zeitfenster in Dungeons"] = "Timer window in dungeons"
 L["Öffnet ein kleines Fenster mit der Uhr, Mob-XP, Gold, den Bossen und den Rare des Dungeons, sobald dort der erste Kampf beginnt. Gemessen wird auch ohne das Fenster."] = "Opens a small window with the clock, mob XP, gold, the bosses and the rares of the dungeon as soon as the first fight there starts. Everything is measured without the window too."
 L["Zeitfenster auch in Raids"] = "Timer window in raids too"

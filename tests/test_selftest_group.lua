@@ -65,7 +65,7 @@ local function makeClient(opts)
     C_QuestLog.IsPushableQuest = function() return false end
     _G.QuestLogPushQuest = function() error("QuestLogPushQuest called") end
     -- F-180: the run window's XP, gold and rares, only looked up here
-    for _, name in ipairs({ "GetMaxPlayerLevel", "IsXPUserDisabled", "GetMoney", "GetCoinTextureString" }) do
+    for _, name in ipairs({ "GetMaxPlayerLevel", "IsXPUserDisabled", "GetMoney" }) do
         _G[name] = _G[name] or function() error(name .. " called") end
     end
     -- F-181: the window of an item that starts a quest, only looked up here (the quest mark answers nothing)
