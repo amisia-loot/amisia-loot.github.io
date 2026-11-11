@@ -1282,7 +1282,8 @@ local function numOr(v) return type(v) == "number" and v or 0 end
 -- active, gone (no longer possible: a quest that excludes it is done), goneBy (that quest's id),
 -- faction, classes, races, skill, breadcrumb, items (start items { { item id, NPC name, uiMapID,
 -- dungeon key } }), object (start object), ender, enderPoints (the turn-in NPC and its points),
--- objective, dungeon }; the item data's map points and giver stand in where the quest data has none.
+-- objective, dungeon, scanXP (the XP the quest scan saw), scanned (placed by the quest scan's text
+-- alone, D-109) }; the item data's map points and giver stand in where the quest data has none.
 -- Fields an older data file lacks stay nil (or 0).
 -- The spots of field 22 (hand-kept hints, D-65) in the client's language: { text, ... } or nil.
 local function spotsOf(v)
@@ -1312,6 +1313,10 @@ local function questNode(qid, r, rec)
         n.object, n.races, n.skill = textOr(r[16]), numOr(r[17]), numOr(r[18])
         n.ender, n.enderPoints, n.objective = textOr(r[19]), textOr(r[20]), textOr(r[21])
         n.spots = spotsOf(r[22])
+        -- the XP the quest scan saw (its character's level unknown) and whether only the scan's text
+        -- placed the quest in its dungeon (D-109: no source knows its giver or place)
+        n.scanXP = type(r[23]) == "number" and r[23] > 0 and r[23] or nil
+        n.scanned = r[24] == true or nil
     else
         n.title = titleOf(qid, rec and rec[2])
         n.minLevel, n.level = rec and rec[4] or 0, rec and rec[3] or 0
@@ -1337,6 +1342,8 @@ local function questNode(qid, r, rec)
         elseif ender then n.ender = ender end
     end
     n.objective = ns.CollectQuestObjective and ns.CollectQuestObjective(qid) or n.objective
+    -- the scan's mark says the giver is unknown: gone once this client saw the giver itself
+    if n.scanned and (n.giver or n.points) then n.scanned = nil end
     return n
 end
 
@@ -1709,7 +1716,8 @@ end
 -- optional one), state, optional, breadcrumb, one (one of several will do: others = their titles,
 -- oneDone = the chosen one is done, so the others are no longer needed), gone (goneBy: the title of
 -- the quest whose completion closed it), accept (D.QuestAccept), turnIn (D.QuestTurnIn), needs
--- (D.QuestNeeds), objective, spots (where in the dungeon the start item can lie, hand-kept hints, D-65) }. done/total: the required steps done and in all (breadcrumbs and what
+-- (D.QuestNeeds), objective, spots (where in the dungeon the start item can lie, hand-kept hints, D-65), scanned
+-- (placed by the quest scan's text alone, D-109) }. done/total: the required steps done and in all (breadcrumbs and what
 -- only they need do not count; a "one of" group counts once). next: the first required step neither
 -- done nor gone.
 function D.QuestPath(q, dkey)
@@ -1747,6 +1755,7 @@ function D.QuestPath(q, dkey)
         s.needs = D.QuestNeeds(n)
         s.objective = n.objective
         s.spots = n.spots
+        s.scanned = n.scanned
         path.steps[#path.steps + 1] = s
         if not path.next and not s.optional and not n.done and not n.gone then path.next = s end
     end
@@ -2064,16 +2073,22 @@ local function questLevelOf(n)
 end
 
 -- The XP of a quest of ns.DungeonQuests for the own level: value, how, seenLevel (QuestXP.For);
+-- else the XP the quest scan saw (how "scan": at the scanning character's level, so an estimate);
 -- nil when never seen.
 function D.QuestXP(n)
-    if type(n) ~= "table" or not n.qid or not ns.QuestXP then return nil end
-    return ns.QuestXP.For(n.qid, questLevelOf(n))
+    if type(n) ~= "table" or not n.qid then return nil end
+    if ns.QuestXP then
+        local v, how, seen = ns.QuestXP.For(n.qid, questLevelOf(n))
+        if v then return v, how, seen end
+    end
+    if n.scanXP then return n.scanXP, "scan" end
+    return nil
 end
 
 -- "1150", "~925" (estimated), "900 (Lvl 16)" (seen at another level), "" without a value.
 function D.XPText(value, how, seen)
     if not value then return "" end
-    if how == "scaled" then return TEXT.xpEst:format(value) end
+    if how == "scaled" or how == "scan" then return TEXT.xpEst:format(value) end
     if how == "other" and seen then return TEXT.xpOther:format(value, seen) end
     return tostring(value)
 end
@@ -2088,7 +2103,7 @@ function D.XPSum(list)
             if v then
                 s.total = s.total + v
                 if q.start == "I" then s.inside = s.inside + v else s.outside = s.outside + v end
-                if how == "scaled" or how == "other" then s.est = true end
+                if how == "scaled" or how == "other" or how == "scan" then s.est = true end
             else
                 s.missing = s.missing + 1
             end

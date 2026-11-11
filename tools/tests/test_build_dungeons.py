@@ -299,7 +299,7 @@ def test_the_client_levels_and_instance_ids():
     assert set(c['dungeons']) <= keys
     by = {e['key']: e for e in entries()}
     for k, v in c['dungeons'].items():
-        assert set(v) <= {'lvl', 'inst', 'lfg', 'order', 'enc', 'npcs', 'order_src', 'maps'}, v
+        assert set(v) <= {'lvl', 'inst', 'lfg', 'order', 'enc', 'npcs', 'npcs_scan', 'order_src', 'maps'}, v
         assert v.get('order_src') in (None, 'att'), (k, v)
         if 'npcs' in v:
             order = v.get('order') or by[k].get('order')
@@ -407,8 +407,11 @@ def test_every_boss_of_the_order_has_its_npc():
         order = v.get('order') or by[k].get('order') or []
         missing += [f'{k}: {n}' for n, npc in zip(order, v.get('npcs') or []) if npc is not False and npc == 0]
     # Overseer Wrex (Alcaz Prison, 3403) and King Op (Shaper's Terrace, 3504) stand in the client's order since
-    # build 1.60.1.70888 (D-101); AllTheThings has their encounters only as comments, without a creature
-    assert missing == ['alcaz: Overseer Wrex', 'scholo: Lady Illucia Barov', 'shaper: King Op'], missing
+    # build 1.60.1.70888 (D-101); AllTheThings has their encounters only as comments, without a creature. The NPC
+    # scan (D-104) can fill them (npcs_scan names those it filled), so only these may stay without one
+    assert set(missing) <= {'alcaz: Overseer Wrex', 'scholo: Lady Illucia Barov', 'shaper: King Op'}, missing
+    for k, v in c.items():
+        assert set(v.get('npcs_scan') or []) <= {'Overseer Wrex', 'Lady Illucia Barov', 'King Op'}, (k, v.get('npcs_scan'))
     # the new Forever dungeons: the game's own order and encounters from the client table (DungeonEncounter of
     # build 1.60.1.70888, D-101), no hand order and no order of AllTheThings any more
     drowned = c['drowned']

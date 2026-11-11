@@ -54,6 +54,8 @@ local DTEXT = {
     xpSeen = L["gesehen bei Level %d"],
     xpScaled = L["geschätzt, gesehen bei Level %d"],
     xpOther = L["gesehen bei Level %d, Questlevel unbekannt"],
+    xpScan = L["aus dem Quest-Scan, geschätzt"],
+    scanned = L["Nur aus dem Quest-Scan: Questgeber und Ort noch unbekannt"],
     xpNone = L["EP: noch nicht gesehen"],
 }
 local ART_W, ART_H = 590, 48
@@ -447,7 +449,7 @@ end
 -- Where a quest's XP comes from (Dungeons.QuestXP's how and seen), for the tooltip and the detail.
 local function xpSource(how, seen)
     return how == "log" and DTEXT.xpLog or how == "scaled" and DTEXT.xpScaled:format(seen)
-        or how == "other" and DTEXT.xpOther:format(seen) or DTEXT.xpSeen:format(seen or 0)
+        or how == "other" and DTEXT.xpOther:format(seen) or how == "scan" and DTEXT.xpScan or DTEXT.xpSeen:format(seen or 0)
 end
 
 -- The tooltip of a quest row: title, level, state, where it starts, the chain, a hint on the click.
@@ -463,6 +465,8 @@ local function questTip(self)
     GameTooltip:AddLine(ns.Dungeons.QuestStateIcon(st) .. " " .. (STATE_TEXT[st] or L["offen"]), 0.85, 0.85, 0.85)
     local where = ns.Dungeons.QuestStartText(q)
     if where ~= "" then GameTooltip:AddLine(L["Start: %s"]:format(where), 0.85, 0.85, 0.85, true) end
+    -- a quest only the quest scan's text placed here (D-109): no giver, no place yet
+    if q.scanned then GameTooltip:AddLine(DTEXT.scanned, 0.6, 0.6, 0.6, true) end
     local value, how, seen = ns.Dungeons.QuestXP(q)
     if value then
         local from = xpSource(how, seen)
@@ -910,6 +914,7 @@ local PTEXT = {
     noLonger = L["eine davon reicht · nicht mehr nötig: %s"],
     goneBy = L["nicht mehr möglich, weil %s erledigt ist"],
     gone = L["nicht mehr möglich"],
+    scanned = L["nur aus dem Quest-Scan"],
     level = L["Stufe %s"],
     progress = L["Weg: %d von %d Schritten erledigt"],
     nextStep = L["Nächster Schritt:"],
@@ -1065,6 +1070,8 @@ local function fillCard(c, s, path, width, isNext)
     if s.one and not over then flags[#flags + 1] = (s.oneDone and PTEXT.noLonger or PTEXT.alsoOk):format(table.concat(s.others, ", ")) end
     if not over then
         if s.breadcrumb then flags[#flags + 1] = PTEXT.crumb elseif s.optional then flags[#flags + 1] = PTEXT.optional end
+        -- placed by the quest scan's text alone (D-109)
+        if s.scanned then flags[#flags + 1] = PTEXT.scanned end
     end
     if #flags > 0 then line(nil, T.ORANGE .. table.concat(flags, " · ") .. "|r") end
     for i = used + 1, #c.lines do

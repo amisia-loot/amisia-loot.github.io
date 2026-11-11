@@ -220,7 +220,7 @@ def data_steps(sv=None, wago=WAGO, refresh_att=False):
         ('dungeons', 'build_dungeons.py', ['--wago', wago] + sv_args, [('LFGDungeons', 'AreaTable')], []),
         ('gear', 'build_gear.py', ['--wago', wago] + sv_args + (['--refresh-att'] if refresh_att else []), None, None),
         ('map', 'build_map.py', ['--wago', wago] + sv_args, None, None),
-        ('dungeon quests', 'build_dungeonquests.py', sv_args, None, None),
+        ('dungeon quests', 'build_dungeonquests.py', ['--wago', wago] + sv_args, None, None),
         ('quests', 'build_quests.py', [], None, None),
         # the quest items' quests (F-173): ATT, the start items of ItemSparse, the own links of the SavedVariables
         ('quest items', 'build_questitems.py', ['--wago', wago] + sv_args, None, None),

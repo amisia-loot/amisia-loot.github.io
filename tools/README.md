@@ -37,8 +37,9 @@ python3 tools/build.py errors [--sv FILE] [--all]
 - `tables` downloads the client tables from wago.tools (`fetch_tables.py`, below): the newest `wowf` build
   or `--version`, every table of `client_tables.TABLES` or only `--tables`. The one step that asks the site.
   `--locale deDE` writes `<Table>.<build>.deDE.csv` beside the others (the builders' chooser never takes such a
-  file): only `DungeonEncounter` is wanted that way, once per build, for the boss matching of the NPC scan
-  (`build_dungeons.py`, D-104).
+  file): only `DungeonEncounter` (the boss matching of the NPC scan, `build_dungeons.py`, D-104) and `Map`,
+  `LFGDungeons`, `AreaTable` (the German dungeon and town names of the scanned dungeon quests,
+  `build_dungeonquests.py`, D-109) are wanted that way; the newest build on disk serves.
 - `check` runs `tests/syntax.cjs`, `tests/run.py`, the layout rules of every page and
   window (`tools/ui_layout.py rules`, see below), `pytest tools/tests` (which holds the
   "generated file is current" checks), a UTF-8 check of every addon text file (no byte order mark),
@@ -330,7 +331,8 @@ python3 tools/client_tables.py [--out DIR]                                   # s
   were taken over into `~/addons/_cache/wago` without a new request.
 - English only: the string columns the builders read are English names (`Name_lang`, `Display_lang`, ...);
   the PC's export is English too, and no builder reads a German name from a table (German names come from
-  the game itself). `--locale deDE` would write `<Table>.<build>.deDE.csv`, which the chooser leaves out.
+  the game itself, except DungeonEncounter, Map, LFGDungeons and AreaTable in deDE: D-104, D-109).
+  `--locale deDE` writes `<Table>.<build>.deDE.csv`, which the chooser leaves out.
 - Never from wowhead.com or foreverchanges, never data of other addons (D-03, D-04).
 
 Tests: `tools/tests/test_client_tables.py`, `tools/tests/test_fetch_tables.py` (no network: the URL guard,
@@ -871,6 +873,7 @@ generated file and in `docs/ARCHITECTURE.md` (module map, `Data/DungeonQuestData
 ```
 python tools/build_dungeonquests.py [--att ~/addons/_cache/att] [--refresh-att] [--json FILE] [--empty]
                                     [--sv FILE...] [--obs-archive tools/quest_obs.json] [--hints tools/quest_hints.json]
+                                    [--wago DIR] [--de-dirs DIR...] [--no-place-scanned] [--report FILE]
 ```
 
 - Source: AllTheThings' hand-kept Forever data, folder `.contrib/.db/forever` of
@@ -900,6 +903,21 @@ python tools/build_dungeonquests.py [--att ~/addons/_cache/att] [--refresh-att] 
   its name and places) or `enderName`, and `spots` (a key of its `spots` table: German and English
   lines on where in the dungeon the start item can lie, field 22, 8 lines of 300 characters at most).
   A value of the data stays; own observations still go first. A quest the data lacks takes nothing.
+  `dungeon` (a dungeon key, or `""`) places one scanned quest by hand or keeps it out of the rule below.
+- Dungeon quests of the quest scan (D-109, F-177; `--no-place-scanned` for none): a scanned quest tagged
+  "D" or "R" (`tools/scan_archive.json` and the SavedVariables, `build_scan_archive.id_scans`) that no source
+  places goes into the one dungeon its title or objective names: the dungeon's name (facts, aliases, Map and
+  LFGDungeons of `--wago` in English and of `--de-dirs` in deDE), a boss's name (English, DungeonEncounter in
+  deDE, the NPC scan's name), a wing's German name only beside its instance's. Whole words after a light
+  German stemming (`stem()`); a dungeon name that is also a map outside any instance ("Dalaran"), boss names
+  with an article and one-word boss names the German client translates do not count. Two dungeons, or only
+  an instance of several dungeons without its wing, or none: not placed. A quest a source knows only gets
+  its dungeon; one no source knows gets the scan's level, objective (without "Anforderungen:"), rewards,
+  XP, no giver and no place, field 24 `true`, and the faction of the towns its text names
+  (`FACTION_PLACES`, English names by hand, German ones from AreaTable in deDE), else both; of two quests of
+  one title in one dungeon, one without a faction takes the other's opposite. The log line counts them per
+  dungeon and per reason; `--report` (default `~/addons/_cache/dungeonquest_scan_report.txt`, outside the
+  repo) lists each placed and each left quest. The XP of the scan goes into field 23 for every quest without one.
 - The input is pluggable: every reader produces one neutral form (see `NEUTRAL` in the script),
   `--json` reads that form directly, `--empty` writes the file without data (the addon then says
   "Questdaten fehlen noch.").

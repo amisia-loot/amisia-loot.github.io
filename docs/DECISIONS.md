@@ -2751,3 +2751,64 @@ Nachtrag 2026-11-10 (Datenprüfung des Nutzers mit 2.75.0, Client 1.60.1.70862, 
 **Folge:** Eine neue Textur braucht nach dem Release einen ganzen Neustart des Spiels. Annahme (nicht gefragt): die Fußzeile des Hauptfensters als Ort (wie im anderen eigenen Addon), nicht die Seite "Über und Befehle".
 
 **Durchgesetzt durch:** `tests/test_links.lua` (beide Symbole rechts in der Fußzeile, Reihenfolge, Klick zeigt den Link, Tippen stellt ihn wieder her, Enter und Escape schließen), `tests/ui_scene.lua` (`linkwindow`), `tools/tests/test_contracts.py::test_no_links_to_fan_sites` (genau diese zwei Links, nur in `T.LINKS`; sonst weiter nur die erlaubten Hosts).
+
+## D-109 Dungeonquests aus dem eigenen Quest-Scan: der Text nennt genau einen Dungeon
+
+**Datum:** 2026-11-11
+**Entscheidung:** `tools/build_dungeonquests.py` setzt eine gescannte Quest (D-104) mit dem Tag Dungeon oder
+Schlachtzug ("D", "R"), die keine Quelle in einen Dungeon setzt, in den Dungeon, den ihr Titel oder ihr Ziel
+nennt (F-177, Spec `docs/specs/2026-11-11-dungeonquests-aus-scan.md`). Das gilt für alle Dungeons und Raids;
+eine Quest, die eine Quelle schon in einen Dungeon setzt, bleibt, wo sie ist.
+- **Namen:** je Dungeon sein Name und seine Aliase aus `tools/forever_dungeons.json`, die Namen der Tabellen
+  Map (nach Instanz) und LFGDungeons in Englisch und Deutsch, je Boss sein englischer Name, sein Name aus
+  DungeonEncounter in deDE und der Name seines NPCs aus dem NPC-Scan; die deutschen Namen der Flügel
+  (Friedhof, Bibliothek, Waffenkammer, Kathedrale) zählen nur neben dem Namen ihrer Instanz. Nicht als Name:
+  ein Dungeonname, der auch eine Karte außerhalb jeder Instanz benennt ("Dalaran"); ein Bossname mit Artikel
+  ("Die Sieben", "Das Gewölbe", "Der Verlassene"); ein Bossname aus einem Wort, den der deutsche Client
+  übersetzt ("Zunder", "Plünderung", "Erdrutsch": gewöhnliche Wörter). Ein Ein-Wort-Name zählt nur, wo beide
+  Sprachen ihn gleich schreiben (ein Eigenname: "Onyxia", "Noxxion").
+- **Vergleich:** Wort für Wort, ganze Wörter, ohne Groß- und Kleinschreibung, nach einem leichten deutschen
+  Stamm (bis zu zwei Endungen -ses, -es, -en, -er, -em, -e, -n, -s, der Stamm behält vier Buchstaben):
+  "des Gefängnisses von Alcaz", "der Unteren Schwarzfelsspitze", "Varrox Bleakhoofs Kopf". Ein längerer Name
+  schlägt einen kürzeren in ihm.
+- **Genau einer:** Ein Dungeon genannt: gesetzt. Zwei verschiedene: nicht gesetzt. Nur eine Instanz mehrerer
+  Dungeons ("Scharlachrotes Kloster", "Schwarzfelsspitze") ohne Flügel und ohne Boss eines Flügels: nicht
+  gesetzt, kein Flügel wird geraten; mit dem Namen eines Flügels oder dem Boss eines Flügels: dieser Flügel.
+  Keiner genannt: nicht gesetzt. Die Zahlen stehen im Protokoll des Baus, jede nicht gesetzte Quest mit Grund in
+  `~/addons/_cache/dungeonquest_scan_report.txt`.
+- **Was die Quest trägt:** Kennt eine Quelle sie (mit Geber, Ort, Fraktion), bekommt sie nur den Dungeon. Sonst:
+  die Stufe des Scans, das Ziel ohne die Liste "Anforderungen:", Belohnungen und Auswahl als Feld 12, die EP des
+  Scans (Feld 23, auch für alle anderen Quests ohne Wert), Feld 24 `true`; kein Geber, kein Ort, keine
+  Mindeststufe; als Name "Quest <Nummer>" oder der Titel eines englischen Scans. Den Titel zeigt das Addon wie
+  sonst: den des Clients, sonst den des Scans in der Sprache des Clients (`Data/ScanNames.lua`), sonst den Namen.
+- **Fraktion:** Nennt der Text nur Orte einer Fraktion (eine eigene Liste englischer Namen von Hauptstädten,
+  Orten und Heimatgebieten einer Fraktion, `FACTION_PLACES`, ihre deutschen Namen aus AreaTable in deDE),
+  gilt diese Fraktion. Zwei Quests gleichen Titels im selben Dungeon, die eine mit Fraktion, die andere ohne:
+  die andere bekommt die Gegenseite. Sonst bleibt die Fraktion leer und beide sehen die Quest. Der Client sagt
+  per Nummer keine Fraktion (D-104, Nachtrag D-107); QuestV2 hat keine Spalte dafür.
+- **Hinweise (D-65):** `tools/quest_hints.json` nimmt für Einzelfälle `"dungeon": "<key>"` (von Hand
+  gesetzt) oder `"dungeon": ""` (von der Regel ausgenommen); keine Massenzuweisung dort.
+- **Tabellen:** Map, LFGDungeons und AreaTable in deDE kamen einmal über `python3 tools/build.py tables
+  --version 1.60.1.70888 --tables Map LFGDungeons AreaTable --locale deDE` (wowf, 2026-11-11, drei Anfragen;
+  ändert D-101 "nur enUS" wie D-104 für DungeonEncounter). Ohne sie bleiben die englischen Namen.
+
+**Grund:** Nutzer 2026-11-11 auf eine Liste von Vorschlägen, Punkt 1: "Dungeonquests der neuen Dungeons.
+Alcaz-Gefängnis, Blackmaw-Feste und Terrasse des Formers haben bei uns gar keine Quests, Krol'dok nur zwei."
+AllTheThings kennt diese Quests nicht; der eigene Quest-Scan kennt sie mit Tag und deutschem Ziel, und das
+Ziel nennt fast immer den Dungeon. Streng, weil eine Quest im falschen Dungeon schlimmer ist als eine fehlende.
+
+**Folge:** Mit dem Scan vom 2026-11-11: 55 Quests gesetzt (45 nur aus dem Scan, 10 kannte AllTheThings ohne
+Dungeon), 69 nicht (67 ohne Dungeonnamen, darunter die Quests des Versunkenen Tempels, der kein Dungeon der
+Facts ist, und 2 "nur das Kloster"). Alcaz 0 -> 8, Schwarzschlundfeste 0 -> 8, Terrasse des Formers 0 -> 5,
+Krol'dok 2 -> 7. Bei 32 der 45 Quests bleibt die Fraktion offen (10 aus den Orten des Textes, 3 als Gegenstück eines Paars). Ein englischer Client zeigt "Quest <Nummer>",
+bis er die Quest geladen hat; das Ziel steht in der Sprache des Scans wie die Ziele des Sammlers. Nach jedem
+neuen Scan bringt `build.py data` mehr Belohnungen und EP ohne Handarbeit. Sieht ein Spieler eine solche Quest
+beim Geber, lernt der Sammler Geber und Ort (Collector.lua hält Quests der Dungeonquestdaten fest); ab dann
+fällt im Addon die Marke "nur aus dem Quest-Scan" weg.
+
+**Durchgesetzt durch:** `tools/tests/test_build_dungeonquests.py::test_german_stems_match_inflected_names`,
+`::test_the_names_the_rule_looks_for`, `::test_the_text_names_exactly_one_dungeon`,
+`::test_scanned_dungeon_quests_fill_gaps_only`, `::test_the_shipped_scanned_quests_have_their_dungeon_and_no_giver`,
+`tests/test_dungeon_scanned_quests.lua` (Liste je Fraktion, Titel deutsch und englisch, kein Start, Stufe,
+EP des Scans als Schätzung, Questweg, kein Wegpunkt, kein Kartenschritt, die Marke weg, sobald der Sammler
+den Geber sah, Dungeon-Leiste, Tooltip, Karte).

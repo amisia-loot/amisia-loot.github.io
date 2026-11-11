@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): dungeon quests from the own quest scan (F-177)
+
+    Alcaz Prison, Blackmaw Hold and the Shaper's Terrace had no quests and Krol'dok only two. The data
+    build now places every scanned dungeon or raid quest that no source places into the one dungeon its
+    title or objective names (by the dungeon's name or one of its bosses): 55 quests in 14 dungeons, among
+    them 8 in Alcaz Prison, 8 in Blackmaw Hold, 5 on the Shaper's Terrace and 5 more in Krol'dok. Their
+    quest giver and place are not known yet; the quest path says so, and the tooltip marks them as taken
+    from the quest scan. The faction comes from the town the text names, else both factions see the quest.
+
 ## [v2.75.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.75.1) (2026-11-11)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.75.0...v2.75.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

@@ -22,7 +22,11 @@ and render() writes the Lua file from that form only.
   text. They are joined into tools/quest_obs.json, which keeps them after the addon prunes its table
   (--obs-archive "" for none).
 - --scan-archive FILE (default tools/scan_archive.json, "" for none): the quest scan by id (D-104): the
-  level the client gives a quest, where the data and the own observations have none.
+  level the client gives a quest, where the data and the own observations have none, and the XP it saw
+  (field 23). Its dungeon and raid quests that no source places go into the one dungeon their text
+  names (D-109, place_scanned(); --no-place-scanned for none): the names come from the facts, the
+  client tables of --wago (English) and --de-dirs (<Table>.<build>.deDE.csv) and the NPC scan; --report
+  lists what was placed and what was not, and why.
 - --hints FILE (default tools/quest_hints.json, "" for none): hand-kept hints for quests whose start or
   turn-in no source knows (DECISIONS D-65), in own words: the dungeon where a start item lies, the
   turn-in NPC (an id of the data, or a name), the spots in the dungeon where the start item can lie
@@ -34,6 +38,7 @@ No data of other quest databases goes in.
 """
 import argparse
 import copy
+import csv
 import json
 import os
 import re
@@ -471,6 +476,334 @@ def scanned_levels(scans):
     return out
 
 
+def apply_scanned_xp(data, scans):
+    """The XP the quest scan saw (field 23, the scanning character's level unknown) for every quest that
+    has none yet. In place; returns how many took one."""
+    xp = {}
+    for part in ((scans or {}).get('quests') or {}).values():
+        for qid, f in part.items():
+            v = f.get('xp') or 0
+            if 0 < v <= 10000000:
+                xp[qid] = max(xp.get(qid, 0), int(v))
+    n = 0
+    for qid, q in data['quests'].items():
+        if not q.get('xp') and xp.get(qid):
+            q['xp'] = xp[qid]
+            n += 1
+    return n
+
+
+# ---------------------------------------------------------------- dungeon quests of the quest scan (D-109)
+# A scanned quest the client tags as a dungeon or raid quest ("D", "R") that no source places in a
+# dungeon joins the dungeon its own text names: its title and objective name exactly one dungeon, by
+# the dungeon's name or the name of one of its bosses, in the scan's language or in English (Forever's
+# German texts keep many English names). Names are compared word by word after a light German stemming
+# (case, endings -e/-en/-er/-es/-em/-n/-s/-ses: "Gefängnisses von Alcaz", "der Unteren
+# Schwarzfelsspitze", "Varrox Bleakhoofs Kopf"), whole words only, a longer name inside the text
+# winning over a shorter one within it. The turn-in place the text names decides the faction where it
+# is a town of one faction (FACTION_PLACES).
+SCAN_TAGS = ('D', 'R')
+ARTICLES = {'der', 'die', 'das', 'the', 'den', 'dem', 'des'}
+ENDINGS = ('ses', 'es', 'en', 'er', 'em', 'e', 'n', 's')
+# the German names of the wings of an instance that hosts several dungeons (the addon's own words, the
+# same as Gear/Dungeons.lua shows); a wing's name counts only beside the instance's name
+WING_DE = {'Graveyard': 'Friedhof', 'Library': 'Bibliothek', 'Armory': 'Waffenkammer', 'Cathedral': 'Kathedrale'}
+# Towns and home zones of one faction, in English (own knowledge of the game, D-109); the German names
+# come from the client's AreaTable in deDE by the English name. A quest text naming only towns of one
+# faction (where it is handed in) belongs to that faction. Left out on purpose: places whose German name
+# is an ordinary word (Refuge Pointe, "Die Zuflucht": Marshal's Refuge is "Marshals Zuflucht"; The
+# Sepulcher, "Das Grabmal") and neutral towns (Ratchet, Gadgetzan, Booty Bay, Everlook, Dalaran).
+FACTION_PLACES = {
+    'A': ['Stormwind', 'Stormwind City', 'Ironforge', 'Darnassus', 'Theramore', 'Theramore Isle', 'Menethil Harbor',
+          'Thelsamar', 'Auberdine', 'Astranaar', 'Goldshire', 'Lakeshire', 'Darkshire', 'Southshore',
+          'Aerie Peak', "Nijel's Point", 'Feathermoon', 'Feathermoon Stronghold', 'Thalanaar', 'Talonbranch Glade',
+          'Chillwind Camp', "Morgan's Vigil", 'Sentinel Hill', 'Kharanos', 'Dolanaar', "Rut'theran Village",
+          'Stonetalon Peak', 'Nethergarde Keep', 'Elwynn Forest', 'Dun Morogh', 'Teldrassil'],
+    'H': ['Orgrimmar', 'Thunder Bluff', 'Undercity', 'Kargath', 'Stonard', 'Hammerfall', 'Tarren Mill', 'Brill',
+          "Grom'gol Base Camp", "Grom'gol", 'Splintertree Post', 'The Crossroads', 'Camp Taurajo', 'Freewind Post',
+          'Brackenwall Village', 'Camp Mojache', 'Shadowprey Village', 'Shadowprey', 'Revantusk Village', 'Flame Crest',
+          'Bloodvenom Post', "Zoram'gar Outpost", 'Sun Rock Retreat', 'Razor Hill', 'Bloodhoof Village', 'Durotar',
+          'Mulgore', 'Tirisfal Glades'],
+}
+_WORD = re.compile(r"[^\W_]+(?:['\-][^\W_]+)*")
+REPORT = os.path.expanduser('~/addons/_cache/dungeonquest_scan_report.txt')
+
+
+def stem(word):
+    """A word compared without case and without up to two German endings (the stem keeps 4 letters)."""
+    w = word.casefold()
+    for _ in range(2):
+        for e in ENDINGS:
+            if w.endswith(e) and len(w) - len(e) >= 4:
+                w = w[:-len(e)]
+                break
+        else:
+            break
+    return w
+
+
+def stems(text):
+    """The stems of the whole words of a text (apostrophes and hyphens inside a word kept)."""
+    return [stem(w) for w in _WORD.findall((text or '').replace('’', "'"))]
+
+
+def name_stems(name, drop_article=True):
+    """The stems of a name, a leading article dropped; () for an empty name."""
+    s = stems(name)
+    if drop_article:
+        words = _WORD.findall((name or '').replace('’', "'"))
+        if words and words[0].casefold() in ARTICLES:
+            s = s[1:]
+    return tuple(s)
+
+
+def _rows(path):
+    if not path or not os.path.exists(path):
+        return []
+    with open(path, encoding='utf-8-sig', newline='') as fh:
+        return list(csv.DictReader(fh))
+
+
+def locale_csv(dirs, table, locale):
+    """The newest <table>.<build>.<locale>.csv of the first folder holding one, or None."""
+    pat = re.compile(r'^' + re.escape(table) + r'\.(\d+(?:\.\d+)*)\.' + re.escape(locale) + r'\.csv$')
+    for d in dirs:
+        if not d or not os.path.isdir(d):
+            continue
+        found = sorted((tuple(int(x) for x in m.group(1).split('.')), name)
+                       for name in os.listdir(d) for m in [pat.match(name)] if m)
+        if found:
+            return os.path.join(d, found[-1][1])
+    return None
+
+
+def dungeon_names(facts, client, wago=None, de_dirs=(), scans=None):
+    """The names the rule looks for: {'names': [(stems, kind, frozenset(keys), name)], 'places':
+    [(stems, faction, name)], 'tables': [files read]}. kind: 'dungeon' (a dungeon's or an instance's
+    name: the facts' names and aliases, the client's Map and LFGDungeons names in English and German),
+    'boss' (a boss's name in English, the client's DungeonEncounter name in German and the NPC scan's name
+    of its NPC), 'wing' (a wing's German name, counting only beside its instance's name).
+    Left out: a dungeon name that is also the name of a map outside any instance (Dalaran, the city and
+    the dungeon); a boss name that starts with an article ("Die Sieben", "Das Gewölbe") and a one-word
+    boss name the German client translates ("Zunder", "Plünderung": ordinary words), so a one-word
+    boss name counts only where both languages write it alike (a proper name: "Onyxia", "Noxxion")."""
+    import att_data
+    cl = (client or {}).get('dungeons') or {}
+    read = []
+
+    def table(name, locale=None):
+        path = locale_csv(de_dirs, name, locale) if locale else (att_data.wago_csv(wago, name) if wago else None)
+        rows = _rows(path)
+        if rows:
+            read.append(os.path.basename(path))
+        return rows
+    map_en = {r['ID']: r for r in table('Map')}
+    map_de = {r['ID']: r for r in table('Map', 'deDE')}
+    lfg_en = table('LFGDungeons')
+    lfg_de = {r['ID']: r.get('Name_lang') for r in table('LFGDungeons', 'deDE')}
+    enc_de = {r['ID']: r.get('Name_lang') for r in table('DungeonEncounter', 'deDE')}
+    area_en, area_de = table('AreaTable'), {r['ID']: r.get('AreaName_lang') for r in table('AreaTable', 'deDE')}
+    cities = {name_stems(r.get('MapName_lang')) for part in (map_en, map_de) for r in part.values()
+              if r.get('InstanceType') == '0' and r.get('MapName_lang')}
+    lfg_by_name = {}
+    for r in lfg_en:
+        lfg_by_name.setdefault(r.get('Name_lang'), []).append(r['ID'])
+    npc_names = {}
+    for part in ((scans or {}).get('npcs') or {}).values():
+        for nid, f in part.items():
+            if f.get('name'):
+                npc_names.setdefault(nid, f['name'])
+    out = {}
+
+    def add(name, kind, key):
+        s = name_stems(name)
+        if not s:
+            return
+        out.setdefault((s, kind), [set(), name])[0].add(key)
+    for e in facts:
+        key = e['key']
+        c = cl.get(key) or {}
+        dnames = [e.get('name'), e.get('part')] + list(e.get('aliases') or []) + list(c.get('lfg') or [])
+        for lname in c.get('lfg') or []:
+            dnames += [lfg_de.get(i) for i in lfg_by_name.get(lname, [])]
+        inst = str(c.get('inst') or e.get('inst') or '')
+        dnames += [map_en.get(inst, {}).get('MapName_lang'), map_de.get(inst, {}).get('MapName_lang')]
+        for n in dnames:
+            if n and name_stems(n) not in cities:
+                add(n, 'dungeon', key)
+        if e.get('wing'):
+            add(WING_DE.get(e['wing'], e['wing']), 'wing', key)
+            add(e['wing'], 'wing', key)
+        order, enc, npcs = c.get('order') or [], c.get('enc') or [], c.get('npcs') or []
+        for i, en in enumerate(order):
+            de = [enc_de.get(str(enc[i])) if i < len(enc) else None, npc_names.get(npcs[i]) if i < len(npcs) and npcs[i] else None]
+            for n in [en] + de:
+                if not n:
+                    continue
+                words = _WORD.findall(n)
+                if not words or words[0].casefold() in ARTICLES:
+                    continue
+                if len(words) == 1 and any(d and d != en for d in de):
+                    continue
+                add(n, 'boss', key)
+    names = sorted(((s, kind, frozenset(keys), name) for (s, kind), (keys, name) in out.items()), key=lambda t: (t[0], t[1]))
+    by_en = {}
+    for r in area_en:
+        by_en.setdefault(r.get('AreaName_lang'), []).append(r['ID'])
+    places = {}
+    for fac, lst in FACTION_PLACES.items():
+        for en in lst:
+            for n in [en] + [area_de.get(i) for i in by_en.get(en, [])]:
+                s = name_stems(n) if n else ()
+                if s:
+                    places.setdefault(s, (fac, n))
+    return {'names': names, 'places': sorted((s, f, n) for s, (f, n) in places.items()), 'tables': read,
+            'keys': sorted(e['key'] for e in facts)}
+
+
+def _hits(tokens, entries):
+    """[(start, end, entry)] of every entry whose stems occur in tokens; a hit inside a longer one dropped."""
+    found = []
+    for ent in entries:
+        s = ent[0]
+        n = len(s)
+        for i in range(len(tokens) - n + 1):
+            if tuple(tokens[i:i + n]) == s:
+                found.append((i, i + n, ent))
+    return [h for h in found if not any(o is not h and o[0] <= h[0] and h[1] <= o[1] and (o[1] - o[0]) > (h[1] - h[0])
+                                        for o in found)]
+
+
+def scan_dungeon_of(text, names):
+    """(dungeon key or None, why, the names found) of a quest text by the rule of D-109. why: 'one' (placed),
+    'none' (no dungeon named), 'two' (two dungeons named), 'wing' (only an instance of several dungeons
+    named, not which of them)."""
+    hits = _hits(stems(text), names)
+    sets = [h[2][2] for h in hits if h[2][1] != 'wing']
+    found = sorted({h[2][3] for h in hits})
+    multi = [s for s in sets if len(s) > 1]
+    singles = {k for s in sets if len(s) == 1 for k in s}
+    # a wing's name picks its wing of an instance named beside it
+    for h in hits:
+        if h[2][1] == 'wing':
+            for k in h[2][2]:
+                if any(k in m for m in multi):
+                    singles.add(k)
+    if len(singles) > 1:
+        return None, 'two', found
+    if len(singles) == 1:
+        k = next(iter(singles))
+        if all(k in m for m in multi):
+            return k, 'one', found
+        return None, 'two', found
+    if multi:
+        common = frozenset.intersection(*multi)
+        if len(common) == 1:
+            return next(iter(common)), 'one', found
+        return None, ('wing' if common else 'two'), found
+    return None, 'none', found
+
+
+def faction_of_text(text, places):
+    """'A' or 'H' when the text names towns of one faction only, else ''."""
+    facs = {h[2][1] for h in _hits(stems(text), places)}
+    return next(iter(facs)) if len(facs) == 1 else ''
+
+
+def objective_of_scan(obj):
+    """The objective of a scanned quest for field 21: the client's text without its "Anforderungen" list
+    (the scan names only counts there) and without the quest log's "on this quest" line."""
+    if not isinstance(obj, str):
+        return None
+    head = re.split(r'\s*/\s*(?:Anforderungen|Requirements):', obj, maxsplit=1)[0]
+    head = re.sub(r'^\s*(?:Ihr befindet Euch auf dieser Quest\.|You are on this quest\.)\s*/\s*', '', head)
+    return clean_text(head)
+
+
+def place_scanned(data, scans, names, hints=None):
+    """Puts the scanned dungeon and raid quests no source places into the dungeon their text names (D-109),
+    in place. A quest a source knows keeps all it has and only gets its dungeon; a quest no source knows
+    gets the scan's level, rewards, XP and objective, the English title of an English scan where there is
+    one, no giver, no place, and the faction of the towns its text names (else both). Two quests of one
+    title in one dungeon, one with a faction and the other without: the other is of the other faction.
+    A hint's "dungeon" (tools/quest_hints.json, D-65) places a quest by hand ("" keeps it out).
+    Returns the report {'placed': [(qid, key, title, faction, how)], 'left': [(qid, why, title, found)]}."""
+    hints = hints or {}
+    Q, D = data['quests'], data['dungeons']
+    placed_ids = {q for ids in D.values() for q in ids}
+    parts = (scans or {}).get('quests') or {}
+    en = parts.get('enUS') or parts.get('enGB') or {}
+    report = {'placed': [], 'left': []}
+    seen = set()
+    for loc in sorted(parts, key=lambda x: (x not in ('deDE',), x)):
+        for qid in sorted(parts[loc]):
+            f = parts[loc][qid]
+            if qid in seen or f.get('tag') not in SCAN_TAGS or qid in placed_ids:
+                continue
+            seen.add(qid)
+            title = f.get('title') or ''
+            text = title + ' / ' + (f.get('obj') or '')
+            hint = hints.get(qid) or {}
+            if 'dungeon' in hint:
+                key, why, found = (hint['dungeon'] or None), ('hint' if hint['dungeon'] else 'hint-out'), []
+            else:
+                key, why, found = scan_dungeon_of(text, names['names'])
+            if not key or key not in (set(names.get('keys') or ()) or set(D)):
+                report['left'].append((qid, why if not key else 'unknown key', title, found))
+                continue
+            q = Q.get(qid)
+            how = 'source' if q else 'scan'
+            if q is None:
+                items = []
+                for it in list(f.get('rewards') or []) + list(f.get('choices') or []):
+                    i = it[0] if isinstance(it, (list, tuple)) else it
+                    if isinstance(i, int) and i > 0 and i not in items:
+                        items.append(i)
+                q = {'name': (en.get(qid) or {}).get('title') or None, 'minLevel': 0, 'level': 0,
+                     'faction': faction_of_text(text, names['places']), 'classes': 0, 'start': '', 'giver': None,
+                     'points': [], 'preAll': [], 'preOne': [], 'alt': [], 'breadcrumb': False, 'rewards': items,
+                     'startItems': [], 'startObject': None, 'races': 0, 'skill': 0, 'ender': None, 'enderPoints': [],
+                     'objective': objective_of_scan(f.get('obj')), 'scanned': True}
+                Q[qid] = q
+            q['dungeon'] = key
+            D.setdefault(key, []).append(qid)
+            placed_ids.add(qid)
+            report['placed'].append([qid, key, title, q.get('faction') or '', how])
+    # the faction of the other one of a pair of one title in one dungeon
+    titles = {}
+    for loc in parts:
+        for qid, f in parts[loc].items():
+            titles.setdefault(qid, f.get('title'))
+    for row in report['placed']:
+        qid, key = row[0], row[1]
+        q = Q[qid]
+        if not q.get('scanned') or q.get('faction'):
+            continue
+        same = [o for o in D.get(key, []) if o != qid and titles.get(o) and titles.get(o) == titles.get(qid)]
+        if len(same) == 1 and (Q.get(same[0]) or {}).get('faction') in ('A', 'H'):
+            q['faction'] = 'H' if Q[same[0]]['faction'] == 'A' else 'A'
+            row[3] = q['faction'] + ' (pair)'
+    report['placed'] = [tuple(r) for r in report['placed']]
+    return report
+
+
+def report_text(report):
+    """The report of place_scanned as text, one quest per line."""
+    lines = [f'Dungeon quests of the quest scan (D-109): {len(report["placed"])} placed, {len(report["left"])} not placed.', '']
+    by = {}
+    for qid, key, title, fac, how in report['placed']:
+        by.setdefault(key, []).append((qid, title, fac, how))
+    lines.append('Placed (dungeon: quest, title, faction, record):')
+    for key in sorted(by):
+        lines.append(f'  {key}: {len(by[key])}')
+        for qid, title, fac, how in by[key]:
+            lines.append(f'    {qid} {title} [{fac or "both"}] ({how})')
+    lines += ['', 'Not placed (why: none = no dungeon named, two = two dungeons named, wing = only the instance, not the wing):']
+    for qid, why, title, found in report['left']:
+        lines.append(f'  {qid} {why}: {title}' + (f'  (names: {", ".join(found)})' if found else ''))
+    return '\n'.join(lines) + '\n'
+
+
 # ---------------------------------------------------------------- hand-kept hints (D-65)
 MAX_SPOTS = 8
 MAX_SPOT = 300
@@ -619,7 +952,9 @@ HEADER = [
     '-- ({ { itemID, NPC name that drops it, uiMapID, dungeon key }, ... }, unknown parts nil), [16] start object',
     '-- name, [17] race mask (bit race id - 1, 0 any of the faction), [18] required profession skill line (0 none),',
     '-- [19] turn-in NPC name, [20] turn-in points (as [8]), [21] objective text (as the client showed it), [22] spots',
-    '-- in the dungeon where the start item can lie ({ { German, English }, ... }, hand-kept hints, D-65) }.',
+    '-- in the dungeon where the start item can lie ({ { German, English }, ... }, hand-kept hints, D-65), [23] XP',
+    '-- the quest scan saw (at the scanning character\'s level, not known), [24] true: placed in its dungeon by',
+    '-- the quest scan\'s text alone (D-109; no source knows its giver, place or English name) }.',
     '-- Names and places the Amisia collector saw itself go first (German where it saw them); nil is unknown.',
 ]
 
@@ -634,7 +969,7 @@ def render(data, built):
         f'-- Source: {data["source"]}' + (f' at {commit}' if commit else '')
         + ('; hand-kept hints (tools/quest_hints.json, D-65)' if data.get('hinted') else '')
         + ('; own observations of the Amisia collector' if data.get('observed') else '')
-        + ('; levels of the Amisia quest scan.' if data.get('scanned') else '.'),
+        + ('; levels, XP and dungeon quests of the Amisia quest scan.' if data.get('scanned') else '.'),
         'local _, ns = ...',
         '',
     ] + HEADER + [
@@ -657,7 +992,8 @@ def render(data, built):
                  _lua_list(q.get('preOne')), lua_val(q.get('dungeon')), _lua_list(q.get('rewards')), _lua_list(q.get('alt')),
                  'true' if q.get('breadcrumb') else 'nil', _start_items(q.get('startItems')), lua_val(q.get('startObject')),
                  str(int(q.get('races') or 0)), str(int(q.get('skill') or 0)), lua_val(q.get('ender')),
-                 lua_val(_points(q.get('enderPoints'))), lua_val(objective), _spots(q.get('spots'))]
+                 lua_val(_points(q.get('enderPoints'))), lua_val(objective), _spots(q.get('spots')),
+                 str(int(q['xp'])) if q.get('xp') else 'nil', 'true' if q.get('scanned') else 'nil']
         while parts[-1] == 'nil':
             parts.pop()
         lines.append(f'        [{qid}] = {{ {", ".join(parts)} }},')
@@ -685,8 +1021,26 @@ def main(argv=None):
     ap.add_argument('--obs-archive', default=OBS_ARCHIVE, help='the archive of own quest observations ("" for none)')
     ap.add_argument('--scan-archive', default=os.path.join(HERE, 'scan_archive.json'),
                     help='the scan archive with the quest scan by id ("" for none)')
+    ap.add_argument('--wago', default=None, help='folder of the client table CSVs in English (default: the chosen '
+                                                 'copies, tools/client_tables.py)')
+    ap.add_argument('--de-dirs', nargs='*', default=None, help='folders of the client tables in German '
+                                                               '(<Table>.<build>.deDE.csv; default ~/addons/_cache/wago, ~/addons/_wago)')
+    ap.add_argument('--no-place-scanned', dest='place_scanned', action='store_false',
+                    help='do not place the scanned dungeon quests by their text (D-109)')
+    ap.add_argument('--report', default=None,
+                    help=f'the report of the scanned dungeon quests (default {REPORT} when --out is the '
+                         'addon\'s file, else none; "" none)')
     ap.add_argument('--out', default=OUT)
     args = ap.parse_args(argv)
+    if args.wago is None:
+        import client_tables
+        args.wago = client_tables.default_dir()
+    if args.de_dirs is None:
+        import build_dungeons
+        args.de_dirs = list(build_dungeons.DE_DIRS)
+    if args.report is None:
+        # a build into another file (a test, a trial) must not replace the report of the real build
+        args.report = REPORT if os.path.abspath(args.out) == os.path.abspath(OUT) else ''
     facts = load_facts()
     report = {}
     if args.json:
@@ -705,22 +1059,45 @@ def main(argv=None):
             raise SystemExit(f'no AllTheThings download in {base}: run with --refresh-att (or --empty)')
         data, report = read_att(base, facts, commit)
     if not args.empty:
-        hinted = apply_hints(data, load_hints(args.hints))
+        svs = args.sv if args.sv is not None else default_svs()
+        hints = load_hints(args.hints)
+        # the quest scan by id (D-104): the dungeon quests no source places (D-109), then levels and XP
+        import build_scan_archive
+        scans = build_scan_archive.id_scans(args.scan_archive, [build_scan.load_sv(p) for p in svs])
+        if args.place_scanned:
+            import build_dungeons
+            names = dungeon_names(facts, build_dungeons.load_client(), args.wago, args.de_dirs, scans)
+            rep = place_scanned(data, scans, names, hints)
+            data['placed'] = len(rep['placed']) > 0
+            by = {}
+            for _qid, key, *_ in rep['placed']:
+                by[key] = by.get(key, 0) + 1
+            why = {}
+            for _qid, w, *_ in rep['left']:
+                why[w] = why.get(w, 0) + 1
+            log(f'quest scan: {len(rep["placed"])} dungeon quests placed by their text ('
+                + (', '.join(f'{k} {n}' for k, n in sorted(by.items())) or 'none') + f'); {len(rep["left"])} not placed ('
+                + (', '.join(f'{k} {n}' for k, n in sorted(why.items())) or 'none') + f'); names from {len(names["tables"])} client tables')
+            if args.report:
+                os.makedirs(os.path.dirname(os.path.abspath(args.report)), exist_ok=True)
+                with open(args.report, 'w', encoding='utf-8', newline='\n') as fh:
+                    fh.write(report_text(rep))
+                log(f'  report: {args.report}')
+        hinted = apply_hints(data, hints)
         data['hinted'] = hinted > 0
         if hinted:
             log(f'hints: {hinted} quests from {os.path.relpath(args.hints, ROOT)}')
-        svs = args.sv if args.sv is not None else default_svs()
         obs = read_observed([build_scan.load_sv(p) for p in svs], load_obs_archive(args.obs_archive))
         if save_obs_archive(obs, args.obs_archive):
             log(f'{os.path.relpath(args.obs_archive, ROOT)}: {len(obs)} quests observed')
         took = apply_observed(data, obs)
         data['observed'] = took > 0
         log(f'collector: {len(obs)} quests with own observations from {len(svs)} file(s) and the archive; {took} taken')
-        # the quest scan by id (D-104): levels the data and the observations lack
-        import build_scan_archive
-        scans = build_scan_archive.id_scans(args.scan_archive, [build_scan.load_sv(p) for p in svs])
+        # the quest scan by id (D-104): levels the data and the observations lack, the XP it saw
         lv = apply_scanned(data, scans)
-        data['scanned'] = lv > 0
+        xp = apply_scanned_xp(data, scans)
+        data['scanned'] = lv > 0 or xp > 0 or data.get('placed', False)
+        log(f'quest scan: {xp} quest XP values taken')
         log(f'quest scan: {lv} quest levels taken; '
             f'{sum(1 for q in data["quests"].values() if not q.get("level"))} of {len(data["quests"])} quests still without a level')
     text = render(data, time.strftime('%Y-%m-%d'))

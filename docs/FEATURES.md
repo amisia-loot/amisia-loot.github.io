@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-177 Dungeonquests aus dem eigenen Quest-Scan
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du (Allianz) auf der Seite Dungeons "Gefängnis von Alcaz" öffnest, Teil Quests, dann stehen dort Quests wie "Das geheime Gefängnis" und "Das Tagebuch des Drachen", ohne Ort in der Zeile; die Maus darauf zeigt "Nur aus dem Quest-Scan: Questgeber und Ort noch unbekannt" und keine leere Zeile "Start:".
+- Prüfung: Wenn du "Schwarzschlundfeste" öffnest, dann steht "Die Wurzel des Problems" genau einmal da (Allianz: die Quest für Darnassus, Horde: die für Thunder Bluff), und "Terrasse des Formers" zeigt fünf Quests, "Feste Krol'dok" als Allianz sechs, als Horde fünf (vorher zwei für die Allianz).
+- Prüfung: Wenn du eine dieser Quests anklickst, dann sagt der Questweg "Annehmen: Ort unbekannt; Amisia lernt ihn, sobald du die Quest siehst" und "Abgeben: noch unbekannt", ohne Knopf "Karte", und trägt unten die Marke "nur aus dem Quest-Scan".
+- Prüfung: Wenn du einen der drei neuen Dungeons betrittst, dann zeigt die Dungeon-Leiste bei "Quests" diese Quests; ein Klick auf eine öffnet ihren Questweg.
+- Prüfung: Wenn du eine solche Quest beim Questgeber siehst und danach `build.py data` läuft, dann nennt der Questweg den Geber und seinen Ort.
+- Notiz: DECISIONS D-109, Spec `docs/specs/2026-11-11-dungeonquests-aus-scan.md`. Die Liste der nicht gesetzten Quests mit Grund schreibt der Datenbau nach `~/addons/_cache/dungeonquest_scan_report.txt`. Ein englischer Client zeigt "Quest <Nummer>", bis er die Quest geladen hat.
+
 ### F-176 Twitch und Discord in der Fußzeile
 - Version: 2.75.0
 - Status: gebaut

@@ -308,3 +308,157 @@ def test_the_shipped_hints_name_quests_of_the_data():
         assert f'[{qid}] = ' in text, f'hint for quest {qid} that the data does not have'
         if h.get('spots'):
             assert h['spots'][0][0] in text, f'the spots of quest {qid} are built in (run build.py data)'
+
+
+# ---------------------------------------------------------------- dungeon quests of the quest scan (D-109)
+SCAN_FACTS = [
+    {'key': 'prison', 'name': 'Test Prison', 'kind': 'party'},
+    {'key': 'hold', 'name': 'Test Hold', 'kind': 'party'},
+    {'key': 'city', 'name': 'City of Testburg', 'kind': 'party'},
+    {'key': 'wa', 'name': 'Test Abbey: Garden', 'kind': 'party', 'part': 'Test Abbey', 'wing': 'Graveyard'},
+    {'key': 'wb', 'name': 'Test Abbey: Books', 'kind': 'party', 'part': 'Test Abbey', 'wing': 'Library'},
+]
+SCAN_CLIENT = {'dungeons': {
+    'prison': {'inst': 9001, 'lfg': ['Test Prison'], 'order': ['Warden Grex', 'Tinder', 'The Seven'], 'enc': [1, 2, 3], 'npcs': [801, 802, 803]},
+    'hold': {'inst': 9002, 'lfg': ['Test Hold'], 'order': ['Onyxa', 'Bonesnout'], 'enc': [4, 5], 'npcs': [804, 0]},
+    'city': {'inst': 9003, 'lfg': ['City of Testburg'], 'order': [], 'enc': [], 'npcs': []},
+    'wa': {'inst': 9004, 'lfg': ['Test Abbey'], 'order': ['Abbot Quill'], 'enc': [6], 'npcs': [806]},
+    'wb': {'inst': 9004, 'lfg': ['Test Abbey'], 'order': [], 'enc': [], 'npcs': []},
+}}
+
+
+def write_csv(path, header, rows):
+    import csv as _csv
+    with open(path, 'w', encoding='utf-8', newline='') as fh:
+        w = _csv.writer(fh)
+        w.writerow(header)
+        w.writerows(rows)
+
+
+@pytest.fixture()
+def scan_names(tmp_path):
+    en, de = tmp_path / 'en', tmp_path / 'de'
+    en.mkdir()
+    de.mkdir()
+    write_csv(en / 'Map.1.0.0.1.csv', ['ID', 'MapName_lang', 'InstanceType'],
+              [[9001, 'Test Prison', 1], [9002, 'Test Hold', 1], [9003, 'City of Testburg', 1], [9004, 'Test Abbey', 1],
+               [9100, 'Testburg City', 0]])
+    write_csv(de / 'Map.1.0.0.1.deDE.csv', ['ID', 'MapName_lang', 'InstanceType'],
+              [[9001, 'Gefängnis von Probe', 1], [9002, 'Die Prüfungsfeste', 1], [9003, 'Testburg', 1],
+               [9004, 'Das Scharlachrote Probekloster', 1], [9100, 'Testburg', 0]])
+    write_csv(en / 'LFGDungeons.1.0.0.1.csv', ['ID', 'Name_lang'], [[11, 'Test Prison'], [12, 'Test Hold']])
+    write_csv(de / 'LFGDungeons.1.0.0.1.deDE.csv', ['ID', 'Name_lang'], [[11, 'Gefängnis von Probe'], [12, 'Prüfungsfeste']])
+    write_csv(de / 'DungeonEncounter.1.0.0.1.deDE.csv', ['ID', 'Name_lang'],
+              [[1, 'Aufseher Grex'], [2, 'Zunder'], [3, 'Die Sieben'], [4, 'Onyxa'], [5, 'Knochenschnauze'], [6, 'Abt Feder']])
+    write_csv(en / 'AreaTable.1.0.0.1.csv', ['ID', 'AreaName_lang'], [[1637, 'Orgrimmar'], [1519, 'Stormwind City']])
+    write_csv(de / 'AreaTable.1.0.0.1.deDE.csv', ['ID', 'AreaName_lang'], [[1637, 'Orgrimmar'], [1519, 'Sturmwind']])
+    scans = {'npcs': {'deDE': {801: {'name': 'Aufseher Grex'}, 806: {'name': 'Abt Feder'}}}}
+    return bdq.dungeon_names(SCAN_FACTS, SCAN_CLIENT, str(en), [str(de)], scans)
+
+
+def test_german_stems_match_inflected_names():
+    assert bdq.stem('Gefängnisses') == bdq.stem('Gefängnis') and bdq.stem('Unteren') == bdq.stem('Untere')
+    assert bdq.stem('Scharlachroten') == bdq.stem('Scharlachrotes') and bdq.stem('Hügeln') == bdq.stem('Hügel')
+    assert bdq.stem('Bleakhoofs') == bdq.stem('Bleakhoof') and bdq.stem('des') == 'des', 'short words stay'
+    assert bdq.name_stems('Die Versunkene Stadt') == bdq.name_stems('der versunkenen Stadt'), 'the article goes, the case does not count'
+    assert bdq.stems("Krol’dok-Feste") == ["krol'dok-fest"], 'apostrophes and hyphens stay inside a word'
+
+
+def test_the_names_the_rule_looks_for(scan_names):
+    names = {(n[3], n[1]): set(n[2]) for n in scan_names['names']}
+    assert names[('Gefängnis von Probe', 'dungeon')] == {'prison'} and names[('Prüfungsfeste', 'dungeon')] == {'hold'}
+    assert names[('Das Scharlachrote Probekloster', 'dungeon')] == {'wa', 'wb'}, 'an instance of several dungeons names them all'
+    assert ('Testburg', 'dungeon') not in names, 'the name of a map outside any instance is no dungeon name (a city)'
+    assert names[('City of Testburg', 'dungeon')] == {'city'}
+    assert names[('Aufseher Grex', 'boss')] == {'prison'} and names[('Warden Grex', 'boss')] == {'prison'}
+    assert ('Zunder', 'boss') not in names and ('Tinder', 'boss') not in names, 'a one-word name the client translates'
+    assert ('Die Sieben', 'boss') not in names and ('The Seven', 'boss') not in names, 'a boss name with an article'
+    assert names[('Onyxa', 'boss')] == {'hold'}, 'a one-word name both languages write alike'
+    assert ('Bonesnout', 'boss') not in names and ('Knochenschnauze', 'boss') not in names
+    assert names[('Bibliothek', 'wing')] == {'wb'} and names[('Friedhof', 'wing')] == {'wa'}
+    places = {n[2]: n[1] for n in scan_names['places']}
+    assert places['Sturmwind'] == 'A' and places['Orgrimmar'] == 'H' and places['Thunder Bluff'] == 'H'
+    assert len(scan_names['tables']) == 7 and scan_names['keys'] == sorted(e['key'] for e in SCAN_FACTS)
+
+
+def test_the_text_names_exactly_one_dungeon(scan_names):
+    n = scan_names['names']
+    assert bdq.scan_dungeon_of('Bergt das Buch aus den Tiefen des Gefängnisses von Probe.', n)[:2] == ('prison', 'one')
+    assert bdq.scan_dungeon_of('Bringt Aufseher Grexs Kopf zu Nok.', n)[:2] == ('prison', 'one'), 'a genitive s'
+    assert bdq.scan_dungeon_of('Tötet Onyxa in der Prüfungsfeste.', n)[:2] == ('hold', 'one')
+    assert bdq.scan_dungeon_of('Tötet Onyxa und Aufseher Grex.', n)[:2] == (None, 'two')
+    assert bdq.scan_dungeon_of('Geht nach Testburg und sprecht mit Mara.', n)[:2] == (None, 'none')
+    assert bdq.scan_dungeon_of('Sammelt Zunder in Gefängnisvonprobe.', n)[:2] == (None, 'none'), 'no part of a longer word'
+    assert bdq.scan_dungeon_of('Holt das Buch aus dem Scharlachroten Probekloster.', n)[:2] == (None, 'wing')
+    assert bdq.scan_dungeon_of('Holt das Buch aus der Bibliothek des Scharlachroten Probeklosters.', n)[:2] == ('wb', 'one')
+    assert bdq.scan_dungeon_of('Holt das Buch aus der Bibliothek.', n)[:2] == (None, 'none'), 'a wing alone names nothing'
+    assert bdq.scan_dungeon_of('Besiegt Abt Feder im Scharlachroten Probekloster.', n)[:2] == ('wa', 'one'), 'a boss picks its wing'
+    assert bdq.faction_of_text('Bringt es zu Nara in Orgrimmar.', scan_names['places']) == 'H'
+    assert bdq.faction_of_text('Bringt es nach Sturmwind oder Orgrimmar.', scan_names['places']) == ''
+    assert bdq.objective_of_scan('Ihr befindet Euch auf dieser Quest. / Holt es. / Anforderungen: / - 1 x') == 'Holt es.'
+
+
+def _scan(qid, title, obj, tag='D', **kw):
+    f = {'title': title, 'level': 50, 'qlevel': 0, 'tag': tag, 'group': 0, 'obj': obj, 'rewards': [], 'choices': [], 'money': 0, 'xp': 0}
+    f.update(kw)
+    return qid, f
+
+
+def test_scanned_dungeon_quests_fill_gaps_only(scan_names):
+    data = {'source': 'test', 'commit': None, 'dungeons': {'prison': [100]},
+            'quests': {100: {'name': 'Known', 'minLevel': 48, 'level': 50, 'faction': 'A', 'classes': 0, 'start': 'O', 'giver': 'Gil',
+                             'points': [(1, 2, 3)], 'preAll': [], 'preOne': [], 'alt': [], 'dungeon': 'prison', 'rewards': []},
+                       101: {'name': 'Zone Quest', 'minLevel': 40, 'level': 0, 'faction': 'H', 'classes': 0, 'start': 'O',
+                             'giver': 'Zed', 'points': [(4, 5, 6)], 'preAll': [], 'preOne': [], 'alt': [], 'dungeon': None,
+                             'rewards': []}}}
+    de = dict([
+        _scan(100, 'Bekannt', 'Holt es aus der Prüfungsfeste.'),                    # a source places it: stays
+        _scan(101, 'Zonenquest', 'Holt es aus der Prüfungsfeste.'),                 # known to a source, no dungeon
+        _scan(102, 'Die Wurzel', 'Sammelt in der Prüfungsfeste 10 Wurzeln für Nara in Thunder Bluff. / Anforderungen: / - 10 x',
+              rewards=[(5001, 1)], choices=[(5002, 1)], xp=6050),
+        _scan(103, 'Die Wurzel', 'Sammelt in der Prüfungsfeste 10 Wurzeln für Mathrengyl in Darnassus.'),
+        _scan(104, 'Auge', 'Bringt Aufseher Grexs Auge zu Krom.'),
+        _scan(105, 'Auge', 'Bringt Aufseher Grexs Auge zu Brant nach Sturmwind.'),
+        _scan(106, 'Folge', 'Kehrt zu Sully zurück.'),
+        _scan(107, 'Zwei', 'Tötet Onyxa und Aufseher Grex.'),
+        _scan(108, 'Buch', 'Holt das Buch aus dem Scharlachroten Probekloster.'),
+        _scan(109, 'Weltquest', 'Holt es aus der Prüfungsfeste.', tag='G'),
+        _scan(110, 'Von Hand', 'Kehrt zu Sully zurück.'),
+    ])
+    scans = {'quests': {'deDE': de, 'enUS': {104: {'title': 'Eye', 'tag': 'D', 'obj': 'Bring the eye.'}}}}
+    rep = bdq.place_scanned(data, scans, scan_names, {110: {'dungeon': 'hold'}})
+    D, Q = data['dungeons'], data['quests']
+    assert D['prison'] == [100, 104, 105] and D['hold'] == [101, 102, 103, 110]
+    assert Q[100]['dungeon'] == 'prison' and Q[100]['giver'] == 'Gil', 'a quest a source places stays as it is'
+    assert Q[101]['dungeon'] == 'hold' and Q[101]['giver'] == 'Zed' and Q[101]['faction'] == 'H', 'a source\'s record keeps its fields'
+    q = Q[102]
+    assert q['scanned'] and q['giver'] is None and q['points'] == [] and q['start'] == '' and q['faction'] == 'H'
+    assert q['rewards'] == [5001, 5002] and q['objective'] == 'Sammelt in der Prüfungsfeste 10 Wurzeln für Nara in Thunder Bluff.'
+    assert q['name'] is None and Q[103]['faction'] == 'A', 'the towns of the text decide the faction'
+    assert Q[104]['name'] == 'Eye' and Q[104]['faction'] == 'H' and Q[105]['faction'] == 'A', 'a pair of one title: the other faction'
+    left = {r[0]: r[1] for r in rep['left']}
+    assert left == {106: 'none', 107: 'two', 108: 'wing'}, left
+    assert Q[110]['dungeon'] == 'hold' and 109 not in Q, 'a hint places by hand; a quest without the dungeon tag stays out'
+    assert {r[0] for r in rep['placed']} == {101, 102, 103, 104, 105, 110}
+    assert bdq.apply_scanned_xp(data, scans) == 1 and Q[102]['xp'] == 6050
+    text = bdq.report_text(rep)
+    assert '107 two: Zwei' in text and 'hold: 4' in text
+    dq = lua_load(bdq.render(data, '2026-11-11'))
+    r = dq.Q[102]
+    assert r[1] == 'Quest 102' and r[3] == 0 and r[4] == 'H' and r[6] == '' and r[7] is None and r[8] is None
+    assert r[11] == 'hold' and r[12][1] == 5001 and r[23] == 6050 and r[24] is True
+    assert dq.Q[101][24] is None and dq.Q[101][23] is None, 'field 24 only for quests the scan alone brings'
+    # an empty scan changes nothing
+    before = copy.deepcopy(data)
+    assert bdq.place_scanned(data, {}, scan_names) == {'placed': [], 'left': []} and data == before
+
+
+def test_the_shipped_scanned_quests_have_their_dungeon_and_no_giver():
+    """The real data: every quest the scan alone brings (field 24) is in the list of its dungeon (field 11),
+    has no giver and no place."""
+    dq = lua_load(open(bdq.OUT, encoding='utf-8').read())
+    lists = {k: set(v.values()) for k, v in dq.D.items()}
+    for qid, r in dq.Q.items():
+        if r[24]:
+            assert r[11] and qid in lists.get(r[11], set()), qid
+            assert r[7] is None and r[8] is None and r[6] == '', qid

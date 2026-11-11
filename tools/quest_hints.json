@@ -1,6 +1,6 @@
 {
   "v": 1,
-  "about": "Hand-kept hints for dungeon quests whose start or turn-in no data source knows (DECISIONS D-65). Own words, written after looking up single quests by hand and to be checked in the game; never copied text or whole collections. Read by tools/build_dungeonquests.py: 'startItemDungeon' (where the start item lies, its dungeon key: the waypoint goes to the entrance), 'ender' (turn-in NPC id: name and place from the data), 'enderName' (turn-in NPC name when the data has no such NPC), 'spots' (a key of 'spots' below: where in the dungeon the start item can lie). Own observations of the collector still go first.",
+  "about": "Hand-kept hints for dungeon quests whose start or turn-in no data source knows (DECISIONS D-65). Own words, written after looking up single quests by hand and to be checked in the game; never copied text or whole collections. Read by tools/build_dungeonquests.py: 'startItemDungeon' (where the start item lies, its dungeon key: the waypoint goes to the entrance), 'ender' (turn-in NPC id: name and place from the data), 'enderName' (turn-in NPC name when the data has no such NPC), 'spots' (a key of 'spots' below: where in the dungeon the start item can lie), 'dungeon' (a dungeon key: places one scanned dungeon quest by hand; \"\" keeps it out of the rule of D-109). Own observations of the collector still go first.",
   "spots": {
     "lordaeron_crest": {
       "deDE": [
