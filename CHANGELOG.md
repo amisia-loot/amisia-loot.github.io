@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.75.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.75.1) (2026-11-11)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.75.0...v2.75.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - fix(scan): phase B of the NPC scan no longer prints a status line for every number (F-172)
 
     The status line was owed once per 2000 id numbers, and the ranges of phase B lie far apart, so
