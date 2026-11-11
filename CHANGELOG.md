@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.76.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.76.1) (2026-11-11)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.76.0...v2.76.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - fix(dungeons): the round boss portraits show the boss's model instead of staying black (F-154, F-180)
 
     In the boss lists of the pages Dungeons and Raids the round frame stayed black while the header image
