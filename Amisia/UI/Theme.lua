@@ -479,6 +479,15 @@ T.RUNTIMER = { W = 300, PAD = 14, TOP = 30, COL_W = { 84, 80, 108 }, LABEL_H = 1
 T.QUESTITEMS = { W = 460, PAD = 12, TOP = 30, HEAD_H = 24, LIST_GAP = 6, ROWS = 10, ROW_H = 34, ICON = 24, ICON_X = 4,
     TEXT_X = 34, LINK_W = 70, SCROLL = 16, BOTTOM_H = 30 }
 
+-- The window of an item that starts a quest (F-181, Gear/QuestStart.lua, AmisiaQuestStart): W wide; the
+-- item's name in the title; TOP under the window's top the item's icon ICON square in the middle, in
+-- Amisia's rounded ring (the planner's slot, T.PLANNER.DOLL) in its quality colour, the quest giver's "!"
+-- (MARK_ART, as the giver pins of F-179) MARK square at its lower right corner, MARK_X right of and MARK_Y
+-- above that corner; GAP under the icon the one line (T.FONT.hint, wraps in the room of W less PAD on
+-- each side), BOTTOM to the lower edge. The window grows with a second line of the text.
+T.QUESTSTART = { W = 260, PAD = 18, TOP = 32, ICON = 44, MARK = 22, MARK_X = 10, MARK_Y = 4, GAP = 10, LINE_H = 14,
+    BOTTOM = 14, MARK_ART = "Interface\\GossipFrame\\AvailableQuestIcon" }
+
 T.DUNGEONBAR = { H = 26, PAD = 6, GAP = 10, NAME_W = 130, CLOSE = 14, SHADE = 0.78, LIST_GAP = 2, LIST_W = 300, ROW_H = 18,
     ROW_NAME_W = 196, ROW_NOTE_W = 84, MAX_ROWS = 20, TICK = 0.5 }
 

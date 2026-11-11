@@ -5,6 +5,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(quests): a small window for items that start a quest (F-181)
+
+    When an item lands in your bags that starts a quest you neither have in the log nor completed (looted,
+    traded, mailed or bought), a small window shows its name, its icon with the quest giver's "!" and "Click
+    the icon to start the quest."; a click on the icon uses the item and the game's quest window opens. Several
+    items queue up ("1 of 2"); closing one keeps it away for the session, accepting the quest or losing the item
+    closes the window. Nothing opens or closes in combat or a boss fight: new items wait until it ends. After a
+    login or /reload the items already in your bags show once (at most three). Switch it off under Settings,
+    Quests, "Window for items that start a quest".
+
 - feat(dungeons): the run window shows time, mob XP, gold, bosses and rares (F-180)
 
     The "Run times" window is now a compact overview: the dungeon's name as its title, three values side by

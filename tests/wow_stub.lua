@@ -1222,6 +1222,65 @@ TEMPLATES.TooltipBackdropTemplate = function(f)
     f.NineSlice = CreateFrame("Frame", nil, f)
     f.NineSlice:SetAllPoints()
 end
+-- The client's secure action button (SecureTemplates.lua): a protected frame. In combat
+-- (InCombatLockdown) an addon may not show, hide, move, size or re-parent it, set its attributes, nor do
+-- any of that to the frames it hangs on: its parents (up to UIParent) and the frames it is anchored to.
+-- The stub records such a call in STUB.blocked and raises, so a test sees it. A click (f:Click(), the
+-- template's own OnClick) records the attributes in STUB.secureUses as the template would use them
+-- (type "item": the item given); PreClick and PostClick run around it, as in the client.
+STUB.blocked, STUB.secureUses = {}, {}
+local PROTECTED_METHODS = { "Show", "Hide", "SetPoint", "SetAllPoints", "ClearAllPoints", "SetSize", "SetWidth", "SetHeight",
+    "SetParent", "SetScale", "StartMoving", "SetAttribute", "EnableMouse" }
+local function protectFrame(fr)
+    if type(fr) ~= "table" or fr == UIParent or fr.protectedGuard then return end
+    fr.protectedGuard = true
+    for _, m in ipairs(PROTECTED_METHODS) do
+        local orig = fr[m]
+        if type(orig) == "function" then
+            fr[m] = function(self, ...)
+                if InCombatLockdown() then
+                    STUB.blocked[#STUB.blocked + 1] = { frame = self, method = m }
+                    error(("%s: action blocked in combat (protected frame)"):format(m), 2)
+                end
+                return orig(self, ...)
+            end
+        end
+    end
+end
+STUB.protectFrame = protectFrame
+TEMPLATES.SecureActionButtonTemplate = function(f, kind)
+    if kind ~= "Button" and kind ~= "CheckButton" then error("SecureActionButtonTemplate needs a button", 3) end
+    f.attrs, f.secure = {}, true
+    f.SetAttribute = function(self, k, v) self.attrs[k] = v end
+    f.GetAttribute = function(self, k) return self.attrs[k] end
+    f.IsProtected = function() return true, true end
+    -- anchoring it to a frame makes that frame protected too
+    local sp, sap = f.SetPoint, f.SetAllPoints
+    f.SetPoint = function(self, point, rel, ...)
+        if type(rel) == "table" then protectFrame(rel) end
+        return sp(self, point, rel, ...)
+    end
+    f.SetAllPoints = function(self, rel)
+        if type(rel) == "table" then protectFrame(rel) end
+        return sap(self, rel)
+    end
+    f.scripts.OnClick = function(self, button)
+        local t = self.attrs.type1 or self.attrs.type
+        STUB.secureUses[#STUB.secureUses + 1] = { type = t, item = self.attrs.item1 or self.attrs.item, button = button or "LeftButton" }
+    end
+    f.Click = function(self, button)
+        if not self.enabled then return end
+        if self.scripts.PreClick then self.scripts.PreClick(self, button or "LeftButton", false) end
+        if self.scripts.OnClick then self.scripts.OnClick(self, button or "LeftButton", false) end
+        if self.scripts.PostClick then self.scripts.PostClick(self, button or "LeftButton", false) end
+    end
+    protectFrame(f)
+    local p = f.parent
+    while type(p) == "table" and p ~= UIParent do
+        protectFrame(p)
+        p = p.parent
+    end
+end
 
 local frameMethods = { "SetPoint", "SetSize", "SetWidth", "SetHeight", "SetFrameStrata", "SetClampedToScreen", "SetMovable", "EnableMouse",
     "RegisterForDrag", "SetAllPoints", "SetScrollChild", "SetVerticalScroll", "SetMultiLine", "SetMaxLetters", "SetAutoFocus", "SetFontObject",

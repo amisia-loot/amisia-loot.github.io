@@ -897,6 +897,10 @@ ns.RegisterSettings{ key = "quests", label = "Quests", order = 49, group = "dung
     -- F-178: the group's quest state of a dungeon (Gear/GroupQuests.lua, D-110)
     { key = "quests.groupShare", type = "toggle", label = L["Meinen Dungeon-Queststand mit der Gruppe teilen"], default = true,
       tip = L["In einer Gruppe (nicht im Raid) sehen die anderen mit Amisia, welche Quests eines Dungeons du hast, abgeben kannst, erledigt hast oder noch brauchst. Aus: Amisia schickt nichts davon; was die anderen schicken, siehst du weiter."] },
+    -- F-181: the window of an item that starts a quest (Gear/QuestStart.lua, D-113)
+    { key = "quests.startPopup", type = "toggle", label = L["Fenster bei Gegenständen, die eine Quest starten"], default = true,
+      tip = L["Landet ein Gegenstand in deinen Taschen, der eine Quest startet, die du weder im Log noch abgeschlossen hast, zeigt ein kleines Fenster ihn; ein Klick auf sein Symbol startet die Quest. Nie im Kampf oder Bosskampf."],
+      onChange = function(v) if ns.QuestStart then ns.QuestStart.SettingChanged(v) end end },
 } }
 
 -- The page's window state: settings.questsPage (search, zone, show, chains, upgrades, mine,

@@ -516,6 +516,25 @@ function S.questItems()
     return AmisiaQuestItems
 end
 
+-- The window of an item that starts a quest (F-181): one of two start items looted, after the login's delay
+function S.questStart()
+    STUB.item(77101, "Einfache Zeichnung", 1)
+    STUB.items[77101].classID, STUB.items[77101].equipLoc = 12, ""
+    STUB.item(77102, "Zerknitterte Notiz", 1)
+    STUB.items[77102].classID, STUB.items[77102].equipLoc = 12, ""
+    STUB.bags[3] = { 77101, 77102 }
+    local starts = { [77101] = 77601, [77102] = 77602 }
+    C_Container.GetContainerItemQuestInfo = function(bag, slot)
+        local q = starts[C_Container.GetContainerItemID(bag, slot)]
+        if q then return { isQuestItem = true, questID = q } end
+        return { isQuestItem = false }
+    end
+    STUB.fire("QUEST_LOG_UPDATE")
+    STUB.tick(NS.QuestStart.LOGIN_DELAY + 1)
+    NS.QuestStart.Pass()
+    return AmisiaQuestStart
+end
+
 -- Further states of pages, shot after the pages themselves (in every view the page shows in):
 -- { page, name, open = fn() } opens the page in that state through its public entry point.
 S.STATES = {
@@ -1057,6 +1076,8 @@ S.WINDOWS = {
     end },
     -- the quest items to clear away (F-173)
     { key = "questitems", view = "raider", open = function() return S.questItems() end },
+    -- the window of an item that starts a quest (F-181)
+    { key = "queststart", view = "raider", open = function() return S.questStart() end },
     -- the link to copy (F-176): the author's Discord
     { key = "linkwindow", view = "raider", open = function()
         return NS.W.ShowLink(NS.Theme.LINKS[2].name, NS.Theme.LINKS[2].url)

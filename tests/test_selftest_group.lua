@@ -68,6 +68,13 @@ local function makeClient(opts)
     for _, name in ipairs({ "GetMaxPlayerLevel", "IsXPUserDisabled", "GetMoney", "GetCoinTextureString" }) do
         _G[name] = _G[name] or function() error(name .. " called") end
     end
+    -- F-181: the window of an item that starts a quest, only looked up here (the quest mark answers nothing)
+    C_Container.GetContainerItemQuestInfo = C_Container.GetContainerItemQuestInfo or function() return { isQuestItem = false } end
+    for _, name in ipairs({ "SecureCmdItemParse", "SecureCmdUseItem", "UseItemByName" }) do
+        _G[name] = _G[name] or function() error(name .. " called") end
+    end
+    _G.GetCVarBool = _G.GetCVarBool or function() return false end
+    _G.GetCursorInfo = _G.GetCursorInfo or function() return nil end
     _G.AcceptGroup = function() error("AcceptGroup called") end
     _G.StaticPopup_Hide = function() end
     -- F-165: the roles of the lineup, only looked up

@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-181 Fenster bei Gegenständen, die eine Quest starten
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du einen Gegenstand plünderst, der eine Quest startet, die du weder im Log noch abgeschlossen hast (z. B. eine Zeichnung oder einen Brief), dann öffnet sich nach einem Augenblick oberhalb der Bildmitte ein kleines Fenster mit seinem Namen, seinem Symbol mit gelbem "!" und "Klick auf das Symbol startet die Quest."
+- Prüfung: Wenn du auf das Symbol klickst, dann öffnet sich das Questfenster des Spiels; nimmst du die Quest an, schließt Amisias Fenster (bitte melden, wenn der Klick nichts tut oder "Aktion blockiert" erscheint).
+- Prüfung: Wenn du das Fenster mit dem x schließt und danach plünderst oder Taschen umräumst, dann kommt es für diesen Gegenstand nicht wieder; nach `/reload` erscheint es einmal wieder, solange die Quest offen ist.
+- Prüfung: Wenn du so einen Gegenstand im Kampf bekommst, dann erscheint das Fenster erst nach dem Kampf; beginnt ein Kampf bei offenem Fenster, dann bleibt es stehen, das x schreibt "Schließt nach dem Kampf." und es kommt keine Fehlermeldung.
+- Prüfung: Wenn du "Fenster bei Gegenständen, die eine Quest starten" (Einstellungen, Quests) ausschaltest, dann erscheint nichts mehr.
+- Notiz: Spec `docs/specs/2026-11-11-quest-start-item.md`; DECISIONS D-113. Ob der Client für Startgegenstände den Quest-Vermerk liefert und Addons den Gegenstand per sicherem Knopf benutzen lässt, sagt `/amisia selbsttest gruppe` ("Quest-Startgegenstände"); lehnt er ab, informiert das Fenster nur ("Rechtsklick auf den Gegenstand in der Tasche ...").
+
 ### F-180 Lauf-Fenster: Zeit, Mob-XP, Gold, Bosse und Rare
 - Version: -
 - Status: geplant

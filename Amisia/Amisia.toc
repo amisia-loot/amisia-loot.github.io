@@ -136,6 +136,7 @@ Gear\DungeonBar.lua [AllowLoadGameType camelot]
 Gear\GroupQuests.lua [AllowLoadGameType camelot]
 Gear\QuestItems.lua [AllowLoadGameType camelot]
 Gear\QuestItemsWindow.lua [AllowLoadGameType camelot]
+Gear\QuestStart.lua [AllowLoadGameType camelot]
 UI\Search.lua
 UI\MainFrame.lua
 UI\Pages\Overview.lua

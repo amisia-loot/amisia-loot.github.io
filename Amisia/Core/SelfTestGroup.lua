@@ -63,6 +63,11 @@ GT.FUNCTIONS = {
     -- F-180: the run window's mob XP, gold, coins and rares seen dead
     { L["Lauf-Fenster: XP, Gold, Rare"], { "UnitXP", "UnitXPMax", "GetMaxPlayerLevel", "IsXPUserDisabled", "GetMoney",
         "GetCoinTextureString", "UnitIsDead", "GetLootSourceInfo" } },
+    -- F-181: the window of an item that starts a quest (the bag slot's quest mark, the secure use of the
+    -- item: the template's parse and use, the setting of the key press)
+    { L["Quest-Startgegenstände"], { "C_Container.GetContainerItemQuestInfo",
+        "C_QuestLog.IsQuestFlaggedCompleted|IsQuestFlaggedCompleted", "SecureCmdItemParse", "SecureCmdUseItem",
+        "C_Item.UseItemByName|UseItemByName", "C_Item.GetItemIconByID", "C_CVar.GetCVarBool|GetCVarBool", "GetCursorInfo" } },
 }
 -- The system message templates the invite status would read (check 10).
 GT.TEMPLATES = { "ERR_INVITE_PLAYER_S", "ERR_DECLINE_GROUP_S", "ERR_ALREADY_IN_GROUP_S", "ERR_BAD_PLAYER_NAME_S", "ERR_GROUP_FULL",
