@@ -34,7 +34,7 @@ local again = {}     -- ids of phase A to ask once more after a back-off
 local asked2 = {}    -- ids already put into again
 local misses = {}    -- the last empty ids of phase A in a row
 local credit, rate, hits = 0, 5, 0
-local nextReport
+local sinceReport = 0
 
 local function now() return GetTime() end
 
@@ -196,8 +196,11 @@ local function tick()
                 waiting[id] = { at = t + NS_.RETRY, index = (running == "A" and not repeated) and q.a - 1 or nil }
             end
         end
-        if (running == "A" and q.a > nextReport) or (running == "B" and (q.b or 0) > nextReport) then
-            nextReport = nextReport + NS_.REPORT_EVERY[running]
+        -- one status line per REPORT_EVERY ids taken, not per id number: the ranges of phase B lie far
+        -- apart, and a line owed per 2000 numbers of the gap came out as one line per id
+        sinceReport = sinceReport + 1
+        if sinceReport >= NS_.REPORT_EVERY[running] then
+            sinceReport = 0
             ns.msg(NS_.Status())
             if ns.Refresh then ns.Refresh() end
         end
@@ -225,8 +228,7 @@ local function startPhase(phase)
     rate = settingRate()
     running = phase
     SB.SetBusy("npcs")
-    nextReport = phase == "A" and (math.floor(q.a / NS_.REPORT_EVERY.A) + 1) * NS_.REPORT_EVERY.A
-        or ((q.b or 0) + NS_.REPORT_EVERY.B)
+    sinceReport = 0
     ticker = C_Timer.NewTicker(0.1, tick)
     local n = remaining(q)
     ns.msg(L["NPC-Scan Phase %s gestartet: %d Nummern, %d pro Sekunde, bis zu %s. /amisia scan npcs stop hält an."]:format(

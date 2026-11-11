@@ -201,4 +201,27 @@ NS.ScanCommand("npcs")
 assert(NP.Running() == "A")
 NS.ScanCommand("stop")
 assert(not NP.Running())
-print("npc scan: phase A, second ask, back-off, resume, the question of phase B, ranges, mini-probe, combat, instance")
+
+-- the status line of phase B counts the ids taken, not the id numbers: ranges far apart (the gap is
+-- many times REPORT_EVERY) once printed a line for every single id after the jump
+AmisiaDB.scan.npcs = nil
+lists("a", { { 1000, 1019 }, { 250000, 250039 } })
+client({ [10] = { "Npc 1" } }, {})
+local every = NP.REPORT_EVERY.B
+NP.REPORT_EVERY.B = 20
+assert(NP.Start())
+STUB.tick(3)
+assert(not NP.Running() and AmisiaDB.scan.npcs.doneA)
+NP.Command("")
+_G.AmisiaConfirmFrame.ok:Click()
+assert(NP.Running() == "B")
+local from = #STUB.messages
+STUB.tick(40)
+assert(not NP.Running() and AmisiaDB.scan.npcs.doneB, "phase B over both ranges ends")
+local lines = 0
+for i = from + 1, #STUB.messages do
+    if has(STUB.messages[i], "Phase B läuft") then lines = lines + 1 end
+end
+assert(lines == 3, "60 ids, a line every 20: " .. lines)
+NP.REPORT_EVERY.B = every
+print("npc scan: phase A, second ask, back-off, resume, the question of phase B, ranges, mini-probe, combat, instance, status lines")
