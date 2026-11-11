@@ -453,12 +453,12 @@ def test_scanned_dungeon_quests_fill_gaps_only(scan_names):
     assert bdq.place_scanned(data, {}, scan_names) == {'placed': [], 'left': []} and data == before
 
 
-def test_the_shipped_scanned_quests_have_their_dungeon_and_no_giver():
-    """The real data: every quest the scan alone brings (field 24) is in the list of its dungeon (field 11),
-    has no giver and no place."""
+def test_the_shipped_scanned_quests_have_their_dungeon():
+    """The real data: every quest the scan alone brings (field 24) is in the list of its dungeon (field 11).
+    A giver and a place may be there: the collector's own observation fills them once someone took the
+    quest (94968 on 2026-11-11), and the addon then drops the mark (Gear/Dungeons.lua)."""
     dq = lua_load(open(bdq.OUT, encoding='utf-8').read())
     lists = {k: set(v.values()) for k, v in dq.D.items()}
     for qid, r in dq.Q.items():
         if r[24]:
             assert r[11] and qid in lists.get(r[11], set()), qid
-            assert r[7] is None and r[8] is None and r[6] == '', qid
