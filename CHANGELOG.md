@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.76.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.76.0) (2026-11-11)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.75.1...v2.76.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(quests): a small window for items that start a quest (F-181)
 
     When an item lands in your bags that starts a quest you neither have in the log nor completed (looted,
