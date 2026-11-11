@@ -11,9 +11,11 @@
 -- the next; a kill of another of them while a clock with kills runs ends it unfinished and starts the
 -- other's from the first fight of this entry. Saved account-wide in
 -- AmisiaDB.runTimes = { v = 1, inst = { [dungeon key] = { nm, best = run, seg = { [encounter id] =
--- { t, at, c } }, runs = { run, ... } } }, live = { [character] = { k, i, nm, at, r, s, n } }, last =
+-- { t, at, c } }, runs = { run, ... } } }, live = { [character] = { k, i, nm, at, r, s, n, x, g, rk } }, last =
 -- { [character] = { r = the Runs run's at, i = its instance, k = the key of that clock } whose clock ran } }; a run = { at, t, s = { [encounter id] =
--- seconds }, n = group size, c = character, d = true when finished }. The key is the dungeon or raid
+-- seconds }, n = group size, c = character, d = true when finished, x = mob experience, g = looted copper
+-- (F-180, Gear/RunGains.lua; older runs have neither) }; live.rk = { [NPC id] = true } the rares seen
+-- dead. The key is the dungeon or raid
 -- key alone: this client has one difficulty per instance and the raids a fixed size (D-96).
 -- Fires "RUNTIMES" (what changed) for the window (Gear/RunTimer.lua) and the part Zeiten of the pages.
 local ADDON, ns = ...
@@ -30,6 +32,9 @@ local MAX_ENC = 40
 local AWAY = 30 * 60         -- outside longer than this: the run is over (as Runs.lua's fresh run)
 local MAX_LIVE = 12 * 3600   -- a clock older than this is over
 local MAX_T = 7 * 86400      -- no run is longer than a week
+local MAX_XP = 1e9           -- experience of one run at most (F-180)
+local MAX_COPPER = 1e11      -- money of one run at most (copper)
+local MAX_RARES = 40         -- rare kills kept per clock
 RT.MAX_RUNS, RT.MAX_INST, RT.AWAY, RT.MAX_LIVE = MAX_RUNS, MAX_INST, AWAY, MAX_LIVE
 
 local function now() return time() end
@@ -63,7 +68,10 @@ local function cleanRun(r)
         end
     end
     local size = num(r.n, 1, 40)
-    return { at = math.floor(at), t = t, s = s, n = size and math.floor(size) or 1, c = c, d = r.d == true or nil }
+    -- the mob experience and the looted money of the run (F-180, D-112): optional, older runs have none
+    local x, g = num(r.x, 0, MAX_XP), num(r.g, 0, MAX_COPPER)
+    return { at = math.floor(at), t = t, s = s, n = size and math.floor(size) or 1, c = c, d = r.d == true or nil,
+        x = x and math.floor(x) or nil, g = g and math.floor(g) or nil }
 end
 RT.CleanRun = cleanRun
 
@@ -124,9 +132,17 @@ function RT.Loaded()
     for c, l in pairs(type(src.live) == "table" and src.live or {}) do
         if plainName(c) and type(l) == "table" and type(l.k) == "string" and l.k:match("^[%w_%-]+$") then
             local i, at, r = num(l.i, 1, 1e9), num(l.at, 1, 4e9), num(l.r, 1, 4e9)
-            local run = i and at and r and cleanRun({ at = at, t = 0, s = l.s, n = l.n, c = c })
+            local run = i and at and r and cleanRun({ at = at, t = 0, s = l.s, n = l.n, c = c, x = l.x, g = l.g })
             if run then
-                out.live[c] = { k = l.k, i = math.floor(i), nm = plainName(l.nm), at = run.at, r = math.floor(r), s = run.s, n = run.n }
+                -- the rares seen dead in this run (F-180): NPC ids
+                local rk, nr = {}, 0
+                for npc, v in pairs(type(l.rk) == "table" and l.rk or {}) do
+                    if v == true and type(npc) == "number" and npc >= 1 and npc == math.floor(npc) and nr < MAX_RARES then
+                        rk[npc], nr = true, nr + 1
+                    end
+                end
+                out.live[c] = { k = l.k, i = math.floor(i), nm = plainName(l.nm), at = run.at, r = math.floor(r), s = run.s, n = run.n,
+                    x = run.x or 0, g = run.g or 0, rk = rk }
                 chars[#chars + 1] = c
             end
         end
@@ -291,7 +307,8 @@ local function finish(t, c, done)
             if secs > total then total = secs end
         end
     end
-    local run = { at = l.at, t = math.max(0, total), s = l.s, n = l.n, c = c, d = done or nil }
+    local run = { at = l.at, t = math.max(0, total), s = l.s, n = l.n, c = c, d = done or nil,
+        x = math.floor(tonumber(l.x) or 0), g = math.floor(tonumber(l.g) or 0) }
     local rec = instRec(t, l.k)
     rec.nm = rec.nm or l.nm
     local prev = rec.best and rec.best.t or nil
@@ -317,7 +334,7 @@ local function finish(t, c, done)
         table.sort(keys, function(a, b) return lastAt(t.inst[a]) > lastAt(t.inst[b]) end)
         for i = MAX_INST + 1, #keys do t.inst[keys[i]] = nil end
     end
-    RT.lastDone = { k = l.k, run = run, prev = prev, best = newBest, nm = l.nm }
+    RT.lastDone = { k = l.k, run = run, prev = prev, best = newBest, nm = l.nm, rk = l.rk or {} }
     if done then
         local name = l.nm or RT.Name(l.k)
         if prev then
@@ -367,7 +384,8 @@ end
 
 -- Starts the clock of key in instance inst at the moment at (the run of Runs.lua: run).
 local function start(t, c, key, inst, name, run, at)
-    t.live[c] = { k = key, i = inst, nm = keptName(key, name or run.name), at = at, r = run.at, s = {}, n = groupSize() }
+    t.live[c] = { k = key, i = inst, nm = keptName(key, name or run.name), at = at, r = run.at, s = {}, n = groupSize(),
+        x = 0, g = 0, rk = {} }
     t.last[c] = { r = run.at, i = inst, k = key }
     clock[c] = GetTime() - (now() - at)
     RT.lastDone = nil
@@ -461,6 +479,17 @@ function RT.Live()
         clock[c] = GetTime() - secs
     end
     return l, math.max(0, secs)
+end
+
+-- The rare mobs of key (DungeonData.lua rares, F-180): { { npc, English name }, ... } checked, or an
+-- empty list where the data knows none.
+function RT.Rares(key)
+    local f = ns.Runs.Fact(key)
+    local out = {}
+    for _, r in ipairs(f and type(f.rares) == "table" and f.rares or {}) do
+        if type(r) == "table" and type(r[1]) == "number" and r[1] > 0 and type(r[2]) == "string" then out[#out + 1] = r end
+    end
+    return out
 end
 
 -- The times of key: { nm, best, seg, runs } or nil.
@@ -582,7 +611,7 @@ ns.RegisterSlash("zeiten", { en = "times", args = L["[stop]"], desc = L["Lauf-Ze
 
 ns.RegisterSettings{ key = "runtimes", label = L["Lauf-Zeiten"], order = 52, group = "dungeons", pages = { "dungeons", "raidjournal" }, items = {
     { key = "runtimes.window", type = "toggle", label = L["Zeitfenster in Dungeons"], default = true,
-      tip = L["Öffnet ein kleines Fenster mit der Uhr und den Zwischenzeiten, sobald in einem Dungeon der erste Kampf beginnt. Gemessen wird auch ohne das Fenster."] },
+      tip = L["Öffnet ein kleines Fenster mit der Uhr, Mob-XP, Gold, den Bossen und den Rare des Dungeons, sobald dort der erste Kampf beginnt. Gemessen wird auch ohne das Fenster."] },
     { key = "runtimes.raids", type = "toggle", label = L["Zeitfenster auch in Raids"], default = true,
       tip = L["Das Fenster öffnet sich auch beim ersten Kampf in einem Raid."] },
     { key = "runtimes.clear", type = "button", label = L["Alle Bestzeiten löschen"], run = function() confirmClear(nil) end,

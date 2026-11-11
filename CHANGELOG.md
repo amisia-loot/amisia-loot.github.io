@@ -5,6 +5,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): the run window shows time, mob XP, gold, bosses and rares (F-180)
+
+    The "Run times" window is now a compact overview: the dungeon's name as its title, three values side by
+    side (the running time, the experience your kills gave in this run and the money you looted, with the
+    client's coins), the best time line, the dungeon's bosses as round portraits (grey while alive, in colour
+    once killed; the mouse shows the split and the difference to the best run) and, where Amisia knows them,
+    the dungeon's rares, grey until you see them dead. Quest rewards, vendor sales, repairs, mail and trades
+    never count; the values survive a /reload, go into the saved run at its end and start at zero with a new
+    run. Many bosses wrap into rows; the result and "All times" stay at the bottom.
+
 - feat(map): dungeon quest givers on the world map (F-179)
 
     Zone maps of the world map now show a small quest giver "!" with the quest log's dungeon or raid mark at

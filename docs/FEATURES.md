@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-180 Lauf-Fenster: Zeit, Mob-XP, Gold, Bosse und Rare
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du in den Todesminen den ersten Kampf beginnst, dann öffnet sich "Lauf-Zeiten" mit "Zeit", "Mob-XP" und "Gold" nebeneinander, darunter acht graue runde Bossporträts und unter "Rare" drei graue Porträts.
+- Prüfung: Wenn du Mobs tötest und Geld plünderst, dann wachsen "Mob-XP" und "Gold"; gibst du eine Quest ab oder verkaufst und reparierst beim Händler, dann ändern sich beide nicht (bitte melden, wenn ein Wert springt oder nach einem Boss fehlt).
+- Prüfung: Wenn du einen Boss tötest, dann wird sein Porträt farbig und die Maus darauf zeigt seinen Namen und "Zwischenzeit m:ss" (im zweiten Lauf grün oder rot "... zum besten Lauf").
+- Prüfung: Wenn du einen Rare (z. B. Marisa du'Paige) tot im Ziel hast oder seine Leiche plünderst, dann wird sein Porträt unter "Rare" farbig; nach `/reload` stehen Zeit, Mob-XP, Gold und die Farben noch da.
+- Prüfung: Wenn du in Schwarzfelstiefen kämpfst, dann stehen die 21 Bosse in drei Reihen im Fenster, nichts ragt heraus; in der Halle der Thane gibt es keine Reihe "Rare".
+- Notiz: Spec `docs/specs/2026-11-11-lauf-fenster.md`; DECISIONS D-112. Rare-Daten (AllTheThings) für 12 Dungeons; die neuen Forever-Dungeons und Raids haben keine. Ob der Client Münzsymbole (`GetCoinTextureString`) und die Entsättigung der Modelle hat, sagt `/amisia selbsttest gruppe`; sonst "1g 46s" und ein dunkler Schleier.
+
 ### F-179 Dungeonquest-Geber auf der Weltkarte
 - Version: -
 - Status: geplant
@@ -174,8 +184,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Version: 2.74.0
 - Status: gebaut
 - Prüfung: Wenn du allein einen Dungeon betrittst und eine Minute am Eingang wartest, dann ist kein Fenster offen; beim ersten Kampf geht das Fenster "Lauf-Zeiten" mit dem Namen des Dungeons auf und die Zeit läuft (bitte melden, wenn es sich im Kampf nicht öffnet oder eine Fehlermeldung kommt).
-- Prüfung: Wenn du den ersten Boss tötest, dann steht seine Zeit in seiner Zeile; tötest du den letzten Boss, dann steht im Chat "<Dungeon> in m:ss (erste gemessene Zeit)." und im Fenster grün "Erste gemessene Zeit"; beim Rauslaufen schließt es sich.
-- Prüfung: Wenn du den Dungeon zurücksetzt und noch einmal läufst, dann steht beim nächsten Boss grau die Zeit des ersten Laufs, nach jedem Kill grün "-m:ss" oder rot "+m:ss", am Ende "Neue Bestzeit!" oder rot "+m:ss zur Bestzeit" und im Chat "(Bestzeit m:ss, ...)".
+- Prüfung: Wenn du den ersten Boss tötest, dann wird sein Porträt farbig und die Maus darauf zeigt "Zwischenzeit m:ss" (seit F-180); tötest du den letzten Boss, dann steht im Chat "<Dungeon> in m:ss (erste gemessene Zeit)." und im Fenster grün "Erste gemessene Zeit"; beim Rauslaufen schließt es sich.
+- Prüfung: Wenn du den Dungeon zurücksetzt und noch einmal läufst, dann zeigt die Maus auf dem nächsten Boss grau "Ziel: m:ss (bester Lauf)", nach jedem Kill sein Tooltip grün "-m:ss" oder rot "+m:ss zum besten Lauf", am Ende "Neue Bestzeit!" oder rot "+m:ss zur Bestzeit" und im Chat "(Bestzeit m:ss, ...)".
 - Prüfung: Wenn du während eines Laufs `/amisia zeiten stop` tippst, dann steht "Uhr angehalten: der Lauf zählt als nicht beendet.", das Fenster geht zu, und unter Dungeons, Reiter "Zeiten" steht der Lauf als "nicht beendet · n/m Bosse"; "Bester Lauf" bleibt.
 - Prüfung: Wenn du das Fenster verschiebst und `/reload` machst, dann steht es nach dem nächsten Kampfbeginn bzw. `/amisia zeiten` am selben Platz; draußen öffnet `/amisia zeiten` den Reiter "Zeiten" der zuletzt gemessenen Instanz, "Zeiten löschen" fragt erst.
 - Notiz: Spec docs/specs/2026-11-10-lauf-zeiten.md; DECISIONS D-96. In Raids dasselbe (Einstellung "Zeitfenster auch in Raids"); eine Gruppe ändert nur die Spalte "Gruppe". Nichts wird gesendet.

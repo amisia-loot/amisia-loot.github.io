@@ -1108,6 +1108,83 @@ function W.GoldRule(parent, alpha)
     return r
 end
 
+-- A creature's round portrait size px square on parent (the bosses of the pages Dungeons and Raids,
+-- F-154, and the window "Lauf-Zeiten", F-180; tokens T.DBOSS): a black disc, the creature's model over
+-- it (the client's skull while it has none), on a frame above the model the veil (W.DimPortrait) and
+-- the gold ring (a model draws over its parent's textures).
+function W.Portrait(parent, size)
+    local BV = T.DBOSS
+    local p = CreateFrame("Frame", nil, parent)
+    p:SetSize(size, size)
+    p.disc = p:CreateTexture(nil, "BORDER")
+    p.disc:SetAllPoints()
+    p.disc:SetTexture(W.DISC)
+    p.disc:SetVertexColor(0, 0, 0, 1)
+    p.skull = p:CreateTexture(nil, "ARTWORK")
+    p.skull:SetSize(math.floor(size / 2), math.floor(size / 2))
+    p.skull:SetPoint("CENTER")
+    p.skull:SetTexture(BV.NO_MODEL)
+    local ok, m = pcall(CreateFrame, "PlayerModel", nil, p)
+    if ok and m then
+        m:SetPoint("TOPLEFT", 2, -2)
+        m:SetPoint("BOTTOMRIGHT", -2, 2)
+        m:Hide()
+        p.model = m
+    end
+    p.top = CreateFrame("Frame", nil, p)
+    p.top:SetAllPoints()
+    if p.top.SetFrameLevel and p.GetFrameLevel then p.top:SetFrameLevel(p:GetFrameLevel() + 2) end
+    p.ring = p.top:CreateTexture(nil, "OVERLAY")
+    p.ring:SetAllPoints()
+    p.ring:SetTexture(BV.RING)
+    p.ring:SetVertexColor(GOLD[1], GOLD[2], GOLD[3], 1)
+    return p
+end
+
+-- The portrait p shows NPC npc (its model, zoomed to head and shoulders), else the skull.
+function W.SetPortrait(p, npc)
+    local m = p.model
+    if npc and m and type(m.SetCreature) == "function" then
+        if p.npc ~= npc then
+            if pcall(m.SetCreature, m, npc) then
+                if m.SetPortraitZoom then pcall(m.SetPortraitZoom, m, T.DBOSS.ZOOM) end
+                p.npc = npc
+            else
+                p.npc = nil
+            end
+        end
+        if p.npc then
+            m:Show()
+            p.skull:Hide()
+            return
+        end
+    end
+    p.npc = nil
+    if m then m:Hide() end
+    p.skull:Show()
+end
+
+-- Greys portrait p (on) or shows it in colour (off): a dark veil over the model, the model's own
+-- SetDesaturation where the client has one (not every model frame does), the skull desaturated, the
+-- ring grey. p.dim keeps the state.
+function W.DimPortrait(p, on)
+    on = on and true or false
+    local D = T.DBOSS
+    if not p.veil then
+        p.veil = p.top:CreateTexture(nil, "ARTWORK")
+        p.veil:SetPoint("TOPLEFT", 2, -2)
+        p.veil:SetPoint("BOTTOMRIGHT", -2, 2)
+        p.veil:SetTexture(W.DISC)
+        p.veil:SetVertexColor(0, 0, 0, D.DIM)
+    end
+    p.veil:SetShown(on)
+    if p.model and type(p.model.SetDesaturation) == "function" then pcall(p.model.SetDesaturation, p.model, on and 1 or 0) end
+    if p.skull.SetDesaturated then p.skull:SetDesaturated(on) end
+    local c = on and D.RING_DIM or GOLD
+    p.ring:SetVertexColor(c[1], c[2], c[3], 1)
+    p.dim = on
+end
+
 -- A section header as in the profession window's recipe list (ListHeaderVisualTemplate with
 -- ListHeaderCodeTemplate): gold text on the dark bar, 25 high, a minus to collapse when
 -- collapsible. A click turns the state and hands it to onToggle(collapsed); h:SetCollapsed(on)

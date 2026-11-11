@@ -681,59 +681,8 @@ local BTEXT = {
     wishOn = L["Von der Wunschliste nehmen"], wishOff = L["Auf die Wunschliste"],
 }
 
--- A boss's portrait size px square on parent: a black disc, the boss's model over it (the client's
--- skull while it has none), the gold ring on top (on a frame above the model: a model draws over its
--- parent's textures).
-local function buildPortrait(parent, size)
-    local p = CreateFrame("Frame", nil, parent)
-    p:SetSize(size, size)
-    p.disc = p:CreateTexture(nil, "BORDER")
-    p.disc:SetAllPoints()
-    p.disc:SetTexture(W.DISC)
-    p.disc:SetVertexColor(0, 0, 0, 1)
-    p.skull = p:CreateTexture(nil, "ARTWORK")
-    p.skull:SetSize(math.floor(size / 2), math.floor(size / 2))
-    p.skull:SetPoint("CENTER")
-    p.skull:SetTexture(BV.NO_MODEL)
-    local ok, m = pcall(CreateFrame, "PlayerModel", nil, p)
-    if ok and m then
-        m:SetPoint("TOPLEFT", 2, -2)
-        m:SetPoint("BOTTOMRIGHT", -2, 2)
-        m:Hide()
-        p.model = m
-    end
-    p.top = CreateFrame("Frame", nil, p)
-    p.top:SetAllPoints()
-    if p.top.SetFrameLevel and p.GetFrameLevel then p.top:SetFrameLevel(p:GetFrameLevel() + 2) end
-    p.ring = p.top:CreateTexture(nil, "OVERLAY")
-    p.ring:SetAllPoints()
-    p.ring:SetTexture(BV.RING)
-    p.ring:SetVertexColor(W.GOLD[1], W.GOLD[2], W.GOLD[3], 1)
-    return p
-end
-
--- The portrait p shows NPC npc (its model, zoomed to head and shoulders), else the skull.
-local function setPortrait(p, npc)
-    local m = p.model
-    if npc and m and type(m.SetCreature) == "function" then
-        if p.npc ~= npc then
-            if pcall(m.SetCreature, m, npc) then
-                if m.SetPortraitZoom then pcall(m.SetPortraitZoom, m, BV.ZOOM) end
-                p.npc = npc
-            else
-                p.npc = nil
-            end
-        end
-        if p.npc then
-            m:Show()
-            p.skull:Hide()
-            return
-        end
-    end
-    p.npc = nil
-    if m then m:Hide() end
-    p.skull:Show()
-end
+-- A boss's portrait and its NPC: the shared kit (UI/Widgets.lua, W.Portrait, F-180)
+local buildPortrait, setPortrait = W.Portrait, W.SetPortrait
 
 -- The grey line of a boss row: its items and upgrades ("4 Items · 1 Upgrade"), "keine Beute bekannt",
 -- or the kills of an NPC only the guild's records know.

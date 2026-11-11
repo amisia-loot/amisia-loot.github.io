@@ -408,7 +408,8 @@ function S.feedback(author)
 end
 
 -- Run times (F-166): the Deadmines with a best run, two more runs (one not finished) and, for the
--- window, a running clock 12:34 in with three bosses down (Miner Johnson skipped).
+-- window, a running clock 12:34 in with three bosses down (Miner Johnson skipped), 4325 mob XP, 1g 46s
+-- 20c looted and one of its three rares seen dead (F-180).
 local DM = { 2741, 2742, 3676, 2743, 2744, 2745, 2746, 2747 }
 function S.runTimes(live)
     local now = math.floor(STUB.now)
@@ -423,10 +424,25 @@ function S.runTimes(live)
         runs = { run(now - 3600, 610, { 100, 270, false, 455, 610 }, nil, "Vuloo"), best,
                  run(now - 3 * 86400, 1530, { 85, 300, 410, 520, 700, 880, 1100, 1530 }, true, "Fraktur") } } } }
     NS.RunTimes.Loaded()
+    NS.RunTimes._reset()
     if live then
         AmisiaDB.runTimes.live[NS.UnitFullName("player")] = { k = "deadmines", i = 36, nm = "Die Todesminen", at = now - 754, r = 1,
-            s = { [2741] = 95, [2742] = 238, [2743] = 431 }, n = 5 }
+            s = { [2741] = 95, [2742] = 238, [2743] = 431 }, n = 5, x = 4325, g = 14620, rk = { [599] = true } }
     end
+end
+
+-- The run window in Blackrock Depths (F-180): 21 bosses in three rows, eleven of them down, 48210 mob
+-- XP, 12g 7s looted, its one rare not seen yet; no best run.
+function S.runTimesMany()
+    local now = math.floor(STUB.now)
+    local enc = { 227, 228, 229, 230, 231, 232, 233, 234, 235, 236, 237, 238, 239, 240, 241, 2791, 242, 243, 244, 2789, 2790 }
+    local s = {}
+    for i = 1, 11 do s[enc[i]] = i * 150 end
+    AmisiaDB.runTimes = { v = 1, live = {}, last = {}, inst = {} }
+    NS.RunTimes.Loaded()
+    NS.RunTimes._reset()   -- the clock of the shot before
+    AmisiaDB.runTimes.live[NS.UnitFullName("player")] = { k = "brd", i = 230, nm = "Schwarzfelstiefen", at = now - 1712, r = 1,
+        s = s, n = 5, x = 48210, g = 120745, rk = {} }
 end
 
 -- The dungeon bar (F-168): in the Hall of Thanes after the first fight (the clock runs) and the first
@@ -929,6 +945,12 @@ S.WINDOWS = {
         -- the run timer (F-166): a running clock in the Deadmines against the best run
         S.runTimes(true)
         NS.RunTimer.Show("deadmines")
+        return AmisiaRunTimer
+    end },
+    { key = "runtimer-many", view = "raider", open = function()
+        -- the run window of a dungeon with many bosses (F-180): Blackrock Depths, 21 portraits in rows
+        S.runTimesMany()
+        NS.RunTimer.Show("brd")
         return AmisiaRunTimer
     end },
     { key = "routebar", view = "raider", open = function()

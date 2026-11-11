@@ -64,6 +64,10 @@ local function makeClient(opts)
     C_QuestLog.GetSelectedQuest = function() return 0 end
     C_QuestLog.IsPushableQuest = function() return false end
     _G.QuestLogPushQuest = function() error("QuestLogPushQuest called") end
+    -- F-180: the run window's XP, gold and rares, only looked up here
+    for _, name in ipairs({ "GetMaxPlayerLevel", "IsXPUserDisabled", "GetMoney", "GetCoinTextureString" }) do
+        _G[name] = _G[name] or function() error(name .. " called") end
+    end
     _G.AcceptGroup = function() error("AcceptGroup called") end
     _G.StaticPopup_Hide = function() end
     -- F-165: the roles of the lineup, only looked up

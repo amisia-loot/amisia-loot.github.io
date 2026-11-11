@@ -116,9 +116,10 @@ def test_blackrock_spire_hosts_two_dungeons():
     assert by['lbrs']['part'] == by['ubrs']['part'] == 'Blackrock Spire'
     assert [e['key'] for e in entries() if e.get('part')] == ['smgy', 'smlib', 'smarm', 'smcath', 'lbrs', 'ubrs']
     text = build_dungeons.render(facts())
-    assert 'aliases = { "Blackrock Spire" }, part = "Blackrock Spire" }' in text
+    # the rares of the half (F-180) may follow the part
+    assert 'aliases = { "Blackrock Spire" }, part = "Blackrock Spire"' in text
     assert re.search(r'\{ key = "ubrs", name = "Upper Blackrock Spire", kind = "party", lvl = 53, inst = 229, (order = \{[^}]*\}, enc = \{[^}]*\}, '
-                     r'(npcs = \{[^}]*\}, )?)?part = "Blackrock Spire" \},', text)
+                     r'(npcs = \{[^}]*\}, )?)?part = "Blackrock Spire"( \}|, rares = )', text)
     # each half only its own bosses of the instance's order (att_wing, D-106; before: one shared order with false)
     c = client()['dungeons']
     assert c['lbrs']['order'][0] == 'Highlord Omokk' and c['lbrs']['order'][-1] == 'Overlord Wyrmthalak'
@@ -299,7 +300,7 @@ def test_the_client_levels_and_instance_ids():
     assert set(c['dungeons']) <= keys
     by = {e['key']: e for e in entries()}
     for k, v in c['dungeons'].items():
-        assert set(v) <= {'lvl', 'inst', 'lfg', 'order', 'enc', 'npcs', 'npcs_scan', 'order_src', 'maps'}, v
+        assert set(v) <= {'lvl', 'inst', 'lfg', 'order', 'enc', 'npcs', 'npcs_scan', 'order_src', 'maps', 'rares'}, v
         assert v.get('order_src') in (None, 'att'), (k, v)
         if 'npcs' in v:
             order = v.get('order') or by[k].get('order')
@@ -313,7 +314,8 @@ def test_the_client_levels_and_instance_ids():
     assert len(both) >= 13, both
     assert [k for k in both if c['dungeons'][k]['lvl'] != by[k]['min']] == ['shaper', 'smarm', 'smcath', 'smlib'], both
     assert c['dungeons']['shaper']['lvl'] == by['shaper']['max'] == 60
-    assert c['dungeons']['deadmines'] == {'lvl': 16, 'lfg': ['Deadmines'], 'inst': 36, 'order': [
+    # (its rares, F-180, are AllTheThings' and may change with its data: test_the_rares_... checks their form)
+    assert {k: v for k, v in c['dungeons']['deadmines'].items() if k != 'rares'} == {'lvl': 16, 'lfg': ['Deadmines'], 'inst': 36, 'order': [
         "Rhahk'Zor", 'Sneed', 'Miner Johnson', 'Gilnid', 'Captain Greenskin', 'Mr. Smite', 'Cookie', 'Edwin VanCleef'],
         'enc': [2741, 2742, 3676, 2743, 2744, 2745, 2746, 2747],
         'npcs': [644, 643, 3586, 1763, 647, 646, 645, 639]}, \
@@ -425,3 +427,46 @@ def test_every_boss_of_the_order_has_its_npc():
         assert all(npc > 0 for name, npc in zip(c[k]['order'], c[k]['npcs']) if name not in ('Overseer Wrex', 'King Op')), k
     assert c['alcaz']['order'][0] == 'Overseer Wrex' and c['alcaz']['enc'][0] == 3403
     assert c['shaper']['order'][6] == 'King Op' and c['shaper']['enc'][6] == 3504
+
+
+# ---------------------------------------------------------------- the rare mobs of a dungeon (F-180, D-112)
+def test_the_rares_of_a_dungeon_come_from_allthethings_and_are_never_a_boss():
+    att = fake_att()
+    att['npcs'].update({
+        9301: {'name': 'Odd Rare', 'kinds': {'rare'}, 'inst': 10},
+        9302: {'name': 'Spire Thing (Rare)', 'kinds': {'rare'}, 'inst': 10},
+        # a rare that is a boss of the order (by its NPC id, and by its name), a rare also filed as a boss
+        9001: {'name': 'First Boss', 'kinds': {'rare'}, 'inst': 10},
+        9304: {'name': 'Second Boss', 'kinds': {'rare'}, 'inst': 10},
+        9305: {'name': 'Both', 'kinds': {'rare', 'boss'}, 'inst': 10},
+        # an old one, one of another instance, the wings of an instance of several dungeons
+        9306: {'name': 'Gone', 'kinds': {'rare'}, 'inst': 10, 'old': True},
+        9307: {'name': 'Elsewhere', 'kinds': {'rare'}, 'inst': 11},
+        9308: {'name': 'Lower Rare', 'kinds': {'rare'}, 'inst': 12, 'wing': 'Lower'},
+        9309: {'name': 'Upper Rare', 'kinds': {'rare'}, 'inst': 12, 'wing': 'Upper'},
+        9310: {'name': 'No Wing', 'kinds': {'rare'}, 'inst': 12},
+    })
+    facts_ = {'dungeons': [
+        {'key': 'halls', 'name': 'Test Halls', 'kind': 'party', 'boss_alias': {'Third Boss': 'Third Boss the Long'}},
+        {'key': 'lower', 'name': 'Lower Test', 'kind': 'party', 'part': 'Test Raid', 'att_wing': 'Lower'},
+        {'key': 'raid', 'name': 'Test Raid', 'kind': 'raid', 'inst': 4003},
+    ]}
+    c = build_dungeons.client_facts(facts_, [WAGO], att)
+    d = c['dungeons']
+    assert d['halls']['rares'] == [[9301, 'Odd Rare'], [9302, 'Spire Thing']], d['halls'].get('rares')
+    assert d['lower']['rares'] == [[9308, 'Lower Rare']], 'only the rares of its wing'
+    assert d['raid']['rares'] == [[9308, 'Lower Rare'], [9309, 'Upper Rare'], [9310, 'No Wing']], 'one dungeon: every rare'
+    assert 'rares' not in d.get('new', {}), 'no rares: no field'
+    text = build_dungeons.render({'checked': 'x', 'dungeons': facts_['dungeons']}, c, {})
+    assert 'rares = { { 9301, "Odd Rare" }, { 9302, "Spire Thing" } }' in text
+    # without ATT no rares
+    assert 'rares' not in build_dungeons.client_facts(facts_, [WAGO])['dungeons'].get('halls', {})
+
+
+def test_the_rares_in_the_generated_facts_have_their_form():
+    """Only the form: the list may grow with the next data build."""
+    for k, v in client()['dungeons'].items():
+        for r in v.get('rares') or []:
+            assert isinstance(r, list) and len(r) == 2 and isinstance(r[0], int) and r[0] > 0, (k, r)
+            assert isinstance(r[1], str) and r[1] and '(Rare)' not in r[1], (k, r)
+            assert r[0] not in (v.get('npcs') or []), (k, r)

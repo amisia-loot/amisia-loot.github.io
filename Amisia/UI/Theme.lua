@@ -454,8 +454,16 @@ T.GIVER_PIN = {
         grey = { 0.5, 0.5, 0.5 } },
 }
 
-T.RUNTIMER = { W = 260, PAD = 12, TOP = 30, TOTAL_H = 22, LINE_H = 16, ROW_H = 16, NAME_W = 132, SPLIT_W = 44, DIFF_W = 44,
-    GAP = 4, BOTTOM_H = 40, MAX_ROWS = 16, TICK = 0.2 }
+-- The window "Lauf-Zeiten" (F-166, F-180, Gear/RunTimer.lua, AmisiaRunTimer): W wide, content PAD from
+-- both edges, TOP under the window's top; three value columns COL_W wide (a grey word LABEL_H over a
+-- large value VALUE_H), GAP under them the best time line LINE_H high, GAP under it the gold rule and
+-- RULE_GAP under that the boss portraits (PORT square, PORT_GAP apart, COLS per row); SECTION_GAP before
+-- the heading "Rare" (HEAD_H) over the rares' portraits and before the bottom band: the result (RESULT_W
+-- wide, RESULT_Y lower than the link) left, the link "Alle Zeiten" right, BOTTOM_H to the window's
+-- lower edge. TICK: the live clock's refresh.
+T.RUNTIMER = { W = 300, PAD = 14, TOP = 30, COL_W = { 84, 80, 108 }, LABEL_H = 14, VALUE_H = 20, GAP = 4, LINE_H = 14,
+    RULE_GAP = 8, PORT = 32, PORT_GAP = 6, COLS = 7, SECTION_GAP = 8, HEAD_H = 16, RESULT_W = 170, RESULT_Y = 4,
+    BOTTOM_H = 32, TICK = 0.2 }
 
 -- The dungeon bar (F-168, Gear/DungeonBar.lua, AmisiaDungeonBar): one row H high on a dark ground
 -- (SHADE) with a gold edge; the instance's name (at most NAME_W, the drag handle) PAD from the left,
@@ -489,6 +497,8 @@ T.DBOSS = {
     LOOT_H = 36, ICON = 28, ICON_X = 4, LOOT_TEXT_X = 40, LOOT_NAME_Y = -4, LOOT_SUB_Y = -20,
     RATE_W = 72, STAR = 16, END = 6,
     ZOOM = 0.9,                -- the model's portrait zoom (head and shoulders)
+    DIM = 0.55,                -- the veil over a greyed portrait (W.DimPortrait: a boss alive, a rare not killed)
+    RING_DIM = { 0.45, 0.45, 0.45 },
     RING = "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\boss_ring",
     NO_MODEL = "Interface\\TargetingFrame\\UI-TargetingFrame-Skull",
     HEAD_BG = { 0, 0, 0, 0.35 },

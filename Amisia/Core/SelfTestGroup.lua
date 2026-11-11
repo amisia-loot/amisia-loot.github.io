@@ -60,6 +60,9 @@ GT.FUNCTIONS = {
     { L["Gruppen-Queststand, Quest teilen"], { "C_QuestLog.IsOnQuest", "C_QuestLog.IsComplete", "C_QuestLog.IsQuestFlaggedCompleted",
         "QuestLogPushQuest", "C_QuestLog.SetSelectedQuest|SelectQuestLogEntry", "C_QuestLog.GetSelectedQuest|GetQuestLogSelection",
         "C_QuestLog.IsPushableQuest|GetQuestLogPushable", "C_QuestLog.GetLogIndexForQuestID|GetQuestLogIndexByID" } },
+    -- F-180: the run window's mob XP, gold, coins and rares seen dead
+    { L["Lauf-Fenster: XP, Gold, Rare"], { "UnitXP", "UnitXPMax", "GetMaxPlayerLevel", "IsXPUserDisabled", "GetMoney",
+        "GetCoinTextureString", "UnitIsDead", "GetLootSourceInfo" } },
 }
 -- The system message templates the invite status would read (check 10).
 GT.TEMPLATES = { "ERR_INVITE_PLAYER_S", "ERR_DECLINE_GROUP_S", "ERR_ALREADY_IN_GROUP_S", "ERR_BAD_PLAYER_NAME_S", "ERR_GROUP_FULL",

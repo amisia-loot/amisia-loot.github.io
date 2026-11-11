@@ -63,8 +63,9 @@ LFG_SKIP_TYPES = ('4', '5')
 # keys: the key and attunement items (forever_dungeon_keys.json), each with the fields of KEY_FIELDS.
 # wing: the English name of the wing a dungeon is (the Scarlet Monastery's four, F-174), part_area: the client's
 # area id of the part's name (the addon shows "<part>: <wing>" in the client's language).
+# rares: the dungeon's rare mobs, [NPC id, English name] each (AllTheThings, rares_of; F-180, D-112).
 FIELDS = ('key', 'name', 'kind', 'min', 'max', 'lvl', 'size', 'inst', 'area', 'from', 'bosses', 'order', 'enc',
-          'npcs', 'maps', 'aliases', 'part', 'wing', 'part_area', 'keys')
+          'npcs', 'maps', 'aliases', 'part', 'wing', 'part_area', 'keys', 'rares')
 KEY_FIELDS = ('item', 'need', 'why', 'quests', 'questsA', 'questsH')
 KEY_NEED = ('required', 'optional')
 KEY_WHY = ('door', 'part', 'summon', 'attune', 'boss')
@@ -134,7 +135,8 @@ def client_facts(facts, dirs=WAGO_DIRS, att=None, scans=None, enc_names=None):
     an instance without rows there takes ATT's encounters of the instance in its file's order
     (order_src 'att': ATT's e() id is the client's encounter id in Forever's new dungeons).
     npcs: the boss NPC of each name of the order (the facts' own order where they have one; see npcs_of());
-    where no source names one, the NPC scan by id (scans, enc_names; boss_npcs_from_scan(), D-104)."""
+    where no source names one, the NPC scan by id (scans, enc_names; boss_npcs_from_scan(), D-104).
+    rares: the dungeon's rare mobs from AllTheThings (rares_of(), F-180)."""
     tables = {}
     for t in ('LFGDungeons', 'ContentTuning', 'AreaTable', 'DungeonEncounter', 'UiMapAssignment'):
         for d in dirs:
@@ -226,6 +228,10 @@ def client_facts(facts, dirs=WAGO_DIRS, att=None, scans=None, enc_names=None):
                     rec['order'] = [rec['order'][i] for i in keep]
                     rec['enc'] = [rec['enc'][i] for i in keep]
                     rec['npcs'] = [npcs[i] for i in keep]
+            # the dungeon's rare mobs (F-180, D-112)
+            rares = rares_of(att, iid, e, e.get('order') or rec.get('order') or [], rec.get('npcs') or [])
+            if rares:
+                out.setdefault(e['key'], rec)['rares'] = rares
     if scans:
         for key, name, npc in boss_npcs_from_scan(out, scans, enc_names or {}):
             print(f'NPC scan: {key} {name} -> {npc}')
@@ -331,6 +337,33 @@ def npcs_of(e, order, enc, index, iid):
     return out
 
 
+RARE_SUFFIX = re.compile(r'\s*\(rare\)\s*$', re.I)
+
+
+def rares_of(att, iid, e, order, npcs):
+    """The rare mobs of fact e in ATT instance iid (F-180, D-112): [[NPC id, English name], ...] by id, every
+    NPC of the instance AllTheThings files as rare (under its header "Rares" or described as a rare creature,
+    att_data: kind 'rare') and never as a boss; in a dungeon of one wing (the facts' att_wing) only those
+    under its wing (a rare without a wing there is left out). A rare that is a boss of the dungeon's order
+    (its NPC in npcs or its name in order: Miner Johnson, Skul, Stonespine) stays a boss. ATT's " (Rare)"
+    after a name goes. [] where ATT knows none."""
+    wing = e.get('att_wing')
+    bosses = {n for n in npcs if n}
+    names = {att_data.boss_key(n) for n in order}
+    out = []
+    for nid, n in sorted((att.get('npcs') or {}).items()):
+        kinds = set(n.get('kinds') or ())
+        if n.get('inst') != iid or 'rare' not in kinds or 'boss' in kinds or n.get('old') or not n.get('name'):
+            continue
+        if wing and n.get('wing') != wing:
+            continue
+        name = RARE_SUFFIX.sub('', n['name']).strip()
+        if not name or nid in bosses or att_data.boss_key(name) in names:
+            continue
+        out.append([nid, name])
+    return out
+
+
 def uimap_floors(folder):
     """{map id: [uiMap id, ...]} from the UiMapAssignment table in folder: every uiMap assigned to the
     map, in the order of its first assignment (smallest OrderIndex, then smallest row ID, then the uiMap
@@ -390,6 +423,8 @@ def merge(facts, client, keys=None):
             m['npcs'] = c['npcs']
         if c.get('maps'):
             m['maps'] = c['maps']
+        if c.get('rares'):
+            m['rares'] = c['rares']
         if keys.get(e['key']):
             m['keys'] = [{k: v for k, v in item.items() if k in KEY_FIELDS} for item in keys[e['key']]]
         out.append(m)
@@ -431,7 +466,8 @@ def render(facts, client=None, keys=None):
         '-- (AllTheThings; 0 unknown; a wing of an instance has only its own bosses); maps: the uiMap ids of the floors',
         '-- (UiMapAssignment, empty in the Forever tables so far); keys: the key and attunement items, checked',
         '-- by hand (item, need required/optional, why door/part/summon/attune/boss, quests or questsA/questsH',
-        '-- leading to it).',
+        '-- leading to it); rares: the rare mobs, { NPC id, English name } each (AllTheThings\' rares, never a boss',
+        '-- of the order).',
         'local _, ns = ...',
         '',
         'ns.DUNGEON_FACTS = {',
@@ -457,7 +493,8 @@ def write_client(client, path=CLIENT):
                        '(AreaTable), its bosses in the game\'s order with their encounter ids (DungeonEncounter) and '
                        'the uiMaps of its floors (UiMapAssignment); where the client has no encounters of an instance, '
                        'AllTheThings\' encounters (order_src "att"), and per name of the order its boss NPC from '
-                       'AllTheThings (npcs: 0 unknown; a wing of an instance keeps only the bosses of its wing). '
+                       'AllTheThings (npcs: 0 unknown; a wing of an instance keeps only the bosses of its wing); '
+                       'the rare mobs AllTheThings files under the instance (rares: [NPC id, name], never a boss). '
                        'Game data, no loot. Do not edit; rebuild instead.',
            **client}
     text = json.dumps(doc, indent=1, sort_keys=False, ensure_ascii=False) + '\n'
