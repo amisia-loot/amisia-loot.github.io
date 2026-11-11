@@ -1362,7 +1362,10 @@ def main(argv=None):
     ap.add_argument('--scan-archive', default=build_scan_archive.ARCHIVE,
                     help='the scan archive read under the SavedVariables (default tools/scan_archive.json; "" for none)')
     ap.add_argument('--out', default=OUT)
-    ap.add_argument('--nosrc-out', default=NOSRC_OUT, help='the gear without a known source (default Amisia/Data/GearNoSource.lua)')
+    ap.add_argument('--nosrc-out', default=None,
+                    help='the gear without a known source (default Amisia/Data/GearNoSource.lua when --out is the '
+                         'addon\'s file, else GearNoSource.lua next to --out: a test or a trial build must not '
+                         'replace the shipped file)')
     ap.add_argument('--refresh-wowsrc', action='store_true', help='download the wowsrc.com dungeon pages again')
     ap.add_argument('--no-wowsrc', action='store_true', help='leave the wowsrc.com dungeon pages out')
     ap.add_argument('--show-unmatched', action='store_true')
@@ -1457,6 +1460,9 @@ def main(argv=None):
     keys = scored_stat_keys()
     first, _ = no_source(scan_items, src.named, keys)
     nsrc, ndropped = no_source(scan_items, src.named, keys, sparse_for(args.wago, first))
+    if args.nosrc_out is None:
+        args.nosrc_out = (NOSRC_OUT if os.path.abspath(args.out) == os.path.abspath(OUT)
+                          else os.path.join(os.path.dirname(os.path.abspath(args.out)), 'GearNoSource.lua'))
     write_no_source(args.nosrc_out, nsrc, {'built': time.strftime('%Y-%m-%d'), 'client': client})
     log(f'without a known source: {len(nsrc)} items -> {os.path.relpath(args.nosrc_out, ROOT)} '
         f'({os.path.getsize(args.nosrc_out) // 1024} KB); left out: '

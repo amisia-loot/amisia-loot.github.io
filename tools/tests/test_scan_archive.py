@@ -218,11 +218,17 @@ def test_a_build_after_the_trim_gives_the_same_data(tmp_path):
     # GearData.lua, built by build_gear.py from each
     if os.path.isdir(os.path.join(att_data.ATT_CACHE, 'dungeons & raids')):
         outs = []
+        shipped = open(build_gear.NOSRC_OUT, 'rb').read() if os.path.exists(build_gear.NOSRC_OUT) else None
         for name, path in (('before', REAL_SV), ('after', str(trimmed_path))):
             out = tmp_path / f'GearData.{name}.lua'
             build_gear.main(['--sv', path, '--scan-archive', str(archive), '--out', str(out), '--no-wowsrc'])
             outs.append(out.read_text(encoding='utf-8'))
         assert outs[0] == outs[1], 'GearData.lua differs after the trim'
+        # a build into another file leaves the shipped GearNoSource.lua alone (it once rewrote it on every
+        # test run, and the release then refused the changed tree, 2026-11-11)
+        assert (tmp_path / 'GearNoSource.lua').exists()
+        now = open(build_gear.NOSRC_OUT, 'rb').read() if os.path.exists(build_gear.NOSRC_OUT) else None
+        assert now == shipped, 'a trial build replaced Amisia/Data/GearNoSource.lua'
 
     # data/forever.js, built by build_scan.py from each (no icons; the drop archive a copy)
     outs = []
