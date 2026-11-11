@@ -302,12 +302,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-08-lehrer-lesen.md, D-86. Nach dem Besuch: `build.py data` übernimmt die Lesungen in tools/trainer_archive.json.
 
 ### F-154 Dungeons und Raids: Bosse mit Porträt, Beute mit Symbolen
-- Version: 2.68.0
+- Version: 2.76.1
 - Status: gebaut
 - Prüfung: Wenn du auf der Seite Dungeons einen Dungeon öffnest (Teil Übersicht), dann stehen links die Bosse untereinander, jeder mit rundem Porträt im Goldring (das Modell des Bosses, ohne Modell der Totenkopf des Spiels), "1. Name" und darunter grau "4 Items · 1 Upgrade"; rechts steht der gewählte Boss groß mit Porträt, Name und "Boss 1 von 6", darunter seine Beute: Symbol im Rahmen der Qualität, Name, Slot und Zuwachs, Dropchance und der Stern.
 - Prüfung: Wenn du links auf einen anderen Boss klickst, dann zeigt die rechte Seite seine Beute; die Maus auf einem Boss zeigt ihn im Bild oben, Rechtsklick markiert ihn als getötet oder nicht.
 - Prüfung: Wenn du auf den Stern einer Beutezeile klickst, dann kommt das Item auf die Wunschliste (der Stern leuchtet), ein zweiter Klick nimmt es wieder herunter; Strg-Klick auf die Zeile zeigt die Anprobe, Rechtsklick das Menü.
 - Prüfung: Wenn du einen Raid auf der Seite Raids öffnest, dann sieht die Übersicht genauso aus.
+- Prüfung: Wenn du (ab 2.76.1) Onyxia auf der Seite Raids oder einen Dungeon öffnest, dann zeigt der runde Rahmen jeder Bosszeile das Modell des Bosses und bleibt nicht schwarz, auch nach Schließen und erneutem Öffnen des Fensters; dasselbe gilt für die Porträts im Fenster "Lauf-Zeiten".
 - Notiz: Wunsch des Nutzers 2026-11-08 mit einem Bildschirmfoto eines anderen Addons ("die inis sollen auch da die bosse mit ihren icons anzeigen und die items die sie dropen auch mit den icons"); D-85, ersetzt die aufklappbare Bossliste von F-144. Neue Textur `ui/boss_ring.tga`: nach dem Release WoW ganz neu starten.
 
 ### F-153 Berufe: Favoriten und Herstellliste
