@@ -1108,6 +1108,19 @@ function W.GoldRule(parent, alpha)
     return r
 end
 
+-- Gives the portrait's model the creature npc: the model frame is shown FIRST. A creature given to a
+-- hidden model frame is lost on the Forever client (seen 2026-11-11: the round portraits stayed black
+-- while the header image, which shows its model first, drew the same boss). True when the client took it.
+local function loadPortrait(p, npc)
+    local m = p.model
+    p.loading = true
+    if not m:IsShown() then m:Show() end
+    local ok = pcall(m.SetCreature, m, npc)
+    if ok and m.SetPortraitZoom then pcall(m.SetPortraitZoom, m, T.DBOSS.ZOOM) end
+    p.loading = nil
+    return ok
+end
+
 -- A creature's round portrait size px square on parent (the bosses of the pages Dungeons and Raids,
 -- F-154, and the window "Lauf-Zeiten", F-180; tokens T.DBOSS): a black disc, the creature's model over
 -- it (the client's skull while it has none), on a frame above the model the veil (W.DimPortrait) and
@@ -1130,6 +1143,13 @@ function W.Portrait(parent, size)
         m:SetPoint("BOTTOMRIGHT", -2, 2)
         m:Hide()
         p.model = m
+        -- the client forgets a model's creature and camera while the frame is hidden: when the portrait
+        -- comes back on screen (the page opens again, the list scrolls) it is given again, and the
+        -- portrait camera is set again once the model's data has arrived (a creature never seen loads late)
+        m:SetScript("OnShow", function() if p.npc and not p.loading then loadPortrait(p, p.npc) end end)
+        m:SetScript("OnModelLoaded", function(self)
+            if p.npc and self.SetPortraitZoom then pcall(self.SetPortraitZoom, self, BV.ZOOM) end
+        end)
     end
     p.top = CreateFrame("Frame", nil, p)
     p.top:SetAllPoints()
@@ -1146,15 +1166,10 @@ function W.SetPortrait(p, npc)
     local m = p.model
     if npc and m and type(m.SetCreature) == "function" then
         if p.npc ~= npc then
-            if pcall(m.SetCreature, m, npc) then
-                if m.SetPortraitZoom then pcall(m.SetPortraitZoom, m, T.DBOSS.ZOOM) end
-                p.npc = npc
-            else
-                p.npc = nil
-            end
+            p.npc = loadPortrait(p, npc) and npc or nil
         end
         if p.npc then
-            m:Show()
+            if not m:IsShown() then m:Show() end
             p.skull:Hide()
             return
         end

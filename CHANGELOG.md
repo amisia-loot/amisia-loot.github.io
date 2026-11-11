@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(dungeons): the round boss portraits show the boss's model instead of staying black (F-154, F-180)
+
+    In the boss lists of the pages Dungeons and Raids the round frame stayed black while the header image
+    drew the same boss. The portrait gave its model frame the creature while that frame was still hidden,
+    and the client drops that. The frame is now shown first, the creature is given again whenever the
+    portrait comes back on screen, and the portrait camera is set again once the model has loaded. The
+    window "Lauf-Zeiten" uses the same portraits.
+
 ## [v2.76.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.76.0) (2026-11-11)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.75.1...v2.76.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
