@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-181 Fenster bei Gegenständen, die eine Quest starten
-- Version: -
-- Status: geplant
+- Version: 2.76.0
+- Status: gebaut
 - Prüfung: Wenn du einen Gegenstand plünderst, der eine Quest startet, die du weder im Log noch abgeschlossen hast (z. B. eine Zeichnung oder einen Brief), dann öffnet sich nach einem Augenblick oberhalb der Bildmitte ein kleines Fenster mit seinem Namen, seinem Symbol mit gelbem "!" und "Klick auf das Symbol startet die Quest."
 - Prüfung: Wenn du auf das Symbol klickst, dann öffnet sich das Questfenster des Spiels; nimmst du die Quest an, schließt Amisias Fenster (bitte melden, wenn der Klick nichts tut oder "Aktion blockiert" erscheint).
 - Prüfung: Wenn du das Fenster mit dem x schließt und danach plünderst oder Taschen umräumst, dann kommt es für diesen Gegenstand nicht wieder; nach `/reload` erscheint es einmal wieder, solange die Quest offen ist.
@@ -50,8 +50,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-11-11-quest-start-item.md`; DECISIONS D-113. Ob der Client für Startgegenstände den Quest-Vermerk liefert und Addons den Gegenstand per sicherem Knopf benutzen lässt, sagt `/amisia selbsttest gruppe` ("Quest-Startgegenstände"); lehnt er ab, informiert das Fenster nur ("Rechtsklick auf den Gegenstand in der Tasche ...").
 
 ### F-180 Lauf-Fenster: Zeit, Mob-XP, Gold, Bosse und Rare
-- Version: -
-- Status: geplant
+- Version: 2.76.0
+- Status: gebaut
 - Prüfung: Wenn du in den Todesminen den ersten Kampf beginnst, dann öffnet sich "Lauf-Zeiten" mit "Zeit", "Mob-XP" und "Gold" nebeneinander, darunter acht graue runde Bossporträts und unter "Rare" drei graue Porträts.
 - Prüfung: Wenn du Mobs tötest und Geld plünderst, dann wachsen "Mob-XP" und "Gold"; gibst du eine Quest ab oder verkaufst und reparierst beim Händler, dann ändern sich beide nicht (bitte melden, wenn ein Wert springt oder nach einem Boss fehlt).
 - Prüfung: Wenn du einen Boss tötest, dann wird sein Porträt farbig und die Maus darauf zeigt seinen Namen und "Zwischenzeit m:ss" (im zweiten Lauf grün oder rot "... zum besten Lauf").
@@ -60,8 +60,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-11-11-lauf-fenster.md`; DECISIONS D-112. Rare-Daten (AllTheThings) für 12 Dungeons; die neuen Forever-Dungeons und Raids haben keine. Ob der Client Münzsymbole (`GetCoinTextureString`) und die Entsättigung der Modelle hat, sagt `/amisia selbsttest gruppe`; sonst "1g 46s" und ein dunkler Schleier.
 
 ### F-179 Dungeonquest-Geber auf der Weltkarte
-- Version: -
-- Status: geplant
+- Version: 2.76.0
+- Status: gebaut
 - Prüfung: Wenn du (Allianz, Stufe 20) die Weltkarte auf Sturmwind öffnest, dann steht bei Shoni ein kleines gelbes "!" mit Dungeon-Zeichen rechts oberhalb ihres Punktes; die Maus darauf zeigt eine Zeile "[D20] ..." mit den Todesminen und eine "[D30] ..." mit Gnomeregan.
 - Prüfung: Wenn du auf diesen Pin klickst, dann öffnet Amisia unter der Weltkarte die Todesminen im Teil Quests mit dem Questweg der Quest; Shift-Klick setzt stattdessen das Ziel auf den Geber.
 - Prüfung: Wenn du eine der Quests annimmst oder eine Stufe aufsteigst, dann ändern sich Zeilen und Pins nach einer halben Sekunde; eine Quest bis zwei Stufen über dir steht mit "ab N" da, ihr "!" grau, solange keine andere Quest des Gebers schon geht.
@@ -70,8 +70,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-11-11-dungeonquest-geber-karte.md`; DECISIONS D-111. Ob der Client das Questlog-Abzeichen `questlog-questtypeicon-dungeon` hat, sagt `/amisia selbsttest` (sonst das Dungeon-Zeichen der Karte). Graue Quests, Starts im Dungeon oder durch einen Gegenstand und Geber ohne bekannten Ort bekommen keinen Pin.
 
 ### F-178 Gruppen-Queststatus im Dungeon
-- Version: -
-- Status: geplant
+- Version: 2.76.0
+- Status: gebaut
 - Braucht: Gruppe
 - Prüfung: Wenn du mit einem zweiten Amisia in einer Gruppe die Todesminen (oder einen anderen Dungeon) betrittst und auf der Seite Dungeons den Teil Quests öffnest, dann steht rechts in jeder Zeile sein Anfangsbuchstabe in Klassenfarbe mit dem Questzeichen seines Stands; die Maus auf der Zeile nennt unter "Gruppe:", wer sie im Log hat, abgeben kann, erledigt hat oder braucht.
 - Prüfung: Wenn ein Mitglied kein Amisia hat (oder "Meinen Dungeon-Queststand mit der Gruppe teilen" aus hat), dann steht es grau mit "?" da und im Tooltip unter "Unbekannt (kein Amisia oder Teilen aus)", nie unter "Fehlt".
@@ -81,8 +81,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-11-gruppen-queststatus.md; DECISIONS D-110. Nur in einer eigenen Gruppe (PARTY), nicht im Raid. Ob der Client Quests teilen kann ("Teilen" erscheint nur dann), sagt `/amisia selbsttest gruppe` ("Gruppen-Queststand, Quest teilen").
 
 ### F-177 Dungeonquests aus dem eigenen Quest-Scan
-- Version: -
-- Status: geplant
+- Version: 2.76.0
+- Status: gebaut
 - Prüfung: Wenn du (Allianz) auf der Seite Dungeons "Gefängnis von Alcaz" öffnest, Teil Quests, dann stehen dort Quests wie "Das geheime Gefängnis" und "Das Tagebuch des Drachen", ohne Ort in der Zeile; die Maus darauf zeigt "Nur aus dem Quest-Scan: Questgeber und Ort noch unbekannt" und keine leere Zeile "Start:".
 - Prüfung: Wenn du "Schwarzschlundfeste" öffnest, dann steht "Die Wurzel des Problems" genau einmal da (Allianz: die Quest für Darnassus, Horde: die für Thunder Bluff), und "Terrasse des Formers" zeigt fünf Quests, "Feste Krol'dok" als Allianz sechs, als Horde fünf (vorher zwei für die Allianz).
 - Prüfung: Wenn du eine dieser Quests anklickst, dann sagt der Questweg "Annehmen: Ort unbekannt; Amisia lernt ihn, sobald du die Quest siehst" und "Abgeben: noch unbekannt", ohne Knopf "Karte", und trägt unten die Marke "nur aus dem Quest-Scan".
