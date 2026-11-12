@@ -395,7 +395,7 @@ local function build()
     W.Tooltip(bar.close, L["Leiste schließen"], L["Bis zum nächsten Dungeon oder \"/amisia leiste\"."])
     -- the clock and the quest log, a few times a second while the bar shows
     local acc = 0
-    bar:SetScript("OnUpdate", function(_, elapsed)
+    bar:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate DungeonBar", function(_, elapsed)
         acc = acc + (elapsed or 0)
         if acc < S.TICK then return end
         acc = 0
@@ -410,7 +410,7 @@ local function build()
                 DBar.Refresh()
             end
         end
-    end)
+    end))
     bar:Hide()
     place()
     return bar

@@ -32,7 +32,7 @@ end
 -- and the other parts' lines stay. Parts only ever add lines, never set, clear or show a tooltip.
 local tipParts = {}
 function ns.OnItemTooltip(key, fn)
-    tipParts[#tipParts + 1] = { key = key, fn = fn }
+    tipParts[#tipParts + 1] = { key = key, fn = fn, label = "Tooltip Item " .. tostring(key) }
 end
 
 local tipDone = setmetatable({}, { __mode = "k" })     -- tooltip -> { link, [key] = true }
@@ -54,7 +54,8 @@ end
 
 local tipReport = ns.ReportError
 
-local function onItemTooltip(tip)
+-- /amisia leistung times the whole as "Tooltip Item" and each part under its key (F-184)
+local onItemTooltip = ns.Perf.Wrap("Tooltip Item", function(tip)
     -- a part that builds another item tooltip comes back here: nothing then
     if tipBusy or type(tip) ~= "table" or not tip.AddLine then return end
     local ok, link = pcall(tipLink, tip)
@@ -63,7 +64,7 @@ local function onItemTooltip(tip)
     if not id then return end
     if not tipWatched[tip] and tip.HookScript then
         tipWatched[tip] = true
-        tip:HookScript("OnTooltipCleared", function(self) tipDone[self] = nil end)
+        tip:HookScript("OnTooltipCleared", ns.Perf.Wrap("Tooltip Item cleared", function(self) tipDone[self] = nil end))
     end
     local done = tipDone[tip]
     if not done or done.link ~= link then
@@ -74,7 +75,8 @@ local function onItemTooltip(tip)
     tipBusy = true
     for _, part in ipairs(tipParts) do
         if not done[part.key] then
-            local ok2, added = pcall(part.fn, tip, link, id)
+            local ok2, added
+            if ns.Perf.on then ok2, added = ns.Perf.PCall(part.label, part.fn, tip, link, id) else ok2, added = pcall(part.fn, tip, link, id) end
             if not ok2 then
                 errors = errors or {}
                 errors[#errors + 1] = added
@@ -85,7 +87,7 @@ local function onItemTooltip(tip)
     end
     tipBusy = false
     for _, err in ipairs(errors or {}) do tipReport(err) end
-end
+end)
 
 -- The tooltip data processor serves every item tooltip (also SetLootRollItem and SetHyperlink).
 -- Without it (a client that lacks it) there are no Amisia lines, and no error.
@@ -458,7 +460,7 @@ end
 
 local function startTicker()
     if ticker then return end
-    ticker = C_Timer.NewTicker(ROSTER_EVERY, function() snapshotRoster() end)
+    ticker = C_Timer.NewTicker(ROSTER_EVERY, ns.Perf.Wrap("Ticker Roster", function() snapshotRoster() end))
 end
 
 local function stopTicker()
@@ -573,13 +575,17 @@ function ns.Announce(text, ttl)
     return ns.Say(text, chan, nil, ttl and { ttl = ttl } or nil)
 end
 
--- Modules add handlers for events; the core frame registers them.
-local extra = {}
+-- Modules add handlers for events; the core frame registers them. extraLabel[event][i] is the label
+-- /amisia leistung times handler i under: "Event NAME File:line" of its registration (F-184).
+local extra, extraLabel = {}, {}
 local events -- the event frame, created below
+local perf = ns.Perf
 
 function ns.OnEvent(event, fn)
     extra[event] = extra[event] or {}
     extra[event][#extra[event] + 1] = fn
+    extraLabel[event] = extraLabel[event] or {}
+    extraLabel[event][#extra[event]] = perf.HandlerLabel("Event", event, perf.Where(2))
     -- pcall: an event one client does not know must not stop the addon
     if events then pcall(events.RegisterEvent, events, event) end
 end
@@ -1141,6 +1147,9 @@ events = CreateFrame("Frame")
 events:RegisterEvent("ADDON_LOADED")
 for ev in pairs(extra) do pcall(events.RegisterEvent, events, ev) end
 events:SetScript("OnEvent", function(self, event, arg1, ...)
+    -- /amisia leistung: the core's own part of an event is timed as "Core EVENT" (F-184)
+    local p0, p1, p2, p3
+    if (perf.on or perf.boot) and (event ~= "ADDON_LOADED" or arg1 == ADDON) then p0, p1, p2, p3 = perf.Begin() end
     if event == "ADDON_LOADED" then
         if arg1 ~= ADDON then return end
         AmisiaDB = AmisiaDB or {}
@@ -1149,6 +1158,8 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
         DB.settings = DB.settings or {}
         DB.itemNames = DB.itemNames or {}
         DB.exported = DB.exported or {}   -- session id -> { h = fingerprint, at = epoch } of its last export
+        -- the saved measurements, and a measurement of this login if one was asked for (Core/PerfReport.lua)
+        if ns.PerfLoaded then ns.PerfLoaded(DB) end
         -- the steps of the saved data's version first: they may move a setting before it is checked
         if ns.Migrate then ns.Migrate(DB) end
         ns.ApplySettings(DB)
@@ -1264,13 +1275,17 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
         -- instance information settles a moment after the loading screen
         C_Timer.After(1, evaluate)
     end
+    if p0 then perf.End(perf.Label("Core ", event), p0, p1, p2, p3) end
     local list = extra[event]
     if list then
         -- one failing handler must not keep the others from their event: each runs protected and
-        -- its error goes to the client's error handler once all have run
+        -- its error goes to the client's error handler once all have run; while /amisia leistung
+        -- measures (or the login's steps are timed) each is timed under its label
         local failed
-        for _, fn in ipairs(list) do
-            local ok, err = pcall(fn, arg1, ...)
+        local labels = (perf.on or perf.boot) and extraLabel[event]
+        for i, fn in ipairs(list) do
+            local ok, err
+            if labels then ok, err = perf.PCall(labels[i], fn, arg1, ...) else ok, err = pcall(fn, arg1, ...) end
             if not ok then
                 failed = failed or {}
                 failed[#failed + 1] = err
@@ -1280,6 +1295,8 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
             for _, err in ipairs(failed) do ns.ReportError(err) end
         end
     end
+    -- the login's steps end with the first PLAYER_ENTERING_WORLD after loading
+    if perf.boot and event == "PLAYER_ENTERING_WORLD" then perf.BootDone() end
 end)
 
 ---------------------------------------------------------------------------

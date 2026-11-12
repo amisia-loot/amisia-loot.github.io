@@ -281,7 +281,7 @@ local function timeouts()
 end
 
 local function watchAnswers()
-    if not ticker then ticker = C_Timer.NewTicker(1, timeouts) end
+    if not ticker then ticker = C_Timer.NewTicker(1, ns.Perf.Wrap("Ticker LineupInvite", timeouts)) end
 end
 
 local lastInvited          -- the record of the newest invite (ERR_GROUP_FULL names nobody)

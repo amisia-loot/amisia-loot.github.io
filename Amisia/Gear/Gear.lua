@@ -938,7 +938,7 @@ function Gear.Stats(id)
         queue[#queue + 1] = id
     end
     if not ticker and C_Timer and C_Timer.NewTicker and C_Item and C_Item.RequestLoadItemDataByID then
-        ticker = C_Timer.NewTicker(0.1, tick)
+        ticker = C_Timer.NewTicker(0.1, ns.Perf.Wrap("Ticker Gear items", tick))
     end
     -- meanwhile the stats the build computed from the client tables, if any (marked SC); the
     -- client's answer replaces them when it comes

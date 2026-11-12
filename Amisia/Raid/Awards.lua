@@ -810,7 +810,7 @@ local function onGive(slot, candidate)
 end
 
 if type(GiveMasterLoot) == "function" then
-    hooksecurefunc("GiveMasterLoot", onGive)
+    hooksecurefunc("GiveMasterLoot", ns.Perf.Wrap("Hook GiveMasterLoot", onGive))
 end
 
 ns.OnEvent("CHAT_MSG_LOOT", function(text)

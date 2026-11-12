@@ -906,10 +906,10 @@ local function tick()
     end
 end
 
-C_Timer.NewTicker(LIM.tick, function()
+C_Timer.NewTicker(LIM.tick, ns.Perf.Wrap("Ticker Crafters", function()
     local ok, err = pcall(tick)
     if not ok then report(err) end
-end)
+end))
 
 ns.OnEvent("ADDON_LOADED", function(name)
     if name ~= ADDON or not AmisiaDB then return end

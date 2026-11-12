@@ -184,7 +184,7 @@ function ns.ScanStart(from, to)
     pending, pendingCount = {}, 0
     nextReport = (math.floor(s.next / REPORT_EVERY) + 1) * REPORT_EVERY
     running = true
-    ticker = C_Timer.NewTicker(0.1, tick)
+    ticker = C_Timer.NewTicker(0.1, ns.Perf.Wrap("Ticker Scan items", tick))
     ns.msg(L["Scan gestartet: ID %d bis %d, %d Anfragen pro Sekunde. /amisia scan stop hält an."]:format(s.from, s.to, s.rate))
     if ns.Refresh then ns.Refresh() end
     return true
@@ -205,7 +205,7 @@ function ns.ScanRetry()
     local slow = math.max(10, math.floor(s.rate / 4))
     savedRate = s.rate
     s.rate = slow
-    ticker = C_Timer.NewTicker(0.1, tick)
+    ticker = C_Timer.NewTicker(0.1, ns.Perf.Wrap("Ticker Scan items", tick))
     ns.msg(L["Wiederholung gestartet: %d IDs mit %d Anfragen pro Sekunde."]:format(#queue, slow))
     return true
 end
@@ -223,7 +223,7 @@ function ns.ScanList(ids, label)
     pending, pendingCount = {}, 0
     nextReport = math.huge
     running = true
-    ticker = C_Timer.NewTicker(0.1, tick)
+    ticker = C_Timer.NewTicker(0.1, ns.Perf.Wrap("Ticker Scan items", tick))
     ns.msg(L["%s: %d IDs mit %d Anfragen pro Sekunde. Danach ausloggen, damit die Datei geschrieben wird."]:format(label or "Scan", #ids, s.rate))
     return true
 end

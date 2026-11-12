@@ -273,11 +273,11 @@ function P.BuildMap(B, top)
         if button ~= "LeftButton" or not v.art then return end
         local sx, sy = cursor()
         local ox, oy = v.ox, v.oy
-        self:SetScript("OnUpdate", function()
+        self:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate Journal map drag", function()
             local x, y = cursor()
             v.ox, v.oy = ox + (x - sx), oy + (y - sy)
             layoutMap(v)
-        end)
+        end))
     end)
     local function stop(self) self:SetScript("OnUpdate", nil) end
     v.clip:SetScript("OnMouseUp", stop)

@@ -140,11 +140,11 @@ assert(NS.RollRanking(round)[1].rank == "SR")
 assert(NS.RollKind(32235, "Vulo Sturmwind") == "SR" and NS.RollKind(32235, "Fraktur") == "MS")
 
 -- the tooltip processor: registered once for items (the hook all of Amisia shares, in Core.lua),
--- one line per tooltip build
+-- one line per tooltip build (the hook comes wrapped by Core/Perf.lua for /amisia leistung, F-184)
 local tdp
 for _, e in ipairs(STUB.tdp) do
     local info = debug.getinfo(e.fn, "S")
-    if info.source:find("Core", 1, true) then tdp = e end
+    if info.source:find("Core", 1, true) and e.kind == Enum.TooltipDataType.Item then tdp = e end
 end
 assert(tdp and tdp.kind == Enum.TooltipDataType.Item, "post call registered")
 local itemCalls = 0

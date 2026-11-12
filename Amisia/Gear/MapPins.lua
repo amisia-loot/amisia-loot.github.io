@@ -635,6 +635,7 @@ local function onUpdate()
         layout()
     end
 end
+onUpdate = ns.Perf.Wrap("OnUpdate MapPins", onUpdate)   -- /amisia leistung (F-184)
 
 local function ownsTooltip()
     local owner = GameTooltip.GetOwner and GameTooltip:GetOwner()

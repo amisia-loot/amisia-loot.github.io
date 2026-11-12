@@ -402,7 +402,7 @@ ns.OnEvent("GROUP_ROSTER_UPDATE", function()
     members = n
 end)
 
-C_Timer.NewTicker(5, function()
+C_Timer.NewTicker(5, ns.Perf.Wrap("Ticker SoftResShare", function()
     local ok, err = pcall(sendSV)
     if not ok then report(err) end
-end)
+end))

@@ -126,6 +126,7 @@ local function cardTick(self, elapsed)
     self.wait = 0
     if (self.anchor and not self.anchor:IsShown()) or GetTime() - self.at > S.CARD_TIME then self:Hide() end
 end
+cardTick = ns.Perf.Wrap("OnUpdate DuelCard", cardTick)   -- /amisia leistung (F-184)
 
 -- Shows the card for a challenger; returns the card (nil when off or without a name).
 function I.ShowCard(name)
@@ -187,8 +188,8 @@ I.OnUnitTooltip = onUnitTooltip
 
 if type(TooltipDataProcessor) == "table" and type(TooltipDataProcessor.AddTooltipPostCall) == "function"
     and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Unit then
-    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tip)
+    TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, ns.Perf.Wrap("Tooltip Unit Duels", function(tip)
         local ok, err = pcall(onUnitTooltip, tip)
         if not ok then geterrorhandler()(err) end
-    end)
+    end))
 end

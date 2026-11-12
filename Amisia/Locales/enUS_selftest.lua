@@ -476,3 +476,8 @@ L["vorher geladen %s; %s; Titel %s, Schwierigkeit %s, Stufe %s, Tag %s %s, Grupp
 L["Daten per Nummer"] = "Data by id"
 L["Gruppen-Queststand, Quest teilen"] = "Party quest state, quest share"
 L["Quest-Startgegenstände"] = "Quest start items"
+-- the clocks of /amisia leistung (F-184)
+L["Zeitmessung"] = "Timing"
+L["mit debugstack"] = "with debugstack"
+L["ohne debugstack"] = "without debugstack"
+L["keine Uhr: /amisia leistung kann nicht messen"] = "no clock: /amisia performance cannot measure"

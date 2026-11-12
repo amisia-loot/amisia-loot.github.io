@@ -1404,11 +1404,11 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         buildRoles(f, top)
         f.empty = f:Empty()
         -- the calendar of the shown night is read again now and then while the page is open
-        C_Timer.NewTicker(POLL, function()
+        C_Timer.NewTicker(POLL, ns.Perf.Wrap("Ticker Lineup page", function()
             local n = pageOpen() and ns.LineupNight(curNight(), false)
             -- asks the client for the newest state: a change comes back as CALENDAR_CHANGED
             if n and n.cal and not InCombatLockdown() and ns.Cal.Available() then pcall(C_Calendar.OpenCalendar) end
-        end)
+        end))
         return f
     end,
     refresh = function(f)

@@ -229,6 +229,7 @@ local function rotate(self)
     self.rot = (self.dragRot or 0) + (x - self.dragX) / (scale ~= 0 and scale or 1) * self.P.ROTATE
     call(self, "SetRotation", self.rot)
 end
+rotate = ns.Perf.Wrap("OnUpdate GearDoll rotate", rotate)   -- /amisia leistung (F-184)
 
 -- drag turns, the wheel zooms, a right click resets
 local function wireModel(m, P)

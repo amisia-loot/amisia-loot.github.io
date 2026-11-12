@@ -466,10 +466,10 @@ local function buildGrip()
         end
         startX, startY = cursor()
         startW, startH = F:GetWidth(), F:GetHeight()
-        self:SetScript("OnUpdate", function()
+        self:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate MainFrame resize", function()
             local x, y = cursor()
             applySize(startW + (x - startX), startH + (startY - y))
-        end)
+        end))
     end)
     local function stop(self)
         if not startY then return end
@@ -1406,7 +1406,9 @@ function ns.Refresh()
     updatePageHead(p)
     local frame = built[current]
     if p.refresh and frame then
-        local ok, err = pcall(p.refresh, frame)
+        -- /amisia leistung (F-184) times the page's own refresh as "Refresh <page key>"
+        local ok, err
+        if ns.Perf.on then ok, err = ns.Perf.PCall(ns.Perf.Label("Refresh ", current), p.refresh, frame) else ok, err = pcall(p.refresh, frame) end
         if not ok then reportError(err) end
     end
     -- the side bar after the page: its marks come from what the page shows now (D-74)
@@ -1417,6 +1419,8 @@ function ns.Refresh()
     if #query >= M.SEARCH_MIN then showResults() else updateSearchHint() end
     updateHelp()
 end
+-- the window's part of a refresh (head, tabs, side bar, search) as "Refresh window" (F-184)
+ns.Refresh = ns.Perf.Wrap("Refresh window", ns.Refresh)
 
 -- A refresh at the next frame for data changes (a loot line, an award, a sync, a roster snapshot, a
 -- setting): many in one frame make one refresh; nothing while the window is closed (its show

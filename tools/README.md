@@ -16,6 +16,7 @@ python3 tools/build.py release X.Y.Z [-m "summary"] [--no-push] [--no-copy] [--n
 python3 tools/build.py testlist [--all] [--out FILE]
 python3 tools/build.py tested F-001 [F-002 ...] [--raid]
 python3 tools/build.py errors [--sv FILE] [--all]
+python3 tools/build.py perf [--sv FILE] [--rows N]
 ```
 
 - `data` runs the data builds in dependency order: `build_scan_archive.py update`, `build_dungeons.py --wago`, `build_gear.py`,
@@ -134,6 +135,15 @@ python3 tools/build.py errors [--sv FILE] [--all]
   (`tools/game_errors.py`). `--all` lists every addon's errors. A file that does not parse gives
   "Fehlerdatei nicht lesbar" and exit 1. `check` ends with a note "Fehler aus dem Spiel: N" when the
   file holds Amisia errors (never a failure); a missing file says nothing.
+- `perf [--sv FILE] [--rows N]` reads the measurements of `/amisia leistung` (F-184, D-116) from Amisia's
+  SavedVariables (default `~/addons/_SavedVariables/Amisia.lua`, synced from the PC after a logout, read
+  only) in the same sandbox (`build_scan.run_sv`) and prints the saved runs newest first
+  (`tools/perf_report.py`): a head per run (when, kind, duration, how it ended, Amisia's version, the client
+  build, game, the instance types met, frames and fps, combat, Amisia's ms per second and per frame in %
+  of 16.7 ms, calls, calls over 5 ms, garbage per second, memory, the load of files and login steps, the
+  data built) and its rows by own time: ms, calls, ms per call, longest call, calls over 5 ms, KB, ms with
+  the measured calls inside, label (`--rows`, default 20). Every field is read defensively; a file that
+  does not parse gives "Datei nicht lesbar" and exit 1, a file without measurements says so.
 - `snapshots` draws every page and side window into PNGs with a contact sheet (`tools/ui_layout.py
   snapshots`, below); default folder `/tmp/amisia-snapshots`.
 

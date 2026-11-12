@@ -21,6 +21,7 @@ Locales\enUS_world.lua
 Locales\enUS_selftest.lua
 Locales\enUS_raidcheck.lua
 Core\Registry.lua
+Core\Perf.lua
 Core\LazyData.lua
 Core\Core.lua
 Core\Names.lua
@@ -184,3 +185,4 @@ Core\SelfTestCalendar.lua
 Core\SelfTestCalendarWrite.lua
 Core\SelfTestGroup.lua
 Core\SelfTestData.lua
+Core\PerfReport.lua

@@ -447,6 +447,7 @@ local function tick()
     end
     if waiting then scheduleTick() end
 end
+tick = ns.Perf.Wrap("Timer Feedback", tick)   -- re-arms itself: /amisia leistung (F-184)
 
 scheduleTick = function()
     if tickPending then return end

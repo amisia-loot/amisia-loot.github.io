@@ -122,7 +122,7 @@ end
 local function start(kind, seconds, mode)
     stopTicker()
     cur = { kind = kind, ends = GetTime() + seconds, total = seconds, group = mode == "group", said = {} }
-    ticker = C_Timer.NewTicker(0.25, tick)
+    ticker = C_Timer.NewTicker(0.25, ns.Perf.Wrap("Ticker PullTimer", tick))
 end
 
 -- Starts a pull timer of seconds (nil: the setting). Returns true, or nil and the reason (said by the caller).

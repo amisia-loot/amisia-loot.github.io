@@ -162,6 +162,7 @@ local function buildGrip()
         F:ClearAllPoints()
         F:SetPoint("TOPLEFT", UIParent, "TOPLEFT", drag.left / (pe * s), (drag.top - drag.screenTop) / (pe * s))
     end
+    follow = ns.Perf.Wrap("OnUpdate RunTimer resize", follow)   -- /amisia leistung (F-184)
     g:SetScript("OnMouseDown", function(self, button)
         if button ~= "LeftButton" then return end
         local left, top, eff = F:GetLeft(), F:GetTop(), F:GetEffectiveScale()
@@ -206,13 +207,13 @@ local function build()
     W.Tooltip(F.all, L["Alle Zeiten##Lauf"], L["Bestzeit, Zeiten je Boss und die letzten Läufe dieser Instanz auf ihrer Seite."])
     F.bosses, F.rares = {}, {}
     local acc = 0
-    F:SetScript("OnUpdate", function(_, elapsed)
+    F:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate RunTimer", function(_, elapsed)
         acc = acc + (elapsed or 0)
         if acc < S.TICK then return end
         acc = 0
         local l, secs = RT.Live()
         if l and l.k == shownKey then F.total:SetText(RT.Fmt(secs)) end
-    end)
+    end))
     F.grip = buildGrip()
     local st = windowState()
     applyScale(st and st.scale or 1)

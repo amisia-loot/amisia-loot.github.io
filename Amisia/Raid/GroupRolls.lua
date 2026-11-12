@@ -385,6 +385,7 @@ local function readPending()
         C_Timer.After(READ_EVERY, readPending)
     end
 end
+readPending = ns.Perf.Wrap("Timer GroupRolls", readPending)   -- re-arms itself: /amisia leistung (F-184)
 
 local function onHistory(enc, key)
     enc, key = plainNumber(enc), plainNumber(key)

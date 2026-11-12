@@ -467,7 +467,7 @@ function ns.TrustWait(name, need, fn)
     if #waiting >= WAIT_MAX then return fn(false) end
     waiting[#waiting + 1] = { name = name, need = need, fn = fn, since = now() }
     if ns.RequestGuildRoster then ns.RequestGuildRoster() end
-    if not waitTicker then waitTicker = C_Timer.NewTicker(1, settle) end
+    if not waitTicker then waitTicker = C_Timer.NewTicker(1, ns.Perf.Wrap("Ticker Trust wait", settle)) end
 end
 
 for _, event in ipairs({ "GUILD_ROSTER_UPDATE", "PLAYER_GUILD_UPDATE", "CLUB_MEMBER_ADDED", "CLUB_MEMBER_REMOVED",

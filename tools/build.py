@@ -10,6 +10,7 @@
     python3 tools/build.py testlist [--all] [--out FILE]
     python3 tools/build.py tested F-001 [F-002 ...] [--raid]
     python3 tools/build.py errors [--sv FILE] [--all]
+    python3 tools/build.py perf [--sv FILE] [--rows N]
 
 data     rebuilds every generated file in Amisia/Data in dependency order (dungeons, gear, map,
          dungeon quests, quests, professions, talents, mage scrolls, raid check, enchants, dungeon art, BiS), stops at the first error
@@ -51,6 +52,9 @@ tested   sets the status of the named features to "im Spiel geprüft (today)", -
 errors   the Lua errors the game caught that name Amisia (--all: every addon's), from the error
          catcher's SavedVariables (default ~/addons/_SavedVariables/!BugGrabber.lua). check and
          release mention them without failing; a missing file says nothing.
+perf     Amisia's measurements of its own CPU time (/amisia leistung in the game, F-184): the saved runs
+         of the SavedVariables (default ~/addons/_SavedVariables/Amisia.lua), newest first, each with its
+         head and its costliest rows (--rows, default 20), via tools/perf_report.py.
 
 The tests need lupa: without it in this Python, the build starts again in ~/.venvs/amisia.
 """
@@ -506,6 +510,13 @@ def cmd_errors(args):
     return rc
 
 
+def cmd_perf(args):
+    pr = tool_module('perf_report')
+    text, rc = pr.report(os.path.expanduser(args.sv), rows=args.rows)
+    say(text)
+    return rc
+
+
 # ---------------------------------------------------------------- features and test list
 def load_features(root=ROOT):
     """The entries of docs/FEATURES.md, or None when the file is missing."""
@@ -859,6 +870,10 @@ def main(argv=None):
     e.add_argument('--sv', default='~/addons/_SavedVariables/!BugGrabber.lua',
                    help='the error catcher\'s SavedVariables (default ~/addons/_SavedVariables/!BugGrabber.lua)')
     e.add_argument('--all', action='store_true', help='every addon\'s errors')
+    pf = sub.add_parser('perf', help='Amisia\'s measurements of its own CPU time (/amisia leistung)')
+    pf.add_argument('--sv', default='~/addons/_SavedVariables/Amisia.lua',
+                    help='Amisia\'s SavedVariables (default ~/addons/_SavedVariables/Amisia.lua)')
+    pf.add_argument('--rows', type=int, default=20, help='rows per run (default 20)')
     args = ap.parse_args(argv)
     if not has_lupa() and os.path.exists(VENV_PY) and not os.environ.get('AMISIA_BUILD_VENV'):
         # once only: the venv's python is a link to the same binary, so the guard is the variable
@@ -867,7 +882,7 @@ def main(argv=None):
         os.execv(VENV_PY, [VENV_PY, os.path.abspath(__file__)] + rest)
     return {'data': cmd_data, 'tables': cmd_tables, 'diff': cmd_diff, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release,
             'github-release': cmd_github_release,
-            'testlist': cmd_testlist, 'tested': cmd_tested, 'errors': cmd_errors, 'tocs': cmd_tocs}[args.cmd](args)
+            'testlist': cmd_testlist, 'tested': cmd_tested, 'errors': cmd_errors, 'perf': cmd_perf, 'tocs': cmd_tocs}[args.cmd](args)
 
 
 if __name__ == '__main__':

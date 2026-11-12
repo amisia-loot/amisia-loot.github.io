@@ -520,7 +520,7 @@ local function show()
     if not F then build() end
     applyScale()
     if not F:IsShown() then F:Show() end
-    if not ticker then ticker = C_Timer.NewTicker(TICK, refresh) end
+    if not ticker then ticker = C_Timer.NewTicker(TICK, ns.Perf.Wrap("Ticker RollWindow", refresh)) end
     refresh()
 end
 

@@ -871,10 +871,10 @@ local function tick()
     end
 end
 
-C_Timer.NewTicker(L.tick, function()
+C_Timer.NewTicker(L.tick, ns.Perf.Wrap("Ticker CollectSync", function()
     local ok, err = pcall(tick)
     if not ok then report(err) end
-end)
+end))
 
 function ns.CollectSyncStats()
     local out = {}

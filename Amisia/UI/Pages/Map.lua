@@ -768,12 +768,12 @@ local function create(parent)
 
     -- the target card's distance and direction follow the player while the page shows
     f.wait = 0
-    f:SetScript("OnUpdate", function(self, elapsed)
+    f:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate Map page", function(self, elapsed)
         self.wait = (self.wait or 0) + (elapsed or 0)
         if self.wait < TICK - 1e-9 then return end
         self.wait = 0
         if ns.MapTarget() then fillCard(self) end
-    end)
+    end))
     return f
 end
 

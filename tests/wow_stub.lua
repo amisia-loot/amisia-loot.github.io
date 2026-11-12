@@ -14,6 +14,19 @@ _G.time = function(t) if type(t) == "table" then return os.time(t) end return ST
 _G.date = function(fmt, t) return os.date(fmt, t or STUB.now) end
 _G.GetServerTime = function() return STUB.now end
 _G.GetTime = function() return STUB.clock end
+-- the profiling clock in milliseconds: STUB.ms, set by a test (it does not move by itself; F-184)
+STUB.ms = 0
+_G.debugprofilestop = function() return STUB.ms end
+-- the client's stack text from a level on (1: the function calling debugstack), "File.lua:12: in ..." lines
+_G.debugstack = function(start, count1)
+    local text = debug.traceback("", (start or 1) + 1)
+    local out = {}
+    for line in text:gmatch("\n\t([^\n]+)") do
+        out[#out + 1] = line
+        if count1 and #out >= count1 then break end
+    end
+    return table.concat(out, "\n") .. "\n"
+end
 _G.UnitName = function(u)
     if u == "target" then return STUB.target end
     if u == "npc" or u == "NPC" then return STUB.npc end

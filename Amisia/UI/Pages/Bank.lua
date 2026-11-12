@@ -463,10 +463,10 @@ local function onInsertLink(link)
     if box and box:HasFocus() and ns.ItemID(link) then box:SetText(link) end
 end
 if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
-    hooksecurefunc(ChatFrameUtil, "InsertLink", onInsertLink)
+    hooksecurefunc(ChatFrameUtil, "InsertLink", ns.Perf.Wrap("Hook InsertLink Bank", onInsertLink))
 end
 if type(ChatEdit_InsertLink) == "function" then
-    hooksecurefunc("ChatEdit_InsertLink", onInsertLink)
+    hooksecurefunc("ChatEdit_InsertLink", ns.Perf.Wrap("Hook ChatEdit_InsertLink Bank", onInsertLink))
 end
 
 -- The card appears only while materials are tracked (ns.MAT_ORDER).

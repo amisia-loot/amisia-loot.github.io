@@ -370,10 +370,10 @@ ns.CommOn("KC", function(sender, f, chan)
     end)
 end)
 
-C_Timer.NewTicker(5, function()
+C_Timer.NewTicker(5, ns.Perf.Wrap("Ticker PointsSync", function()
     local ok, err = pcall(sendKV)
     if not ok then report(err) end
-end)
+end))
 ns.Listen("POINTS", function()
     -- a change goes out with the next tick (at most every 10 s)
     if lastKV then lastKV.h = nil end

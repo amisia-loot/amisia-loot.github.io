@@ -107,6 +107,7 @@ local function follow()
     settings().angle = math.deg(math.atan2(cy / scale - my, cx / scale - mx)) % 360
     place()
 end
+follow = ns.Perf.Wrap("OnUpdate Minimap drag", follow)   -- /amisia leistung (F-184)
 
 local function build()
     if button or not Minimap then return end

@@ -5,6 +5,9 @@
 -- text needs two English ones; the German text is the part before "##".
 -- Loaded first (before the registry), so every file can use ns.L while it loads.
 local ADDON, ns = ...
+-- the start of loading Amisia's files, for /amisia leistung (Core/Perf.lua, F-184): this is the first file
+ns.PERF_T0 = (type(debugprofilestop) == "function" and debugprofilestop())
+    or (type(GetTimePreciseSec) == "function" and GetTimePreciseSec() * 1000) or nil
 
 -- AMISIA_LOCALE is the tests' hook to force a locale (the client never sets it).
 local locale = (type(AMISIA_LOCALE) == "string" and AMISIA_LOCALE) or (GetLocale and GetLocale()) or "deDE"

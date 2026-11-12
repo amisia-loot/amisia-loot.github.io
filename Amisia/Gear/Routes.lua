@@ -504,7 +504,7 @@ function R.Follow()
         return nil, why
     end
     stopTicker()
-    if C_Timer and C_Timer.NewTicker then ticker = C_Timer.NewTicker(TICK, check) end
+    if C_Timer and C_Timer.NewTicker then ticker = C_Timer.NewTicker(TICK, ns.Perf.Wrap("Ticker Routes", check)) end
     if not Map.PlayerPosition() then
         ns.msg(L["Hier kennt Amisia deine Position nicht: am Stopp \"/amisia route weiter\" oder \"Mehr\" > \"Weiter zum nächsten Stopp\"."])
     end

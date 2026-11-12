@@ -857,6 +857,7 @@ local function beginKeeper(s, key, old)
         if now() >= takeover.deadline then return finishTakeover() end
         C_Timer.After(1, wait)
     end
+    wait = ns.Perf.Wrap("Timer Sync takeover", wait)   -- re-arms itself: /amisia leistung (F-184)
     C_Timer.After(1, wait)
 end
 
@@ -2134,7 +2135,7 @@ end
 -- Start or resume (s): claim again; end (nil, old): a last snapshot when something changed.
 ns.Listen("RECORDING", function(s, old)
     if s then
-        if not ticker then ticker = C_Timer.NewTicker(TICK_EVERY, tick) end
+        if not ticker then ticker = C_Timer.NewTicker(TICK_EVERY, ns.Perf.Wrap("Ticker Sync", tick)) end
         claiming, claimKey = false, nil
         update()
         return

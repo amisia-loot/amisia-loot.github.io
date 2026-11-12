@@ -25,9 +25,14 @@ local function build(key)
     pending[key] = nil
     local t0 = debugprofilestop and debugprofilestop()
     local before = collectgarbage("count")
+    -- /amisia leistung (F-184) times a build as "Data KEY"
+    local perf = ns.Perf
+    local p0, p1, p2, p3
+    if perf.on or perf.boot then p0, p1, p2, p3 = perf.Begin() end
     local fn, err = loadstring(src, "@Amisia/Data/" .. key)
     local ok, value = false, err
     if fn then ok, value = pcall(fn) end
+    if p0 then perf.End(perf.Label("Data ", key), p0, p1, p2, p3) end
     if not ok or type(value) ~= "table" then
         ns.ReportError("Amisia: data " .. key .. " did not load: " .. tostring(value))
         return nil

@@ -425,12 +425,12 @@ function W.RowAction(row, btn)
     if not actionDriver then
         actionDriver = CreateFrame("Frame")
         local wait = 0
-        actionDriver:SetScript("OnUpdate", function(_, elapsed)
+        actionDriver:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate RowActions", function(_, elapsed)
             wait = wait - (elapsed or 0)
             if wait > 0 then return end
             wait = T.ROW_ACTION_TICK
             W.SyncRowActions()
-        end)
+        end))
     end
     return btn
 end
@@ -1601,7 +1601,7 @@ function W.Menu(owner, entries, opts)
         menuGround(menu)
         menu.buttons = {}
         if UISpecialFrames then tinsert(UISpecialFrames, "AmisiaMenu") end
-        menu:SetScript("OnUpdate", function(self, elapsed)
+        menu:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate Menu", function(self, elapsed)
             local anchor = self.owner ~= UIParent and self.owner or nil
             if self:IsMouseOver() or (anchor and anchor:IsMouseOver()) then
                 self.away = 0
@@ -1609,7 +1609,7 @@ function W.Menu(owner, entries, opts)
                 self.away = (self.away or 0) + (elapsed or 0)
                 if self.away > 2 then self:Hide() end
             end
-        end)
+        end))
     end
     menu.owner = owner
     menu.away = 0
@@ -1760,7 +1760,7 @@ local function pickerPanel()
     end
     -- closes when the mouse stays away for two seconds without the filter in use, or when the
     -- widget it belongs to disappears
-    picker:SetScript("OnUpdate", function(self, elapsed)
+    picker:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate Picker", function(self, elapsed)
         local owner = self.owner
         if owner and not owner:IsVisible() then self:Hide() return end
         if self:IsMouseOver() or (owner and owner:IsMouseOver()) or self.filter:HasFocus() then
@@ -1769,7 +1769,7 @@ local function pickerPanel()
             self.away = (self.away or 0) + (elapsed or 0)
             if self.away > 2 then self:Hide() end
         end
-    end)
+    end))
     picker:SetScript("OnHide", function(self)
         self.filter:ClearFocus()
         -- the owner's arrow leaves its open state

@@ -508,7 +508,7 @@ local function scan()
     entries = out
     for _, e in ipairs(out) do warn(e) end
     if #out > 0 and not ticker then
-        ticker = C_Timer.NewTicker(TICK, function() scan() end)
+        ticker = C_Timer.NewTicker(TICK, ns.Perf.Wrap("Ticker Handover", function() scan() end))
     elseif #out == 0 and ticker then
         ticker:Cancel()
         ticker = nil

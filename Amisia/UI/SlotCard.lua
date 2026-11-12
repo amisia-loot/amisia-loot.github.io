@@ -238,7 +238,7 @@ function ns.SlotCardHook()
             if not hooked[b] then
                 hooked[b] = true
                 b:HookScript("OnClick", onSlotClick)
-                b:HookScript("OnEnter", tipLine)
+                b:HookScript("OnEnter", ns.Perf.Wrap("Tooltip PaperDoll slot", tipLine))
             end
         end
     end
@@ -246,7 +246,7 @@ function ns.SlotCardHook()
     -- tooltip it builds then has no line of the hook above
     if not hooked.onEnter and type(_G.PaperDollItemSlotButton_OnEnter) == "function" and hooksecurefunc then
         hooked.onEnter = true
-        hooksecurefunc("PaperDollItemSlotButton_OnEnter", tipLine)
+        hooksecurefunc("PaperDollItemSlotButton_OnEnter", ns.Perf.Wrap("Hook PaperDollItemSlotButton_OnEnter", tipLine))
     end
     return n
 end

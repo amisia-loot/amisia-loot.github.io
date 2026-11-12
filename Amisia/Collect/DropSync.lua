@@ -881,10 +881,10 @@ local function tick()
     end
 end
 
-C_Timer.NewTicker(L.tick, function()
+C_Timer.NewTicker(L.tick, ns.Perf.Wrap("Ticker DropSync", function()
     local ok, err = pcall(tick)
     if not ok then report(err) end
-end)
+end))
 
 -- The weekly whole-bucket marks: valid keys of the kept days only.
 ns.OnEvent("ADDON_LOADED", function(name)

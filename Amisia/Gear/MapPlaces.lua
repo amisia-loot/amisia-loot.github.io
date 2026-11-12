@@ -573,7 +573,7 @@ end
 
 local ticker
 ns.OnEvent("PLAYER_LOGIN", function()
-    if not ticker and C_Timer and C_Timer.NewTicker then ticker = C_Timer.NewTicker(SAMPLE_EVERY, Map.SamplePlace) end
+    if not ticker and C_Timer and C_Timer.NewTicker then ticker = C_Timer.NewTicker(SAMPLE_EVERY, ns.Perf.Wrap("Ticker MapPlaces", Map.SamplePlace)) end
 end)
 ns.OnEvent("LOADING_SCREEN_ENABLED", function() Map.SamplePlace() end)
 ns.OnEvent("PLAYER_LEAVING_WORLD", function() Map.SamplePlace() end)

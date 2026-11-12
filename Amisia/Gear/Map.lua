@@ -845,12 +845,12 @@ local function makeArrow()
     f.dist:SetPoint("TOP", f.label, "BOTTOM", 0, -1)
     f.dist:SetJustifyH("CENTER")
     f.wait = 0
-    f:SetScript("OnUpdate", function(self, elapsed)
+    f:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate Map arrow", function(self, elapsed)
         self.wait = self.wait + (elapsed or 0)
         if self.wait < TICK - 1e-9 then return end
         self.wait = 0
         arrowUpdate(self)
-    end)
+    end))
     f:SetScript("OnDragStart", function(self) self:StartMoving() end)
     f:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()

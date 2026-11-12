@@ -788,10 +788,10 @@ end)
 
 function ns.LootPrioStats() return stats end
 
-C_Timer.NewTicker(5, function()
+C_Timer.NewTicker(5, ns.Perf.Wrap("Ticker LootPrio", function()
     local ok, err = pcall(sendLV)
     if not ok then report(err) end
-end)
+end))
 ns.Listen("LOOT_PRIO", function()
     -- a change goes out with the next tick (at most every 10 s)
     if lastLV then lastLV.h = nil end

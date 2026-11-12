@@ -27,7 +27,7 @@ read_globals = {
     "C_Container", "C_CurrencyInfo", "C_DateAndTime", "C_EncodingUtil", "C_GuildInfo", "C_Item", "C_Map", "C_MerchantFrame",
     "C_PartyInfo", "C_QuestLog", "C_RestrictedActions", "C_Spell", "C_SuperTrack", "C_Texture", "C_Timer",
     "C_TooltipInfo", "C_TradeSkillUI", "ChatEdit_InsertLink", "ChatFontNormal", "ChatFrameUtil", "ChatFrame_OpenChat",
-    "CreateColor", "CreateFrame", "CreateFromMixins", "CreateVector2D", "date", "debugprofilestop",
+    "CreateColor", "CreateFrame", "CreateFromMixins", "CreateVector2D", "date", "debugprofilestop", "debugstack", "GetTimePreciseSec",
     "DEFAULT_CHAT_FRAME", "DressUpLink", "Enum", "GameFontNormal", "GameTooltip", "GetAddOnMetadata",
     "GetBuildInfo", "GetClassInfo", "GetCombatRatingBonus", "GetCurrentGuildBankTab", "GetCursorPosition", "GetFileIDFromPath", "INSTANCE_RESET_SUCCESS",
     "geterrorhandler", "GetGuildBankItemInfo", "GetGuildBankItemLink", "GetGuildBankTabInfo", "GetGuildInfo",

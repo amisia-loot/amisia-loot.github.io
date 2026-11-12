@@ -395,7 +395,7 @@ function QS.Start()
     nextReport = (math.floor(q.next / QS.REPORT_EVERY) + 1) * QS.REPORT_EVERY
     running = true
     SB.SetBusy("quests")
-    ticker = C_Timer.NewTicker(0.1, tick)
+    ticker = C_Timer.NewTicker(0.1, ns.Perf.Wrap("Ticker Scan quests", tick))
     ns.msg(L["Quest-Scan gestartet: %d von %d Quests offen, %d pro Sekunde, etwa %s. /amisia scan quests stop hält an."]:format(
         #list - q.next + 1, #list, rate, SB.Duration((#list - q.next + 1) / rate)))
     if ns.Refresh then ns.Refresh() end

@@ -1251,10 +1251,10 @@ local function onInsertLink(link)
     end
 end
 if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
-    hooksecurefunc(ChatFrameUtil, "InsertLink", onInsertLink)
+    hooksecurefunc(ChatFrameUtil, "InsertLink", ns.Perf.Wrap("Hook InsertLink LootRules", onInsertLink))
 end
 if type(ChatEdit_InsertLink) == "function" then
-    hooksecurefunc("ChatEdit_InsertLink", onInsertLink)
+    hooksecurefunc("ChatEdit_InsertLink", ns.Perf.Wrap("Hook ChatEdit_InsertLink LootRules", onInsertLink))
 end
 
 ---------------------------------------------------------------------------

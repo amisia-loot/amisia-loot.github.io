@@ -360,6 +360,7 @@ local function safe(tip)
     local ok, err = pcall(onUnitTooltip, tip)
     if not ok then geterrorhandler()(err) end
 end
+safe = ns.Perf.Wrap("Tooltip Unit", safe)   -- /amisia leistung (F-184)
 
 if type(TooltipDataProcessor) == "table" and type(TooltipDataProcessor.AddTooltipPostCall) == "function"
     and Enum and Enum.TooltipDataType and Enum.TooltipDataType.Unit then

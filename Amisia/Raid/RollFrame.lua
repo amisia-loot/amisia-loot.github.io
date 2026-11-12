@@ -570,14 +570,14 @@ ns.OnEvent("LOOT_CLOSED", function() lootOpen = false end)
 -- award dialog. Only in the officer view: the switch sits in an officers' section, a raider could
 -- not turn it off.
 if type(HandleModifiedItemClick) == "function" then
-    hooksecurefunc("HandleModifiedItemClick", function(link)
+    hooksecurefunc("HandleModifiedItemClick", ns.Perf.Wrap("Hook HandleModifiedItemClick RollFrame", function(link)
         if not ns.IsOfficerView() then return end
         local id = ns.ItemID(ns.Plain(link))
         if ns.Get("rolls.altClick") and lootOpen and IsAltKeyDown() and not IsShiftKeyDown() and id and ns.InLootWindow(id) then
             local ok, why = ns.StartRoll(link)
             if ok then ns.ShowRollFrame() elseif why then ns.msg(why) end
         end
-    end)
+    end))
 end
 
 ns.RegisterSlash("rolls", { officer = true, desc = L["Roll-Fenster öffnen oder schließen"], run = function() ns.ToggleRollFrame() end })

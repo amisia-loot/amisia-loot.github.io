@@ -428,7 +428,7 @@ local function build()
         end,
         onVisibility = function(self)
             if ticker then ticker:Cancel() ticker = nil end
-            if self:IsShown() then ticker = C_Timer.NewTicker(RC.POLL, function() reader.Read(true) end) end
+            if self:IsShown() then ticker = C_Timer.NewTicker(RC.POLL, ns.Perf.Wrap("Ticker RaidCalendar", function() reader.Read(true) end)) end
         end })
     -- a click anywhere on it brings it to the front (the client raises a top-level frame on a click;
     -- this does it for frames that take the click themselves too)

@@ -120,7 +120,7 @@ local function markRewards()
 end
 
 if type(_G.QuestInfo_Display) == "function" and type(hooksecurefunc) == "function" then
-    hooksecurefunc("QuestInfo_Display", function() guarded(markRewards) end)
+    hooksecurefunc("QuestInfo_Display", ns.Perf.Wrap("Hook QuestInfo_Display", function() guarded(markRewards) end))
 end
 
 ---------------------------------------------------------------------------

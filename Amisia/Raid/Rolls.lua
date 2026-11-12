@@ -279,7 +279,7 @@ function ns.StartRoll(link, seconds, onlyNames, opts)
         end
     end
     local left = seconds
-    ticker = C_Timer.NewTicker(1, function()
+    ticker = C_Timer.NewTicker(1, ns.Perf.Wrap("Ticker Rolls", function()
         left = left - 1
         if current then current.leftAt = left end
         if not opts.foreign and ns.Get("rolls.countdown") and ((left == 10 and seconds > 10) or (left == 5 and seconds > 5) or (left == 3 and seconds > 3)) then
@@ -287,7 +287,7 @@ function ns.StartRoll(link, seconds, onlyNames, opts)
             ns.Announce(L["%d Sekunden."]:format(left), 3)
         end
         if left <= 0 then finish() else changed() end
-    end)
+    end))
     -- the raiders with Amisia get the round in their roll window (RollWindow.lua)
     if not opts.foreign and ns.RollWindowStarted then ns.RollWindowStarted(current) end
     changed()

@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-184 Leistung messen: wo Amisia Rechenzeit braucht
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du `/amisia leistung` tippst, ein paar Minuten spielst (Taschen, Karte, Tooltips, Hauptfenster) und es wieder tippst, dann steht im Chat der Bericht: Dauer, Frames, Amisias ms je Sekunde, Speicher, Laden, gebaute Daten und zehn Zeilen mit den teuersten Stellen.
+- Prüfung: Wenn du danach `/amisia leistung bericht` tippst, dann kommt derselbe Bericht noch einmal; nach dem Ausloggen liest `python3 tools/build.py perf` ihn auf dem N100.
+- Prüfung: Wenn du `/amisia leistung login` tippst und `/reload` machst, dann steht gleich "Der Login wird 60 s lang gemessen" im Chat und nach etwa einer Minute der Bericht des Logins.
+- Prüfung: Wenn du `/amisia leistung 2` tippst, dann endet die Messung nach zwei Minuten von selbst mit dem Bericht.
+- Prüfung: Wenn du `/amisia selbsttest` öffnest, dann sagt die Zeile "Zeitmessung", welche Uhr der Client hat ("debugprofilestop, mit debugstack").
+- Notiz: DECISIONS D-116, Spec `docs/specs/2026-11-12-leistung-messen.md`. Optimiert nichts, misst nur.
+
 ### F-183 Der Versunkene Tempel als Dungeon
 - Version: 2.78.0
 - Status: gebaut

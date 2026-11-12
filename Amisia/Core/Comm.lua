@@ -610,7 +610,7 @@ local pump
 
 local function startTicker()
     if ticker then return end
-    ticker = C_Timer.NewTicker(TICK, function() pump(false) end)
+    ticker = C_Timer.NewTicker(TICK, ns.Perf.Wrap("Ticker Comm", function() pump(false) end))
 end
 
 local function stopTicker()

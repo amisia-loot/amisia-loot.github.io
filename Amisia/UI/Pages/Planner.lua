@@ -1145,9 +1145,9 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
         end
         if type(hooksecurefunc) == "function" then
             if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
-                hooksecurefunc(ChatFrameUtil, "InsertLink", takeLink)
+                hooksecurefunc(ChatFrameUtil, "InsertLink", ns.Perf.Wrap("Hook InsertLink Planner", takeLink))
             elseif type(ChatEdit_InsertLink) == "function" then
-                hooksecurefunc("ChatEdit_InsertLink", takeLink)
+                hooksecurefunc("ChatEdit_InsertLink", ns.Perf.Wrap("Hook ChatEdit_InsertLink Planner", takeLink))
             end
         end
         f.takeLink = takeLink

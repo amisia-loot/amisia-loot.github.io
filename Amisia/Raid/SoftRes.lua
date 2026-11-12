@@ -878,10 +878,10 @@ local classicHooked
 local function hookLootButtons()
     if classicHooked or type(_G.LootFrame_UpdateButton) ~= "function" then return end
     classicHooked = true
-    hooksecurefunc("LootFrame_UpdateButton", function(index)
+    hooksecurefunc("LootFrame_UpdateButton", ns.Perf.Wrap("Hook LootFrame_UpdateButton", function(index)
         local ok, err = pcall(markClassic, index)
         if not ok then ns.ReportError(err) end
-    end)
+    end))
 end
 hookLootButtons()
 

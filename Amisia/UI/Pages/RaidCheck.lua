@@ -305,12 +305,12 @@ local function build(parent)
     end, fillId, { fill = true })
     f.empty = f:Empty()
     -- the buffs are read again now and then while the page is open (never in combat)
-    C_Timer.NewTicker(POLL, function()
+    C_Timer.NewTicker(POLL, ns.Perf.Wrap("Ticker RaidCheck page", function()
         if page and page:IsVisible() and ns.CurrentPage and ns.CurrentPage() == "raidcheck" and view ~= "ids"
             and not ns.RaidCheck.Locked() then
             ns.Refresh()
         end
-    end)
+    end))
     return f
 end
 

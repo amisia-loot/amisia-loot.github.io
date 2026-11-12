@@ -82,16 +82,26 @@ end
 ---------------------------------------------------------------------------
 -- Internal messages
 ---------------------------------------------------------------------------
+-- listenerLabels[name][i]: the measurement's label of a handler, "Fire NAME File:line" (Core/Perf.lua,
+-- which loads after this file; F-184)
+local listenerLabels = {}
 function ns.Listen(name, fn)
     listeners[name] = listeners[name] or {}
     table.insert(listeners[name], fn)
+    local perf = ns.Perf
+    listenerLabels[name] = listenerLabels[name] or {}
+    listenerLabels[name][#listeners[name]] = perf and perf.HandlerLabel("Fire", name, perf.Where(2)) or "Fire " .. name
 end
 
 -- Handlers run protected, so one broken handler cannot stop the others; its error still goes to
--- the client's error handler and shows up like any other Lua error.
+-- the client's error handler and shows up like any other Lua error. While /amisia leistung measures
+-- (or the login's steps are timed) each handler is timed under its label.
 function ns.Fire(name, ...)
-    for _, fn in ipairs(listeners[name] or {}) do
-        local ok, err = pcall(fn, ...)
+    local perf = ns.Perf
+    local labels = perf and (perf.on or perf.boot) and listenerLabels[name]
+    for i, fn in ipairs(listeners[name] or {}) do
+        local ok, err
+        if labels then ok, err = perf.PCall(labels[i], fn, ...) else ok, err = pcall(fn, ...) end
         if not ok then ns.ReportError(err) end
     end
 end

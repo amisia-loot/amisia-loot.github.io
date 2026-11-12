@@ -270,6 +270,7 @@ local function onOverlayUpdate(self)
     local x, y = cursorAt()
     if x then R.LineTo(x, y) end
 end
+onOverlayUpdate = ns.Perf.Wrap("OnUpdate RouteMap draw", onOverlayUpdate)   -- /amisia leistung (F-184)
 
 local function makeOverlay()
     if overlay or inCombat() then return overlay end
@@ -530,6 +531,7 @@ local function onUpdate()
     syncBar()
     syncOverlay()
 end
+onUpdate = ns.Perf.Wrap("OnUpdate RouteMap", onUpdate)   -- /amisia leistung (F-184)
 
 -- Makes the layer and the bar once the world map and its canvas exist; only frames of Amisia's own.
 local function create()

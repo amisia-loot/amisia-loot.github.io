@@ -187,6 +187,7 @@ function step()
     end
     if #lines == 0 and not unlocked then holder:SetScript("OnUpdate", nil) end
 end
+step = ns.Perf.Wrap("OnUpdate LootToast", step)   -- /amisia leistung (F-184)
 
 -- Shows a line: icon (a texture), text (already coloured), id (an item, for the tests).
 local function show(icon, text, id)

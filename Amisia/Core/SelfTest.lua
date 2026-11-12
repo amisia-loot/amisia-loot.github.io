@@ -208,6 +208,14 @@ local function sectionClient(R)
         if not loginAt then return "WERT", L["unbekannt (nach /reload)"] end
         return "WERT", ("%d s"):format(math.floor(GetTime() - loginAt + 0.5))
     end)
+    -- the clocks of /amisia leistung (F-184): debugprofilestop, else GetTimePreciseSec; debugstack names
+    -- where a handler was registered
+    check(R, L["Zeitmessung"], function()
+        local clockName = ns.Perf and ns.Perf.clockName
+        local where = type(debugstack) == "function" and L["mit debugstack"] or L["ohne debugstack"]
+        if not clockName then return "WERT", L["keine Uhr: /amisia leistung kann nicht messen"] end
+        return "OK", ("%s, %s"):format(clockName, where)
+    end)
     check(R, "C_Map.GetBestMapForUnit", function()
         local id = call("C_Map.GetBestMapForUnit", "player")
         local info = id and not isSecret(id) and fn("C_Map.GetMapInfo") and C_Map.GetMapInfo(id)

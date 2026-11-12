@@ -339,6 +339,7 @@ function ns.ScanTrimStart(done)
             C_Timer.After(ns.SCAN_TRIM.step, step)
         end
     end
+    step = ns.Perf.Wrap("Timer ScanTrim", step)   -- re-arms itself: /amisia leistung (F-184)
     step()
     return true
 end

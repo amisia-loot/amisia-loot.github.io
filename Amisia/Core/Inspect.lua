@@ -82,7 +82,7 @@ function In.Request(unit, guid, onReady, tag)
     end
     if not hooked and type(hooksecurefunc) == "function" then
         hooked = true
-        hooksecurefunc("NotifyInspect", function() if not ownCall then pending = nil end end)
+        hooksecurefunc("NotifyInspect", ns.Perf.Wrap("Hook NotifyInspect", function() if not ownCall then pending = nil end end))
     end
     local now = GetTime()
     lastAt = now

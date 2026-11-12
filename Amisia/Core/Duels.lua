@@ -636,7 +636,7 @@ local restoreWhoUi
 
 local function followWho(f)
     if type(hooksecurefunc) == "function" and type(f.SendWho) == "function" and f.SendWho ~= whoHook then
-        hooksecurefunc(f, "SendWho", function() if not ownWho and pending then pending.foreign = true end end)
+        hooksecurefunc(f, "SendWho", ns.Perf.Wrap("Hook SendWho", function() if not ownWho and pending then pending.foreign = true end end))
         whoHook = f.SendWho
     end
     -- the list the answer opened: once the player closes it, SetWhoToUi goes back (a C function, no

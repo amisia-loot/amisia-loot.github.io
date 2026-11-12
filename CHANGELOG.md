@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(core): /amisia performance measures where Amisia spends its time (F-184)
+
+    "/amisia leistung" (English "/amisia performance") starts a measurement, the second call stops it and
+    prints a report in the chat: duration, frames, Amisia's milliseconds per second and per frame, memory,
+    garbage, load time and the ten costliest places (event handlers, OnUpdate scripts, tooltips, hooks,
+    timers, page refreshes). A number measures that many minutes, "login" measures the next login or
+    /reload, "bericht" shows the last result again. The newest five results are saved, so they can be read
+    after logging out. Nothing changes in how the addon works.
+
 ## [v2.78.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.78.0) (2026-11-12)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.77.0...v2.78.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

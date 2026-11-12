@@ -229,7 +229,7 @@ local function startPhase(phase)
     running = phase
     SB.SetBusy("npcs")
     sinceReport = 0
-    ticker = C_Timer.NewTicker(0.1, tick)
+    ticker = C_Timer.NewTicker(0.1, ns.Perf.Wrap("Ticker Scan npcs", tick))
     local n = remaining(q)
     ns.msg(L["NPC-Scan Phase %s gestartet: %d Nummern, %d pro Sekunde, bis zu %s. /amisia scan npcs stop hält an."]:format(
         phase, n, rate, SB.Duration(estimate(n, rate, phase))))
