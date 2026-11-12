@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-182 Rezepte eines Gildenmitglieds per Klick auf seinen Beruf
-- Version: -
-- Status: geplant
+- Version: 2.77.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn du auf Gilde > Mitglieder bei einem Mitglied mit Amisia auf einen Beruf klickst (die Maus darauf zeigt grau "Klick: Rezepte ansehen"), dann öffnet sich Berufe mit "<Beruf> - Rezepte von <Name>", darunter "Skill: 165/225 · 65 Rezepte · Stand heute", und die Liste zeigt nur seine Rezepte ("N von M Rezepten").
 - Prüfung: Wenn du dort etwas suchst oder im Filter "Bekannt: Unbekannt" wählst, dann bleiben nur seine Rezepte, die passen; ein Klick auf ein Rezept zeigt rechts Details, Reagenzien und die Gildenmitglieder wie sonst.
