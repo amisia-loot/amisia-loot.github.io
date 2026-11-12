@@ -325,3 +325,20 @@ def test_find_boss_rules_on_a_made_index():
     assert att_data.find_boss(ix, 1, 'Ezra Grimm') == (11058, 'npc', None), 'each part of a slashed name'
     assert att_data.find_boss(ix, 1, 'deathsworn captain')[0] == 3872, 'of two with the name the better kind'
     assert att_data.find_boss(ix, 1, 'A')[0] is None, 'no prefix match of a short name'
+
+
+def test_a_creature_named_only_in_an_encounter_is_a_boss_of_its_instance():
+    """The Sunken Temple (D-115): ATT lists Hazzas, Morphaz and Weaver only in the crs list of its encounter
+    "Wardens of the Dream", with their names in the comments (npc_names); find_boss finds them by those names. A
+    creature the data also files as an NPC of the instance keeps that record; an old encounter adds nobody."""
+    db = {'npc_names': {5721: 'Dreamscythe', 5722: 'Hazzas', 5719: 'Morphaz', 5720: 'Weaver', 7001: 'Gone Drake'},
+          'encounters': {459: {'name': 'Wardens of the Dream', 'npcs': [5721, 5722, 5719, 5720], 'inst': 237},
+                         460: {'name': 'Old Pair', 'npcs': [7001], 'inst': 237, 'old': True}},
+          'npcs': {5721: {'name': 'Dreamscythe', 'kinds': {'boss'}, 'inst': 237}}}
+    ix = att_data.boss_index(db)
+    assert att_data.find_boss(ix, 237, 'Hazzas') == (5722, 'npc', None)
+    assert att_data.find_boss(ix, 237, 'Morphaz')[0] == 5719 and att_data.find_boss(ix, 237, 'Weaver')[0] == 5720
+    assert att_data.find_boss(ix, 237, 'Wardens of the Dream')[:2] == (5721, 'encname'), 'the group: its first creature'
+    assert [n for n, *_ in ix[237]['npcs']].count(5721) == 1, 'the NPC record of the instance is not doubled'
+    assert att_data.find_boss(ix, 237, 'Gone Drake') == (None, None, None), 'an old encounter adds nobody'
+    assert att_data.find_boss(ix, 238, 'Hazzas') == (None, None, None), 'only in the encounter\'s instance'

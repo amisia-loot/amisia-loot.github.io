@@ -2319,6 +2319,10 @@ Nachtrag 2026-11-10: Den Kanal `PARTY` hat der Nutzer bestätigt. Er hatte die W
 Nachtrag 2026-11-10: D-106 ersetzt den Punkt "Flügel": jeder Dungeon einer Instanz mehrerer Dungeons hat nur noch
 seine eigenen Bosse in der Reihenfolge (kein `false` mehr), und das Scharlachrote Kloster ist vier Dungeons.
 
+Nachtrag 2026-11-12: D-115 ergänzt die Wege (3) und (4): eine Kreatur, die AllTheThings nur in der Liste `crs`
+einer Begegnung nennt (die Drachen der "Wardens of the Dream" im Versunkenen Tempel), zählt als Boss-NPC ihrer
+Instanz unter dem Namen dort.
+
 ## D-101 Client-Tabellen auch von wago.tools: nur die API und die CSV-Exporte, die neueste und vollste Kopie gewinnt
 
 **Datum:** 2026-11-10
@@ -2813,6 +2817,10 @@ fällt im Addon die Marke "nur aus dem Quest-Scan" weg.
 EP des Scans als Schätzung, Questweg, kein Wegpunkt, kein Kartenschritt, die Marke weg, sobald der Sammler
 den Geber sah, Dungeon-Leiste, Tooltip, Karte).
 
+Nachtrag 2026-11-12: Der Versunkene Tempel ist seit D-115 ein Dungeon der Fakten; seine Quests stehen jetzt in
+seinem Dungeon (21: 20, die AllTheThings unter der Instanz kennt, und 3380 "Der versunkene Tempel", die AllTheThings
+ohne Dungeon kennt und die Regel hier nach ihrem Text setzt); keine Quest des Tempels steht mehr unter den nicht gesetzten.
+
 ## D-110 Gruppen-Queststatus: der Stand eines Dungeons an die eigene Gruppe, nur PARTY, nur im Speicher
 
 **Datum:** 2026-11-11
@@ -2983,3 +2991,16 @@ Farben, Klickziel Dungeon und Raid, Shift, Menü, Einstellung, neu nach Annahme 
 **Folge:** Annahmen (nicht gefragt): der Rechtsklick behält das Menü; "Zurück zu Mitglieder" beendet die Ansicht nicht (wer über die Leiste zurückkommt, sieht sie noch, mit Chip); Farben und "(bekannt)" bleiben die des eigenen Charakters. Ein Mitglied, dessen Liste Rezepte nennt, die Amisias Daten nicht haben, zeigt im Kopf seine Zahl, im Zähler nur die bekannten. Keine Spec: kleine Erweiterung ohne neue Daten oder Nachrichten (`docs/specs/README.md`).
 
 **Durchgesetzt durch:** `tests/test_member_recipes.lua` (Bitset, Liste, eigener Charakter und Twink, unbekannter Name, nicht geteilter Beruf, anderer Index mit Neu-Fragen, Cache je gen; `Prof.List` mit `of`; die Ansicht: nur seine Rezepte, Kopf, Zähler, Chip, Suche und Bekannt darauf, der Text der leeren Liste, Ende durch Chip, Zurücksetzen, anderen Beruf und Reiter, folgt `CRAFTERS_CHANGED`, der Grund bei fremdem Index, der Link zurück; Mitglieder: Klick, Rechtsklick, Notiz-Kästchen, eigener Charakter, Tooltipzeilen), `tests/ui_scene.lua` (Ansicht `professions-member`).
+
+## D-115 Der Versunkene Tempel ist ein Dungeon: ein Eintrag für alle Schreibweisen, Daten nur aus den bekannten Quellen
+
+**Datum:** 2026-11-12
+**Entscheidung:** Der Versunkene Tempel ist ein Dungeon der Fakten (F-183): `tools/forever_dungeons.json` Schlüssel `st`, Name "The Temple of Atal'Hakkar" (so schreiben ihn die Item-Daten und das Gebiet 1477 der AreaTable), Aliase "The Temple of Atal'hakkar" (AllTheThings) und "Sunken Temple" (Map 109, Gebiet 1417 und LFGDungeons-Zeile 27 des Clients), Quelle `repo`, die Aliase mit der neuen Quelle `client:st`; er steht nach Maraudon, vor dem Gefängnis von Alcaz (Stufe 45 des Clients). Mit dem Eintrag finden ihn alle Bauschritte unter jeder Schreibweise: Stufe und Instanz (LFGDungeons, ContentTuning, AreaTable), die Reihenfolge der Bosse mit ihren Begegnungen (DungeonEncounter, Schwierigkeit 0: 3582 bis 3589), das Ladebild (Map, LoadingScreens), der Eingang (Map, Corpse-Punkt), die Quellen der Item-Daten, die Quests (AllTheThings, Quest-Scan nach D-109) und die NPCs der Bosse (AllTheThings).
+- **NPCs der Bosse** (D-100): "Shade of Eranikus" des Clients heißt bei AllTheThings "Shade of Erankikus" (NPC 5709, Begegnung 463): ein `boss_alias` der Fakten (`att:alias`). Hazzas, Morphaz und Weaver nennt AllTheThings nur als Kreaturen seiner Begegnung "Wardens of the Dream" (`crs`, die Namen in den Kommentaren): `att_data.boss_index` führt jede Kreatur einer (nicht alten) Begegnung, die die Daten sonst nirgends unter der Instanz ablegen, als Boss-NPC der Instanz unter ihrem Namen dort (`npc_names`). Das ergänzt in D-100 die Wege (3) und (4); bei keinem anderen Dungeon ändert sich dadurch etwas (DungeonData und BisData sonst gleich).
+- **Keine Sonderregel im Addon:** die Seite Dungeons, die Dungeon-Leiste, das Lauf-Fenster und die Karte nehmen den Tempel wie Maraudon und Zul'Farrak aus den Daten; kein Text, keine Zeile Lua. Wie bei den anderen Classic-Dungeons ohne Gebietsnummer zeigt das Addon den englischen Namen.
+
+**Grund:** Nutzer 2026-11-12: "Ja, einbauen", nachdem sein Charakter den Tempel auf WoW Forever betreten hatte. Der Datenbau des Tages war rot: die Kartendaten nannten einen Eingang "The Temple of Atal'hakkar", für den die Fakten keinen Eintrag hatten (`test_every_dungeon_the_data_names_has_an_entry`), und ohne grünen Bau kamen die Scans des Nutzers nicht ins Addon.
+
+**Folge:** Mit den Daten vom 2026-11-12: Stufe 45 (Client, die Spanne "~45", bis Items mit Stufe den oberen Rand geben), Instanz 109, acht Bosse in der Reihenfolge des Clients (Atal'alarion, Avatar of Hakkar, Shade of Eranikus, Hazzas, Morphaz, Weaver, Dreamscythe, Jammal'an the Prophet), jeder mit seinem NPC; kein Seltener (AllTheThings führt in der Instanz keinen); Ladebild 131872; Eingang aus der Tabelle Map (Sümpfe des Elends 77,30/35,92; AllTheThings nennt 69,20/54,80, der Client gewinnt wie bei allen, D-50). Keine Bossbeute: keines der Items der Item-Daten (sieben Bosse) und AllTheThings' für den Tempel steht in den Itemtabellen des Clients (ItemSparse 1.60.1.70888) oder im Scan; drei Items tragen die Trash-Quellen der Instanz. 21 Quests im Tempel (20 mit Geber und Ort, 3373 beginnt mit einem Gegenstand). Annahmen (nicht gefragt): die Reihenfolge des Clients gilt auch für die Uhr (D-96): sie endet mit Jammal'an, dem letzten Boss der Schwierigkeit 0, nicht mit Shade of Eranikus wie in der alten Reihenfolge des Spiels (Schwierigkeit 201); keine Spec (`docs/specs/README.md`: neue Daten aus den bekannten Quellen).
+
+**Durchgesetzt durch:** `tools/tests/test_build_dungeons.py::test_the_sunken_temple_is_a_dungeon` (Eintrag, Aliase, Quelle, Platz, Stufe, Instanz, acht Bosse mit NPC), `::test_every_dungeon_the_data_names_has_an_entry`, `tools/tests/test_att_data.py::test_a_creature_named_only_in_an_encounter_is_a_boss_of_its_instance`, `tools/tests/test_build_dungeonquests.py::test_the_shipped_sunken_temple_quests`, `tools/tests/test_build_map.py::test_the_shipped_map_data_has_its_places` (Eingang I:109 aus dem Client), `tools/tests/test_build_dungeonart.py::test_the_snapshot_covers_the_dungeons_the_client_has`, `tests/test_boss_portraits.lua` (Reihenfolge, Porträts, Alias, Eingang, Quests).

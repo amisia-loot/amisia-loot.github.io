@@ -959,6 +959,43 @@
     6487
    ]
   },
+  "st": {
+   "lvl": 45,
+   "lfg": [
+    "Sunken Temple"
+   ],
+   "inst": 109,
+   "order": [
+    "Atal'alarion",
+    "Avatar of Hakkar",
+    "Shade of Eranikus",
+    "Hazzas",
+    "Morphaz",
+    "Weaver",
+    "Dreamscythe",
+    "Jammal'an the Prophet"
+   ],
+   "enc": [
+    3582,
+    3583,
+    3584,
+    3585,
+    3586,
+    3587,
+    3588,
+    3589
+   ],
+   "npcs": [
+    8580,
+    8443,
+    5709,
+    5722,
+    5719,
+    5720,
+    5721,
+    5710
+   ]
+  },
   "stockade": {
    "lvl": 23,
    "lfg": [
@@ -1257,7 +1294,6 @@
  "unmatched": [
   "Blackwing Lair",
   "Molten Core",
-  "Sunken Temple",
   "Zul'Gurub"
  ]
 }

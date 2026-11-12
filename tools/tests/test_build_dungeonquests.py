@@ -196,6 +196,15 @@ def test_the_shipped_monastery_quests_by_wing():
     assert dq.Q[1048][11] == 'smlib' and dq.Q[1051][11] == 'smgy'
 
 
+def test_the_shipped_sunken_temple_quests():
+    """The real data (F-183, D-115): the Sunken Temple is a dungeon of the facts, so its quests (AllTheThings knows
+    them under the instance; D-109 left the scanned ones unplaced while it was none) stand in its list."""
+    dq = lua_load(open(bdq.OUT, encoding='utf-8').read())
+    st = set(dq.D['st'].values())
+    for qid in (1445, 1446, 1475, 4143, 4146, 8257):
+        assert qid in st and dq.Q[qid][11] == 'st', qid
+
+
 def test_new_fields_render_as_the_contract_says(att_new):
     dq = lua_load(bdq.render(att_new[0], '2026-11-05'))
     q = dq.Q[73001]

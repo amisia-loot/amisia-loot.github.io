@@ -3,7 +3,7 @@
 -- "NPC 4442"; the part Übersicht lists every boss of the game's order (D.JournalBosses), a given boss at
 -- its place by name or NPC; each dungeon of a map of several (the halves of Blackrock Spire, the Scarlet
 -- Monastery's four wings, D-106) has only its own bosses; the real data: the Scarlet Monastery's wings,
--- Blackrock Spire and the Drowned City have their bosses and NPCs.
+-- Blackrock Spire, the Drowned City and the Sunken Temple have their bosses and NPCs.
 local Dn = NS.Dungeons
 assert(type(NS.BIS) == "table" and type(NS.BIS.DG) == "table", "the build's data")
 
@@ -66,4 +66,26 @@ assert(find(Dn.JournalBosses("drowned", {}), "Zul'Alai").b.known > 0)
 -- an unknown dungeon: the given bosses as they are
 assert(names(Dn.JournalBosses("fake", { { name = "B" }, { name = "A" } })) == "B,A")
 
-print("boss portraits: BossNpc, order, alias, group, nameless, JournalBosses, halves, known loot")
+---------------------------------------------------------------------------
+-- the Sunken Temple (F-183, D-115): a dungeon of the facts with the client's order, every boss its NPC
+---------------------------------------------------------------------------
+local stOrder = Dn.BossOrder("st")
+assert(stOrder and #stOrder == 8 and stOrder[1] == "Atal'alarion", "the client's eight encounters")
+local st = Dn.JournalBosses("st", {})
+assert(#st == 8, names(st))
+for _, b in ipairs(st) do assert(type(b.npc) == "number" and b.npc > 0, "st: " .. b.name) end
+assert(find(st, "Avatar of Hakkar") and find(st, "Jammal'an the Prophet") and find(st, "Dreamscythe"), names(st))
+assert(Dn.BossNpc("st", "Shade of Eranikus") == 5709, "AllTheThings' spelling Erankikus (boss_alias)")
+assert(Dn.BossNpc("st", "Hazzas") == 5722 and Dn.BossNpc("st", "Morphaz") == 5719 and Dn.BossNpc("st", "Weaver") == 5720,
+    "the dragons AllTheThings names only as creatures of its encounter Wardens of the Dream")
+local stFact
+for _, e in ipairs(NS.DUNGEON_FACTS.list) do if e.key == "st" then stFact = e end end
+assert(stFact and stFact.inst == 109 and stFact.kind == "party" and type(stFact.lvl) == "number", "map 109, the client's level")
+STUB.maps[1435] = { name = "Swamp of Sorrows", mapType = 3 }
+NS.Map._reset()
+local stDoor, stKey = NS.DungeonEntrance("st")
+assert(stDoor and stDoor.map == 1435 and stKey == "I:109", "the entrance in the Swamp of Sorrows")
+local _, stStatus = NS.DungeonQuests("st")
+assert(stStatus == "ok", "the quest data knows the temple: " .. tostring(stStatus))
+
+print("boss portraits: BossNpc, order, alias, group, nameless, JournalBosses, halves, known loot, Sunken Temple")

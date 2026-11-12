@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-183 Der Versunkene Tempel als Dungeon
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du die Seite Dungeons öffnest, dann steht "The Temple of Atal'Hakkar" mit "~45" zwischen Maraudon und dem Gefängnis von Alcaz; im Teil Übersicht stehen acht Bosse mit Porträt in der Reihenfolge des Spiels, von Atal'alarion bis Jammal'an, jeder mit "keine Beute bekannt" (die Itemtabellen des Spiels haben seine Beute noch nicht).
+- Prüfung: Wenn du dort den Teil Quests öffnest, dann stehen die Quests des Tempels da (als Horde zum Beispiel "Der versunkene Tempel", für beide Seiten die Quests von Jammal'an und Morphaz), jede mit Questgeber und Ort.
+- Prüfung: Wenn du die Weltkarte der Sümpfe des Elends öffnest, dann zeigt sie den Eingang "The Temple of Atal'Hakkar (Eingang)"; "Wegpunkt" beim Tempel auf der Seite Dungeons setzt das Kartenziel dorthin.
+- Prüfung: Wenn du den Versunkenen Tempel betrittst, dann zeigt die Dungeon-Leiste seine Bosse und Quests, und das Lauf-Fenster zeigt die acht Bosse als Porträts in Farbe; die Uhr startet mit dem ersten Kampf.
+- Prüfung: Wenn du einen Boss tötest, dann wird sein Porträt blasser und bekommt ein rotes Kreuz, und die Zwischenzeit steht im Tooltip; mit Jammal'an (dem letzten Boss der Reihenfolge des Spiels) endet die Uhr als beendet. Sag Bescheid, wenn das zu früh ist.
+- Notiz: DECISIONS D-115. Ohne Spec (README: neue Daten aus den bekannten Quellen). Bosse, Stufe, Instanz, Ladebild und Eingang aus den Tabellen des Spiels, die NPCs der Bosse und die Quests aus AllTheThings.
+
 ### F-182 Rezepte eines Gildenmitglieds per Klick auf seinen Beruf
 - Version: 2.77.0
 - Status: gebaut

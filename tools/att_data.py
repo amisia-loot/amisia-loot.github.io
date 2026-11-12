@@ -1138,18 +1138,30 @@ def boss_index(db):
     """{ATT instance id: {'encs': [(encounter id, key of its name, [npc ids], wing)], 'npcs': [(npc id,
     [keys of its names], rank of its kinds, wing)]}} of a neutral form (load()): the encounters in the
     files' order, the NPCs by id. An NPC name with a slash ("Fras Siabi / Ezra Grimm", "Fel Steed/Shadow
-    Charger") counts by each part as well."""
+    Charger") counts by each part as well. A creature of an encounter that the data files nowhere else under
+    the instance (the four dragons of the Sunken Temple's "Wardens of the Dream", named only in its crs list)
+    counts as a boss NPC of the instance under the name the data gives it there (npc_names)."""
     out = {}
-    for eid, e in (db.get('encounters') or {}).items():
-        if e.get('inst') is not None and e.get('npcs'):
-            out.setdefault(e['inst'], {'encs': [], 'npcs': []})['encs'].append(
-                (eid, boss_key(e.get('name')), list(e['npcs']), e.get('wing')))
+    listed = set()
     for nid, n in sorted((db.get('npcs') or {}).items()):
         if n.get('inst') is None or not n.get('name'):
             continue
+        listed.add((n['inst'], nid))
         keys = [boss_key(n['name'])] + [boss_key(p) for p in re.split(r'\s*/\s*', n['name']) if '/' in n['name']]
         out.setdefault(n['inst'], {'encs': [], 'npcs': []})['npcs'].append(
             (nid, [k for k in keys if k], _kind_rank(n.get('kinds')), n.get('wing')))
+    names = db.get('npc_names') or {}
+    for eid, e in (db.get('encounters') or {}).items():
+        if e.get('inst') is None or not e.get('npcs'):
+            continue
+        x = out.setdefault(e['inst'], {'encs': [], 'npcs': []})
+        x['encs'].append((eid, boss_key(e.get('name')), list(e['npcs']), e.get('wing')))
+        if e.get('old'):
+            continue
+        for nid in e['npcs']:
+            if (e['inst'], nid) not in listed and boss_key(names.get(nid)):
+                listed.add((e['inst'], nid))
+                x['npcs'].append((nid, [boss_key(names[nid])], 0, e.get('wing')))
     return out
 
 

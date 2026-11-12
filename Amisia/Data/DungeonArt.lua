@@ -35,6 +35,7 @@ ns.DUNGEON_ART = {
         smcath = { 131852, "n" },
         smgy = { 131852, "n" },
         smlib = { 131852, "n" },
+        st = { 131872, "n" },
         stockade = { 131870, "n" },
         strat = { 131871, "n" },
         thanes = { 7963781, "w" },

@@ -429,6 +429,33 @@ def test_every_boss_of_the_order_has_its_npc():
     assert c['shaper']['order'][6] == 'King Op' and c['shaper']['enc'][6] == 3504
 
 
+def test_the_sunken_temple_is_a_dungeon():
+    """F-183, D-115: one entry catches every spelling (the item data's and the client's AreaTable "The Temple of
+    Atal'Hakkar", AllTheThings' "The Temple of Atal'hakkar", the client's map and LFGDungeons name "Sunken Temple");
+    the client gives its level, instance and the eight encounters; every boss has its NPC (Shade of Eranikus by
+    AllTheThings' spelling, the dragons by the creatures of its encounter Wardens of the Dream)."""
+    es = entries()
+    keys = [e['key'] for e in es]
+    assert keys.index('mara') < keys.index('st') < keys.index('alcaz'), 'among the dungeons of its level'
+    st = es[keys.index('st')]
+    assert st['name'] == "The Temple of Atal'Hakkar" and st['kind'] == 'party' and st['src'] == 'repo'
+    assert st['aliases'] == ["The Temple of Atal'hakkar", 'Sunken Temple'] and st['aliases_src'] == 'client:st'
+    assert st['boss_alias'] == {'Shade of Eranikus': 'Shade of Erankikus'} and st['boss_alias_src'] == 'att:alias'
+    assert '2026-11-12' in facts()['sources']['client:st']
+    assert 'min' not in st and 'max' not in st and 'order' not in st, 'the range and the order come from the client'
+    c = client()['dungeons']['st']
+    assert c['inst'] == 109 and c['lfg'] == ['Sunken Temple'] and isinstance(c['lvl'], int) and c['lvl'] > 0
+    assert len(c['order']) == len(c['enc']) == len(c['npcs']) == 8 and 'order_src' not in c
+    assert {"Atal'alarion", 'Avatar of Hakkar', 'Shade of Eranikus', 'Hazzas', 'Morphaz', 'Weaver', 'Dreamscythe',
+            "Jammal'an the Prophet"} == set(c['order'])
+    npc = dict(zip(c['order'], c['npcs']))
+    assert npc['Shade of Eranikus'] == 5709 and npc['Hazzas'] == 5722 and npc['Morphaz'] == 5719 and npc['Weaver'] == 5720
+    assert all(n > 0 for n in c['npcs']) and 'npcs_scan' not in c
+    text = build_dungeons.render(facts())
+    assert '{ key = "st", name = "The Temple of Atal\'Hakkar", kind = "party", lvl = ' in text
+    assert 'inst = 109' in text.split('key = "st"')[1].split('\n')[0]
+
+
 # ---------------------------------------------------------------- the rare mobs of a dungeon (F-180, D-112)
 def test_the_rares_of_a_dungeon_come_from_allthethings_and_are_never_a_boss():
     att = fake_att()

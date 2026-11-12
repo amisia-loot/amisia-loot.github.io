@@ -355,6 +355,8 @@ def test_the_shipped_map_data_has_its_places():
     assert 'TaxiNodes' in head, 'the flight points from the client table (F-171)'
     places = [f.get(6) for f in build_map.seq(build_map.py(m.F))]
     assert all(places) and "Rog'mar, Riverglades" in places, 'every flight point with its place; a new Forever one'
+    # the Sunken Temple (F-183, D-115): its entrance by its instance id, from the client table Map, in the Swamp of Sorrows
+    assert m.E['I:109'] == 'c' and str(m.P['I:109']).startswith('1435:'), m.P['I:109']
 
 
 def test_there_is_no_game_switch():
