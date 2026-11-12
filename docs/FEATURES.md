@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-184 Leistung messen: wo Amisia Rechenzeit braucht
-- Version: -
-- Status: geplant
+- Version: 2.79.0
+- Status: gebaut
 - Prüfung: Wenn du `/amisia leistung` tippst, ein paar Minuten spielst (Taschen, Karte, Tooltips, Hauptfenster) und es wieder tippst, dann steht im Chat der Bericht: Dauer, Frames, Amisias ms je Sekunde, Speicher, Laden, gebaute Daten und zehn Zeilen mit den teuersten Stellen.
 - Prüfung: Wenn du danach `/amisia leistung bericht` tippst, dann kommt derselbe Bericht noch einmal; nach dem Ausloggen liest `python3 tools/build.py perf` ihn auf dem N100.
 - Prüfung: Wenn du `/amisia leistung login` tippst und `/reload` machst, dann steht gleich "Der Login wird 60 s lang gemessen" im Chat und nach etwa einer Minute der Bericht des Logins.
