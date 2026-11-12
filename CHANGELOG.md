@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.78.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.78.0) (2026-11-12)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.77.0...v2.78.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - data(dungeons): the Sunken Temple is a dungeon (F-183)
 
     The Temple of Atal'Hakkar now has its own entry on the Dungeons page, at level ~45 after Maraudon:
