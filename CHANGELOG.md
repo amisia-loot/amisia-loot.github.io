@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.79.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.79.0) (2026-11-12)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.78.0...v2.79.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(core): /amisia performance measures where Amisia spends its time (F-184)
 
     "/amisia leistung" (English "/amisia performance") starts a measurement, the second call stops it and
