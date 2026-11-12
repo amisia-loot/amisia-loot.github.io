@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-183 Der Versunkene Tempel als Dungeon
-- Version: -
-- Status: geplant
+- Version: 2.78.0
+- Status: gebaut
 - Prüfung: Wenn du die Seite Dungeons öffnest, dann steht "The Temple of Atal'Hakkar" mit "~45" zwischen Maraudon und dem Gefängnis von Alcaz; im Teil Übersicht stehen acht Bosse mit Porträt in der Reihenfolge des Spiels, von Atal'alarion bis Jammal'an, jeder mit "keine Beute bekannt" (die Itemtabellen des Spiels haben seine Beute noch nicht).
 - Prüfung: Wenn du dort den Teil Quests öffnest, dann stehen die Quests des Tempels da (als Horde zum Beispiel "Der versunkene Tempel", für beide Seiten die Quests von Jammal'an und Morphaz), jede mit Questgeber und Ort.
 - Prüfung: Wenn du die Weltkarte der Sümpfe des Elends öffnest, dann zeigt sie den Eingang "The Temple of Atal'Hakkar (Eingang)"; "Wegpunkt" beim Tempel auf der Seite Dungeons setzt das Kartenziel dorthin.
