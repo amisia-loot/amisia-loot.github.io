@@ -138,6 +138,9 @@ Gear\GroupQuests.lua [AllowLoadGameType camelot]
 Gear\QuestItems.lua [AllowLoadGameType camelot]
 Gear\QuestItemsWindow.lua [AllowLoadGameType camelot]
 Gear\QuestStart.lua [AllowLoadGameType camelot]
+Gear\Layer.lua [AllowLoadGameType camelot]
+Gear\LayerChange.lua [AllowLoadGameType camelot]
+Gear\LayerWindow.lua [AllowLoadGameType camelot]
 UI\Search.lua
 UI\MainFrame.lua
 UI\Pages\Overview.lua

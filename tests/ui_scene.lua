@@ -535,6 +535,33 @@ function S.questStart()
     return AmisiaQuestStart
 end
 
+-- The window "Layer" (F-185): two layers seen in Elwynn, one the guild reported, the current one; two
+-- answers of the guild to "Gilde fragen". chip: the layer chip instead.
+function S.layer(chip)
+    STUB.instance = { name = "Elwynn Forest", type = "none", id = 0 }
+    STUB.maps[1429] = { name = "Wald von Elwynn", mapType = 3 }
+    STUB.place.map = 1429
+    NS.Layer._reset()
+    STUB.fire("ZONE_CHANGED_NEW_AREA")
+    local function read(z, s)
+        STUB.targetGUID = ("Creature-0-5250-0-%d-299-%s"):format(z, s)
+        STUB.fire("PLAYER_TARGET_CHANGED")
+    end
+    read(3999, "0A1"); read(3999, "0A2")
+    STUB.tick(400)
+    read(4012, "0B1"); read(4012, "0B2")
+    NS.Layer.Heard(1429, 5120)
+    if chip then
+        NS.Set("layer.chip", true)
+        return AmisiaLayerChip
+    end
+    local t = GetTime()
+    NS.LayerChange._reset({ req = { id = "abcd", map = 1429, uid = 4012, at = t, answers = {
+        { name = "Fraktur", uid = 5120, at = t }, { name = "Anna Bergmann", uid = 3999, at = t } } } })
+    NS.LayerWindow.Show()
+    return AmisiaLayerFrame
+end
+
 -- Further states of pages, shot after the pages themselves (in every view the page shows in):
 -- { page, name, open = fn() } opens the page in that state through its public entry point.
 S.STATES = {
@@ -1089,6 +1116,9 @@ S.WINDOWS = {
     { key = "questitems", view = "raider", open = function() return S.questItems() end },
     -- the window of an item that starts a quest (F-181)
     { key = "queststart", view = "raider", open = function() return S.questStart() end },
+    -- the window "Layer" and the layer chip (F-185)
+    { key = "layer", view = "raider", open = function() return S.layer() end },
+    { key = "layer-chip", view = "raider", open = function() return S.layer(true) end },
     -- the link to copy (F-176): the author's Discord
     { key = "linkwindow", view = "raider", open = function()
         return NS.W.ShowLink(NS.Theme.LINKS[2].name, NS.Theme.LINKS[2].url)

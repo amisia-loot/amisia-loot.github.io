@@ -68,6 +68,10 @@ GT.FUNCTIONS = {
     { L["Quest-Startgegenstände"], { "C_Container.GetContainerItemQuestInfo",
         "C_QuestLog.IsQuestFlaggedCompleted|IsQuestFlaggedCompleted", "SecureCmdItemParse", "SecureCmdUseItem",
         "C_Item.UseItemByName|UseItemByName", "C_Item.GetItemIconByID", "C_CVar.GetCVarBool|GetCVarBool", "GetCursorInfo" } },
+    -- F-185: the layer (a creature's GUID, what a player controls, name plates) and the swap in the guild
+    -- (invite, accept, leave); the row "Layer: Kreatur-GUID" below reads the target's GUID
+    { L["Layer: Wechsel in der Gilde"], { "UnitGUID", "UnitPlayerControlled", "UnitIsOtherPlayersPet", "C_NamePlate.GetNamePlateForUnit",
+        "C_PartyInfo.InviteUnit|InviteUnit", "AcceptGroup", "StaticPopup_Hide", "C_PartyInfo.LeaveParty|LeaveParty" } },
 }
 -- The system message templates the invite status would read (check 10).
 GT.TEMPLATES = { "ERR_INVITE_PLAYER_S", "ERR_DECLINE_GROUP_S", "ERR_ALREADY_IN_GROUP_S", "ERR_BAD_PLAYER_NAME_S", "ERR_GROUP_FULL",
@@ -187,6 +191,8 @@ local function sectionFunctions(P)
             v("IsInGroup"), v("IsInRaid"), v("UnitIsGroupLeader", "player"), v("UnitIsGroupAssistant", "player"),
             v("C_PartyInfo.CanInvite"), v("C_PartyInfo.AllowedToDoPartyConversion", true))
     end)
+    -- F-185: whether a creature's GUID reads and splits into its zone id (Forever only)
+    if ns.Layer then check(R, L["Layer: Kreatur-GUID"], function() return ns.Layer.Probe() end) end
     for _, name in ipairs(GT.TEMPLATES) do
         local t = rawget(_G, name)
         if type(t) == "string" and not isSecret(t) then

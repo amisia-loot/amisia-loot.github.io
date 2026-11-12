@@ -33,7 +33,7 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
 -- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
@@ -515,6 +515,12 @@ local VALID = {
         return #f >= 4 and dungeonKey(f[1]) and isNum(f[2], 1, 9) and isFlags(f[3], "T") and questStates(f[4])
     end,
     QR = function(f) return #f >= 2 and commaList(f[1], 4, dungeonKey) and isNum(f[2], 1, 9) end,
+    -- the layer change in the guild (Gear/LayerChange.lua, D-117): YQ <zone map> <zoneUID> <request id> asks the
+    -- guild; YA <request id> <zone map> <zoneUID> answers from another layer; YI <request id> <zone map>
+    -- <the host's zoneUID> asks that member for the invite
+    YQ = function(f) return #f >= 3 and isNum(f[1], 1, 999999) and isNum(f[2], 1, 4294967295) and isHex(f[3], 4) end,
+    YA = function(f) return #f >= 3 and isHex(f[1], 4) and isNum(f[2], 1, 999999) and isNum(f[3], 1, 4294967295) end,
+    YI = function(f) return #f >= 3 and isHex(f[1], 4) and isNum(f[2], 1, 999999) and isNum(f[3], 1, 4294967295) end,
 }
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end

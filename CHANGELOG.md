@@ -5,6 +5,18 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(layer): see your world layer and change it with the guild's help (F-185)
+
+    Amisia reads the layer of the zone from the NPCs you target, mouse over or see name plates of, and
+    "/amisia layer" (also in the minimap menu after "Map") shows it as "Layer A", "Layer B" ... with the
+    layers seen in the zone. "Ask the guild" asks guild members with Amisia who is on another layer of the
+    zone; "Ask for an invite" asks one of them to invite you, which brings you to their layer. Amisia
+    accepts exactly that invite, says when the layer changed and can leave the two-player group again.
+    An optional small chip shows the layer on screen. Amisia clients talk to each other with their own
+    messages; Amisia also understands the short chat requests other layer addons use ("inv layer" in
+    guild chat or a whisper from a guild member) and can ask the guild chat that way ("Ask in guild
+    chat"). Other layer addons keep working beside it.
+
 ## [v2.79.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.79.0) (2026-11-12)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.78.0...v2.79.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

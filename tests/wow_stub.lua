@@ -33,8 +33,11 @@ _G.UnitName = function(u)
     if u == "mouseover" then return STUB.mouseover end
     return STUB.player
 end
--- the NPC of an open quest or merchant window (STUB.npcGUID) and the mouseover (STUB.mouseoverGUID)
+-- the NPC of an open quest or merchant window (STUB.npcGUID) and the mouseover (STUB.mouseoverGUID);
+-- any other unit (a name plate's "nameplate3") from STUB.unitGUIDs[unit]
+STUB.unitGUIDs = {}
 _G.UnitGUID = function(u)
+    if STUB.unitGUIDs[u] ~= nil then return STUB.unitGUIDs[u] end
     if u == "target" then return STUB.targetGUID end
     if u == "npc" then return STUB.npcGUID end
     if u == "mouseover" then return STUB.mouseoverGUID end
@@ -48,6 +51,11 @@ _G.GetRaidRosterInfo = function(i)
     if not m then return nil end
     return m.name, m.rank or 0, 1, 70, m.class, m.class, m.zone or "Black Temple", m.online ~= false
 end
+-- What a player controls (a pet, a guardian, a player): STUB.controlled[unit] (UnitPlayerControlled) and
+-- STUB.otherPet[unit] (UnitIsOtherPlayersPet); the layer (F-185) skips those units.
+STUB.controlled, STUB.otherPet = {}, {}
+_G.UnitPlayerControlled = function(u) return STUB.controlled[u] and true or false end
+_G.UnitIsOtherPlayersPet = function(u) return STUB.otherPet[u] and true or false end
 -- Group categories: STUB.instanceGroup makes the group an instance group (a battleground or a
 -- finder group), so IsInRaid(LE_PARTY_CATEGORY_HOME) is false while IsInRaid() stays true.
 _G.LE_PARTY_CATEGORY_HOME, _G.LE_PARTY_CATEGORY_INSTANCE = 1, 2

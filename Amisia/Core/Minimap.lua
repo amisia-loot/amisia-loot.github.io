@@ -22,6 +22,10 @@ local function windowAfter(key)
     if key == "gear" and ns.Gear and ns.Gear.Available() and ns.ToggleGearFrame then
         return { L["Ausrüstungstabelle"], function() ns.ToggleGearFrame() end }
     end
+    -- F-185: the window "Layer" after the map (Forever only, Gear/LayerWindow.lua)
+    if key == "map" and ns.LayerWindow then
+        return { L["Layer"], function() ns.LayerWindow.Toggle() end }
+    end
     return nil
 end
 
@@ -81,6 +85,8 @@ local function tooltip(owner, anchor)
     elseif ns.IsEnabled and not ns.IsEnabled() then
         GameTooltip:AddLine(L["Aufnahme pausiert"], 0.88, 0.64, 0.27)
     end
+    local layer = ns.Layer and ns.Layer.TooltipLine()
+    if layer then GameTooltip:AddLine(layer, 0.8, 0.8, 0.8) end
     GameTooltip:AddLine(" ")
     GameTooltip:AddDoubleLine(L["Linksklick"], L["Amisia-Fenster"], 1, 1, 1, 0.8, 0.8, 0.8)
     GameTooltip:AddDoubleLine(L["Rechtsklick"], L["Schnellmenü"], 1, 1, 1, 0.8, 0.8, 0.8)

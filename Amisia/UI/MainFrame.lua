@@ -146,6 +146,7 @@ function ns.ResetPositions()
     if ns.ResetDungeonBarPosition then ns.ResetDungeonBarPosition() end
     if ns.ResetQuestItemsPosition then ns.ResetQuestItemsPosition() end
     if ns.ResetQuestStartPosition then ns.ResetQuestStartPosition() end
+    if ns.ResetLayerPosition then ns.ResetLayerPosition() end
     ns.msg(L["Fensterposition zurückgesetzt."])
 end
 

@@ -39,6 +39,18 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-185 Layer erkennen und in der Gilde wechseln
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du in einer Zone zwei verschiedene NPCs ins Ziel nimmst und `/amisia layer` tippst, dann zeigt das Fenster "Layer" groß "Layer A" (oder einen anderen Buchstaben) und darunter "Layer A · hier · gerade eben"; mit "Layer-Chip zeigen" (Einstellungen, Gilde, Layer) steht zusätzlich ein kleiner Kasten "Layer A" auf dem Bildschirm.
+- Prüfung: Wenn ein zweites Gildenmitglied mit Amisia in derselben Zone auf einem anderen Layer ist (es hat auch zwei NPCs im Ziel gehabt) und du allein "Gilde fragen" klickst, dann steht nach ein paar Sekunden "<Name> · Layer B" mit "Einladung erbitten"; ein Mitglied auf deinem Layer antwortet nicht.
+- Prüfung: Wenn du "Einladung erbitten" klickst, dann fragt das Mitglied "<Name> möchte auf deinen Layer wechseln (Layer B). Einladen?"; nach "Einladen" nimmt dein Amisia die Einladung von selbst an (Chatzeile "Einladung von ... angenommen (Layer-Wechsel).").
+- Prüfung: Wenn du danach in der Gruppe einen NPC ins Ziel nimmst, dann steht "Gewechselt: Layer B" im Chat und im Fenster; "Gruppe verlassen" verlässt die Gruppe, mit "Gruppe nach dem Wechsel verlassen" geht Amisia nach 30 Sekunden selbst (bitte melden, wenn der Layer gleich bleibt: dann steht nach einer Minute "Kein Wechsel").
+- Prüfung: Wenn ein Gildenmitglied in deiner Zone 'inv layer' in den Gildenchat schreibt, dann fragt Amisia "<Name> bittet im Chat um einen Layer-Wechsel. Einladen?"; "Im Gildenchat fragen" im Fenster öffnet die Chatzeile mit "/g inv layer", und nach dem Abschicken nimmt Amisia eine Minute lang die Einladung eines Gildenmitglieds an.
+- Notiz: Spec `docs/specs/2026-11-12-layer.md`; DECISIONS D-117. Ungeprüft: ob die Zonen-Kennung in den Kreatur-GUIDs auf dem Forever-Client die Layer trennt wie auf den anderen Classic-Clients, ob ein Addon dort einladen, annehmen und verlassen darf (`/amisia selbsttest gruppe`: "Layer: Wechsel in der Gilde", "Layer: Kreatur-GUID") und wie lange die Kennungen leben (Amisia vergisst sie nach 6 Stunden und bei `/reload`).
+- Notiz: Läuft neben anderen Layer-Addons: eigenes Präfix und eigene Nachrichten (YQ, YA, YI) zwischen Amisia-Clients; die Chat-Bitten anderer Layer-Addons ("inv layer") versteht Amisia nur im Gildenchat und im Flüstern von Gildenmitgliedern, Zahlen darin zählen nicht.
+
 ### F-184 Leistung messen: wo Amisia Rechenzeit braucht
 - Version: 2.79.0
 - Status: gebaut

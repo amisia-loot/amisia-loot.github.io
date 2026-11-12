@@ -496,6 +496,15 @@ T.QUESTITEMS = { W = 460, PAD = 12, TOP = 30, HEAD_H = 24, LIST_GAP = 6, ROWS = 
 T.QUESTSTART = { W = 260, PAD = 18, TOP = 32, ICON = 44, MARK = 22, MARK_X = 10, MARK_Y = 4, GAP = 10, LINE_H = 14,
     BOTTOM = 14, MARK_ART = "Interface\\GossipFrame\\AvailableQuestIcon" }
 
+-- The window "Layer" (F-185, Gear/LayerWindow.lua, AmisiaLayerFrame): W wide, content PAD from both edges,
+-- TOP under the window's top the current layer (VALUE_H) over the grey zone line (LINE_H); GAP before each
+-- heading (HEAD_H); the layers seen in rows ROW_H high (ROWS at most); the red button, the status (two
+-- lines of LINE_H), the answers (ANSWERS rows ANSWER_H high, the name NAME_W wide, the link at the right end) and the
+-- link "Gruppe verlassen"; BOTTOM to the lower edge. TICK: the ages' refresh while shown. The chip
+-- (AmisiaLayerChip): CHIP_W by CHIP_H on a dark ground (SHADE) with a gold edge, its text CHIP_PAD in.
+T.LAYER = { W = 300, PAD = 14, TOP = 30, VALUE_H = 22, LINE_H = 14, GAP = 8, HEAD_H = 16, ROW_H = 18, ROWS = 6,
+    ANSWERS = 5, ANSWER_H = 22, NAME_W = 160, BOTTOM = 14, TICK = 5, CHIP_W = 84, CHIP_H = 22, CHIP_PAD = 6, SHADE = 0.78 }
+
 T.DUNGEONBAR = { H = 26, PAD = 6, GAP = 10, NAME_W = 130, CLOSE = 14, SHADE = 0.78, LIST_GAP = 2, LIST_W = 300, ROW_H = 18,
     ROW_NAME_W = 196, ROW_NOTE_W = 84, MAX_ROWS = 20, TICK = 0.5 }
 

@@ -75,6 +75,9 @@ local function makeClient(opts)
     end
     _G.GetCVarBool = _G.GetCVarBool or function() return false end
     _G.GetCursorInfo = _G.GetCursorInfo or function() return nil end
+    -- F-185: the layer change's leave and the name plates, only looked up here
+    C_PartyInfo.LeaveParty = function() error("LeaveParty called") end
+    _G.C_NamePlate = _G.C_NamePlate or { GetNamePlateForUnit = function() return nil end }
     _G.AcceptGroup = function() error("AcceptGroup called") end
     _G.StaticPopup_Hide = function() end
     -- F-165: the roles of the lineup, only looked up
@@ -203,6 +206,8 @@ assert(ids and has(ids, "OK     UPDATE_INSTANCE_INFO: 1-mal nach RequestRaidInfo
 assert(has(ids, 'WERT   GetSavedInstanceInfo(1): "Molten Core", ID 123456789012, Instanz 409, Schwierigkeit 9 "40 Spieler", 40 Spieler, Raid true, gesperrt true, verlängert false, Bosse 4/10, Reset '), ids)
 assert(has(ids, "(in 73.0 Stunden)"), ids)
 assert(not has(text, "Probleme:"), text)
+-- F-185: the layer's functions and the creature GUID row
+assert(has(text, "Layer: Wechsel in der Gilde") and has(text, "Layer: Kreatur-GUID"), "the layer rows")
 local sum = lastMsg()
 assert(has(sum, "Gruppen-Prüfung: Einladen aus dem Tastendruck Spieler nicht gefunden, aus einem Timer Spieler nicht gefunden; 2 Raid-IDs; Buffs 3 (0 geheim); Haltbarkeit 30 %; Itemstufe 58.5; Verzauberungen 2 im Link, 2 als Zeile;"), sum)
 assert(has(sum, "0 Problem(e). Bericht im Fenster."), sum)

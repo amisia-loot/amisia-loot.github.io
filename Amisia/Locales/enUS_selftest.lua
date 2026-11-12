@@ -481,3 +481,7 @@ L["Zeitmessung"] = "Timing"
 L["mit debugstack"] = "with debugstack"
 L["ohne debugstack"] = "without debugstack"
 L["keine Uhr: /amisia leistung kann nicht messen"] = "no clock: /amisia performance cannot measure"
+
+-- Core/SelfTestGroup.lua (F-185)
+L["Layer: Wechsel in der Gilde"] = "Layer: change within the guild"
+L["Layer: Kreatur-GUID"] = "Layer: creature GUID"
