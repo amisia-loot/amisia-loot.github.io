@@ -552,6 +552,8 @@ T.PROFPAGE = {
     DOT_ME = "Interface\\COMMON\\Indicator-Yellow", DOT_GUILD = "Interface\\COMMON\\Indicator-Green",
     -- the filter menu's button (Amisia's own funnel, D-81) and its flyout (FLY_PAD inside, FLY_GAP under it)
     FILTER_BTN = 20, FILTER_ICON = "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\prof_filter", FLY_PAD = 6, FLY_GAP = 2,
+    -- the chip "Von: <Name>" of the member mode (F-182) beside the filter button, at most MEMBER_CHIP_W
+    MEMBER_CHIP_W = 150,
     -- the list LIST_W wide, rows ROW_H high (at least ROWS): the thin frame ROW_EDGE (gold when chosen),
     -- the difficulty bar ROW_BAR_W at the left edge, the item's icon ROW_ICON square at ROW_ICON_X in
     -- the rounded ring, the name from ROW_TEXT_X; at the right the skill (ROW_RANK_W), the dots "kann

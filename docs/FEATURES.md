@@ -39,6 +39,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-182 Rezepte eines Gildenmitglieds per Klick auf seinen Beruf
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du auf Gilde > Mitglieder bei einem Mitglied mit Amisia auf einen Beruf klickst (die Maus darauf zeigt grau "Klick: Rezepte ansehen"), dann öffnet sich Berufe mit "<Beruf> - Rezepte von <Name>", darunter "Skill: 165/225 · 65 Rezepte · Stand heute", und die Liste zeigt nur seine Rezepte ("N von M Rezepten").
+- Prüfung: Wenn du dort etwas suchst oder im Filter "Bekannt: Unbekannt" wählst, dann bleiben nur seine Rezepte, die passen; ein Klick auf ein Rezept zeigt rechts Details, Reagenzien und die Gildenmitglieder wie sonst.
+- Prüfung: Wenn du auf den Chip "Von: <Name>" klickst, "Alle Rezepte" wählst oder in der Leiste einen anderen Beruf, dann siehst du wieder alle Rezepte; "Zurück zu Mitglieder" oben rechts führt zur Mitgliederliste zurück.
+- Prüfung: Wenn du auf einen Beruf klickst, den nur die Gildennotiz nennt ("laut Gildennotiz"), oder mit der rechten Maustaste auf einen Beruf, dann öffnet sich wie bisher das Menü mit Flüstern und Einladen.
+- Prüfung: Wenn du auf einen Beruf deines eigenen Charakters oder Twinks klickst, dann zeigt Berufe die Rezepte dieses Charakters.
+- Notiz: DECISIONS D-114. Keine neue Nachricht, kein neuer gespeicherter Schlüssel: die Ansicht liest, was der Rezept-Austausch schon speichert (`Crafters.KnownOf`). Ohne Spec (README: kleine Erweiterung ohne neue Daten oder Nachrichten).
+
 ### F-181 Fenster bei Gegenständen, die eine Quest starten
 - Version: 2.76.0
 - Status: gebaut

@@ -149,15 +149,29 @@ local function ageText(p)
     return L["Stand vor %d Tagen"]:format(p.age)
 end
 
+-- The parts of a shared profession: "225/300", "84 Rezepte", "Stand vor 3 Tagen" (also the head of
+-- the Berufe page's member mode, F-182).
+function ns.MembersProfParts(p)
+    local skill = p.max and p.max > 0 and ("%d/%d"):format(p.rank, p.max) or tostring(p.rank)
+    local recipes = p.known == 1 and L["1 Rezept"] or L["%d Rezepte"]:format(p.known or 0)
+    return skill, recipes, ageText(p)
+end
+
 -- "Alchimie 225/300, 84 Rezepte, Stand vor 3 Tagen"; from a guild note "Alchimie 300, laut Gildennotiz"
 function ns.MembersProfText(p)
     if p.note then
         local name = p.rank > 0 and (profName(p.skill) .. " " .. p.rank) or profName(p.skill)
         return L["%s, laut Gildennotiz"]:format(name)
     end
-    local skill = p.max and p.max > 0 and ("%d/%d"):format(p.rank, p.max) or tostring(p.rank)
-    local recipes = p.known == 1 and L["1 Rezept"] or L["%d Rezepte"]:format(p.known or 0)
-    return table.concat({ profName(p.skill) .. " " .. skill, recipes, ageText(p) }, ", ")
+    local skill, recipes, age = ns.MembersProfParts(p)
+    return table.concat({ profName(p.skill) .. " " .. skill, recipes, age }, ", ")
+end
+
+-- Whether a click on a profession box shows the member's recipes on the Berufe page (F-182): the
+-- recipe exchange shared a list (not a guild note, at least one recipe) and the page is there.
+local function recipesOpen(p)
+    return p ~= nil and not p.note and (p.known or 0) > 0 and type(ns.ShowMemberRecipes) == "function"
+        and Pr() ~= nil and Pr().Available ~= nil and Pr().Available() and true or false
 end
 
 -- The skill a row sorts by on "Berufe": the chosen profession's, else the highest.
@@ -316,6 +330,9 @@ local function boxTooltip(self)
     elseif not p.own then
         GameTooltip:AddLine(L["Aus dem Rezept-Austausch der Gilde; Einträge bleiben 45 Tage."], 0.6, 0.6, 0.6, true)
     end
+    for _, line in ipairs(ns.MembersBoxClickLines(p, self:GetParent() and self:GetParent().item)) do
+        GameTooltip:AddLine(line, 0.6, 0.6, 0.6, true)
+    end
     GameTooltip:Show()
 end
 
@@ -346,6 +363,20 @@ function ns.MembersMenuEntries(e)
     if not e or e.own then return {} end
     local out = { { L["Flüstern"], function() whisper(e.name) end } }
     if e.online then out[#out + 1] = { L["Einladen"], function() invite(e.name) end } end
+    return out
+end
+
+-- The grey lines of a profession box's tooltip that say what a click does (also for the tests): the
+-- member's recipes where the exchange shared a list, else (and on a right click) the row's menu.
+function ns.MembersBoxClickLines(p, e)
+    local out = {}
+    local menu = #ns.MembersMenuEntries(e) > 0
+    if recipesOpen(p) then
+        out[1] = L["Klick: Rezepte ansehen"]
+        if menu then out[2] = L["Rechtsklick: Flüstern oder Einladen"] end
+    elseif menu then
+        out[1] = L["Klick: Flüstern oder Einladen"]
+    end
     return out
 end
 
@@ -393,7 +424,17 @@ local function buildBox(r, w)
     b.label:SetDrawLayer("OVERLAY", 7)
     b:SetScript("OnEnter", boxTooltip)
     b:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    b:SetScript("OnClick", function(self) openMenu(self:GetParent()) end)
+    -- a click shows the member's shared recipes (F-182), a right click (and a click on a box without a
+    -- shared list) the row's menu
+    b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    b:SetScript("OnClick", function(self, button)
+        local e, p = self:GetParent().item, self.prof
+        if button ~= "RightButton" and e and recipesOpen(p) then
+            ns.ShowMemberRecipes(e.name, p.skill)
+            return
+        end
+        openMenu(self:GetParent())
+    end)
     b:Hide()
     return b
 end

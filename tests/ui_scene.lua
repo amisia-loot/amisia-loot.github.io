@@ -651,6 +651,17 @@ S.STATES = {
         for i, r in ipairs(NS.Prof.Recipes(197)) do if i <= 3 then NS.Prof.QueueAdd(r.spell, i * 2) end end
         NS.ShowProfessions("schneiderei")
     end },
+    -- the member mode (F-182): a crafter's shared tailoring recipes, as a click on her box opens it
+    -- (a crafter of her own, so the guild of the other scenes stays as it is)
+    { page = "professions", name = "professions-member", open = function()
+        local ids = {}
+        for i, r in ipairs(NS.Prof.Recipes(197)) do if i <= 12 then ids[#ids + 1] = tostring(r.spell) end end
+        AmisiaDB.crafters = AmisiaDB.crafters or { v = 1, src = {}, c = {} }
+        AmisiaDB.crafters.c["Mira Nadel"] = { via = "Mira Nadel", self = true, seen = NS.DropsToday(), p = {
+            [197] = { r = 165, m = 225, l = table.concat(ids, ",") } } }
+        NS.Crafters.Changed()
+        NS.ShowMemberRecipes("Mira Nadel", 197)
+    end },
     -- the priest build of S.priestPlan (every talent state)
     { page = "talents", name = "talents-plan", open = function() NS.ShowTalents(NS.Talents.Encode(S.priestPlan())) end },
     { page = "bank", name = "bank-stock", open = function() NS.ShowBank("bestand") end },

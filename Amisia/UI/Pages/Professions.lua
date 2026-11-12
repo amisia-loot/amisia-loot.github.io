@@ -87,6 +87,20 @@ local function upgradeMark(item)
 end
 
 ---------------------------------------------------------------------------
+-- The member mode (F-182, D-114): the recipes one guild member shares for one profession (a click on
+-- a profession box of the page Mitglieder). Only in memory: another view or tab, its chip "Von: Name",
+-- "Filter zurücksetzen", ns.ShowProfessions/ShowRecipe and a /reload end it.
+---------------------------------------------------------------------------
+local member              -- { name, skill } or nil
+
+-- The member's recipes of skill v as a set (empty when none can be read), the count, why not.
+local function memberKnown(v)
+    if not (member and member.skill == v and Cr and Cr.KnownOf) then return nil end
+    local set, n, why = Cr.KnownOf(member.name, v)
+    return set or {}, n, why
+end
+
+---------------------------------------------------------------------------
 -- The list
 ---------------------------------------------------------------------------
 local function listOf(v)
@@ -108,7 +122,7 @@ local function listOf(v)
         return out
     end
     return Pr.List(v, { search = s.search, known = s.known ~= "all" and s.known or nil, learnable = s.learnable,
-        source = s.source ~= "all" and s.source or nil, guild = s.guild })
+        source = s.source ~= "all" and s.source or nil, guild = s.guild, of = (memberKnown(v)) })
 end
 
 -- The filters that are on, each with its name as the head row shows it and the field it clears.
@@ -126,6 +140,7 @@ local function activeFilters()
     end
     if s.learnable then out[#out + 1] = { key = "learnable", name = L["Lernbar"] } end
     if s.guild then out[#out + 1] = { key = "guild", name = L["Gilde"] } end
+    if member and member.skill == view() then out[#out + 1] = { key = "member", name = L["Von: %s"]:format(member.name) } end
     return out
 end
 
@@ -140,19 +155,27 @@ local function emptyHelp(v)
     local filters = activeFilters()
     if #filters == 0 then return L["Keine Rezepte zu diesen Filtern."], false end
     local s = state()
+    -- a filter off for a moment: a field of the view state, or the member mode (only in memory)
+    local function take(key)
+        local keep
+        if key == "member" then keep, member = member, nil else keep, s[key] = s[key], nil end
+        return keep
+    end
+    local function put(key, val)
+        if key == "member" then member = val else s[key] = val end
+    end
     local parts = {}
     for _, flt in ipairs(filters) do
-        local keep = s[flt.key]
-        s[flt.key] = nil
+        local keep = take(flt.key)
         local n = #listOf(v)
-        s[flt.key] = keep
+        put(flt.key, keep)
         if n > 0 then parts[#parts + 1] = L["Ohne \"%s\": %s"]:format(flt.name, recipesText(n)) end
     end
     if #parts == 0 then
         local keep = {}
-        for _, flt in ipairs(filters) do keep[flt.key], s[flt.key] = s[flt.key], nil end
+        for _, flt in ipairs(filters) do keep[flt.key] = take(flt.key) end
         local n = #listOf(v)
-        for k, val in pairs(keep) do s[k] = val end
+        for k, val in pairs(keep) do put(k, val) end
         parts[1] = L["Erst ohne alle Filter: %s"]:format(recipesText(n))
     end
     return L["Keine Rezepte zu diesen Filtern."] .. "\n" .. table.concat(parts, "\n"), true
@@ -172,6 +195,7 @@ end
 local function resetFilters()
     local s = state()
     s.known, s.source, s.learnable, s.guild, s.search = nil, nil, nil, nil, nil
+    member = nil
     if page and page.search then
         page.search:SetText("")
         page.search:ClearFocus()
@@ -1007,6 +1031,13 @@ local function statusText(v, n)
         if certs > 0 then parts[#parts + 1] = L["%d Zertifizierungen (1000 Gunst, Rang 300)"]:format(certs) end
         return table.concat(parts, " · ")
     end
+    -- the member mode: of the member's recipes that Amisia's data has
+    local set = memberKnown(v)
+    if set then
+        local all = 0
+        for _, r in ipairs(Pr.Recipes(v)) do if set[r.spell] then all = all + 1 end end
+        return L["%d von %d Rezepten"]:format(n, all)
+    end
     return L["%d von %d Rezepten"]:format(n, #Pr.Recipes(v))
 end
 
@@ -1025,6 +1056,7 @@ local function hintText(v)
     elseif v == CAMP then
         return L["Lagerobjekte brauchen ein Lagerfeuer in der Nähe und teilen eine Abklingzeit. Wirkung nach Sitzen am Feuer."]
     end
+    if member and member.skill == v then return L["Die Rezepte, die %s mit der Gilde teilt."]:format(member.name) .. " " .. ROW_HINT end
     -- what the own character knows comes from its profession window
     if Pr.Rank(v) and not Pr.HasSnapshot(v) then return L["Für \"Bekannt\" das Berufsfenster einmal öffnen."] .. " " .. ROW_HINT end
     return ROW_HINT
@@ -1050,6 +1082,7 @@ local function openView(v, recipes)
     local s = state()
     s.view = v
     chosen()
+    member = nil
     if recipes then s.mode = RECIPES end
     ns.Refresh()
 end
@@ -1532,6 +1565,34 @@ local function favList()
     return out
 end
 
+-- Why a member's list cannot be shown (Crafters.KnownOf's reason), as the page says it; nil when it can.
+local MEMBER_WHY = {
+    foreign = L["Die Rezeptliste von %s passt nicht zu deinen Berufsdaten; sie wird beim nächsten Austausch neu geholt."],
+    nodata = L["Amisias Berufsdaten fehlen die Rezepte dieses Berufs; die Liste von %s lässt sich nicht lesen."],
+    none = L["%s teilt für diesen Beruf keine Rezepte."],
+    unknown = L["Von %s kennt Amisia keine geteilten Rezepte."],
+}
+local function memberWhy(v)
+    local _, _, why = memberKnown(v)
+    return why and MEMBER_WHY[why] and MEMBER_WHY[why]:format(member.name) or nil
+end
+
+-- The head band of the member mode: "Schneiderei - Rezepte von Name", the member's skill, recipes and
+-- age as the page Mitglieder shows them, and the reason when the list cannot be read, else that the
+-- colours and marks are the own character's.
+local function memberHead(v, name)
+    local line = ""
+    local profs = Cr and Cr.Professions and Cr.Professions()[member.name:lower()]
+    for _, p in ipairs(profs or {}) do
+        if p.skill == v and ns.MembersProfParts then
+            local skill, recipes, age = ns.MembersProfParts(p)
+            line = table.concat({ L["Skill: %s"]:format(skill), recipes, age }, " · ")
+        end
+    end
+    return L["%s - Rezepte von %s"]:format(name, member.name), line,
+        memberWhy(v) or L["Farben, \"(bekannt)\" und \"Kann ich\" zeigen deinen eigenen Stand."]
+end
+
 -- The head band (D-82): the icon, "Schneiderei - Alle Rezepte", the skill and the recipes, the
 -- legend, and the hint while the profession window was never read.
 local function fillHead(f, v, m, n)
@@ -1549,6 +1610,9 @@ local function fillHead(f, v, m, n)
         elseif m == QUEUE then
             icon, title = T.NAV_ICONS.professions, L["Herstellliste"]
             line = L["Was du herstellen willst und alle Reagenzien dafür"]
+        elseif member and member.skill == v then
+            icon = profIcon(v)
+            title, line, note = memberHead(v, name)
         else
             icon, title = profIcon(v), L["%s - Alle Rezepte"]:format(name)
             line = skill .. " · " .. recipes
@@ -1576,7 +1640,8 @@ end
 
 -- The tabs of the head row (D-82): which is on, the route only where the profession has one.
 local function fillTabs(f, v, m, onRoute)
-    f.tabAll:SetOn(type(v) == "number" and m == RECIPES)
+    -- the member mode is no tab: "Alle Rezepte" shows the whole list again
+    f.tabAll:SetOn(type(v) == "number" and m == RECIPES and not member)
     f.tabFav:SetOn(type(v) == "number" and m == FAV)
     f.tabFavor:SetOn(v == FAVOR)
     f.tabQueue:SetOn(type(v) == "number" and m == QUEUE)
@@ -1584,9 +1649,23 @@ local function fillTabs(f, v, m, onRoute)
     if (type(v) == "number" and Route.Has(v)) or onRoute then f.tabRoute:Enable() else f.tabRoute:Disable() end
 end
 
+-- The member mode's parts: the chip "Von: Name" beside the filter button and "Zurück zu Mitglieder"
+-- at the right of the tabs; ends the mode when the page shows another view.
+local function placeMember(f, v)
+    if member and (v ~= member.skill or mode() ~= RECIPES) then member = nil end
+    f.memberChip:SetShown(member ~= nil)
+    f.back:SetShown(member ~= nil)
+    if member then
+        f.memberChip.label:SetText(L["Von: %s"]:format(member.name))
+        W.FitChip(f.memberChip, nil, P.MEMBER_CHIP_W)
+        f.memberChip:SetOn(true)
+    end
+end
+
 local function refresh(f)
     local s = state()
     local v = view()
+    placeMember(f, v)
     -- the overview (D-78): its cards instead of the head row, the filters, the list and the route
     local over = v == OVERVIEW
     f.ovView:SetShown(over)
@@ -1605,7 +1684,7 @@ local function refresh(f)
     local onRoute = routeShown(v)
     for _, t in ipairs(f.tabs) do t:Show() end
     fillTabs(f, v, m, onRoute)
-    f:Place(1, f.tabs)
+    f:Place(1, f.tabs, member and { f.back } or nil)
     f.routeView:SetShown(onRoute)
     f.queueView:SetShown(m == QUEUE and not onRoute)
     local listed = not onRoute and m ~= QUEUE
@@ -1651,7 +1730,8 @@ local function refresh(f)
     f.guild.dim = guildN == 0
     if guildN > 0 or s.guild then f.guild:Enable() else f.guild:Disable() end
     f.guild:SetOn(s.guild and true or false)
-    f.filterBtn.dot:SetShown(#activeFilters() > 0)
+    -- the dot: a filter of the menu is on (the member mode has its own chip)
+    f.filterBtn.dot:SetShown(#activeFilters() > (member and 1 or 0))
     local text = s.search or ""
     if not f.search:HasFocus() and f.search:GetText() ~= text then f.search:SetText(text) end
     for _, w in ipairs({ f.known, f.source, f.learn, f.guild, f.search, f.filterBtn }) do
@@ -1659,10 +1739,10 @@ local function refresh(f)
     end
     if not isRecipes then f.filters:Hide() end
     -- without the search and the filters (favourites, camp, favor) the counts take the whole band
-    f:Place(3, { f.search, f.filterBtn, { f.counts, fill = true } }, nil, { shown = true })
+    f:Place(3, { f.search, f.filterBtn, f.memberChip, { f.counts, fill = true } }, nil, { shown = true })
     local key = isFav and FAV or tostring(v)
-    if f.shownView ~= v or f.shownKey ~= key then f.list.offset = 0 end
-    f.shownView, f.shownKey = v, key
+    if f.shownView ~= v or f.shownKey ~= key or f.shownMember ~= member then f.list.offset = 0 end
+    f.shownView, f.shownKey, f.shownMember = v, key, member
     nameMissing = false
     local list = isFav and favList() or listOf(v)
     fillHead(f, v, m, #list)
@@ -1682,6 +1762,9 @@ local function refresh(f)
         else
             local help = L["Für diesen Client gibt es keine Berufsdaten."]
             if Pr.Available() then help, canReset = emptyHelp(v) end
+            -- the member's list cannot be read: say why instead of what the filters hold back
+            local why = isRecipes and memberWhy(v)
+            if why then help, canReset = why, true end
             f.empty:Set(L["Keine Rezepte"], help)
         end
         f.empty:Show()
@@ -1710,6 +1793,7 @@ local function create(parent)
             local skill = type(v) == "number" and v or (tonumber(s.skill) and Pr.Key(tonumber(s.skill)) and tonumber(s.skill))
                 or Pr.Ordered()[1]
             chosen()
+            member = nil
             if tabKey == "favor" then
                 s.skill, s.view = skill, FAVOR
             else
@@ -1816,6 +1900,20 @@ local function create(parent)
     end)
     local flyW = W.Row(f.filters, { f.known, f.source, f.learn, f.guild }, T.LAYOUT.ITEM_GAP, P.FLY_PAD, -P.FLY_PAD)
     f.filters:SetSize(flyW + P.FLY_PAD, T.LAYOUT.ROW_H + 2 * P.FLY_PAD)
+    -- the member mode (F-182): its chip beside the filter button ends it, the link goes back
+    f.memberChip = W.TabCheck(f, L["Von: %s"]:format(""), function()
+        member = nil
+        ns.Refresh()
+    end)
+    W.Tooltip(f.memberChip, L["Rezepte eines Mitglieds"], function()
+        return member and L["Nur die Rezepte, die %s mit der Gilde teilt. Klick: wieder alle Rezepte."]:format(member.name) or ""
+    end)
+    f.memberChip:Hide()
+    f.back = W.Link(f, L["Zurück zu %s"]:format(L["Mitglieder"]), function()
+        if ns.ShowPage then ns.ShowPage("members") end
+    end)
+    W.FitChip(f.back)
+    f.back:Hide()
     f.counts = W.Text(f, T.FONT.hint)
     f.clearQueue = W.Link(f, L["Liste leeren"], function()
         Pr.QueueRemove(nil)
@@ -1849,7 +1947,11 @@ local function create(parent)
     W.FitChip(f.reset)
     f.reset:SetPoint("TOP", f.empty.text, "BOTTOM", 0, -T.EMPTY.BUTTON_GAP)
     f.reset:Hide()
-    W.Tooltip(f.reset, L["Filter zurücksetzen"], L["Stellt Bekannt und Quelle auf Alle, schaltet Lernbar und Gilde aus und leert die Suche."])
+    W.Tooltip(f.reset, L["Filter zurücksetzen"], function()
+        local text = L["Stellt Bekannt und Quelle auf Alle, schaltet Lernbar und Gilde aus und leert die Suche."]
+        if member then text = text .. " " .. L["Zeigt wieder alle Rezepte, nicht nur die von %s."]:format(member.name) end
+        return text
+    end)
 
     -- every entry in the detail with the boxes (D-82)
     f.rd = buildRecipeDetail(f, top)
@@ -1930,7 +2032,7 @@ local function create(parent)
     rv:Hide()
     f.ovView = buildOverview(f)
     f.chrome = { f.tabAll, f.tabFav, f.tabFavor, f.tabQueue, f.tabRoute, f.routeRank, f.headBlock, f.search, f.filterBtn,
-        f.counts, f.clearQueue, f.list, f.rd, f.empty, f.reset, f.routeView, f.queueView }
+        f.counts, f.clearQueue, f.list, f.rd, f.empty, f.reset, f.routeView, f.queueView, f.memberChip, f.back }
     return f
 end
 
@@ -1945,6 +2047,7 @@ function ns.ShowProfessions(what)
     if AmisiaDB and AmisiaDB.settings and type(what) == "string" and what ~= "" then
         local w = ns.Fold(what)
         chosen()
+        member = nil
         if w == "route" then
             state().mode = ROUTE
         elseif w:find("^übersicht") or w:find("^ubersicht") or w:find("^overview") then   -- l10n-ok: command words
@@ -1973,9 +2076,24 @@ function ns.ShowRecipe(skill, spell, name)
         local s = state()
         s.view = skill
         chosen()
+        member = nil
         s.search = type(name) == "string" and name ~= "" and name or nil
         s.known, s.learnable, s.source, s.guild, s.mode = nil, nil, nil, nil, nil
         if type(spell) == "number" then s.sel[tostring(skill)] = spell end
+    end
+    if ns.ShowPage then ns.ShowPage("professions") end
+end
+
+-- Opens the page at one guild member's shared recipes of a profession (a click on a profession box of
+-- the page Mitglieder, F-182): its recipe list, the other filters off, only that member's recipes.
+function ns.ShowMemberRecipes(name, skill)
+    skill = tonumber(skill)
+    if AmisiaDB and AmisiaDB.settings and type(name) == "string" and name ~= "" and skill and Pr.Key(skill) then
+        local s = state()
+        s.view, s.mode = skill, RECIPES
+        chosen()
+        s.search, s.known, s.learnable, s.source, s.guild = nil, nil, nil, nil, nil
+        member = { name = name, skill = skill }
     end
     if ns.ShowPage then ns.ShowPage("professions") end
 end

@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(guild): a click on a member's profession shows the recipes that member can craft (F-182)
+
+    On Gilde > Mitglieder a click on a profession box opens Berufe at that profession with only the
+    recipes the member shares through Amisia, headed "Schmiedekunst - Rezepte von Name" with the member's
+    skill, recipe count and age. Search and filters work on top of it; the chip "Von: Name", another
+    profession or "Alle Rezepte" show all recipes again, and "Zurück zu Mitglieder" leads back. Works
+    for your own characters too. A profession that only the guild note names, and a right click, still
+    open the whisper and invite menu.
+
 ## [v2.76.2](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.76.2) (2026-11-11)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.76.1...v2.76.2) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

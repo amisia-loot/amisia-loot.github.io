@@ -1229,6 +1229,71 @@ function Cr.Professions()
     return map
 end
 
+-- The recipes one crafter shares for one profession (the Berufe page's member mode, F-182, D-114):
+-- a set { [spell] = true }, its size, and when there is none why not: "unknown" (no own character of
+-- this guild and no heard crafter by that name), "none" (that profession is not shared), "foreign"
+-- (a bitset of another recipe index: its sender is asked for lists next time, as build() does) or
+-- "nodata" (a bitset of a profession the own data lacks). Any case of the name; an own character
+-- before a heard one. Kept per gen (and own list) like the other indexes.
+local knownCache          -- { gen, own, map = { [lower name .. "#" .. skill] = { set, n, why } } }
+function Cr.KnownOf(name, skill)
+    skill = tonumber(skill)
+    if type(name) ~= "string" or name == "" or not skill then return nil, 0, "unknown" end
+    local own = Cr.Own()
+    if not (knownCache and knownCache.gen == gen and knownCache.own == own) then
+        knownCache = { gen = gen, own = own, map = {} }
+    end
+    local low = name:lower()
+    local key = low .. "#" .. skill
+    local hit = knownCache.map[key]
+    if hit then return hit.set, hit.n, hit.why end
+    local set, n, why = nil, 0, "unknown"
+    for _, o in ipairs(own) do
+        if o.name:lower() == low then
+            why = "none"
+            for _, pr in ipairs(o.profs) do
+                if pr.skill == skill then
+                    set, why = {}, nil
+                    for spell, on in pairs(pr.known) do
+                        if on == true then
+                            set[spell] = true
+                            n = n + 1
+                        end
+                    end
+                end
+            end
+            break
+        end
+    end
+    local s = why == "unknown" and store(false)
+    for cname, c in pairs(s and s.c or {}) do
+        if type(cname) == "string" and cname:lower() == low and type(c) == "table" and type(c.p) == "table" then
+            why = "none"
+            local p = c.p[skill]
+            if validProf(skill, p) then
+                local spells = decode(skill, p)
+                if not spells then
+                    why = "foreign"
+                    if type(c.via) == "string" then stale(c.via:lower()) end
+                elseif #spells == 0 and p.b and hexBits(p.b) > 0 then
+                    why = "nodata"
+                else
+                    set, why = {}, nil
+                    for _, spell in ipairs(spells) do
+                        if not set[spell] then
+                            set[spell] = true
+                            n = n + 1
+                        end
+                    end
+                end
+            end
+            break
+        end
+    end
+    knownCache.map[key] = { set = set, n = n, why = why }
+    return set, n, why
+end
+
 ---------------------------------------------------------------------------
 -- Settings and command
 ---------------------------------------------------------------------------

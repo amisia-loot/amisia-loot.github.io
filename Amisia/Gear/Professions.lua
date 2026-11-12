@@ -843,16 +843,18 @@ local lower = ns.Fold
 
 -- The recipes of a skill line after the filters: opts.search (part of the recipe or item name, any
 -- case), opts.known ("known", "unknown"), opts.learnable (the own rank reaches the learn rank),
--- opts.source ("T", "V", "F", "D", "Q"), opts.guild (someone of the guild knows it, Crafters.lua).
+-- opts.source ("T", "V", "F", "D", "Q"), opts.guild (someone of the guild knows it, Crafters.lua),
+-- opts.of (a set { [spell] = true }: only these, e.g. one member's recipes from Crafters.KnownOf).
 -- Each entry is the recipe with name, known, color; sorted by the learn rank.
 function Pr.List(skill, opts)
     opts = opts or {}
     local rank = Pr.Rank(skill)
     local search = opts.search and opts.search ~= "" and lower(opts.search) or nil
+    local of = type(opts.of) == "table" and opts.of or nil
     local out = {}
     for _, r in ipairs(Pr.Recipes(skill)) do
         local known = Pr.Known(r.spell, skill)
-        local ok = true
+        local ok = not of or of[r.spell] == true
         if opts.known == "known" and known ~= true then ok = false end
         if opts.known == "unknown" and known == true then ok = false end
         if ok and opts.learnable and (known == true or not Pr.Learnable(r, rank)) then ok = false end
