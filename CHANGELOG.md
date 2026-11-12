@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.77.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.77.0) (2026-11-12)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.76.2...v2.77.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(guild): a click on a member's profession shows the recipes that member can craft (F-182)
 
     On Gilde > Mitglieder a click on a profession box opens Berufe at that profession with only the
