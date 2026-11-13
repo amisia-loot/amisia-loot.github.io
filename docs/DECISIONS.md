@@ -3365,3 +3365,25 @@ eigene Notiz, kaputte Daten, Rechte, Fenster mit Schloss, Kampf und Zurücksetze
 `tests/test_raidnote_share.lua` (Offizier, Assistent, Raider ohne Rang, Gast außerhalb der Gilde, Nachzügler über
 NV/NQ, keine zweite Frage, neuere Notiz ersetzt, gefälschte, ungefragte und unsaubere Notiz verworfen, Kampf),
 `tools/tests/test_contracts.py` (Nachrichtenarten, Blob-Art, Schlüssel, Abschnitt).
+
+## D-127 [Einladen] hinter "ist jetzt online": ein Addon-Link des Clients, kein eigener Chat
+
+**Datum:** 2026-11-13
+**Entscheidung:** Hinter der Zeile des Spiels "<Name> ist jetzt online." (`ERR_FRIEND_ONLINE_SS`, Gilde und
+Freundesliste) hängt Amisia ein blaues "[Einladen]" an (F-197, `Raid/OnlineInvite.lua`). Es ist ein Addon-Link
+des Clients (`|Haddon:Amisia:inv:<Name>|h`); den Klick meldet der Client über `EventRegistry` "SetItemRef" (auf
+Forever, TBC Anniversary und Era gleich, Blizzards Quelle `ItemRefHandlersShared.lua`), Amisia lädt dann mit
+`C_PartyInfo.InviteUnit` ein. Kein Hook auf `SetItemRef`, kein Ersetzen von Chatzeilen anderer Art. Kein Link
+für sich selbst, für jemanden in der eigenen Gruppe oder wenn man in der Gruppe nicht einladen darf (Leiter; im
+Raid auch Assistenten); eine geheime Zeile (Kampfsperre) bleibt, wie sie ist. Einstellung `invites.onlineLink`
+(an) im Abschnitt Gruppeneinladungen.
+
+**Grund:** Nutzer 2026-11-13 mit Bildschirmfoto: "wenn leute online kommen das da so invite text steht und man
+drauf drücken kann und sie so einlädt".
+
+**Folge:** Keine fremde Bibliothek nötig (Frage des Nutzers am selben Tag nach LibDataBroker und LibDeflate:
+Packen macht `C_EncodingUtil`, das Minimap-Symbol und das Addon-Fach sind eigen; D-03, D-04). Annahmen (nicht
+gefragt): an als Standard, auch für Freunde, keine Nachfrage vor dem Einladen.
+
+**Durchgesetzt durch:** `tests/test_online_invite.lua` (deutsche und englische Zeile, Felder nach dem Namen, andere
+Zeilen, sich selbst, geheime Zeile, Schalter, ohne Einladerecht, Leiter, schon in der Gruppe, Klick, fremde Links).

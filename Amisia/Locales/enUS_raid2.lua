@@ -1537,3 +1537,11 @@ L["Ziehen ändert die Größe des Fensters."] = "Drag to change the window's siz
 L["von %s, %s"] = "from %s, %s"
 L["{stern} {kreis} {diamant} {dreieck} {mond} {quadrat} {kreuz} {totenkopf} (auch {star} ... {skull}, {rt1} ... {rt8}) werden Zielmarkierungen; Namen aus dem Raid stehen in Klassenfarbe, deine Zeilen gelb."] = "{star} {circle} {diamond} {triangle} {moon} {square} {cross} {skull} (also the German words, {rt1} ... {rt8}) become raid marks; names from the raid show in their class colour, your lines in gold."
 L["Zu lang: höchstens %d Zeichen und %d Zeilen."] = "Too long: at most %d characters and %d lines."
+
+-- "[Einladen]" behind "ist jetzt online" (F-197, Raid/OnlineInvite.lua)
+L["Einladen##online"] = "Invite"
+L["Einladen kann nur der Gruppenleiter (im Raid auch Assistenten)."] = "Only the group leader can invite (in a raid assistants too)."
+L["%s ist schon in deiner Gruppe."] = "%s is already in your group."
+L["Eingeladen: %s"] = "Invited: %s"
+L["[Einladen] bei \"ist jetzt online\""] = "[Invite] on \"has come online\""
+L["Kommt jemand aus Gilde oder Freundesliste online, steht hinter der Zeile im Chat ein [Einladen]; ein Klick lädt ihn ein. Nicht, wenn er schon in deiner Gruppe ist oder du in der Gruppe nicht einladen darfst."] = "When someone from your guild or friend list comes online, an [Invite] follows the chat line; a click invites them. Not when they are already in your group or you may not invite in your group."

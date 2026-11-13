@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(chat): an [Invite] link behind "has come online" (F-197)
+
+    When a guild member or friend comes online, the chat line now ends with a blue [Invite]; a click invites them
+    to your group. It is left out for yourself, for someone already in your group and while you may not invite in
+    your group (only the leader, in a raid assistants too). Settings > Raid > Group invites switches it off.
+
 - feat(raid): a raid note for cooldowns and assignments, readable in a fight (F-196)
 
     Raid > Raid note: officers, the raid leader and assistants from the guild write a note (who uses which cooldown,

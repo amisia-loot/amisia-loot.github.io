@@ -39,6 +39,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-197 [Einladen] hinter "ist jetzt online"
+- Version: -
+- Status: geplant
+- Prüfung: Wenn ein Gildenmitglied oder Freund online kommt, dann steht hinter "<Name> ist jetzt online." ein blaues [Einladen]; ein Klick darauf lädt ihn ein und der Chat sagt "Eingeladen: <Name>".
+- Prüfung: Wenn du in einer Gruppe bist, aber nicht Gruppenleiter (im Raid auch nicht Assistent), dann steht kein [Einladen] da; für jemanden, der schon in deiner Gruppe ist, auch nicht.
+- Prüfung: Wenn du "[Einladen] bei "ist jetzt online"" (Einstellungen, Raid, Gruppeneinladungen) ausschaltest, dann steht die Zeile wieder wie vom Spiel.
+- Notiz: DECISIONS D-127. Kein gespeicherter Schlüssel außer der Einstellung, keine Nachricht; ohne Spec (kleine Erweiterung). Der Link ist ein Addon-Link des Clients (`|Haddon:...|h`), Blizzards SetItemRef wird nicht überschrieben.
+
 ### F-195 Minimap-Symbol mit Alt frei verschieben
 - Version: -
 - Status: geplant
