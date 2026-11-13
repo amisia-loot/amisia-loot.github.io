@@ -40,16 +40,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-192 Layer-Selbsttest: Kennung, Einladen, Annehmen und Verlassen prüfen
-- Version: -
-- Status: geplant
+- Version: 2.83.0
+- Status: gebaut
 - Prüfung: Wenn du in einer belebten Zone mit Namensplaketten (Taste V) `/amisia selbsttest layer` tippst, dann steht nach etwa 5 Sekunden im Selbsttest-Fenster der Bericht "Amisia-Layer-Prüfung"; unter "Layer: Namensplaketten" stehen die Kreaturen in Sicht und ihre Zonen-Kennungen, unter "Layer: Ergebnis" in der Zeile "Kennung je Zonenkopie" ein OK ("alle n Kreaturen ... dieselbe Zonen-Kennung") oder der Grund, warum nicht.
 - Prüfung: Wenn du dabei allein und nicht im Kampf bist, dann steht unter "Layer: Aufrufe ohne Tastendruck" für Einladen "erlaubt: der Server antwortet ..." und für Annehmen und Verlassen "nicht gesperrt", oder "vom Spiel gesperrt: ..." mit dem Namen der Funktion; die Chatzeile nennt alle drei kurz. Bitte den Bericht kopieren und schicken.
 - Prüfung: Wenn du nach einem Layer-Wechsel in einer Gruppe (F-185, F-191) einen NPC anzielst und den Test noch einmal startest, dann steht unter "Layer: diese Sitzung" "Layer-Wechsel ohne Zonenwechsel: 1, davon 1 in einer Gruppe" und im Ergebnis "Kennung folgt dem Layer: ja".
 - Notiz: Spec `docs/specs/2026-11-13-layer-fuer-alle.md`; DECISIONS D-124. Der Test lädt nur einen Namen ein, den niemand hat; in einer Gruppe ruft er Annehmen und Verlassen nicht auf. Nichts geht in den Chat, nichts wird gespeichert (Statistik und Verlauf leben in der Sitzung).
 
 ### F-191 Layer-Wechsel auch mit Spielern außerhalb der Gilde
-- Version: -
-- Status: geplant
+- Version: 2.83.0
+- Status: gebaut
 - Braucht: Gruppe
 - Prüfung: Wenn du allein im Fenster "Layer" (`/amisia layer`) "Im Kanal fragen" klickst, dann öffnet sich die Chatzeile mit "/1 inv layer" (Kanal und Text aus den Einstellungen, Layer); nach dem Abschicken steht im Fenster "Im Kanal gefragt: eine Minute lang nimmt Amisia die nächste Einladung an.", und die Einladung irgendeines Spielers nimmt Amisia von selbst an ("Einladung von ... angenommen (Layer-Wechsel).").
 - Prüfung: Wenn du "Auch Spielern außerhalb der Gilde helfen" einschaltest (Einstellungen, Gilde, Layer) und dir ein fremder Spieler "inv layer" flüstert oder es in einen Kanal schreibt, in dem du bist, dann fragt Amisia "<Name> (nicht in der Gilde) bittet im Chat um einen Layer-Wechsel. Einladen?"; nach "Einladen" ist er eingeladen. Ohne die Einstellung passiert nichts.
@@ -1262,8 +1262,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Ausrüstung und Welt
 
 ### F-193 Questgegenstände: eigener Abschnitt in den Einstellungen
-- Version: -
-- Status: geplant
+- Version: 2.83.0
+- Status: gebaut
 - Prüfung: Wenn du die Einstellungen öffnest (Reiter Dungeons & Raids) oder im Hauptfenster "aufräumen" suchst, dann gibt es den Abschnitt "Questgegenstände" mit dem Knopf "Fenster "Questgegenstände aufräumen" öffnen" (öffnet das Fenster) und den drei Schaltern; im Abschnitt Quests stehen sie nicht mehr, und was du dort eingestellt hattest, gilt weiter.
 - Prüfung: Wenn du im Fenster "Questgegenstände aufräumen" unten rechts auf "Einstellungen" klickst, dann öffnet das Hauptfenster den Abschnitt "Questgegenstände".
 - Notiz: DECISIONS D-123; erweitert F-173 und F-181. Kein neuer gespeicherter Schlüssel: die Schalter behalten `quests.itemTooltip`, `quests.itemNoAsk`, `quests.startPopup`. Ohne Spec (kleine Umstellung der Einstellungen).
