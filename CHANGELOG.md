@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(lineup): the planner's player list can be sorted by class (F-194)
+
+    Raid > Lineup, planner with the player list: the new check "by class" groups the guild or raid members by
+    class (classes by name, as in "All classes"), by name within a class, players without a known class last.
+    Off, the list is sorted by name as before. Like "online only" it holds until the next /reload.
+
 ## [v2.83.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.83.0) (2026-11-13)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.82.0...v2.83.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

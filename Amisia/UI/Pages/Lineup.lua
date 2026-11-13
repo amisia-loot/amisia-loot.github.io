@@ -74,7 +74,7 @@ local calPick             -- the id (else the index) of the event chosen in the 
 -- lower-case name meanwhile
 local pending
 -- the player list: shown instead of the two lists, its source ("raid" or "guild") and filters
-local grid = { on = false, src = "guild", online = true, class = "all", search = "" }
+local grid = { on = false, src = "guild", online = true, class = "all", search = "", byClass = false }
 local setPick             -- the template chosen in the view "Vorlagen" (its lower-case name)
 local exportText          -- the block of the view "export"
 
@@ -492,7 +492,8 @@ local function className(token)
     return type(names) == "table" and type(names[token]) == "string" and names[token] or token
 end
 
--- The players of the chosen source that pass the filters, by name: { name, low, class, online,
+-- The players of the chosen source that pass the filters, by name (with "nach Klasse", F-194: by the
+-- class's name first, players without a known class last): { name, low, class, online,
 -- i = the index on the night's list (nil: not on it) }.
 local function gridPlayers(list)
     local index = {}
@@ -517,7 +518,17 @@ local function gridPlayers(list)
             out[#out + 1] = p
         end
     end
-    table.sort(out, function(a, b) return ns.Fold(a.name) < ns.Fold(b.name) end)
+    for _, p in ipairs(out) do
+        p.key = ns.Fold(p.name)
+        p.classKey = p.class and ns.Fold(className(p.class)) or nil
+    end
+    table.sort(out, function(a, b)
+        if grid.byClass and a.classKey ~= b.classKey then
+            if not a.classKey or not b.classKey then return b.classKey == nil end
+            return a.classKey < b.classKey
+        end
+        return a.key < b.key
+    end)
     return out, classes
 end
 
@@ -1125,7 +1136,10 @@ local function buildGridAndSets(f, top, sideTop)
     P.srcRaid = W.Tab(P, L["Raid##Spielerliste"], function() grid.src = "raid" ns.Refresh() end)
     P.srcGuild = W.Tab(P, L["Gilde"], function() grid.src = "guild" ns.Refresh() end)
     P.online = W.TabCheck(P, L["nur online"], function() grid.online = not grid.online ns.Refresh() end)
-    for _, b in ipairs({ P.srcRaid, P.srcGuild, P.online }) do W.FitChip(b) end
+    -- F-194: the names grouped by class, by name within a class
+    P.byClass = W.TabCheck(P, L["nach Klasse"], function() grid.byClass = not grid.byClass ns.Refresh() end)
+    W.Tooltip(P.byClass, L["nach Klasse"], L["Sortiert die Spieler nach Klasse, innerhalb einer Klasse nach Namen. Aus: nur nach Namen."])
+    for _, b in ipairs({ P.srcRaid, P.srcGuild, P.online, P.byClass }) do W.FitChip(b) end
     P.classPick = W.Picker(P, 130, function(v)
         grid.class = v
         ns.Refresh()
@@ -1134,9 +1148,9 @@ local function buildGridAndSets(f, top, sideTop)
         grid.search = (text or ""):match("^%s*(.-)%s*$")
         ns.Refresh()
     end)
-    W.Row(P, { P.srcRaid, P.srcGuild, P.online }, T.TAB_GAP, T.LAYOUT.TEXT_X, sideTop + T.LAYOUT.COLHEAD_H - 1)
+    W.Row(P, { P.srcRaid, P.srcGuild, P.online, P.byClass }, T.TAB_GAP, T.LAYOUT.TEXT_X, sideTop + T.LAYOUT.COLHEAD_H - 1)
     W.Row(P, { P.classPick, P.search }, T.LAYOUT.ITEM_GAP, GRID_W - 130 - 140 - T.LAYOUT.ITEM_GAP, sideTop + T.LAYOUT.COLHEAD_H)
-    P.gridBar = { P.srcRaid, P.srcGuild, P.online, P.classPick, P.search }
+    P.gridBar = { P.srcRaid, P.srcGuild, P.online, P.byClass, P.classPick, P.search }
     f.gridList = P:List(GRID_ROWS, GRID_ROW_H, buildGridRow, fillGridRow,
         { top = sideTop + T.LAYOUT.COLHEAD_H - GRID_BAR_H, x = 0, width = GRID_W })
     P.gridEmpty = W.Text(P, T.FONT.hint, GRID_W - 12)
@@ -1690,6 +1704,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
                 P.srcRaid:SetOn(grid.src == "raid")
                 P.srcGuild:SetOn(grid.src == "guild")
                 P.online:SetOn(grid.online)
+                P.byClass:SetOn(grid.byClass)
                 local items = {}
                 for i, p in ipairs(players) do
                     local r = math.floor((i - 1) / GRID_COLS) + 1

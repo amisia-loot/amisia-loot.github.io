@@ -327,6 +327,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du mit Vulo Vultrox unten links "Zur Raider-Ansicht" wählst, dann fehlen beide Seiten wieder.
 - Notiz: DECISIONS D-92. Nur die eigenen Seiten: was andere Clients annehmen (Abgleich, Vergaben, Punkte), hängt weiter am Offiziersrang in der Gilde.
 
+### F-194 Raid-Aufstellung: Spielerliste nach Klasse sortieren
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du unter Aufstellung im Planer mit der Spielerliste (Quelle "Gilde" oder "Raid") "nach Klasse" anhakst, dann stehen die Spieler nach Klasse zusammen (Klassen nach ihrem Namen, wie in "Alle Klassen"), innerhalb einer Klasse nach Namen, Spieler ohne bekannte Klasse am Ende; ohne Haken wieder nur nach Namen.
+- Prüfung: Wenn "nach Klasse" an ist und du zusätzlich eine Klasse wählst, "nur online" umschaltest oder suchst, dann bleibt die Reihenfolge nach Klasse; nach /reload ist der Haken wieder aus.
+- Notiz: Erweitert F-161 (dessen fünf Prüfungen voll sind). Kein gespeicherter Schlüssel, keine Nachricht, keine Entscheidung nötig: der Haken gilt wie "nur online" bis zum /reload.
+
 ### F-161 Raid-Aufstellung: Vorlagen, aus dem Raid, Spielerliste, Leeren, Export
 - Version: 2.73.0
 - Status: gebaut

@@ -222,6 +222,36 @@ f.plan.classPick.onPick("all")
 f.plan.search:SetText("wind"); f.plan.search:GetScript("OnEnterPressed")(f.plan.search)
 assert(cell("Cora Wind-Tal") and not cell("Bob Eisherz"), "the search")
 f.plan.search:SetText(""); f.plan.search:GetScript("OnEnterPressed")(f.plan.search)
+-- F-194: "nach Klasse" groups the names by class (by the class's name), by name within a class
+local function shown()
+    local out = {}
+    for _, row in ipairs(f.gridList.rows) do
+        if row:IsShown() then
+            for _, b in ipairs(row.cells) do
+                if b:IsShown() and b.p then out[#out + 1] = b.p end
+            end
+        end
+    end
+    return out
+end
+local function cname(token)
+    local names = _G.LOCALIZED_CLASS_NAMES_MALE
+    return NS.Fold(type(names) == "table" and names[token] or token)
+end
+local byName0 = shown()
+for k = 2, #byName0 do assert(NS.Fold(byName0[k - 1].name) < NS.Fold(byName0[k].name), "by name without the check") end
+assert(not f.plan.byClass.on, "the check starts off")
+f.plan.byClass:Click()
+assert(f.plan.byClass.on, "the check is on")
+local grouped = shown()
+assert(#grouped == #byName0 and #grouped >= 4, "the same players")
+for k = 2, #grouped do
+    local a, b = grouped[k - 1], grouped[k]
+    local ca, cb = cname(a.class), cname(b.class)
+    assert(ca < cb or (ca == cb and NS.Fold(a.name) < NS.Fold(b.name)), "by class, then name: " .. a.name .. " / " .. b.name)
+end
+f.plan.byClass:Click()
+assert(shown()[1].name == byName0[1].name, "off: by name again")
 -- a click chooses the name (nothing saved yet), the click on a place puts it there
 cell("Bob Eisherz"):Click()
 assert(cell("Bob Eisherz").sel:IsShown() and NS.LineupNight(empty, false) == nil, "chosen, not on the list yet")
