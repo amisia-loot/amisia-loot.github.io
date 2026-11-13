@@ -1,6 +1,6 @@
 -- Amisia minimap button and addon compartment entry: left click opens the Amisia window, right click
--- a quick menu with the window's tabs (each opens its pages in the same menu), the settings and the
--- recording switch. Drag the button around the minimap;
+-- a quick menu with the window's tabs (each opens its pages in the same menu), the window "Layer"
+-- (Forever), the settings and the recording switch. Drag the button around the minimap;
 -- /amisia minimap hides or shows it.
 local ADDON, ns = ...
 local L = ns.L
@@ -21,10 +21,6 @@ end
 local function windowAfter(key)
     if key == "gear" and ns.Gear and ns.Gear.Available() and ns.ToggleGearFrame then
         return { L["Ausrüstungstabelle"], function() ns.ToggleGearFrame() end }
-    end
-    -- F-185: the window "Layer" after the map (Forever only, Gear/LayerWindow.lua)
-    if key == "map" and ns.LayerWindow then
-        return { L["Layer"], function() ns.LayerWindow.Toggle() end }
     end
     return nil
 end
@@ -60,6 +56,11 @@ function ns.MinimapMenuEntries(group)
             e[#e + 1] = { g.label .. " ...", function() openMenu(g.key) end, sub = g.key,
                 tipTitle = g.label, tip = table.concat(names, ", ") }
         end
+    end
+    -- F-185: the window "Layer" in the first level, its tooltip the layer now (Forever only, Gear/LayerWindow.lua)
+    if ns.LayerWindow then
+        e[#e + 1] = { L["Layer"], function() ns.LayerWindow.Toggle() end, tipTitle = L["Layer"],
+            tip = (ns.Layer and ns.Layer.TooltipLine()) or L["Dein Layer in dieser Zone und der Wechsel in der Gilde."] }
     end
     e[#e + 1] = { L["Einstellungen"], function() ns.ShowPage("settings") end }
     e[#e + 1] = { ns.IsEnabled() and L["Aufnahme pausieren"] or L["Aufnahme fortsetzen"], function() ns.SetEnabled(not ns.IsEnabled()) end }

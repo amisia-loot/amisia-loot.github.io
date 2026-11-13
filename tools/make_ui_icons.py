@@ -52,7 +52,7 @@ ICONS = {
     'members': 'users', 'calendar': 'calendar-days', 'bank': 'landmark', 'duels': 'swords', 'tools': 'wrench',
     'settings': 'settings', 'about': 'info', 'feedback': 'message-square',
     # the side windows
-    'win_talents': 'network', 'win_rolls': 'dice-5', 'win_softres': 'clipboard-list',
+    'win_talents': 'network', 'win_rolls': 'dice-5', 'win_softres': 'clipboard-list', 'win_layer': 'layers',
     # the professions page (D-82): the filter menu's button and the favourite star
     'prof_filter': 'filter', 'prof_star': 'star',
 }

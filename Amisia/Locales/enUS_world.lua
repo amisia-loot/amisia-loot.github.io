@@ -1093,6 +1093,7 @@ L["Landet ein Gegenstand in deinen Taschen, der eine Quest startet, die du weder
 L["Layer"] = true
 L["Layer %s"] = true
 L["Layer: %s"] = true
+L["Dein Layer in dieser Zone und der Wechsel in der Gilde."] = "Your layer in this zone and changing it within the guild."
 L["vor %d Std."] = "%d h ago"
 L["hier"] = "here"
 L["%s: GUID geheim"] = "%s: GUID secret"

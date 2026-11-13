@@ -136,10 +136,11 @@ assert(F.value:GetText() == "Layer A" and F.sub:GetText() == "Wald von Elwynn", 
 assert(F.seen[1]:GetText() == "Layer A · hier · gerade eben", F.seen[1]:GetText())
 NS.Dispatch("layer")
 assert(not F:IsShown(), "the command closes it again")
--- the minimap menu reaches it after the map, its tooltip names the layer
+-- the minimap menu has it in its first level (no longer under the map), its tooltip names the layer
 local found
-for _, e in ipairs(NS.MinimapMenuEntries("dungeons")) do if e[1] == "Layer" then found = e end end
-assert(found, "the quick menu has the window")
+for _, e in ipairs(NS.MinimapMenuEntries()) do if e[1] == "Layer" then found = e end end
+assert(found and not found.sub and found.tip == "Layer: Layer A", "the quick menu has the window: " .. tostring(found and found.tip))
+for _, e in ipairs(NS.MinimapMenuEntries("dungeons")) do assert(e[1] ~= "Layer", "not twice") end
 found[2]()
 assert(F:IsShown())
 assert(LY.TooltipLine() == "Layer: Layer A")

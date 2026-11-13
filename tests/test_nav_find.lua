@@ -174,7 +174,9 @@ end
 local shownGroups = {}
 for _, b in ipairs(F.tabOrder) do shownGroups[#shownGroups + 1] = b.key end
 assert(table.concat(groups, " ") == table.concat(shownGroups, " "), table.concat(groups, " ") .. " / " .. table.concat(shownGroups, " "))
-assert(table.concat(rest, "|") == "Einstellungen|Aufnahme pausieren", table.concat(rest, "|"))
+-- on Forever the window "Layer" stands in the first level (F-185)
+local wantRest = (NS.LayerWindow and "Layer|" or "") .. "Einstellungen|Aufnahme pausieren"
+assert(table.concat(rest, "|") == wantRest, table.concat(rest, "|"))
 local function sub(key)
     local out = {}
     for _, e in ipairs(NS.MinimapMenuEntries(key)) do out[#out + 1] = e[1] end

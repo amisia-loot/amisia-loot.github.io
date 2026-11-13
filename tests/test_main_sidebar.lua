@@ -119,6 +119,17 @@ STUB.officer = true
 NS.Set("ui.view", "officer")
 NS.ShowTab("guild")
 assert(navAll():match("^members calendar bank duels"), navAll())
+-- the window "Layer" at the end of the guild tab (F-185, Forever), lit while it is open
+assert(not NS.LayerWindow or navAll():match(" layer$"), navAll())
+if NS.LayerWindow then
+    local was = STUB.instance
+    STUB.instance = { name = "Elwynn Forest", type = "none", id = 0 }   -- the window is not there in an instance
+    row("win", "layer").button:Click()
+    assert(AmisiaLayerFrame:IsShown() and row("win", "layer").entry.on, "the row opens the window")
+    NS.LayerWindow.Hide()
+    assert(not row("win", "layer").entry.on, "and goes dark again")
+    STUB.instance = was
+end
 -- the raid tab in the order of a raid night (Export next to the archive), the officer windows under
 -- their pages (Aufstellung and Raid-Check need the guild rights the test lacks)
 NS.ShowTab("raid")

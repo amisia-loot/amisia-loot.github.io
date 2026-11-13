@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(layer): the layer window is easy to find (F-185)
+
+    The window "Layer" now has its own entry in the minimap quick menu (right-click; its tooltip names
+    your layer) instead of hiding under "Dungeons & Raids" after "Map", and its own row at the end of the
+    Guild tab in the Amisia window, next to its settings. "/amisia layer" still opens it too.
+
 ## [v2.80.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.80.0) (2026-11-13)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.79.0...v2.80.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

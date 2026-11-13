@@ -233,6 +233,7 @@ T.NAV_ICONS = {
     ["win:talents"] = own("win_talents"),
     ["win:rolls"] = own("win_rolls"),
     ["win:softres"] = own("win_softres"),
+    ["win:layer"] = own("win_layer"),
 }
 
 -- The symbol of each tab (D-73, D-81), the same gold line art as the side bar's.

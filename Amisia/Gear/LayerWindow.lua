@@ -5,9 +5,9 @@
 -- with the red button "Gilde fragen", a status line, the answers ("Name · Layer C" with the link
 -- "Einladung erbitten") and "Gruppe verlassen" once a swap group stands (Gear/LayerChange.lua). Movable, its
 -- place in settings.layerWindow, the x closes it; never shown in an instance (it closes on entering one).
--- Opened by /amisia layer and the minimap menu (after the page Karte). The chip: a small box "Layer B"
--- ("Layer ?"), movable (settings.layerChip), a click opens the window; hidden in instances. A plain
--- frame, nothing protected.
+-- Opened by /amisia layer, the minimap menu (its own entry) and its row in the side bar of the tab Gilde.
+-- The chip: a small box "Layer B" ("Layer ?"), movable (settings.layerChip), a click opens the window;
+-- hidden in instances. A plain frame, nothing protected.
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -60,7 +60,9 @@ end
 local function build()
     if F then return F end
     F = W.Window("AmisiaLayerFrame", S.W, S.TOP + S.BOTTOM, { title = L["Layer"], strata = "MEDIUM",
-        onDragStop = function(f) W.SaveWindowPlace(f, state("layerWindow")) end })
+        onDragStop = function(f) W.SaveWindowPlace(f, state("layerWindow")) end,
+        -- its row in the side bar of the tab Gilde lights while it is open (D-68)
+        onVisibility = function() if ns.UpdateSideTabs then ns.UpdateSideTabs() end end })
     F.value = W.Text(F, T.FONT.big, S.W - 2 * S.PAD)
     F.value:SetPoint("TOPLEFT", S.PAD, -S.TOP)
     F.sub = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD)

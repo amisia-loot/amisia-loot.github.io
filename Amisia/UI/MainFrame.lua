@@ -51,6 +51,11 @@ local SIDE_WINDOWS = {
       tip = L["Eine Soft-Reserve-Liste einfügen, prüfen und übernehmen."],
       visible = function() return ns.IsOfficerView() and ns.ToggleSoftResFrame ~= nil end,
       toggle = function() ns.ToggleSoftResFrame() end },
+    -- F-185: the window "Layer" (Forever only, Gear/LayerWindow.lua), at the end of the tab Gilde
+    { key = "layer", label = L["Layer"], group = "guild", frame = "AmisiaLayerFrame",
+      tip = L["Dein Layer in dieser Zone und der Wechsel in der Gilde."],
+      visible = function() return ns.LayerWindow ~= nil end,
+      toggle = function() ns.LayerWindow.Toggle() end },
 }
 
 -- settings.window: the place (point, rel, x, y), the dragged height (h, H_MIN to H_MAX; nil: HEIGHT)
@@ -1022,13 +1027,14 @@ local function buildTab(group)
     return b
 end
 
--- The tabs with a visible page or side window, left to right from TAB_X (the gear tab at the right
--- end), the open one chosen; the side bar's head shows the open tab. F.tabOrder: the shown tabs in order.
+-- The tabs with a visible page, left to right from TAB_X (the gear tab at the right end), the open one
+-- chosen; the side bar's head shows the open tab. F.tabOrder: the shown tabs in order. A side window alone
+-- keeps no tab (its click would open no page: the window "Layer" in a guild tab without pages).
 local function updateTabs(byGroup)
     local order, x = {}, M.TAB_X
     for _, g in ipairs(ns.PANEL_GROUPS) do
         local b = tabs[g.key]
-        local shown = #(byGroup[g.key] or {}) + #windowsOf(g.key) > 0
+        local shown = #(byGroup[g.key] or {}) > 0
         b:SetShown(shown)
         b:SetOn(g.key == openTab)
         if shown then

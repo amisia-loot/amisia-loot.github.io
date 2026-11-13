@@ -496,14 +496,15 @@ assert(talentMarks == " class:WARRIOR class:PALADIN class:HUNTER class:ROGUE cla
     .. " class:DRUID slot:1 slot:2 live reset import export", tostring(talentMarks))
 assert(table.concat(tabsOf, " | "):gsub(talentMarks, "", 1):gsub(" L%d+", ""):gsub(" %d+", "") == "planner gear raid dungeon pvp craft world rep"
     .. " | dungeons raidjournal quests map | professions overview camp favor | talents talents"
-    .. " | members calendar bank duels | settings gear bis dungeons prof raid guild amisia about feedback", table.concat(tabsOf, " | "))
+    .. " | members calendar bank duels" .. (NS.LayerWindow and " layer" or "")
+    .. " | settings gear bis dungeons prof raid guild amisia about feedback", table.concat(tabsOf, " | "))
 NS.Set("ui.view", "officer")
 NS.ShowPage("overview")
 -- (DKP/EPGP: the page Punkte for officers; the roll window and the soft-reserve import under their pages)
 assert(navAll() == "overview softres softres rolls rolls awards raidlog points stats raids export", navAll())
 NS.Set("ui.expert", true)
 NS.ShowTab("guild")
-assert(navAll() == "members calendar bank duels tools", navAll())
+assert(navAll() == "members calendar bank duels tools" .. (NS.LayerWindow and " layer" or ""), navAll())
 -- ShowTab opens a tab's last page
 NS.ShowPage("map")
 NS.ShowTab("raid"); assert(NS.CurrentPage() == "overview", NS.CurrentPage())
