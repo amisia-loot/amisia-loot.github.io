@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-186 Werkzeuge: eine Zeile je Scan, Klartext und nächster Schritt
-- Version: -
-- Status: geplant
+- Version: 2.81.0
+- Status: gebaut
 - Prüfung: Wenn du Gilde > Werkzeuge öffnest (Expertenmodus), dann stehen oben vier Zeilen Ausrüstung, Quests, NPCs und Sammler mit ihrem Stand in Worten (z. B. "Fertig: alles übernommen.", "Angehalten: 0 %, noch etwa 7 h 48 min"), ohne Nummern von IDs und ohne Dateinamen.
 - Prüfung: Wenn du in der Zeile Quests "Starten" klickst, dann zeigt sie "Läuft: x %, etwa ... übrig" mit einem Balken, der jede Sekunde weiterläuft, und rechts nur "Anhalten"; die "Starten" der anderen Zeilen sind grau (Tooltip "Es läuft schon ein Scan"), bis du "Anhalten" klickst.
 - Prüfung: Wenn ein Scan in dieser Sitzung etwas gefunden hat und nichts mehr läuft, dann steht darunter "Nächster Schritt: n neue Einträge seit dem Einloggen: ausloggen oder /reload, damit sie gespeichert werden."; gehst du während eines Scans in einen Dungeon, sagt die Zeile stattdessen, dass er draußen in seiner Zeile fortgesetzt wird.
