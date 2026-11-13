@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-189 Drop-Austausch sichtbar: wer teilt, Jetzt abgleichen
-- Version: -
-- Status: geplant
+- Version: 2.82.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn du Gilde > Werkzeuge öffnest (Expertenmodus), dann steht unter "Drop-Daten" nach den Kills "Angekündigt vor ... Min." (oder "Noch nicht angekündigt") und "zuletzt Kills empfangen ..." statt "letzter Austausch".
 - Prüfung: Wenn ein zweites Gildenmitglied mit Amisia nach dir einloggt oder "Jetzt abgleichen" klickt, dann steht es nach wenigen Minuten unter "Wer teilt (1)" mit seinem Namen in Klassenfarbe, "vor ... gehört, n Kills" und dem Vergleich ("gleich", "hat mehr: wartet", "n Kills geholt" ...); "Zur Liste" zeigt wieder die Bosse.
@@ -50,8 +50,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-11-13-drop-austausch.md`; DECISIONS D-121. Die Liste lebt nur in der Sitzung und wird nie gespeichert oder gesendet; das Protokoll ist unverändert (2.81.0-Clients tauschen weiter). Wer vor dir online war und nichts Neues hat, kündigt erst nach einem neuen eigenen Kill wieder an und fehlt bis dahin in der Liste.
 
 ### F-188 Alles Fehlende scannen: die Scans nacheinander, nach Instanz und Kampf von selbst weiter
-- Version: -
-- Status: geplant
+- Version: 2.82.0
+- Status: gebaut
 - Prüfung: Wenn du Gilde > Werkzeuge öffnest (Expertenmodus) und Scans offen sind, dann steht ganz oben "Noch offen: Ausrüstung, Quests, NPCs." (oder was offen ist) mit dem Link "Alles Fehlende scannen"; ist nichts offen, steht dort "Nichts offen." ohne Link.
 - Prüfung: Wenn du "Alles Fehlende scannen" klickst (oder `/amisia scan all`), dann steht oben "Alles Fehlende: Ausrüstung läuft, danach Quests, NPCs." mit "Anhalten", und nach der Ausrüstung startet der Quest-Scan von selbst, danach Phase A der NPCs (nie die Suche nach neuen NPCs).
 - Prüfung: Wenn du während der Reihe in einen Dungeon gehst, dann steht "Nächster Schritt: Alles Fehlende geht außerhalb der Instanz von selbst weiter.", und etwa 5 Sekunden nach dem Rausgehen läuft der Scan von selbst weiter; nach einem Kampf ebenso.
@@ -1585,8 +1585,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Sammeln und Daten
 
 ### F-190 Der N100 übernimmt den Spielstand von selbst
-- Version: -
-- Status: geplant
+- Version: 2.82.0
+- Status: gebaut
 - Prüfung: Wenn du ausloggst und danach 5 Minuten Ruhe, bis zu 15 Minuten Takt und (außer beim ersten Mal) 6 Stunden seit dem letzten Lauf vergangen sind, dann steht in `~/addons/_auto/amisia-data.txt` ein Block "Spielstand vom <Zeit>: übernommen auf Branch auto/sv-<Tag> (...), Prüfung grün." mit "Neu gegenüber main: ... Items, ... Kills ..." und den geänderten Dateien.
 - Prüfung: Wenn der Spielstand die Prüfung rot macht, dann sagt der Block "Prüfung ROT:" mit den ersten fehlschlagenden Zeilen, und der Branch `auto/sv-<Tag>` bleibt.
 - Prüfung: Wenn der Spielstand nichts Neues bringt, dann steht dort nur "Spielstand vom ...: nichts Neues gegenüber main." und es entsteht kein Branch.
@@ -1626,8 +1626,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Seite
 
 ### F-187 Drops ohne Kopieren auf die Website
-- Version: -
-- Status: geplant
+- Version: 2.82.0
+- Status: gebaut
 - Prüfung: Wenn nach einem Datenbau (`python3 tools/build.py data`) und dem Push der Reiter Loot Tables geöffnet wird, dann zeigt er die Kills deines Addons (eigene und in der Gilde gehörte), ohne dass du "Drops für die Website" kopiert und eingefügt hast.
 - Prüfung: Wenn du danach denselben Text "Drops für die Website" im Reiter Import einfügst, dann sagt das Feld "(0 new, n already on the site from the data build)", und nach "Add the kills" bleiben die Zahlen in Loot Tables gleich.
 - Notiz: Spec `docs/specs/2026-11-13-drops-website.md`; DECISIONS D-119. Live mit dem Push eines Datenbaus, nicht mit einem Addon-Release. Die Datei `Amisia-Website/data/drops-forever.js` ist öffentlich und trägt keine Namen von Spielern, Gilde oder Realm.
