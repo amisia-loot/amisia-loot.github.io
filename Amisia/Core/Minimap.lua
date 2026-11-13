@@ -1,7 +1,9 @@
 -- Amisia minimap button and addon compartment entry: left click opens the Amisia window, right click
 -- a quick menu with the window's tabs (each opens its pages in the same menu), the window "Layer"
--- (Forever), the settings and the recording switch. Drag the button around the minimap;
--- /amisia minimap hides or shows it.
+-- (Forever), the settings and the recording switch. Drag the button around the minimap; Alt + drag
+-- places it anywhere on the screen (F-195, D-125: settings.minimap.x/y, the centre in the button's own
+-- scale from the screen's bottom left; a plain drag puts it back on the edge); /amisia minimap hides
+-- or shows it.
 local ADDON, ns = ...
 local L = ns.L
 
@@ -13,6 +15,8 @@ local function settings()
     AmisiaDB.settings.minimap = AmisiaDB.settings.minimap or {}
     local m = AmisiaDB.settings.minimap
     m.angle = tonumber(m.angle) or DEFAULT_ANGLE
+    -- a free place only as a pair of numbers
+    if type(m.x) ~= "number" or type(m.y) ~= "number" or m.x ~= m.x or m.y ~= m.y then m.x, m.y = nil, nil end
     return m
 end
 
@@ -92,14 +96,21 @@ local function tooltip(owner, anchor)
     GameTooltip:AddDoubleLine(L["Linksklick"], L["Amisia-Fenster"], 1, 1, 1, 0.8, 0.8, 0.8)
     GameTooltip:AddDoubleLine(L["Rechtsklick"], L["Schnellmenü"], 1, 1, 1, 0.8, 0.8, 0.8)
     if owner == button then
-        GameTooltip:AddDoubleLine(L["Ziehen"], L["Verschieben"], 1, 1, 1, 0.8, 0.8, 0.8)
+        GameTooltip:AddDoubleLine(L["Ziehen"], L["Am Rand verschieben"], 1, 1, 1, 0.8, 0.8, 0.8)
+        GameTooltip:AddDoubleLine(L["Alt + Ziehen"], L["Frei verschieben"], 1, 1, 1, 0.8, 0.8, 0.8)
     end
     GameTooltip:Show()
 end
 
 local function place()
     if not button then return end
-    local angle = math.rad(settings().angle)
+    local m = settings()
+    if m.x then
+        button:ClearAllPoints()
+        button:SetPoint("CENTER", UIParent, "BOTTOMLEFT", m.x, m.y)
+        return
+    end
+    local angle = math.rad(m.angle)
     local radius = (Minimap:GetWidth() or 140) / 2 + 5
     button:ClearAllPoints()
     button:SetPoint("CENTER", Minimap, "CENTER", math.cos(angle) * radius, math.sin(angle) * radius)
@@ -111,10 +122,37 @@ local function follow()
     if not mx then return end
     local cx, cy = GetCursorPosition()
     local scale = Minimap:GetEffectiveScale() or 1
-    settings().angle = math.deg(math.atan2(cy / scale - my, cx / scale - mx)) % 360
+    local m = settings()
+    m.x, m.y = nil, nil
+    m.angle = math.deg(math.atan2(cy / scale - my, cx / scale - mx)) % 360
     place()
 end
 follow = ns.Perf.Wrap("OnUpdate Minimap drag", follow)   -- /amisia leistung (F-184)
+
+-- With Alt held at the drag's start the button follows the cursor freely; kept on the screen.
+local function followFree()
+    if not button then return end
+    local cx, cy = GetCursorPosition()
+    local scale = button:GetEffectiveScale() or 1
+    if scale <= 0 then scale = 1 end
+    local w, h = (UIParent:GetWidth() or 0) * (UIParent:GetEffectiveScale() or 1) / scale,
+        (UIParent:GetHeight() or 0) * (UIParent:GetEffectiveScale() or 1) / scale
+    local half = (button:GetWidth() or 31) / 2
+    local x, y = cx / scale, cy / scale
+    if w > 2 * half then x = math.min(math.max(x, half), w - half) end
+    if h > 2 * half then y = math.min(math.max(y, half), h - half) end
+    local m = settings()
+    m.x, m.y = math.floor(x + 0.5), math.floor(y + 0.5)
+    place()
+end
+followFree = ns.Perf.Wrap("OnUpdate Minimap drag", followFree)
+
+-- Back to the minimap's edge at its last angle (the reset of the window positions, D-125).
+function ns.ResetMinimapPosition()
+    local m = AmisiaDB and AmisiaDB.settings and AmisiaDB.settings.minimap
+    if m then m.x, m.y = nil, nil end
+    place()
+end
 
 local function build()
     if button or not Minimap then return end
@@ -148,7 +186,7 @@ local function build()
     button:SetScript("OnLeave", function() GameTooltip:Hide() end)
     button:SetScript("OnDragStart", function(self)
         GameTooltip:Hide()
-        self:SetScript("OnUpdate", follow)
+        self:SetScript("OnUpdate", IsAltKeyDown() and followFree or follow)
     end)
     button:SetScript("OnDragStop", function(self) self:SetScript("OnUpdate", nil) end)
 

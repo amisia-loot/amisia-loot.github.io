@@ -40,6 +40,36 @@ assert(math.abs(AmisiaDB.settings.minimap.angle - 90) < 1e-6, AmisiaDB.settings.
 b.scripts.OnDragStop(b)
 assert(not b.scripts.OnUpdate)
 
+-- F-195: Alt + drag puts it anywhere (its centre at the cursor, kept on the screen); a plain drag brings
+-- it back to the edge; the reset of the positions too
+STUB.alt = true
+STUB.cursor = { 300, 250 }
+b.scripts.OnDragStart(b)
+STUB.alt = false
+b.scripts.OnUpdate(b)
+b.scripts.OnDragStop(b)
+local m = AmisiaDB.settings.minimap
+assert(m.x == 300 and m.y == 250, tostring(m.x) .. "," .. tostring(m.y))
+local p1, rel, p2, px, py = b:GetPoint(1)
+assert(p1 == "CENTER" and rel == UIParent and p2 == "BOTTOMLEFT" and px == 300 and py == 250, "free place")
+STUB.alt = true
+STUB.cursor = { -50, -50 }
+b.scripts.OnDragStart(b); b.scripts.OnUpdate(b); b.scripts.OnDragStop(b)
+STUB.alt = false
+assert(m.x >= 15 and m.y >= 15, "kept on the screen: " .. m.x .. "," .. m.y)
+NS.ApplySettings(AmisiaDB)
+assert(type(AmisiaDB.settings.minimap.x) == "number", "the free place survives the settings check")
+STUB.cursor = { 1000, 700 }
+b.scripts.OnDragStart(b); b.scripts.OnUpdate(b); b.scripts.OnDragStop(b)
+m = AmisiaDB.settings.minimap
+assert(m.x == nil and math.abs(m.angle - 90) < 1e-6, "a plain drag: back on the edge")
+STUB.alt = true
+STUB.cursor = { 400, 400 }
+b.scripts.OnDragStart(b); b.scripts.OnUpdate(b); b.scripts.OnDragStop(b)
+STUB.alt = false
+NS.ResetPositions()
+assert(AmisiaDB.settings.minimap.x == nil, "the reset puts it on the edge")
+
 -- hide and show by command; the choice is kept
 SlashCmdList.AMISIA("minimap")
 assert(not b:IsShown() and NS.Get("ui.minimap") == false)

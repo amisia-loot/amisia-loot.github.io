@@ -169,7 +169,9 @@ L["Amisia-Fenster"] = "Amisia window"
 L["Rechtsklick"] = "Right click"
 L["Schnellmenü"] = "Quick menu"
 L["Ziehen"] = "Drag"
-L["Verschieben"] = "Move"
+L["Am Rand verschieben"] = "Move along the edge"
+L["Alt + Ziehen"] = "Alt + drag"
+L["Frei verschieben"] = "Move freely"
 L["Minimap-Button ein- oder ausblenden"] = "show or hide the minimap button"
 L["Minimap-Button eingeblendet."] = "Minimap button shown."
 L["Minimap-Button ausgeblendet. /amisia minimap holt ihn zurück."] = "Minimap button hidden. /amisia minimap brings it back."
@@ -520,7 +522,7 @@ L["Schreibt jede Sync-Nachricht in den Chat. Nur zur Fehlersuche."] = "Writes ev
 L["So viele Raids bleiben gespeichert, die ältesten gehen zuerst. In der Offiziersansicht bleibt ein Raid, den die Website noch nicht hat (bis zu 200 Raids)."] = "This many raids stay saved, the oldest go first. In the officer view a raid the site does not have yet stays (up to 200 raids)."
 -- Core/Registry.lua
 L["Größe des Amisia-Fensters in Prozent."] = "Size of the Amisia window in percent."
-L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner, Raid-Kalender, Lauf-Zeiten, Dungeon-Leiste und die Item-Anzeige an ihren Standardplatz zurück."] = "Resets the main window, the gear table, the roll window, the talent calculator, the raid calendar, the run times, the dungeon bar and the item display to their default places."
+L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner, Raid-Kalender, Lauf-Zeiten, Dungeon-Leiste und die Item-Anzeige an ihren Standardplatz zurück, das Minimap-Symbol an den Rand der Minimap."] = "Resets the main window, the gear table, the roll window, the talent calculator, the raid calendar, the run times, the dungeon bar and the item display to their default places, the minimap button back to the minimap's edge."
 -- Core/Version.lua
 L["Ein Hinweis im Chat, wenn jemand in Gilde oder Gruppe eine neuere Amisia-Version hat."] = "A note in the chat when someone in your guild or group has a newer Amisia version."
 

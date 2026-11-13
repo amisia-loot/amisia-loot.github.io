@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(minimap): Alt + drag places the minimap button anywhere on the screen (F-195)
+
+    Dragging the Amisia button still moves it along the minimap's edge. Hold Alt when you start dragging and it
+    follows the cursor across the whole screen and stays where you drop it, also after /reload. A plain drag puts it
+    back on the edge, and so does "Reset window position" in the settings.
+
 - feat(lineup): the planner's player list can be sorted by class (F-194)
 
     Raid > Lineup, planner with the player list: the new check "by class" groups the guild or raid members by

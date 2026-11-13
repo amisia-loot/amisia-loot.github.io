@@ -3309,3 +3309,22 @@ verbietet).
 **Durchgesetzt durch:** `tests/test_layer_others.lua` (aus: nichts; Frage, Abstand, Zonenkanal, Grenzen, Kanal-Bitte,
 ohne Gilde, Spur), `tests/test_selftest_layer.lua` (Bericht, Urteile, drei Aufrufe, gesperrt, Gruppe, Kampf, keine
 Funktionen, nichts gesendet), `tests/test_layer_chat.lua` (ohne die Einstellung bleiben Fremde und Kanäle ungelesen).
+
+## D-125 Minimap-Symbol: Ziehen am Rand, Alt + Ziehen frei
+
+**Datum:** 2026-11-13
+**Entscheidung:** Das Amisia-Symbol an der Minimap hat zwei Arten zu ziehen (F-195). Ohne Taste wandert es wie
+bisher am Rand der Minimap (`settings.minimap.angle`). Hält man beim Beginn des Ziehens Alt, folgt es der Maus
+über den ganzen Bildschirm und bleibt beim Loslassen dort (`settings.minimap.x`/`y`: die Mitte, von unten links
+gemessen, im Maßstab des Symbols; nur beide Zahlen zusammen, sonst gilt der Rand). Es bleibt ganz auf dem
+Bildschirm. Ein Ziehen ohne Alt setzt es zurück an den Rand, ebenso "Fensterposition zurücksetzen"
+(`ns.ResetMinimapPosition`). Das Symbol bleibt ein Kind der Minimap (blendet sich mit ihr aus).
+
+**Grund:** Nutzer 2026-11-13: "das minimap button soll mit alt + maustaste freiverschiebbar sein".
+
+**Folge:** Der Tooltip nennt "Ziehen: Am Rand verschieben" und "Alt + Ziehen: Frei verschieben". Annahmen (nicht
+gefragt): Alt zählt nur beim Beginn des Ziehens; frei heißt überall auf dem Bildschirm, nicht nur nahe der
+Minimap; kein eigener Schalter in den Einstellungen.
+
+**Durchgesetzt durch:** `tests/test_minimap.lua` (freie Stelle unter dem Mauszeiger, auf dem Bildschirm gehalten,
+übersteht die Prüfung der Einstellungen, ohne Alt zurück an den Rand, Zurücksetzen).

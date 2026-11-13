@@ -39,6 +39,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-195 Minimap-Symbol mit Alt frei verschieben
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du die Alt-Taste hältst und das Amisia-Symbol an der Minimap mit der linken Maustaste ziehst, dann folgt es der Maus über den ganzen Bildschirm und bleibt dort stehen, wo du loslässt, auch nach `/reload`; der Tooltip nennt "Alt + Ziehen: Frei verschieben".
+- Prüfung: Wenn du es danach ohne Alt ziehst, dann sitzt es wieder am Rand der Minimap und wandert an ihm entlang; "Fensterposition zurücksetzen" (Einstellungen, Allgemein, Oberfläche) setzt es ebenfalls an den Rand.
+- Notiz: DECISIONS D-125; erweitert F-004. Gespeichert in `settings.minimap.x`/`y`; ohne Spec (kleine Erweiterung).
+
 ### F-192 Layer-Selbsttest: Kennung, Einladen, Annehmen und Verlassen prüfen
 - Version: 2.83.0
 - Status: gebaut
