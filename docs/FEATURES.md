@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-185 Layer erkennen und in der Gilde wechseln
-- Version: -
-- Status: geplant
+- Version: 2.80.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn du in einer Zone zwei verschiedene NPCs ins Ziel nimmst und `/amisia layer` tippst, dann zeigt das Fenster "Layer" groß "Layer A" (oder einen anderen Buchstaben) und darunter "Layer A · hier · gerade eben"; mit "Layer-Chip zeigen" (Einstellungen, Gilde, Layer) steht zusätzlich ein kleiner Kasten "Layer A" auf dem Bildschirm.
 - Prüfung: Wenn ein zweites Gildenmitglied mit Amisia in derselben Zone auf einem anderen Layer ist (es hat auch zwei NPCs im Ziel gehabt) und du allein "Gilde fragen" klickst, dann steht nach ein paar Sekunden "<Name> · Layer B" mit "Einladung erbitten"; ein Mitglied auf deinem Layer antwortet nicht.
