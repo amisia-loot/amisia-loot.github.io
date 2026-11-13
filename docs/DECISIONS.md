@@ -3328,3 +3328,40 @@ Minimap; kein eigener Schalter in den Einstellungen.
 
 **Durchgesetzt durch:** `tests/test_minimap.lua` (freie Stelle unter dem Mauszeiger, auf dem Bildschirm gehalten,
 übersteht die Prüfung der Einstellungen, ohne Alt zurück an den Rand, Zurücksetzen).
+
+## D-126 Raid-Notiz: Offiziere und Raidleitung aus der Gilde senden, alle sehen sie, auch im Kampf
+
+**Datum:** 2026-11-13
+**Entscheidung:** Spec `docs/specs/2026-11-13-raid-notiz.md` (F-196). Eine Raid-Notiz für Cooldowns und
+Einteilungen auf der Seite Raid > Raid-Notiz (alle sehen sie) und im Fenster "Raid-Notiz".
+- **Senden** dürfen Offiziere (Rang-Flag 22) sowie Raidleiter und Assistenten des eigenen Raids, solange sie
+  Gildenmitglieder sind (Datenblöcke nimmt Amisia nur aus der Gilde, D-12); geprüft beim Empfänger mit seiner
+  eigenen Raidliste. Nur im eigenen Raid, nie im Kampf oder in der Kampfsperre, eine Notiz je 10 s.
+- **Weg:** die erste Sendung als Blob `RN` in den Raid; danach kündigt der Absender sie an (`NV`, alle 240 s, bald
+  nach einem Beitritt), wer sie nicht hat, fragt (`NQ`) und bekommt sie geflüstert. Ein ungefragter Blob im
+  Flüstern wird verworfen; der Text ganz geprüft (4000 Bytes, 120 Zeilen, keine Steuerzeichen); eine Notiz älter als
+  12 Stunden (oder mehr als 5 Minuten voraus) wird weder angekündigt noch angenommen. Ein zu langer Text wird nicht
+  gekürzt, sondern nicht gesendet.
+- **Anzeige:** der fremde Text wird entschärft (jedes `|` verdoppelt), erst danach setzt Amisia Zielmarkierungen
+  (`{stern}`, `{star}`, `{rt1}` ...), Klassenfarben für Namen aus dem Raid (ein Vorname nur, wenn ihn genau einer
+  trägt; Wortgrenzen zählen Umlaute als Buchstaben) und Gold für die Zeilen mit dem eigenen Namen. Keine Zauber-
+  oder Gegenstandssymbole, keine Links; auch auf der Seite steht ein empfangener Text mit seinen Zeichen, nie als Code.
+- **Fenster:** kein geschützter Rahmen; öffnen, schließen und scrollen auch im Kampf, verschieben und Größe
+  ändern danach. Ein Schloss sperrt Stelle und Größe (gesperrt gehen Klicks durch). Escape schließt es nicht.
+  Eine neue Notiz öffnet es (abschaltbar), im Kampf erst danach.
+- **Daten:** `AmisiaDB.raidNote` (Vorlagen bis 30, die aktuelle Notiz, der Entwurf, die eigene Notiz) und
+  `settings.raidNoteWindow`; Einstellungsabschnitt `raidnote`.
+
+**Grund:** Nutzer 2026-11-13: "eine notiz machen wie bei methodraid cool für cds und einteilungen die man infight
+öffnen kann und auf eine bestimmte posi machen kann"; Antworten zur Spec: Offiziere + Raidleiter/Assist,
+Vorlagen ja (30), Fenster öffnet sich selbst (abschaltbar), eigene Notiz gleich mit bauen; "Passt, bauen".
+
+**Folge:** Keine Timer und keine Ansagen im Kampf (kein Boss-Mod). Ein Gast-Raidleiter außerhalb der Gilde kann
+nicht senden; die Seite sagt es. Wer eine Notiz gesendet hat, kündigt sie an; verlässt er den Raid, bekommen
+Nachzügler sie nicht mehr (Annahme, nicht gefragt). Fremde Notiz-Formate werden nicht eingelesen (D-03, D-04).
+
+**Durchgesetzt durch:** `tests/test_raidnote.lua` (Anzeige, Entschärfen, Namen, eigene Zeilen, Grenzen, Vorlagen,
+eigene Notiz, kaputte Daten, Rechte, Fenster mit Schloss, Kampf und Zurücksetzen, Seite nur lesbar, Minimap-Menü),
+`tests/test_raidnote_share.lua` (Offizier, Assistent, Raider ohne Rang, Gast außerhalb der Gilde, Nachzügler über
+NV/NQ, keine zweite Frage, neuere Notiz ersetzt, gefälschte, ungefragte und unsaubere Notiz verworfen, Kampf),
+`tools/tests/test_contracts.py` (Nachrichtenarten, Blob-Art, Schlüssel, Abschnitt).

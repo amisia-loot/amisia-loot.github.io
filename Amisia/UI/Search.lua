@@ -261,6 +261,7 @@ Search.PAGE_WORDS = {
     settings = "optionen options config einstellungen settings",   -- l10n-ok: search words
     about = "hilfe help befehle commands version",   -- l10n-ok: search words
     feedback = "bug fehler wunsch melden report",   -- l10n-ok: search words
+    raidnote = "notiz note cooldowns cds einteilung assignments",   -- l10n-ok: search words
 }
 Search.SECTION_WORDS = {
     points = "dkp epgp punkte points",   -- l10n-ok: search words

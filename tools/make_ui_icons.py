@@ -43,7 +43,7 @@ ICONS = {
     # Raid
     'overview': 'layout-dashboard', 'lineup': 'list-ordered', 'raidcheck': 'clipboard-check', 'softres': 'bookmark',
     'rolls': 'dices', 'awards': 'gift', 'raidlog': 'scroll-text', 'points': 'coins', 'stats': 'chart-column',
-    'raids': 'archive', 'export': 'share-2',
+    'raids': 'archive', 'export': 'share-2', 'raidnote': 'notebook-pen',
     # Ausrüstung, Berufe, Talente
     'planner': 'shirt', 'gear': 'shield-half', 'professions': 'hammer', 'scrolls': 'scroll', 'talents': 'sparkles',
     # Dungeons & Raids

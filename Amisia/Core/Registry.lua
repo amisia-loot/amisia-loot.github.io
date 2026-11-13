@@ -562,7 +562,7 @@ ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, group = "
     { key = "ui.unitProfs", forever = true, type = "toggle", label = L["Berufe im Spieler-Tooltip"], default = true,
       tip = L["Eine Reihe Berufssymbole im Tooltip deiner Charaktere und der Gildenmitglieder, deren Berufe Amisia kennt (Rezeptaustausch, Gildennotiz). Nichts wird dafür gesendet."] },
     { key = "ui.resetPosition", type = "button", label = L["Fensterposition zurücksetzen"],
-      run = function() if ns.ResetPositions then ns.ResetPositions() end end, tip = L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner, Raid-Kalender, Lauf-Zeiten, Dungeon-Leiste und die Item-Anzeige an ihren Standardplatz zurück, das Minimap-Symbol an den Rand der Minimap."] },
+      run = function() if ns.ResetPositions then ns.ResetPositions() end end, tip = L["Setzt Hauptfenster, Ausrüstungstabelle, Würfel-Fenster, Talentrechner, Raid-Kalender, Lauf-Zeiten, Dungeon-Leiste, Raid-Notiz und die Item-Anzeige an ihren Standardplatz zurück, das Minimap-Symbol an den Rand der Minimap."] },
     { key = "ui.view", type = "choice", label = L["Ansicht"], default = "auto",
       values = { { "auto", L["Automatisch"] }, { "officer", L["Offizier"] }, { "raider", "Raider" } },
       available = function() return ns.MayOfficerView() end,

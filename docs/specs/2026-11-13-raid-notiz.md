@@ -90,7 +90,9 @@ wenn niemand mehr im Bosskampf in den Discord schauen muss, um seine Aufgabe zu 
 - Fremde Farbcodes, Texturen und Links werden entschärft (jedes `|` wird `||`), erst danach setzt Amisia
   die eigenen Zielmarkierungen und Klassenfarben ein.
 - Fluten: eine Notiz je Absender höchstens alle 10 s, Deckel 4000 Zeichen, Blob höchstens 30 Teile; Ankündigung
-  alle 240 s, Nachfrage höchstens alle 15 s je Absender.
+  alle 240 s, Nachfrage höchstens alle 5 s je Notiz, eine Antwort je Fragendem und Notiz alle 30 s. Eine Notiz,
+  die älter als 12 Stunden ist (oder mehr als 5 Minuten in der Zukunft liegt), wird weder angekündigt noch
+  angenommen: die Notiz der letzten Woche kommt nicht wieder.
 
 ## Daten
 

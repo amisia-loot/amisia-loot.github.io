@@ -206,6 +206,7 @@ T.NAV_ICONS = {
     lineup = own("lineup"),
     raidcheck = own("raidcheck"),
     softres = own("softres"),
+    raidnote = own("raidnote"),
     rolls = own("rolls"),
     awards = own("awards"),
     raidlog = own("raidlog"),
@@ -488,6 +489,16 @@ T.RUNTIMER = { W = 300, PAD = 14, TOP = 30, COL_W = { 84, 80, 108 }, LABEL_H = 1
 -- for the link "Einstellungen".
 T.QUESTITEMS = { W = 460, PAD = 12, TOP = 30, HEAD_H = 24, LIST_GAP = 6, ROWS = 10, ROW_H = 34, ICON = 24, ICON_X = 4,
     TEXT_X = 34, LINK_W = 70, SCROLL = 16, BOTTOM_H = 30, SET_W = 100 }
+
+-- The window "Raid-Notiz" (F-196, Raid/RaidNoteWindow.lua, AmisiaRaidNote): W x H at first, EDGE_X from the
+-- screen's right edge; sized by the grip (GRIP square) between MIN_W x MIN_H and MAX_W x MAX_H; the line
+-- "von ..." TOP under the window's top, FROM_H high, the note under it, PAD from the edges and BAR room
+-- for its scroll bar; the lock LOCK square, LOCK_GAP left of the close button. The page "Raid-Notiz"
+-- (UI/Pages/RaidNote.lua): the note's field EDIT_H high, the own note's OWN_H, GAP between the parts;
+-- the template picker SET_W, the name field NAME_W, the counter COUNT_W.
+T.RAIDNOTE = { W = 300, H = 220, EDGE_X = 220, MIN_W = 180, MIN_H = 90, MAX_W = 900, MAX_H = 800, GRIP = 16,
+    TOP = 24, FROM_H = 16, PAD = 10, BAR = 10, LOCK = 16, LOCK_GAP = 2,
+    EDIT_H = 196, OWN_H = 64, GAP = 6, SET_W = 150, NAME_W = 120, COUNT_W = 140 }
 
 -- The window of an item that starts a quest (F-181, Gear/QuestStart.lua, AmisiaQuestStart): W wide; the
 -- item's name in the title; TOP under the window's top the item's icon ICON square in the middle, in

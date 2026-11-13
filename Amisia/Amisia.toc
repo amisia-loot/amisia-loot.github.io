@@ -43,6 +43,7 @@ Raid\RollFrame.lua
 Raid\AwardDialog.lua
 Raid\SoftRes.lua
 Raid\SoftResShare.lua
+Raid\RaidNote.lua
 Raid\LootAnnounce.lua
 Raid\RaidLog.lua
 Raid\Bench.lua
@@ -111,6 +112,7 @@ Gear\Enchants.lua [AllowLoadGameType camelot]
 Raid\Need.lua
 Raid\LootRules.lua
 Raid\RollWindow.lua
+Raid\RaidNoteWindow.lua
 Raid\RollWatch.lua
 Raid\Handover.lua [AllowLoadGameType camelot]
 Raid\Calendar.lua
@@ -151,6 +153,7 @@ UI\Pages\RaidCheck.lua
 UI\Pages\RaidLogRolls.lua
 UI\Pages\RaidLog.lua
 UI\Pages\Rolls.lua
+UI\Pages\RaidNote.lua
 UI\Pages\Awards.lua
 UI\Pages\Stats.lua
 UI\Pages\Points.lua

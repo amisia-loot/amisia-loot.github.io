@@ -484,7 +484,7 @@ end
 assert(MF.sideTabs == nil and MF.clampInsets == nil, "nothing hangs out of the frame")
 NS.Set("ui.view", "raider")
 NS.ShowPage("overview")
-assert(navAll() == "overview softres awards raidlog stats", navAll())
+assert(navAll() == "overview softres raidnote awards raidlog stats", navAll())
 assert(MF.navHead.name:GetText() == "Raid" and MF.navHead.icon:IsShown() and MF.navHead.name.font == "GameFontNormalLarge")
 local tabsOf = {}
 for _, g in ipairs({ "gear", "dungeons", "prof", "talents", "guild", "amisia" }) do NS.ShowTab(g); tabsOf[#tabsOf + 1] = navAll() end
@@ -501,7 +501,7 @@ assert(table.concat(tabsOf, " | "):gsub(talentMarks, "", 1):gsub(" L%d+", ""):gs
 NS.Set("ui.view", "officer")
 NS.ShowPage("overview")
 -- (DKP/EPGP: the page Punkte for officers; the roll window and the soft-reserve import under their pages)
-assert(navAll() == "overview softres softres rolls rolls awards raidlog points stats raids export", navAll())
+assert(navAll() == "overview softres softres raidnote rolls rolls awards raidlog points stats raids export", navAll())
 NS.Set("ui.expert", true)
 NS.ShowTab("guild")
 assert(navAll() == "members calendar bank duels tools" .. (NS.LayerWindow and " layer" or ""), navAll())
@@ -591,7 +591,7 @@ for _, k in ipairs({ "talents", "rolls", "softres" }) do
 end
 -- right under their pages
 NS.ShowTab("raid")
-assert(navAll():find("softres softres rolls rolls ", 1, true), navAll())
+assert(navAll():find("softres softres raidnote rolls rolls ", 1, true), navAll())
 -- a raider sees the talent window; without gear data still (no gear windows in the side bar, D-80)
 NS.Set("ui.view", "raider"); STUB.tick(0)
 assert(winsShown() == "talents", winsShown())

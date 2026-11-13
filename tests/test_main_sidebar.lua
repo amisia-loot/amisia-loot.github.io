@@ -66,7 +66,7 @@ assert(NS.CurrentPage() == "quests" and W.tab == "dungeons" and W.pages.dungeons
 -- a click on a tab opens its last page
 F.tabs.raid:Click()
 assert(NS.CurrentPage() == "awards" and W.tab == "raid", NS.CurrentPage())
-assert(navAll() == "overview softres awards raidlog stats", navAll())
+assert(navAll() == "overview softres raidnote awards raidlog stats", navAll())
 F.tabs.dungeons:Click()
 assert(NS.CurrentPage() == "quests", "the tab remembers its page: " .. NS.CurrentPage())
 -- Ausrüstung and Talente: the side windows right under their pages
@@ -133,7 +133,7 @@ end
 -- the raid tab in the order of a raid night (Export next to the archive), the officer windows under
 -- their pages (Aufstellung and Raid-Check need the guild rights the test lacks)
 NS.ShowTab("raid")
-assert(navAll() == "overview softres softres rolls rolls awards raidlog points stats raids export", navAll())
+assert(navAll() == "overview softres softres raidnote rolls rolls awards raidlog points stats raids export", navAll())
 assert(row("win", "rolls") and row("win", "softres"), "the roll window and the soft-reserve import")
 NS.ShowTab("guild")
 local bank, exp, members, cal, duels = NS.Panel("bank"), NS.Panel("export"), NS.Panel("members"), NS.Panel("calendar"), NS.Panel("duels")

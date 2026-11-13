@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(raid): a raid note for cooldowns and assignments, readable in a fight (F-196)
+
+    Raid > Raid note: officers, the raid leader and assistants from the guild write a note (who uses which cooldown,
+    who goes where, who interrupts what), keep up to 30 templates (e.g. one per boss) and send it to the raid. Everyone
+    with Amisia gets it in a small window that opens by itself, can be moved, sized and locked, and opens or closes in
+    a fight too (/amisia note, minimap menu). {skull}, {star}, {rt1} ... become raid marks, raid members show in their
+    class colour and your own lines in gold. Late joiners get the note by themselves. Below it you can keep an own
+    note that is never sent. Nothing is sent in a fight; no timers or announcements.
+
 - feat(minimap): Alt + drag places the minimap button anywhere on the screen (F-195)
 
     Dragging the Amisia button still moves it along the minimap's edge. Hold Alt when you start dragging and it

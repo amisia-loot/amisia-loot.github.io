@@ -33,20 +33,20 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, NV = 8 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
 -- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
--- a feedback answer per report id; the group quest state per dungeon
-local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10, IV = 60, SQ = 5, FA = 5, QS = 3 }
+-- a feedback answer per report id; the group quest state per dungeon; a raid note question per note
+local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10, IV = 60, SQ = 5, FA = 5, QS = 3, NQ = 5 }
 local KEYED_MAX = 64        -- keyed gaps remembered per sender before the old ones are cleared
 
 -- PARTY only in an own home party (D-97: the routes and points shared with a group of five; D-110: the
 -- group's quest state of a dungeon)
 local CHANNELS = { RAID = true, PARTY = true, GUILD = true, WHISPER = true }
-local BLOB_ARTS = { SP = true, SO = true, OP = true, DK = true, CK = true, LC = true, PK = true, KS = true, SR = true }
+local BLOB_ARTS = { SP = true, SO = true, OP = true, DK = true, CK = true, LC = true, PK = true, KS = true, SR = true, RN = true }
 -- parts a blob of an art may have (default MAX_PARTS)
-local ART_PARTS = { OP = MAX_PARTS_OP, DK = MAX_PARTS_DK, CK = MAX_PARTS_DK, LC = 40, PK = MAX_PARTS_DK, KS = MAX_PARTS_DK, SR = 30 }
+local ART_PARTS = { OP = MAX_PARTS_OP, DK = MAX_PARTS_DK, CK = MAX_PARTS_DK, LC = 40, PK = MAX_PARTS_DK, KS = MAX_PARTS_DK, SR = 30, RN = 30 }
 
 local available = false
 local stats = { sent = 0, failed = 0, dropped = 0, expired = 0, bad = 0, limited = 0, throttled = 0, received = 0 }
@@ -425,6 +425,9 @@ local VALID = {
     -- his own list ("-": cleared); SQ <import epoch> <own hash|-> asks him for it
     SV = function(f) return #f >= 3 and isNum(f[1], 1, 4e9) and (f[2] == "-" or isHex(f[2], 16)) and isNum(f[3], 0, 9999) end,
     SQ = function(f) return #f >= 2 and isNum(f[1], 1, 4e9) and (f[2] == "-" or isHex(f[2], 16)) end,
+    -- the raid note (F-196): NV <note id> <hash> <lines>; NQ <note id> <own hash>|-
+    NV = function(f) return #f >= 3 and isNum(f[1], 1, 4e9) and isHex(f[2], 16) and isNum(f[3], 1, 120) end,
+    NQ = function(f) return #f >= 2 and isNum(f[1], 1, 4e9) and (f[2] == "-" or isHex(f[2], 16)) end,
     -- DKP/EPGP (Raid/PointsSync.lua): KV <raid key> <hash> <players> from the keeper; KQ <raid key> <own hash>;
     -- KC <raid key> <award id> <D|G> <amount> <epoch>: an officer's cost of an award
     KV = function(f) return #f >= 3 and isKey(f[1]) and isHex(f[2], 16) and isNum(f[3], 0, 999) end,
@@ -829,9 +832,9 @@ end
 -- than any sender sends blobs.
 local seq = math.floor((GetTime() or 0) * 10) % 999999
 
--- Packs tbl, cuts it into parts and queues them. art "SP", "SO", "OP", "DK", "CK", "LC", "KS", "PK" or "SR"; key the raid
+-- Packs tbl, cuts it into parts and queues them. art "SP", "SO", "OP", "DK", "CK", "LC", "KS", "PK", "SR" or "RN"; key the raid
 -- key (DK: the bucket key, the same "date:instance" form; CK: "0000-00-00:<kind * 100 + bucket + 1>"; PK:
--- "0000-00-01:<request number>"; SR: "<list date>:<import epoch>"). opts as CommSend. Returns true and the
+-- "0000-00-01:<request number>"; SR: "<list date>:<import epoch>"; RN: "<date>:<note id>"). opts as CommSend. Returns true and the
 -- number of parts and their bytes.
 function ns.CommSendBlob(art, key, tbl, chan, target, opts)
     if not available then return nil, L["Addon-Nachrichten sind nicht verfügbar."] end
