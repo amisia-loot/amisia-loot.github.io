@@ -1,7 +1,8 @@
 -- Tools (expert mode): one row per task that gathers data for the N100's builds (F-186, D-118): the
 -- item scan ("Ausrüstung"), the quest and NPC scans by id (D-104) and the item collector, each with its
 -- state in plain words, a progress bar while the total is known, and only the actions that fit the
--- state; a line "Nächster Schritt" when there is something to do. Under it the guild's drop data:
+-- state; a line "Nächster Schritt" when there is something to do. Above the rows "Alles Fehlende scannen"
+-- (F-188, D-120): what is open, or the queue's plan while it runs, and its link. Under it the guild's drop data:
 -- kills own and heard, the list per instance and boss with the rates, the sharing switch and the text
 -- "Drops für die Website" (in place of the list).
 local ADDON, ns = ...
@@ -11,8 +12,8 @@ local page
 local exportOpen = false
 local exportText = ""
 
--- rows of 18 under the drop controls down to the footer (12 x 18 = 216 of 221)
-local DROP_ROWS, DROP_ROW_H = 12, 18
+-- rows of 18 under the drop controls down to the footer (10 x 18 = 180 of 195)
+local DROP_ROWS, DROP_ROW_H = 10, 18
 local GOLD = { 1, 0.82, 0 }
 local GREY = { 0.56, 0.53, 0.64 }
 local WHITE = { 1, 1, 1 }
@@ -244,9 +245,12 @@ local MODELS = { gear = gearRow, quests = questRow, npcs = npcRow, collect = col
 
 -- The line "Nächster Schritt" (D-118), the first that fits: a scan stopped by an instance; new entries
 -- of this session not yet written (SavedVariables are written at logout and /reload); items without an
--- answer to ask again. Nothing while a scan runs, else nil.
+-- answer to ask again. Nothing while a scan runs, else nil. While "Alles Fehlende scannen" is on, only
+-- what it waits for: it goes on by itself (F-188).
 local function nextStep()
     if runningScan() then return nil end
+    local SA = ns.ScanAll
+    if SA and SA.Active() then return SA.NextStep() end
     local paused = ns.ScanProgress().pausedIn or (ns.QuestScan.Progress().pausedIn) or (ns.NpcScan.Progress().pausedIn)
     if paused then
         return inInstance() and L["Ein Scan hielt in der Instanz an: außerhalb von Instanzen in seiner Zeile fortsetzen."]
@@ -318,8 +322,28 @@ local function fillScanRow(f, r, busy)
     end
 end
 
+-- The band of "Alles Fehlende scannen" (F-188): the plan or what is open, and one quiet link: start
+-- (greyed while a scan runs by hand), "Anhalten" while the queue is on, none with nothing open.
+local function fillAll(f, busy)
+    local SA, a = ns.ScanAll, f.all
+    if not SA then return end
+    local on = SA.Active()
+    local open = not on and #SA.State().open > 0
+    a.text:SetText(SA.PlanText())
+    a.start:SetShown(open)
+    a.stop:SetShown(on)
+    if busy and open then a.start:Disable() else a.start:Enable() end
+    a.start.blockedBy = (busy and open) and busy or nil
+    local sig = (open and "s" or "") .. (on and "x" or "")
+    if sig ~= a.sig then
+        a.sig = sig
+        f:Place(1, { { a.text, fill = true } }, { a.start, a.stop }, { shown = true })
+    end
+end
+
 local function fillScans(f)
     local busy = runningScan()
+    fillAll(f, busy)
     for _, r in ipairs(f.rows) do fillScanRow(f, r, busy) end
     local step = nextStep()
     f.next:SetText(step and (T.LABEL .. L["Nächster Schritt:"] .. "|r " .. step) or "")
@@ -334,19 +358,42 @@ local function blockedTip(b)
     GameTooltip:Show()
 end
 
+local function buildAll(f)
+    local a = {}
+    a.text = W.Text(f, T.FONT.text)
+    a.start = W.Link(f, L["Alles Fehlende scannen"], function()
+        local ok, why = ns.ScanAll.Start()
+        if not ok and why then ns.msg(why) end
+        ns.Refresh()
+    end)
+    W.FitChip(a.start)
+    a.stop = W.Link(f, L["Anhalten"], function()
+        ns.ScanCommand("stop")
+        ns.Refresh()
+    end)
+    W.FitChip(a.stop)
+    for _, b in ipairs({ a.start, a.stop }) do
+        b:Hide()
+        b:SetScript("OnEnter", blockedTip)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    end
+    f.all = a
+end
+
 local function buildScans(f)
-    -- four rows of controls (one per task) and the line "Nächster Schritt"
-    f:Bands({ "row", "row", "row", "row", "line" })
+    -- "Alles Fehlende scannen", four rows of controls (one per task) and the line "Nächster Schritt"
+    f:Bands({ "row", "row", "row", "row", "row", "line" })
+    buildAll(f)
     f.rows, f.rowByKey = {}, {}
     for i, key in ipairs(SCAN_ROWS) do
-        local r = buildScanRow(f, i, key)
+        local r = buildScanRow(f, i + 1, key)
         f.rows[i], f.rowByKey[key] = r, r
         for _, b in pairs(r.acts) do
             b:SetScript("OnEnter", blockedTip)
             b:SetScript("OnLeave", function() GameTooltip:Hide() end)
         end
     end
-    f.next = f:Line(5)
+    f.next = f:Line(6)
     -- while a scan runs and the page shows: the rows' texts and bars once a second, nothing rebuilt
     local since = 0
     f.ticker = CreateFrame("Frame", nil, f)

@@ -236,6 +236,8 @@ local function report(fmt, ...)
     if ns.Refresh then ns.Refresh() end
 end
 
+-- how: "done", "instance", "stop" (by hand), "fail" (the client does not answer); fires SCAN_ENDED
+-- ("quests", how) for "Alles Fehlende scannen" (F-188)
 local function finish(why, how)
     running = false
     pausedIn = how == "instance" or nil
@@ -249,6 +251,7 @@ local function finish(why, how)
     if SB.Busy() == "quests" then SB.SetBusy(nil) end
     q.at = time()
     if why then report(L["Quest-Scan %s: %d Quests gespeichert, %d von %d abgefragt."], why, q.n, q.next - 1, #(SB.List("Q") or {})) end
+    ns.Fire("SCAN_ENDED", "quests", how)
 end
 
 local function stored(qid, line)
@@ -321,8 +324,8 @@ local function tick()
             first.done = true
             -- nothing of this run counts: the next start asks the same ids again
             q.next, q.none = first.start, first.none
-            finish(nil)
             ns.msg(L["Der Client beantwortet Quest-Abfragen nicht: Quest-Scan beendet."])
+            finish(nil, "fail")
             return
         end
     end
@@ -345,8 +348,8 @@ local function tick()
     end
     if credit > 1 then credit = 1 end
     if q.next > #list and pendingCount == 0 then
-        q.done = time()
-        finish(L["fertig"])
+        q.done, q.stamp = time(), SB.Stamp()
+        finish(L["fertig"], "done")
     end
 end
 
@@ -408,7 +411,24 @@ function QS.Start()
 end
 
 function QS.Stop()
-    if running then finish(L["angehalten"]) end
+    if running then finish(L["angehalten"], "stop") end
+end
+
+-- Whether the scan has something to ask (F-188): not through, or through under another build or other
+-- lists (SB.Stamp); a finish before stamps came counts as this build's. false without the list.
+function QS.Open()
+    local list = SB.List("Q")
+    if not list or #list == 0 or not api("RequestLoadQuestByID") then return false end
+    local q = AmisiaDB and AmisiaDB.scan and type(AmisiaDB.scan.quests) == "table" and AmisiaDB.scan.quests or nil
+    if not q or not q.done then return true end
+    return q.stamp ~= nil and q.stamp ~= SB.Stamp()
+end
+
+-- Starts what QS.Open found: a scan through under another build asks the whole list again.
+function QS.StartOpen()
+    local q = AmisiaDB and AmisiaDB.scan and type(AmisiaDB.scan.quests) == "table" and AmisiaDB.scan.quests or nil
+    if q and q.done and q.stamp ~= nil and q.stamp ~= SB.Stamp() and not running then q.next, q.done = 1, nil end
+    return QS.Start()
 end
 
 -- The progress for the tools page (F-186): { running, done, total (the quests of the list; nil

@@ -19,6 +19,7 @@ local queue   -- ids from the retry list while /amisia scan retry runs, else nil
 local savedRate   -- the rate to put back after a retry run
 local listTotal, listKind   -- the ids of a list run (gear list, retry) and its kind ("list", "retry")
 local pausedIn    -- the last run ended because the character entered an instance
+local gearRun     -- the list run is the gear scan (/amisia scan gear; F-188 stamps it when through)
 local added = 0   -- new lines and notes since the addon loaded (item scan, quest and NPC scans, collector)
 
 local GetItemInfoAny = C_Item.GetItemInfo
@@ -93,10 +94,12 @@ ns.ScanDB = scanDB
 function ns.ScanAdded(n) added = added + (n or 1) end
 function ns.ScanAddedCount() return added end
 
--- how a run ended: "done" (everything asked), "instance" (paused by an instance), nil (stopped)
+-- how a run ended: "done" (everything asked), "instance" (paused by an instance), "stop" (stopped by
+-- hand), nil (else). Fires SCAN_ENDED with the run ("gear", "retry", "list", "range") and how (F-188).
 local function finish(why, how)
+    local run = gearRun and "gear" or (queue and listKind) or "range"
     running = false
-    queue, listTotal, listKind = nil, nil, nil
+    queue, listTotal, listKind, gearRun = nil, nil, nil, nil
     pausedIn = how == "instance" or nil
     if savedRate then scanDB().rate = savedRate; savedRate = nil end
     if ticker then ticker:Cancel(); ticker = nil end
@@ -104,8 +107,11 @@ local function finish(why, how)
     local s = scanDB()
     s.at = time()
     s.done = how == "done" and s.at or nil
+    -- the gear list asked through: stamped with the build (F-188, "Alles Fehlende scannen")
+    if how == "done" and run == "gear" and ns.ScanById then s.gear = ns.ScanById.Stamp() end
     ns.msg(L["Scan %s: %d Items gespeichert, nächste ID %d, %d offen zum Wiederholen."]:format(why or L["beendet"], s.count, s.next or 0, #s.retry))
     if ns.Refresh then ns.Refresh() end
+    ns.Fire("SCAN_ENDED", run, how)
 end
 
 local function send(id, tries)
@@ -242,7 +248,7 @@ end
 
 -- Scans a list of ids, e.g. everything the gear planner lists plus what its sources name but no scan
 -- has seen yet (items Forever only reveals later).
-function ns.ScanList(ids, label)
+function ns.ScanList(ids, label, gear)
     if not request then return nil, L["Dieser Client kann keine Items nachladen."] end
     local why = blocked()
     if why then return nil, why end
@@ -251,6 +257,7 @@ function ns.ScanList(ids, label)
     local copy = {}
     for i = 1, #ids do copy[i] = ids[i] end
     startList(copy, "list")
+    gearRun = gear and true or nil
     ticker = C_Timer.NewTicker(0.1, ns.Perf.Wrap("Ticker Scan items", tick))
     ns.msg(L["%s: %d IDs mit %d Anfragen pro Sekunde. Danach ausloggen, damit die Datei geschrieben wird."]:format(label or "Scan", #ids, s.rate))
     return true
@@ -267,9 +274,16 @@ function ns.GearScanIDs()
     return ids
 end
 
+-- The gear scan (/amisia scan gear): every id the gear planner lists. Returns true, or nil and why.
+function ns.ScanGear()
+    local ids = ns.GearScanIDs()
+    if not ids then return nil, L["Die Ausrüstungstabelle gibt es nur in WoW Forever."] end
+    return ns.ScanList(ids, L["Ausrüstungs-Scan"], true)
+end
+
 function ns.ScanStop()
     if not running then return end
-    finish(L["angehalten"])
+    finish(L["angehalten"], "stop")
 end
 
 -- The item scan's progress for the tools page (F-186): { running, kind ("range", "list", "retry"),
@@ -317,7 +331,8 @@ function ns.ScanCommand(rest)
     local word, arg = rest:match("^(%S*)%s*(.*)$")
     word = (word or ""):lower()
     if word == "stop" then
-        -- every scan: items, quests, NPCs
+        -- every scan: items, quests, NPCs; and "Alles Fehlende scannen" (first, so it starts nothing)
+        if ns.ScanAll then ns.ScanAll.Stop() end
         ns.ScanStop()
         if ns.QuestScan then ns.QuestScan.Stop() end
         if ns.NpcScan then ns.NpcScan.Stop() end
@@ -333,13 +348,10 @@ function ns.ScanCommand(rest)
     elseif word == "aufräumen" or word == "aufraeumen" or word == "cleanup" then   -- l10n-ok: typed sub-words
         if ns.ScanTrimNow then ns.ScanTrimNow() end
     elseif word == "gear" then
-        local ids = ns.GearScanIDs()
-        if not ids then
-            ns.msg(L["Die Ausrüstungstabelle gibt es nur in WoW Forever."])
-            return
-        end
-        local ok, why = ns.ScanList(ids, L["Ausrüstungs-Scan"])
+        local ok, why = ns.ScanGear()
         if not ok and why then ns.msg(why) end
+    elseif word == "all" or word == "alles" then   -- l10n-ok: typed sub-words
+        if ns.ScanAll then ns.ScanAll.Command(arg) end
     elseif word == "rate" then
         if ns.Set("tools.scanRate", tonumber(arg)) then
             scanDB()
@@ -350,7 +362,7 @@ function ns.ScanCommand(rest)
     else
         local from, to = rest:match("^(%d+)%s+(%d+)$")
         if not from and rest ~= "" then
-            ns.msg(L["Aufruf: /amisia scan [<von> <bis>] | gear | quests | npcs | retry | aufräumen | stop | status | rate <n>"])
+            ns.msg(L["Aufruf: /amisia scan [<von> <bis>] | gear | quests | npcs | all | retry | aufräumen | stop | status | rate <n>"])
             return
         end
         local ok, why = ns.ScanStart(from and tonumber(from), to and tonumber(to))
@@ -368,7 +380,9 @@ ns.RegisterSettings{ key = "tools", label = L["Werkzeuge"], order = 95, group = 
       tip = L["So viele NPC-Tooltips liest /amisia scan npcs pro Sekunde; bleiben bekannte NPCs leer, wird der Scan von selbst langsamer."] },
     { key = "tools.scanAutotrim", type = "toggle", label = L["Ausgewertete Scan-Daten beim Login entfernen"], default = true,
       tip = L["Was der Datenbau schon übernommen hat, fliegt ein paar Sekunden nach dem Login aus der gespeicherten Datei; nur Neues bleibt. /amisia scan aufräumen macht es sofort."] },
+    { key = "tools.scanNotice", type = "toggle", label = L["Neuen Spiel-Build melden"], default = true,
+      tip = L["Nach einem neuen Spiel-Build sagt eine Chatzeile beim Login, dass es Neues zu scannen gibt (Werkzeuge, \"Alles Fehlende scannen\"). Es startet nichts von selbst."] },
 }}
-ns.RegisterSlash("scan", { args = L["[von bis] | gear | quests | npcs | retry | aufräumen | stop | status | rate <n>"], desc = L["Item-Scan, Quest-Scan, NPC-Scan"], run = function(rest)
+ns.RegisterSlash("scan", { args = L["[von bis] | gear | quests | npcs | all | retry | aufräumen | stop | status | rate <n>"], desc = L["Item-Scan, Quest-Scan, NPC-Scan"], run = function(rest)
     ns.ScanCommand(rest)
 end })

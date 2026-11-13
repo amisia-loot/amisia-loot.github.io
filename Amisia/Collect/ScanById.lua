@@ -203,6 +203,23 @@ function SB.Build()
     return ("%s.%s"):format(tostring(ns.Plain(version) or "?"), tostring(ns.Plain(number) or "?"))
 end
 
+-- The build number of a build text ("1.60.1.70938" -> 70938), or nil.
+function SB.BuildNumber(build)
+    return type(build) == "string" and tonumber(build:match("(%d+)$")) or nil
+end
+
+-- The client build the shipped lists (Data/ScanLists.lua) were made from, or nil.
+function SB.ListsClient()
+    local d = ns.Data("SCAN_LISTS")
+    return type(d) == "table" and type(d.client) == "string" and d.client or nil
+end
+
+-- What a finished scan is stamped with (F-188, D-120): the client build and the lists' build,
+-- "1.60.1.70938/1.60.1.70938". Another stamp means the scan may find something new again.
+function SB.Stamp()
+    return SB.Build() .. "/" .. (SB.ListsClient() or "-")
+end
+
 -- "1 h 05 min", "12 min", "40 s".
 function SB.Duration(seconds)
     seconds = math.max(0, math.floor((tonumber(seconds) or 0) + 0.5))

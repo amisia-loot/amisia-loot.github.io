@@ -346,6 +346,7 @@ L["Prüft zuerst drei bekannte NPCs ..."] = "Checking three known NPCs first ...
 L["Der Client nennt keine NPC-Namen."] = "The client gives no NPC names."
 L["Noch nicht gelaufen."] = "Not run yet."
 L["Fertig: alles übernommen."] = "Done: everything taken over."
+L["Alles Fehlende scannen"] = "Scan everything missing"
 L["%d neue Items warten auf die Übernahme."] = "%d new items wait to be taken over."
 L["Fertig: %d neue Items warten auf die Übernahme."] = "Done: %d new items wait to be taken over."
 L["%d neue Quests warten auf die Übernahme."] = "%d new quests wait to be taken over."

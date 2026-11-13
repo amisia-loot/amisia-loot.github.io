@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-188 Alles Fehlende scannen: die Scans nacheinander, nach Instanz und Kampf von selbst weiter
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du Gilde > Werkzeuge öffnest (Expertenmodus) und Scans offen sind, dann steht ganz oben "Noch offen: Ausrüstung, Quests, NPCs." (oder was offen ist) mit dem Link "Alles Fehlende scannen"; ist nichts offen, steht dort "Nichts offen." ohne Link.
+- Prüfung: Wenn du "Alles Fehlende scannen" klickst (oder `/amisia scan all`), dann steht oben "Alles Fehlende: Ausrüstung läuft, danach Quests, NPCs." mit "Anhalten", und nach der Ausrüstung startet der Quest-Scan von selbst, danach Phase A der NPCs (nie die Suche nach neuen NPCs).
+- Prüfung: Wenn du während der Reihe in einen Dungeon gehst, dann steht "Nächster Schritt: Alles Fehlende geht außerhalb der Instanz von selbst weiter.", und etwa 5 Sekunden nach dem Rausgehen läuft der Scan von selbst weiter; nach einem Kampf ebenso.
+- Prüfung: Wenn du in einer Zeile oder oben "Anhalten" klickst (oder `/amisia scan stop`), dann ist die Reihe aus und auch nach einer Instanz startet nichts von selbst.
+- Prüfung: Wenn der Client nach einem Patch einen neueren Build hat als die Daten des Addons, dann steht beim Login einmal im Chat "Neuer Spiel-Build: es gibt Neues zu scannen (Gilde > Werkzeuge, "Alles Fehlende scannen")."; mit "Neuen Spiel-Build melden" aus (Einstellungen, Werkzeuge) nicht mehr.
+- Notiz: Spec `docs/specs/2026-11-13-alles-scannen.md`; DECISIONS D-120. Die Reihe lebt nur in der Sitzung: nach `/reload` oder Login bietet die Seite den Link wieder an. Die Scans fragen so schnell wie bisher (Einstellungen), nie in Instanzen; die Daten kommen erst nach dem Ausloggen und dem Datenbau des N100 ins Addon.
+
 ### F-186 Werkzeuge: eine Zeile je Scan, Klartext und nächster Schritt
 - Version: 2.81.0
 - Status: gebaut

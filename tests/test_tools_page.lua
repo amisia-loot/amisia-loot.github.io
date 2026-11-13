@@ -30,7 +30,7 @@ local function shown(r)
 end
 -- every text of the scan part: no tool or file name, no "ID", no long number (D-118)
 local function texts()
-    local out = { f.next:GetText() or "" }
+    local out = { f.next:GetText() or "", f.all.text:GetText() or "" }
     for _, r in ipairs(f.rows) do
         out[#out + 1] = r.name:GetText() or ""
         out[#out + 1] = r.state:GetText() or ""
@@ -248,5 +248,60 @@ assert(shown(R.quests) == "Anhalten" and not R.gear.acts.start:IsEnabled())
 NS.ScanCommand("stop")
 assert(not QS.Running())
 
+---------------------------------------------------------------------------
+-- "Alles Fehlende scannen" above the rows (F-188): what is open and its quiet link; greyed while a scan
+-- runs by hand; while the queue runs its plan and "Anhalten", the rows as before; paused in an instance
+-- the next step says it goes on by itself; nothing open: "Nichts offen." without a link
+---------------------------------------------------------------------------
+local SA, A = NS.ScanAll, f.all
+NS.GearScanIDs = function() return { 1000, 1001, 1002 } end
+SB.SaveProbe({ npc = "none" })   -- the client gives no NPC names: the NPC scan is not open
+AmisiaDB.scan.quests = nil
+AmisiaDB.scan.gear = nil
+refresh()
+assert(A.text:GetText() == "Noch offen: Ausrüstung, Quests.", A.text:GetText())
+assert(A.start:IsShown() and A.start:IsEnabled() and not A.stop:IsShown() and A.start:GetText() == "Alles Fehlende scannen")
+Lay.row("all idle", A.text, A.start)
+Lay.fits(A.text)
+-- a scan by hand: the link greyed with the reason
+NS.ScanCommand("quests")
+refresh()
+assert(not A.start:IsEnabled() and A.start.blockedBy == "quests")
+NS.ScanCommand("stop")
+refresh()
+-- the queue runs: the plan, "Anhalten"; the gear row shows its own run
+A.start:Click()
+assert(SA.Active() and NS.ScanRunning())
+assert(A.text:GetText() == "Alles Fehlende: Ausrüstung läuft, danach Quests.", A.text:GetText())
+assert(A.stop:IsShown() and not A.start:IsShown())
+assert(has(R.gear.state:GetText(), "Läuft: "), R.gear.state:GetText())
+assert(not f.next:IsShown(), "a step runs: no next step")
+Lay.row("all running", A.text, A.stop)
+Lay.fits(A.text)
+laidOut("all running")
+clean()
+-- an instance: the gear list pauses; the next step says it goes on by itself, not "in seiner Zeile"
+STUB.instance = { name = "Deadmines", type = "party", id = 36 }
+STUB.tick(0.2)
+assert(not NS.ScanRunning() and SA.Active())
+refresh()
+assert(has(f.next:GetText(), "Alles Fehlende geht außerhalb der Instanz von selbst weiter."), f.next:GetText())
+assert(not has(f.next:GetText(), "in seiner Zeile"), f.next:GetText())
+assert(A.text:GetText() == "Alles Fehlende: Ausrüstung wartet, danach Quests.", A.text:GetText())
+Lay.fits(A.text)
+STUB.instance = { name = "Elwynn", type = "none", id = 0 }
+-- "Anhalten" in the band ends it; nothing goes on by itself
+A.stop:Click()
+assert(not SA.Active() and A.start:IsShown())
+STUB.fire("PLAYER_ENTERING_WORLD")
+STUB.tick(SA.DELAY + 1)
+assert(not NS.ScanRunning())
+-- nothing open
+AmisiaDB.scan.gear = SB.Stamp()
+AmisiaDB.scan.quests = { loc = "deDE", next = 31, done = 5, at = 5, n = 0, list = {}, none = "", stamp = SB.Stamp() }
+refresh()
+assert(A.text:GetText() == "Nichts offen." and not A.start:IsShown() and not A.stop:IsShown(), A.text:GetText())
+clean()
+
 NS.Reset("ui.expert")
-print("tools page: rows, states, percent and time, one scan at a time, next step, plain words")
+print("tools page: rows, states, percent and time, one scan at a time, next step, plain words, everything missing")

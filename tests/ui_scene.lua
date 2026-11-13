@@ -868,7 +868,7 @@ S.STATES = {
         NS.ShowDungeon("deadmines")
     end },
     -- the scan rows of the tools page (F-186): nothing ran; an item scan running (percent, time, bar,
-    -- the other starts greyed); everything through (items and quests waiting, the NPC names taken over,
+    -- the other starts greyed); the queue of F-188 running; everything through (items and quests waiting, the NPC names taken over,
     -- the next step with this session's entries)
     { page = "tools", name = "tools-idle", open = function()
         AmisiaDB.scan.count, AmisiaDB.scan.retry = 0, {}
@@ -881,8 +881,14 @@ S.STATES = {
         STUB.tick(1)
         NS.ShowPage("tools")
     end },
-    { page = "tools", name = "tools-finished", open = function()
+    -- "Alles Fehlende scannen" running (F-188): its plan above the rows, "Anhalten", the gear row's run
+    { page = "tools", name = "tools-all", open = function()
         NS.ScanStop()
+        NS.ScanAll.Start()
+        NS.ShowPage("tools")
+    end },
+    { page = "tools", name = "tools-finished", open = function()
+        NS.ScanCommand("stop")
         local s = AmisiaDB.scan
         s.next, s.done, s.count, s.retry = s.to + 1, time(), 412, { 7, 8, 9 }
         s.quests = { loc = "deDE", next = 6627, done = time(), at = time(), n = 4901, list = {}, none = "" }

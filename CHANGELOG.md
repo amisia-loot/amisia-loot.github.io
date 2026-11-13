@@ -12,6 +12,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
     counts once however it arrives; the Import tab says how many of a pasted text the site has already. The public
     file holds drop statistics only, no player, guild or realm names. Nothing changes in the addon.
 
+- feat(tools): "Scan everything missing" runs the open scans one after the other and goes on by itself (F-188)
+
+    Guild > Tools has a new top line: what is still open and the link "Scan everything missing" (or
+    `/amisia scan all`). It runs the gear scan, the quest scan and the known NPCs one after the other, and the
+    items without an answer at the end; a finished scan is skipped. When an instance stops a scan, it goes on by
+    itself a few seconds after you leave; combat and the encounter lockdown only delay the next start. "Stop" in
+    any row ends it, and it does not survive a /reload. After a new game build, expert-mode users get one chat
+    line at login that there is something new to scan (Settings, Tools, "Report a new game build"). The search
+    for new NPCs by number stays its own choice in the NPC row.
+
 ## [v2.81.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.81.0) (2026-11-13)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.80.0...v2.81.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

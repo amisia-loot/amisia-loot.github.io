@@ -68,6 +68,8 @@ end
 
 local function settingRate() return ns.Get("tools.npcRate") or 5 end
 
+-- how: "done" (the phase is through), "instance", "stop" (by hand); fires SCAN_ENDED ("npcs", how,
+-- the phase) for "Alles Fehlende scannen" (F-188)
 local function finish(why, how)
     local was = running
     running = nil
@@ -86,6 +88,7 @@ local function finish(why, how)
         ns.msg(L["NPC-Scan %s: %d Namen gespeichert, %d Nummern ohne Namen."]:format(why, q.n, SB.RangesCount(q.empty)))
     end
     if ns.Refresh then ns.Refresh() end
+    ns.Fire("SCAN_ENDED", "npcs", how, was)
 end
 
 -- "name\ttitle\trank\tkind", the empty ones at the end left out.
@@ -213,15 +216,15 @@ local function tick()
     if credit > 1 then credit = 1 end
     if not next(waiting) and #again == 0 and remaining(q) == 0 then
         if running == "A" then
-            q.doneA = time()
+            q.doneA, q.stamp = time(), SB.Stamp()
             local _, nb = SB.RangesB()
-            finish(L["Phase A fertig"])
+            finish(L["Phase A fertig"], "done")
             if nb and nb > 0 and not q.doneB then
                 ns.msg(L["Phase B (neue NPCs suchen, %d Nummern, bis zu %s): /amisia scan npcs"]:format(nb, SB.Duration(estimate(remaining(q), settingRate(), "B"))))
             end
         else
             q.doneB = time()
-            finish(L["fertig"])
+            finish(L["fertig"], "done")
         end
     end
 end
@@ -271,6 +274,7 @@ function NS_.MiniProbe(done)
                 SB.SetBusy(nil)
                 SB.SaveProbe({ npc = "none" }, "mini")
                 done(false)
+                ns.Fire("SCAN_ENDED", "npcs", "fail", "mini")
             end
         end)
     end
@@ -375,9 +379,31 @@ function NS_.Stop()
     if running == "mini" then
         running = nil
         SB.SetBusy(nil)
+        ns.Fire("SCAN_ENDED", "npcs", "stop", "mini")
     elseif running then
-        finish(L["angehalten"])
+        finish(L["angehalten"], "stop")
     end
+end
+
+-- Whether phase A has something to ask (F-188): not through, or through under another build or other
+-- lists (SB.Stamp); a finish before stamps came counts as this build's. Phase B, the search for new
+-- NPCs by number, is never "missing": it stays the row's own choice after its question. false
+-- without the list or when the client gives no names.
+function NS_.Open()
+    local list = SB.List("NA")
+    if not list or #list == 0 or SB.Verdict("npc") == "none" then return false end
+    local q = AmisiaDB and AmisiaDB.scan and type(AmisiaDB.scan.npcs) == "table" and AmisiaDB.scan.npcs or nil
+    if not q or q.v ~= NS_.LAYOUT or not q.doneA then return true end
+    return q.stamp ~= nil and q.stamp ~= SB.Stamp()
+end
+
+-- Starts what NS_.Open found (phase A only, never the question for B): phase A through under another
+-- build asks its list again.
+function NS_.StartOpen()
+    if not NS_.Open() then return nil, L["Die bekannten NPCs sind schon gescannt."] end
+    local q = NS_.DB()
+    if q.doneA and q.stamp ~= nil and q.stamp ~= SB.Stamp() and not running then q.a, q.doneA = 1, nil end
+    return NS_.Start()
 end
 
 function NS_.Status()

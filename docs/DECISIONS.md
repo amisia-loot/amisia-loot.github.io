@@ -3124,3 +3124,46 @@ Archiv behält Kills, ohne SavedVariables, kaputte Datei, BUILD_ID, Datei passt 
 `tools/tests/test_drop_import.py` (Datei allein, Ledger allein, beide mit Überschneidung, fehlende oder kaputte Datei,
 zweimal eingefügt, `obsThrough`, Plan), `tools/tests/test_site_load.py` (einmal geladen, nur Forever, fehlende Datei,
 späte Datei), `tools/tests/test_data_files.py`, `tools/tests/test_build_tool.py::test_data_steps_order`.
+
+## D-120 Alles Fehlende scannen: eine Reihe über die Scans, offen nach eigenem Stempel, weiter nach dem Grund
+
+**Datum:** 2026-11-13
+**Entscheidung:** "Alles Fehlende scannen" (F-188, Spec `docs/specs/2026-11-13-alles-scannen.md`,
+`Collect/ScanAll.lua`) startet nacheinander, was offen ist: die Ausrüstungsliste (`/amisia scan gear`), den
+Quest-Scan, Phase A des NPC-Scans und am Ende die Items ohne Antwort. Regeln:
+- **Offen sagt der Scan selbst**, mit dem, was er schon führt: nicht ganz gefragt (`scan.quests.done`,
+  `scan.npcs.doneA`, bei der Ausrüstungsliste ihr eigener Stempel), oder fertig unter einem anderen Stempel. Der
+  Stempel (`SB.Stamp()`, "Client-Build/Build der Listen") kommt beim Fertigwerden in `scan.gear`,
+  `scan.quests.stamp`, `scan.npcs.stamp`; ein anderer Stempel fragt die Liste von vorn. Fertige Scans ohne Stempel
+  (vor F-188) gelten beim Login als unter dem jetzigen Build fertig. Phase B der NPCs (Suche per Nummer, Stunden)
+  ist nie offen; sie bleibt die Wahl in der Zeile NPCs.
+- **Weiter nur nach dem Grund:** die Reihe hört auf das interne Ereignis `SCAN_ENDED` der Scans (Lauf, Art "done",
+  "instance", "stop", "fail") und auf `PLAYER_ENTERING_WORLD`, `ZONE_CHANGED_NEW_AREA`, `PLAYER_REGEN_ENABLED`,
+  `ENCOUNTER_END`, `ADDON_RESTRICTION_STATE_CHANGED`; 5 Sekunden danach startet sie den Schritt, wenn weder Kampf,
+  Kampfsperre noch Instanz ihn sperren (`SB.Blocked(true)`), sonst wartet sie weiter. Keine Arbeit je Frame.
+- **Von Hand angehalten heißt aus:** ein "stop" eines Scans ("Anhalten" einer Zeile oder oben, `/amisia scan
+  stop`) beendet die Reihe; nichts startet gegen den Willen des Spielers. Ein Scan von Hand neben der Reihe: sie
+  wartet auf sein Ende.
+- **Nur die Sitzung:** die Reihe wird nicht gespeichert; nach `/reload` oder Login zeigt die Seite "Noch offen: ..."
+  und den Link.
+- **Seite:** die Kopfzeile von Gilde > Werkzeuge: der Plan oder was offen ist, der ruhige Link "Alles Fehlende
+  scannen" bzw. "Anhalten" (kein roter Knopf, D-67); "Nächster Schritt" sagt bei laufender Reihe, dass es von
+  selbst weitergeht. Befehl `/amisia scan all` (`alles`).
+- **Neuer Spiel-Build:** ist die Build-Nummer der mitgelieferten Listen (`SCAN_LISTS.client`) kleiner als die des
+  Clients und trägt ein Scan den Stempel eines anderen Builds, sagt einmal je Login eine Chatzeile, dass es Neues zu
+  scannen gibt; nur im Expertenmodus, Einstellung `tools.scanNotice`. Nichts startet von selbst.
+
+**Grund:** Nutzer 2026-11-13 zu Vorschlag 4 der Seite Werkzeuge ("mach alle aber nach deinen vorschlag"): die drei
+Scans einzeln starten und nach jeder Instanz von Hand fortsetzen war mühsam; nach einem Build soll Amisia melden,
+dass es Neues zu scannen gibt.
+
+**Folge:** Neu gespeichert: `scan.gear`, `scan.quests.stamp`, `scan.npcs.stamp`; Einstellung `tools.scanNotice`.
+Die Ausrüstungsliste beginnt nach einer Instanz neu (sie lebt nur im Lauf). Grenzen: die Scans fragen so schnell
+wie bisher, nie in Instanzen; die Daten kommen erst nach dem Ausloggen und dem Datenbau des N100 ins Addon. Annahmen
+(nicht gefragt): `SCAN_LISTS.client` statt `SCAN_DONE` (das Aufräumen wirft `SCAN_DONE` aus dem Speicher); die
+Chatzeile einmal je Login, solange es gilt.
+
+**Durchgesetzt durch:** `tests/test_scan_all.lua` (Reihenfolge, Fertiges übersprungen, Offene am Ende, Instanz und
+Weiter draußen, Kampf, Kampfsperre, Anhalten von Hand, nichts offen, Planzeile und nächster Schritt, neuer Build mit
+Stempeln, die Chatzeile einmal, nur im Expertenmodus, abschaltbar, nichts gespeichert), `tests/test_tools_page.lua`
+(Kopfzeile, grauer Link, Plan, Anhalten, "Nichts offen."), `tests/ui_scene.lua` (`tools-all`).
