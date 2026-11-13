@@ -274,6 +274,7 @@ Search.SECTION_WORDS = {
     bis = "bis ausrüstung gear upgrade",   -- l10n-ok: search words
     ui = "minimap größe scale ansicht view",   -- l10n-ok: search words
     record = "aufnahme recording",   -- l10n-ok: search words
+    questitems = "aufräumen taschen löschen überflüssig questitems clear clean bags delete",   -- l10n-ok: search words
 }
 
 local folded = {}   -- keyword text -> its folded words

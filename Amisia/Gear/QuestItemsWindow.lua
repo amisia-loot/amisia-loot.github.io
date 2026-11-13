@@ -151,9 +151,15 @@ local function build()
     F.empty = W.Text(F, T.FONT.dim, S.W - 4 * S.PAD, true)
     F.empty:SetPoint("TOP", F, "TOP", 0, -(S.TOP + S.HEAD_H + S.LIST_GAP + 40))
     F.empty:SetJustifyH("CENTER")
-    F.hint = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD)
+    F.hint = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD - S.SET_W)
     F.hint:SetPoint("BOTTOMLEFT", S.PAD, S.BOTTOM_H / 2 - 4)
     F.hint:SetText(L["Nur die Taschen. Löschen nur bei \"sicher\". Rechtsklick: behalten."])
+    -- the way to its switches (D-123): the section "Questgegenstände"
+    F.settings = W.Link(F, L["Einstellungen"], function()
+        if ns.ShowSettingsSection then ns.ShowSettingsSection("questitems") end
+    end)
+    F.settings:SetPoint("RIGHT", F, "BOTTOMRIGHT", -S.PAD, S.BOTTOM_H / 2 + 2)
+    W.Tooltip(F.settings, L["Einstellungen"], L["Questgegenstände im Tooltip, ohne Nachfrage löschen, Fenster bei Gegenständen, die eine Quest starten."])
     place()
     return F
 end

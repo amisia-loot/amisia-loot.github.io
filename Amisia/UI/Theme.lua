@@ -484,9 +484,10 @@ T.RUNTIMER = { W = 300, PAD = 14, TOP = 30, COL_W = { 84, 80, 108 }, LABEL_H = 1
 -- under the title (TOP) the status line and the red button "Nächsten sicheren löschen" in one band HEAD_H
 -- high; the list LIST_GAP under it, ROWS rows of ROW_H (a group's head, or an item: its icon ICON square at
 -- ICON_X, its name and count over the reason from TEXT_X, the link "Löschen" at the right end, LINK_W);
--- SCROLL room for the list's bar; the hint line in BOTTOM_H at the bottom.
+-- SCROLL room for the list's bar; the hint line in BOTTOM_H at the bottom, SET_W left free at its right end
+-- for the link "Einstellungen".
 T.QUESTITEMS = { W = 460, PAD = 12, TOP = 30, HEAD_H = 24, LIST_GAP = 6, ROWS = 10, ROW_H = 34, ICON = 24, ICON_X = 4,
-    TEXT_X = 34, LINK_W = 70, SCROLL = 16, BOTTOM_H = 30 }
+    TEXT_X = 34, LINK_W = 70, SCROLL = 16, BOTTOM_H = 30, SET_W = 100 }
 
 -- The window of an item that starts a quest (F-181, Gear/QuestStart.lua, AmisiaQuestStart): W wide; the
 -- item's name in the title; TOP under the window's top the item's icon ICON square in the middle, in

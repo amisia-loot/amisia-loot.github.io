@@ -3254,3 +3254,27 @@ Ein Abend voller Logouts kostet höchstens einen Bau und eine Prüfung je 6 Stun
 vor C, wartender Build, "nichts Neues" ohne Branch, rote Prüfung mit Branch, kaputte Datei, Block neben Bericht und
 Blick, veralteter Bericht, Worktree entfernt, main und sein Arbeitsverzeichnis unverändert auch wenn schmutzig,
 nur die neuesten 5 Branches, `--dry-run`, Schalter).
+
+## D-123 Questgegenstände: ein eigener Abschnitt in den Einstellungen, ein Weg hin und zurück
+
+**Datum:** 2026-11-13
+**Entscheidung:** Die Einstellungen der Questgegenstände (F-173, F-181) stehen in einem eigenen Abschnitt
+"Questgegenstände" (`questitems`, Reiter Dungeons & Raids, order 54, Seite Quests, F-193; registriert in
+`Gear/QuestItems.lua`), nicht mehr mitten im Abschnitt Quests. Oben steht ein Knopf
+"Fenster "Questgegenstände aufräumen" öffnen", darunter "Questgegenstände im Tooltip", "Questgegenstände ohne
+Nachfrage löschen" und "Fenster bei Gegenständen, die eine Quest starten". Die gespeicherten Schlüssel bleiben
+`quests.itemTooltip`, `quests.itemNoAsk`, `quests.startPopup`: kein Schritt in `Core/Migrate.lua`, nichts geht
+verloren. Das Fenster "Questgegenstände aufräumen" hat unten rechts den Link "Einstellungen" zu diesem Abschnitt.
+Die Suche im Hauptfenster findet den Abschnitt auch über "aufräumen", "Taschen", "löschen", "überflüssig",
+"questitems" (`Search.SECTION_WORDS`).
+
+**Grund:** Nutzer 2026-11-13: "kann man es besser finden wo die einstellung ist mit dem q items die man nicht mehr
+brauch". Bisher führten nur der kleine Link "Aufräumen" auf der Seite Quests und `/amisia questgegenstaende` zum
+Fenster; die Schalter standen zwischen Quest-Seite und Gruppen-Queststand.
+
+**Folge:** Feature F-193. Der Link "Aufräumen" auf der Seite Quests und der Befehl bleiben. Annahmen (nicht gefragt): eigener
+Abschnitt statt Umbenennen von Quests, order 54 (50 hat der Quellen-Sammler), das Start-Fenster (F-181) gehört mit
+in den Abschnitt, die Schlüssel ziehen nicht um.
+
+**Durchgesetzt durch:** `tools/tests/test_contracts.py` (Abschnitt in ARCHITECTURE.md), `tests/test_settings_tips.lua`
+und `tests/test_settings_pages.lua`.

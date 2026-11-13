@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(quests): the quest item settings get their own section "Quest items" (F-193)
+
+    Settings > Dungeons & Raids now has a section "Quest items" with a button that opens "Clear away quest items",
+    and the switches for the quest item tooltip line, deleting without asking and the window for items that start a
+    quest (they left the Quests section; what you had set stays). The window itself got a "Settings" link at the
+    bottom right, and the search finds the section by "clear", "bags" or "delete" too.
+
 ## [v2.82.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.82.0) (2026-11-13)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.81.0...v2.82.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

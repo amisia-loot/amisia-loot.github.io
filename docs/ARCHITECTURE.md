@@ -569,8 +569,9 @@ the main window's page list what to mark. The settings page is built from the sc
 | `toast` | UI/LootToast.lua ("Item-Anzeige", F-158) | `invites` | Raid/GroupAccept.lua ("Gruppeneinladungen", everyone, F-163) |
 | `pull` | Raid/PullTimer.lua ("Pull- und Pausen-Timer", everyone, F-164) | `runtimes` | Gear/RunTimes.lua ("Lauf-Zeiten", everyone, tab Dungeons & Raids, F-166) |
 | `dungeonbar` | Gear/DungeonBar.lua ("Dungeon-Leiste", everyone, tab Dungeons & Raids, F-168) | `layer` | Gear/Layer.lua ("Layer", everyone, tab Gilde, F-185) |
+| `questitems` | Gear/QuestItems.lua ("Questgegenstände", everyone, tab Dungeons & Raids, F-193; the button opens the window, the items keep their keys `quests.itemTooltip`, `quests.itemNoAsk`, `quests.startPopup`, D-123) | | |
 
-The `order` of a section is unique and follows the tabs: Raid 10-31, Kalender 35, Ausrüstung 45-53, Gilde
+The `order` of a section is unique and follows the tabs: Raid 10-31, Kalender 35, Ausrüstung 45-54, Gilde
 60-62, PvP 70, Allgemein 85-95 (spec `docs/specs/2026-10-13-einstellungen-abschnitte.md`). A setting that moves to
 another section is a step of `Core/Migrate.lua` (D-48); step 2 moved `sync.shareUpgrades/askUpgrades/needTooltip`
 to `need.*`, `awards.plusScope/plusOrder` to `rolls.*`, `gear.kind/upgradeDot` to `bis.*`, `bis.guild*` to

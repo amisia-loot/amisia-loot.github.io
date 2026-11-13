@@ -118,7 +118,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du auf das Symbol klickst, dann öffnet sich das Questfenster des Spiels; nimmst du die Quest an, schließt Amisias Fenster (bitte melden, wenn der Klick nichts tut oder "Aktion blockiert" erscheint).
 - Prüfung: Wenn du das Fenster mit dem x schließt und danach plünderst oder Taschen umräumst, dann kommt es für diesen Gegenstand nicht wieder; nach `/reload` erscheint es einmal wieder, solange die Quest offen ist.
 - Prüfung: Wenn du so einen Gegenstand im Kampf bekommst, dann erscheint das Fenster erst nach dem Kampf; beginnt ein Kampf bei offenem Fenster, dann bleibt es stehen, das x schreibt "Schließt nach dem Kampf." und es kommt keine Fehlermeldung.
-- Prüfung: Wenn du "Fenster bei Gegenständen, die eine Quest starten" (Einstellungen, Quests) ausschaltest, dann erscheint nichts mehr.
+- Prüfung: Wenn du "Fenster bei Gegenständen, die eine Quest starten" (Einstellungen, Questgegenstände) ausschaltest, dann erscheint nichts mehr.
 - Notiz: Spec `docs/specs/2026-11-11-quest-start-item.md`; DECISIONS D-113. Ob der Client für Startgegenstände den Quest-Vermerk liefert und Addons den Gegenstand per sicherem Knopf benutzen lässt, sagt `/amisia selbsttest gruppe` ("Quest-Startgegenstände"); lehnt er ab, informiert das Fenster nur ("Rechtsklick auf den Gegenstand in der Tasche ...").
 
 ### F-180 Lauf-Fenster: Zeit, Mob-XP, Gold, Bosse und Rare
@@ -194,7 +194,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Version: 2.74.0
 - Status: gebaut
 - Prüfung: Wenn du `/amisia questitems` eingibst (oder auf der Seite Quests oben rechts "Aufräumen" klickst), dann öffnet sich "Questgegenstände aufräumen" mit deinen Questgegenständen unter "Sicher überflüssig", "Wahrscheinlich überflüssig" und "Unklar", jeder mit Symbol, Anzahl und Grund ("startet die Quest ... (abgeschlossen)", "laut Daten für ...", "Quest ... nicht im Log"); keine Rüstung, kein Schlüssel, nichts aus der Bank.
-- Prüfung: Wenn du die Maus auf einen Questgegenstand hältst (Tasche oder Liste), dann steht im Tooltip "Quest: Name (abgeschlossen)" bzw. "(im Log)" oder "(nicht im Log)", bei einem überflüssigen grün "wird nicht mehr gebraucht" oder gelb "wahrscheinlich nicht mehr gebraucht"; Einstellungen > Quests > "Questgegenstände im Tooltip" aus nimmt die Zeile weg.
+- Prüfung: Wenn du die Maus auf einen Questgegenstand hältst (Tasche oder Liste), dann steht im Tooltip "Quest: Name (abgeschlossen)" bzw. "(im Log)" oder "(nicht im Log)", bei einem überflüssigen grün "wird nicht mehr gebraucht" oder gelb "wahrscheinlich nicht mehr gebraucht"; Einstellungen > Questgegenstände > "Questgegenstände im Tooltip" aus nimmt die Zeile weg.
 - Prüfung: Wenn du bei einem sicheren Gegenstand auf "Löschen" klickst, dann fragt ein Fenster mit Name, Anzahl, Grund und "Gelöschte Questgegenstände lassen sich nicht zurückholen."; "Abbrechen" löscht nichts, "Löschen" einen Stapel, danach steht im Chat "Gelöscht: Name xN." (oder, wenn das Spiel es Addons verbietet, einmal "Das Spiel lässt Addons keine Gegenstände löschen: ..." und die Knöpfe verschwinden: bitte melden, welches von beiden kam).
 - Prüfung: Wenn du von einem Questgegenstand mehr gesammelt hast als nötig und die Quest abgibst, dann steht der Rest nach etwa einer Sekunde unter "Sicher überflüssig" mit "war Ziel der Quest ... (abgeschlossen), von Amisia gesehen".
 - Prüfung: Wenn du auf eine Zeile rechtsklickst und "Behalten" wählst, dann steht sie unter "Behalten" und "Nächsten sicheren löschen (N)" zählt sie nicht mehr; "Nicht mehr behalten" holt sie zurück.
@@ -1242,6 +1242,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du in der Ansicht Klassen "Nach Spezialisierung" einschaltest, dann steht jede Klasse je Spezialisierung in einer eigenen Zeile (z. B. "1. Jäger · Treffsicherheit") und unten "… Spezialisierungen bekannt".
 
 ## Addon: Ausrüstung und Welt
+
+### F-193 Questgegenstände: eigener Abschnitt in den Einstellungen
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du die Einstellungen öffnest (Reiter Dungeons & Raids) oder im Hauptfenster "aufräumen" suchst, dann gibt es den Abschnitt "Questgegenstände" mit dem Knopf "Fenster "Questgegenstände aufräumen" öffnen" (öffnet das Fenster) und den drei Schaltern; im Abschnitt Quests stehen sie nicht mehr, und was du dort eingestellt hattest, gilt weiter.
+- Prüfung: Wenn du im Fenster "Questgegenstände aufräumen" unten rechts auf "Einstellungen" klickst, dann öffnet das Hauptfenster den Abschnitt "Questgegenstände".
+- Notiz: DECISIONS D-123; erweitert F-173 und F-181. Kein neuer gespeicherter Schlüssel: die Schalter behalten `quests.itemTooltip`, `quests.itemNoAsk`, `quests.startPopup`. Ohne Spec (kleine Umstellung der Einstellungen).
 
 ### F-038 Ausrüstungstabelle
 - Version: 2.30.1

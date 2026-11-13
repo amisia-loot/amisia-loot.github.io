@@ -816,3 +816,20 @@ ns.RegisterSlash("questgegenstaende", { en = "questitems", aliases = { "questite
     run = function()
         if ns.QuestItemsWindow then ns.QuestItemsWindow.Toggle() end
     end })
+
+-- The section "Questgegenstände" (D-123): the window's own entry in the settings, its two switches and the
+-- window of an item that starts a quest. The keys stay under quests. (saved as before, nothing moves).
+ns.RegisterSettings{ key = "questitems", label = L["Questgegenstände"], order = 54, group = "dungeons", pages = { "quests" }, items = {
+    { key = "questitems.open", type = "button", label = L["Fenster \"Questgegenstände aufräumen\" öffnen"],
+      tip = L["Welche Questgegenstände in deinen Taschen du nicht mehr brauchst. Auch mit /amisia questgegenstaende oder auf der Seite Quests oben rechts \"Aufräumen\"."],
+      run = function() if ns.QuestItemsWindow then ns.QuestItemsWindow.Show() end end },
+    -- F-173: the window and the tooltip line (this file, Gear/QuestItemsWindow.lua)
+    { key = "quests.itemTooltip", type = "toggle", label = L["Questgegenstände im Tooltip"], default = true,
+      tip = L["Im Tooltip eines Questgegenstands: zu welcher Quest er gehört, ob sie abgeschlossen ist und ob du ihn noch brauchst."] },
+    { key = "quests.itemNoAsk", type = "toggle", label = L["Questgegenstände ohne Nachfrage löschen"], default = false,
+      tip = L["Im Fenster \"Questgegenstände aufräumen\" löscht ein Klick auf \"Löschen\" einen sicher überflüssigen Stapel ohne Frage. Gelöschte Gegenstände lassen sich nicht zurückholen."] },
+    -- F-181: the window of an item that starts a quest (Gear/QuestStart.lua, D-113)
+    { key = "quests.startPopup", type = "toggle", label = L["Fenster bei Gegenständen, die eine Quest starten"], default = true,
+      tip = L["Landet ein Gegenstand in deinen Taschen, der eine Quest startet, die du weder im Log noch abgeschlossen hast, zeigt ein kleines Fenster ihn; ein Klick auf sein Symbol startet die Quest. Nie im Kampf oder Bosskampf."],
+      onChange = function(v) if ns.QuestStart then ns.QuestStart.SettingChanged(v) end end },
+} }
