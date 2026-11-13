@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.84.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.84.0) (2026-11-13)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.83.0...v2.84.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(chat): an [Invite] link behind "has come online" (F-197)
 
     When a guild member or friend comes online, the chat line now ends with a blue [Invite]; a click invites them
