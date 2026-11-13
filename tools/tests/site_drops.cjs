@@ -7,7 +7,7 @@
 process.env.TZ = 'UTC';
 const {grab} = require('./site_parser.cjs');
 
-const NEEDED = ['amSplit', 'DROP_DAY0', 'dropDay', 'dropDate', 'dropName', 'amParseDrops', 'dropRecOk', 'dropMergeInto', 'dropPlan',
+const NEEDED = ['amSplit', 'DROP_DAY0', 'dropDay', 'dropDate', 'dropName', 'amParseDrops', 'dropRecOk', 'dropMergeInto', 'dropBaseOk', 'dropBaseKills', 'dropPlan',
   'dropImport', 'dropRateText', 'dropTables', 'dropDownload'];
 const src = NEEDED.map(grab).join('\n\n') + `
 ;module.exports = {amSplit, dropDay, dropDate, amParseDrops, dropPlan, dropImport, dropRateText, dropTables, dropDownload};`;
@@ -141,13 +141,13 @@ out.download = JSON.parse(api.dropDownload(st));
   const el = id => els[id] || (els[id] = {id, value: '', innerHTML: '', textContent: '', hidden: false,
     get options() { return [...this.innerHTML.matchAll(/<option value="([^"]*)"/g)].map(m => ({value: m[1]})); }});
   const STUBS = `
-let DATA, state, archiveOn = false, readOnly = false;
+let DATA, state, archiveOn = false, readOnly = false, DROPS = null;
 const ITEM = {}, OBSITEM = {}, SLOTNAME = {finger: 'Ring'};
 const zTag = z => '<span class="zone ' + z + '">Z</span>';
 const icoHTML = (it, extra, count, link) => '<ico item="' + (it ? it.id : '') + '" link="' + link + '">';
 `;
-  const page = STUBS + ['esc', 'DROP_DAY0', 'dropRecOk', 'dropRateText', 'dropTables', 'DROP_KIND', 'renderDrops'].map(grab).join('\n\n')
-    + `;module.exports = {renderDrops, set: (d, s, ro) => { DATA = d; state = s; readOnly = ro; }};`;
+  const page = STUBS + ['esc', 'DROP_DAY0', 'dropRecOk', 'dropBaseOk', 'dropBaseKills', 'dropRateText', 'dropTables', 'DROP_KIND', 'renderDrops'].map(grab).join('\n\n')
+    + `;module.exports = {renderDrops, set: (d, s, ro, dr) => { DATA = d; state = s; readOnly = ro; DROPS = dr || null; }};`;
   const m2 = {exports: {}};
   new Function('module', 'exports', '$', page)(m2, m2.exports, sel => el(sel));
   const evil = {raiders: [], awards: [], dropObs: [['c0000001', 777, 55, 1, 300, '00000001', 'G', [5, 1]]],
@@ -161,6 +161,51 @@ const icoHTML = (it, extra, count, link) => '<ico item="' + (it ? it.id : '') + 
   m2.exports.set({zones: [], bosses: [], items: []}, {raiders: [], awards: []}, false);
   m2.exports.renderDrops();
   out.page.empty = el('#dropBody').innerHTML;
+  // the data build's kills alone (F-187): the tab shows them with an empty ledger; names from the file are escaped too
+  m2.exports.set({zones: [], bosses: [], items: []}, {raiders: [], awards: []}, false,
+    {v: 1, k: [['c0000002', 778, 56, 1, 300, 'G', [5, 1]]], names: {778: '<b>Boss</b>'}, zones: {56: ['party', '<i>Zone</i>']}});
+  m2.exports.renderDrops();
+  out.page.base = {body: el('#dropBody').innerHTML, count: el('#dropCount').textContent, download: el('#dropDownload').hidden};
+}
+
+// the kills of the data build's file (data/drops-forever.js, F-187) together with the ledger's: one count per kill id
+{
+  const EMPTY = {zones: [], bosses: [], items: []};
+  const FILE = {v: 1, k: [
+    ['a0000001', 213450, 2834, 1, 277, 'G', [219004, 1]],
+    ['a0000002', 213450, 2834, 1, 276, 'G', []],
+    ['a0000004', 0, 2834, 1, 277, 'E', [219006, 1]],
+    ['broken', 1, 2, 3],
+    ['a000000z', 213450, 2834, 1, 277, 'G', []],
+    ['a0000003', 213470, 409, 9, 278, 'G', [219005, 1, 219006]]],
+    names: {213450: 'Faldrim (file)', 213470: 'Kurgor'}, zones: {2834: ['party', 'Halle der Thane'], 409: ['raid', 'Geschmolzener Kern']}};
+  const flat = t => t.map(z => [z.name, z.kind, z.kills, z.bosses.map(b => [b.name, b.kills, b.items.map(i => [i.id, i.rate])])]);
+  out.base = {};
+  // the file only
+  out.base.fileOnly = flat(api.dropTables(EMPTY, {raiders: [], awards: []}, FILE));
+  // the ledger only (no file, a file of another form, a broken one)
+  const led = {raiders: [], awards: []};
+  api.dropImport(led, out.parsed);
+  out.base.ledgerOnly = flat(api.dropTables(EMPTY, led));
+  out.base.ledgerNull = flat(api.dropTables(EMPTY, led, null));
+  out.base.ledgerBroken = flat(api.dropTables(EMPTY, led, {k: 'x', names: [], zones: 5}));
+  // both, with the same kills in each: a0000001 (more items in the ledger), a0000002 in both
+  out.base.both = flat(api.dropTables(EMPTY, led, FILE));
+  // a kill only the file has and one only the ledger has add up
+  const led2 = {raiders: [], awards: []};
+  api.dropImport(led2, api.amParseDrops(api.amSplit('#AMISIA 2 X\nDN 213450 0 Faldrim Ambossmahl\nDK b0000009 213450 2834 1 2026-10-07 bbbbbbbb G 219004:1\n#END').blocks));
+  out.base.add = flat(api.dropTables(EMPTY, led2, FILE));
+  // forever.js observations up to obsThrough still count the file's kills of those days once
+  out.base.through = flat(api.dropTables({zones: [], bosses: [], items: [], obsThrough: 277,
+    obsBosses: [{npc: 213450, name: 'Faldrim', zone: 'thanes', kills: 2, obs: {219004: 1}}],
+    obsZones: [{key: 'thanes', name: 'Halle der Thane', inst: 2834, kind: 'party'}]}, {raiders: [], awards: []}, FILE));
+  // the plan of a paste whose kills the file has already: known, not new; adding them changes no count
+  out.base.plan = clone(api.dropPlan(out.parsed, {raiders: [], awards: []}, FILE));
+  delete out.base.plan.parsed;
+  const led3 = {raiders: [], awards: []};
+  api.dropImport(led3, out.parsed);
+  api.dropImport(led3, out.parsed);
+  out.base.pastedTwice = flat(api.dropTables(EMPTY, led3, FILE));
 }
 
 process.stdout.write(JSON.stringify(out));

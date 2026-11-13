@@ -21,15 +21,15 @@ python3 tools/build.py perf [--sv FILE] [--rows N]
 
 - `data` runs the data builds in dependency order: `build_scan_archive.py update`, `build_dungeons.py --wago`, `build_gear.py`,
   `build_map.py`, `build_dungeonquests.py`, `build_quests.py`, `build_questitems.py`, `build_professions.py`,
-  `build_talents.py`, `build_magescrolls.py`, `build_raidcheck.py`, `build_enchants.py`, `build_dungeonart.py --wago`, `build_bis.py`,
+  `build_talents.py`, `build_magescrolls.py`, `build_raidcheck.py`, `build_enchants.py`, `build_dungeonart.py --wago`, `build_site_drops.py` (F-187, below), `build_bis.py`,
   `build_scan_lists.py` (last: it reads the NPC ids of the files before it). It stops at the first build
-  that fails and ends with `git diff --stat` of `Amisia/Data` and `tools`. Without `--wago` it first
+  that fails and ends with `git diff --stat` of `Amisia/Data`, `tools`, `Amisia-Website/data` and `Amisia-Website/index.html`. Without `--wago` it first
   chooses the newest, fullest copy of every client table (`client_tables.py`, below) and prints per table
   the file it took (version, rows, source); `--wago DIR` reads only that folder instead. Professions, talents, mage scrolls and the raid check are skipped with a
   note naming the missing tables (`build.py tables`, or export them on the PC with `tools/export_db2.ps1 -Tables ...`),
   dungeons and dungeon art fall back to their kept snapshots. `--sv` goes to `build_gear.py`,
   `build_map.py` (learned entrances), `build_professions.py` (trainers read in the game), `build_dungeonquests.py` (the collector's own quest observations), `build_questitems.py` (the own links of quest items, F-173),
-  `build_bis.py`, `build_scan_archive.py`, `build_dungeons.py` and `build_scan_lists.py` (the scans by id, D-104;
+  `build_bis.py`, `build_scan_archive.py`, `build_site_drops.py` (the drop records), `build_dungeons.py` and `build_scan_lists.py` (the scans by id, D-104;
   default: what each finds, e.g. `~/addons/_SavedVariables/Amisia.lua`);
   `--att DIR` builds every step from another AllTheThings download (it sets `AMISIA_ATT_CACHE`, see
   `att_data.py`; e.g. a fresh download in `~/addons/_cache/att_<date>` to compare before it replaces the
@@ -476,7 +476,31 @@ python tools/build_scan.py --obs amisia-drop-obs-2026-10-20.json
 
 The file is rewritten only when the tables change; then bump `BUILD_ID`.
 
+Since F-187 every `build.py data` fills the same archive from the SavedVariables (`build_site_drops.py`, below), so
+the kills also reach the site as `Amisia-Website/data/drops-forever.js` without a run of `build_scan.py`.
+
 Tests: `python -m pytest tools/tests -q`.
+
+## build_site_drops.py
+
+```
+python3 tools/build_site_drops.py [--sv FILE ...] [--archive FILE] [--out FILE] [--index FILE]
+```
+
+The guild's boss kills for the site's Loot Tables tab without pasting (F-187, D-119); a step of `build.py data`
+(before `build_bis.py`, which reads the same archive). It joins the drop records of the SavedVariables
+(`drops.k`, own and heard; default `~/addons/_SavedVariables/Amisia.lua` when it is there, `--sv` with no file:
+none) into `tools/drop_obs.json` with `build_scan.py`'s rules (one kill per id, items at their larger count, the
+earlier day) and writes every kill of the archive to `Amisia-Website/data/drops-forever.js`:
+`window.__DROPS["forever"] = {v: 1, k: [[id, npc, instance, difficulty, day, G|E, [item, count, ...]], ...],
+names: {npc: boss}, zones: {instance: [party|raid, name]}}`, kills by day then id, names only those the kills
+use. That is the text "Drops für die Website" without its head line (the exporter's name) and without the origin
+of each kill (a random client id); no guild, realm or account. The file is public on GitHub Pages once pushed.
+
+The output depends on the archive only (the same archive, the same bytes); without kills it is written empty.
+When its content changes, `BUILD_ID` in `Amisia-Website/index.html` rises to the current Unix time (at least by
+one); otherwise nothing is touched. A SavedVariables file that does not parse is named and skipped. No network,
+no Supabase. `tools/tests/test_build_site_drops.py` holds the committed file against the committed archive.
 
 ## att_data.py
 

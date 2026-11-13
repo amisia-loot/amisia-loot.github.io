@@ -42,3 +42,21 @@ def test_late_crafting_tables_are_not_applied(out):
 
 def test_the_crafting_tables_of_the_game_on_show_apply(out):
     assert out['ownCraft'] == {'CRAFT': {'tag': 'CRAFT'}, 'craftState': 'ok'}
+
+
+def test_forever_loads_the_kills_of_the_data_build_once(out):
+    """F-187: data/drops-forever.js, with BUILD_ID, only for Forever; the page is drawn again when it arrives."""
+    assert 'data/drops-forever.js?v=x' in out['dropsScripts']
+    assert out['dropsOk']['DROPS'] == {'v': 1, 'k': [], 'names': {}, 'zones': {}} and out['dropsOk']['state'] == 'ok'
+    assert out['dropsOk']['renders'] >= 1
+    assert out['dropsArchive'] == {'DROPS': None, 'scripts': 1}, 'the archive has no drops file'
+    assert out['dropsBack']['DROPS'] == {'v': 1, 'k': [], 'names': {}, 'zones': {}} and out['dropsBack']['scripts'] == 1, 'loaded once'
+
+
+def test_a_missing_drops_file_leaves_the_page_working(out):
+    assert out['dropsMissing']['DROPS'] is None and out['dropsMissing']['state'] == 'error'
+
+
+def test_a_late_drops_file_waits_for_its_game(out):
+    assert out['dropsLate'] is None, 'the archive on show: the file of Forever is not applied'
+    assert out['dropsLateBack'] == {'v': 1, 'k': []}

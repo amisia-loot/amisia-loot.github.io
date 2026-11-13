@@ -6,13 +6,13 @@ const {grab} = require('./site_parser.cjs');
 // What else the code reaches for on the page; the scripts the page adds are kept so the test can finish them by hand.
 const STUBS = `
 const BUILD_ID = 'x', CLASSIC_CLASSES = [], MOP_CLASSES = [];
-let DATA = null, CRAFT = null, gameKey = 'forever', CLASSES, dataState, craftState, bossNameState = 'ok';
-const window = {__LOOT: {}, __CRAFT: {}};
+let DATA = null, CRAFT = null, DROPS = null, gameKey = 'forever', CLASSES, dataState, craftState, bossNameState = 'ok', renders = 0;
+const window = {__LOOT: {}, __CRAFT: {}, __DROPS: {}};
 const document = {createElement: () => ({}), head: {appendChild: s => scripts.push(s)}};
-function applyData(d){ DATA = d; } function applyCraft(c){ CRAFT = c; } function loadBossNames(){} function renderAll(){}
+function applyData(d){ DATA = d; } function applyCraft(c){ CRAFT = c; } function loadBossNames(){} function renderAll(){ renders++; }
 `;
-const src = STUBS + ['PLAY', 'GAMES', 'GAME', 'loadCraft', 'loadGame'].map(grab).join('\n')
-  + `;module.exports = {loadGame, window, get: () => ({gameKey, DATA, dataState, CRAFT, craftState})};`;
+const src = STUBS + ['PLAY', 'GAMES', 'GAME', 'loadCraft', 'dropsState', 'applyDrops', 'loadDrops', 'loadGame'].map(grab).join('\n')
+  + `;module.exports = {loadGame, window, get: () => ({gameKey, DATA, dataState, CRAFT, craftState}), drops: () => ({DROPS, state: dropsState.forever || null, renders})};`;
 
 function fresh() {
   const scripts = [];
@@ -24,7 +24,8 @@ function fresh() {
     if (tables) api.window[key][tables.k] = tables.v;
     s.onload();
   };
-  return {api, scripts, arrive};
+  const fail = file => scripts.find(x => x.src.startsWith(file)).onerror();
+  return {api, scripts, arrive, fail};
 }
 const out = {};
 
@@ -59,5 +60,33 @@ const out = {};
   api.loadGame('tbc');
   arrive('data/craft-tbc.js', '__CRAFT', {k: 'tbc', v: {tag: 'CRAFT'}});
   out.ownCraft = {CRAFT: api.get().CRAFT, craftState: api.get().craftState};
+}
+// the boss kills of the data build (F-187): Forever loads data/drops-forever.js once, with BUILD_ID; the
+// archive has none; a missing file leaves DROPS empty; a file that arrives while the archive is on show
+// waits in window.__DROPS until Forever is back
+{
+  const {api, scripts, arrive} = fresh();
+  api.loadGame('forever');
+  out.dropsScripts = scripts.map(s => s.src);
+  arrive('data/drops-forever.js', '__DROPS', {k: 'forever', v: {v: 1, k: [], names: {}, zones: {}}});
+  out.dropsOk = api.drops();
+  api.loadGame('tbc');
+  out.dropsArchive = {DROPS: api.drops().DROPS, scripts: scripts.filter(s => s.src.includes('drops')).length};
+  api.loadGame('forever');
+  out.dropsBack = {DROPS: api.drops().DROPS, scripts: scripts.filter(s => s.src.includes('drops')).length};
+}
+{
+  const {api, fail} = fresh();
+  api.loadGame('forever');
+  fail('data/drops-forever.js');
+  out.dropsMissing = api.drops();
+}
+{
+  const {api, arrive} = fresh();
+  api.loadGame('forever'); api.loadGame('tbc');
+  arrive('data/drops-forever.js', '__DROPS', {k: 'forever', v: {v: 1, k: []}});
+  out.dropsLate = api.drops().DROPS;
+  api.loadGame('forever');
+  out.dropsLateBack = api.drops().DROPS;
 }
 process.stdout.write(JSON.stringify(out));

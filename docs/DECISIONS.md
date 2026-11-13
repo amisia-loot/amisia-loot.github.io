@@ -3087,3 +3087,40 @@ fertig mit Wartenden und übernommen, Offene, Sammler an/aus, ein Scan zur Zeit,
 Schritts, kein Dateiname und keine ID im Text), `tests/test_pages.lua`, `tests/test_drops_view.lua`,
 `tests/test_scan_quests.lua`, `tests/ui_scene.lua` (`tools-idle`, `tools-running`, `tools-finished`),
 `tools/tests/test_ui_layout.py::test_rule_red_budget`.
+
+## D-119 Drops ohne Kopieren: der Datenbau schreibt die Kills als öffentliche Datei der Seite
+
+**Datum:** 2026-11-13
+**Entscheidung:** `python3 tools/build.py data` hat den Schritt "site drops" (`tools/build_site_drops.py`, F-187,
+Spec `docs/specs/2026-11-13-drops-website.md`), vor dem BiS-Bau:
+- **Archiv:** die Drop-Sätze der SavedVariables (`AmisiaDB.drops.k`, eigene und gehörte; Standard
+  `~/addons/_SavedVariables/Amisia.lua`, `--sv`) gehen in `tools/drop_obs.json` (committet), mit den Regeln von
+  `tools/build_scan.py` (ein Kill je Kennung, je Item die größere Zahl, die kleinere Herkunft, der frühere Tag). Das
+  Addon hält Sätze nur 28 Tage und höchstens 4000; das Archiv behält sie für immer (wie D-34 für die Scans). Das
+  Addon wird deswegen nie gekürzt: der Austausch in der Gilde braucht seine Sätze.
+- **Datei:** jeder Kill des Archivs in `Amisia-Website/data/drops-forever.js` (`window.__DROPS["forever"]`: `k` als
+  `[Kennung, NPC, Instanz, Schwierigkeit, Tag, G|E, [Item, Anzahl, ...]]` nach Tag und Kennung, `names` und `zones`
+  nur soweit genutzt). Nur aus dem Archiv gebaut: gleiches Archiv, gleiche Bytes; ohne Kills leer geschrieben.
+- **Öffentlich:** die Datei ist auf GitHub Pages lesbar, sobald sie gepusht ist (der Ledger hinter der Anmeldung
+  nicht). Sie trägt darum nur Drop-Statistik: keine Spieler-, Charakter-, Gilden-, Realm- oder Kontonamen, nicht die
+  Kopfzeile des Textes "Drops für die Website" (Name des Exportierenden), nicht die zufällige Client-Kennung je Kill.
+  Kill-Kennungen (Hash der Leichen-GUID, D-25), Tage, Boss- und Instanznamen sind öffentlich.
+- **BUILD_ID:** ändert sich der Inhalt der Datei, hebt der Schritt `BUILD_ID` in `Amisia-Website/index.html` (Unix-Zeit,
+  mindestens alt + 1); D-33 gilt für diese Datei damit von selbst.
+- **Seite:** Forever lädt die Datei (`GAMES[].drops`, `?v=BUILD_ID`, einmal; eine fehlende Datei ändert nichts).
+  Loot Tables zählt Datei und Ledger (`dropObs`) je Kill-Kennung einmal (Items beider, früherer Tag, Namen des
+  Ledgers vor denen der Datei); die Regel `obsThrough`/`obsIds` von `data/forever.js` gilt für beide. Einfügen und
+  "Add the kills" bleiben; der Plan nennt Kills, die nur die Datei hat, "already on the site from the data build".
+- **Kein** Schreiben nach Supabase aus Skripten, keine Schemaänderung, kein Netz, kein Hinweis im Addon.
+**Grund:** Nutzer 2026-11-13 zu Vorschlag 6 der Seite Werkzeuge ("mach alle aber nach deinen vorschlag"): der
+Spielstand mit den Drop-Daten liegt ohnehin auf dem N100, das Kopieren und Einfügen entfällt. Das Addon ist öffentlich
+(CurseForge): ein Satz "deine Kills kommen von selbst" im Spiel stimmte nur für den Seitenbesitzer.
+**Folge:** Live geht es mit dem Push eines Datenbaus, nicht mit einem Addon-Release. Weil `tools/build_bis.py` dasselbe
+Archiv als Grundbestand der Dropraten liest (`ns.BIS.O`), ändert ein Datenbau mit neuen Kills auch
+`Amisia/Data/BisData.lua`. `tools/build_scan.py` (voller Bau, `obsBosses` in `data/forever.js`) bleibt; beide lesen
+dasselbe Archiv. Annahmen (nicht gefragt): kein zweites Archiv; einzelne Kills statt Summen; leere Datei statt keiner.
+**Durchgesetzt durch:** `tools/tests/test_build_site_drops.py` (Inhalt ohne Namen und Herkunft, gleiche Bytes,
+Archiv behält Kills, ohne SavedVariables, kaputte Datei, BUILD_ID, Datei passt zum Archiv),
+`tools/tests/test_drop_import.py` (Datei allein, Ledger allein, beide mit Überschneidung, fehlende oder kaputte Datei,
+zweimal eingefügt, `obsThrough`, Plan), `tools/tests/test_site_load.py` (einmal geladen, nur Forever, fehlende Datei,
+späte Datei), `tools/tests/test_data_files.py`, `tools/tests/test_build_tool.py::test_data_steps_order`.

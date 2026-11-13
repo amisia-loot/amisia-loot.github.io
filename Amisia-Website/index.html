@@ -821,7 +821,7 @@ tr.got td{opacity:.5}
       <div class="count" id="dropCount"></div>
       <button class="btn" id="dropDownload" type="button" hidden title="The guild's boss kills as a file for tools/build_scan.py --obs">Download observations</button>
     </div>
-    <p class="crhint">Boss kills the guild recorded with the Amisia addon: how often each item lay in the loot window. In game an officer types <code>/amisia drops export</code>, copies the text and pastes it on the Import tab.</p>
+    <p class="crhint">Boss kills the guild recorded with the Amisia addon: how often each item lay in the loot window. The kills the site owner's addon recorded or heard in the guild arrive by themselves with each data build. Other officers type <code>/amisia drops export</code> in game, copy the text and paste it on the Import tab; a kill counts once, however it arrives.</p>
     <div id="dropBody"></div>
   </section>
 
@@ -1084,14 +1084,14 @@ const MOP_CLASSES = ['Warrior','Paladin','Hunter','Rogue','Priest','Death Knight
 // scans; until raids are recorded every item sits under "Unknown source".
 const PLAY = 'forever';
 const GAMES = [
-  {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:'data/forever.js', classes:MOP_CLASSES, rulesets:['PvE','PvP','Hardcore'], blurb:'item catalog from addon scans · boss tables grow with recorded raids'},
+  {key:'forever', name:'World of Warcraft Forever', short:'Forever', file:'data/forever.js', drops:'data/drops-forever.js', classes:MOP_CLASSES, rulesets:['PvE','PvP','Hardcore'], blurb:'item catalog from addon scans · boss tables grow with recorded raids'},
 ];
 // Games whose loot stays readable, never written: the guild's TBC Anniversary ledger. Their data
 // files are kept for this view only.
 const ARCHIVE = {
   tbc: {key:'tbc', name:'TBC Anniversary', short:'TBC', file:'data/tbc.js', craft:'tbc', classes:CLASSIC_CLASSES, blurb:'Karazhan to Sunwell Plateau', archive:true},
 };
-const BUILD_ID = '1791229869';
+const BUILD_ID = '1794568006';
 const GAME = Object.assign(Object.fromEntries(GAMES.map(g => [g.key, g])), ARCHIVE);
 // Content phases per game version: which raids' loot belongs to which phase.
 const PHASES = {tbc: [
@@ -1160,9 +1160,25 @@ function loadBossNames(){
   s.onerror = () => { bossNameState = 'error'; };   // the names stay as the client wrote them
   document.head.appendChild(s);
 }
+// The guild's boss kills of the data build (data/drops-<game>.js, tools/build_site_drops.py, F-187): the
+// kills the site owner's addon recorded or heard arrive with every data build, without pasting. Only the
+// game on show reads its file; a missing or broken file leaves the ledger's kills alone.
+let DROPS = null;
+const dropsState = Object.create(null);
+function applyDrops(){ const d = (window.__DROPS || {})[gameKey]; DROPS = d && typeof d === 'object' && !Array.isArray(d) ? d : null; }
+function loadDrops(g){
+  applyDrops();
+  if (!g.drops || dropsState[g.key]) return;
+  dropsState[g.key] = 'loading';
+  const s = document.createElement('script'); s.src = g.drops + '?v=' + BUILD_ID;
+  // a file that arrives after the game changed stays in window.__DROPS for later
+  s.onload = () => { dropsState[g.key] = 'ok'; if (gameKey !== g.key) return; applyDrops(); renderAll(); };
+  s.onerror = () => { dropsState[g.key] = 'error'; };
+  document.head.appendChild(s);
+}
 function loadGame(key){
   const g = GAME[key] || GAME[PLAY]; gameKey = g.key; CLASSES = g.classes;
-  loadCraft(g); loadBossNames();
+  loadCraft(g); loadBossNames(); loadDrops(g);
   if (!g.file) { dataState = 'soon'; applyData(null); renderAll(); return; }
   if (window.__LOOT && window.__LOOT[g.key]) { dataState = 'ok'; applyData(window.__LOOT[g.key]); renderAll(); return; }
   dataState = 'loading'; applyData(null); renderAll();
@@ -1854,7 +1870,7 @@ function renderHeader(){
   const dropTab = document.querySelector('.tab[data-view="drops"]'); if (dropTab) dropTab.hidden = archiveOn;
   document.querySelectorAll('.tab').forEach(t => {
     if (t.dataset.view === 'settings') return;   // no count on this tab
-    const n = t.dataset.view==='night' ? allNights().length : t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='prio' ? Object.keys(lootPrio()).filter(id => prioOf(id)).length : t.dataset.view==='points' ? ptVisible(pointsStandings()).length : t.dataset.view==='att' ? countedNights().length : t.dataset.view==='mats' ? (archiveOn ? matsHere().length : MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length) : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='drops' ? (archiveOn ? 0 : dropTables(DATA, state).reduce((n, z) => n + z.bosses.length, 0)) : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
+    const n = t.dataset.view==='night' ? allNights().length : t.dataset.view==='wish' ? wishesHere().filter(w => !wishGot(w)).length : t.dataset.view==='prio' ? Object.keys(lootPrio()).filter(id => prioOf(id)).length : t.dataset.view==='points' ? ptVisible(pointsStandings()).length : t.dataset.view==='att' ? countedNights().length : t.dataset.view==='mats' ? (archiveOn ? matsHere().length : MATROWS.filter(r => r.kind === 'request' && r.status === 'open').length) : t.dataset.view==='craft' ? CRAFT.items.length : t.dataset.view==='drops' ? (archiveOn ? 0 : dropTables(DATA, state, DROPS).reduce((n, z) => n + z.bosses.length, 0)) : t.dataset.view==='armory'||t.dataset.view==='roster'||t.dataset.view==='matrix' ? state.raiders.length : state.awards.length;
     t.innerHTML = t.textContent.replace(/\s*\d+$/,'') + '<span class="n">'+n+'</span>';
   });
 }
@@ -3506,7 +3522,7 @@ function renderStats(){
 /* ---------------- loot tables from the guild's boss kills ---------------- */
 const DROP_KIND = {party: 'Dungeon', raid: 'Raid'};
 function renderDrops(){
-  const tables = archiveOn ? [] : dropTables(DATA, state), q = $('#dropSearch').value.trim().toLowerCase(), pick = $('#dropZone').value;
+  const tables = archiveOn ? [] : dropTables(DATA, state, DROPS), q = $('#dropSearch').value.trim().toLowerCase(), pick = $('#dropZone').value;
   $('#dropZone').innerHTML = '<option value="">Every dungeon and raid</option><option value="party">Dungeons</option><option value="raid">Raids</option>'
     + tables.map(z => '<option value="' + esc(z.key) + '">' + esc(z.name) + '</option>').join('');
   $('#dropZone').value = [...$('#dropZone').options].some(o => o.value === pick) ? pick : '';
@@ -3524,7 +3540,7 @@ function renderDrops(){
   for (const z of shown) for (const b of z.bosses) { bosses++; kills += b.kills; }
   $('#dropCount').textContent = bosses + ' boss' + (bosses === 1 ? '' : 'es') + ' · ' + kills + ' kill' + (kills === 1 ? '' : 's');
   if (!tables.length) {
-    $('#dropBody').innerHTML = '<div class="empty"><b>No boss kills yet</b>The Amisia addon records the loot window of every boss a guild member opens in a dungeon or raid. Paste its text on the Import tab and the tables grow here.</div>';
+    $('#dropBody').innerHTML = '<div class="empty"><b>No boss kills yet</b>The Amisia addon records the loot window of every boss a guild member opens in a dungeon or raid. The site owner\'s kills arrive with each data build; pasting the addon\'s text on the Import tab adds others, and the tables grow here.</div>';
     return;
   }
   if (!shown.length) { $('#dropBody').innerHTML = '<div class="empty"><b>Nothing found</b>No boss or item matches the search.</div>'; return; }
@@ -3921,10 +3937,12 @@ function amDropsRender(){
   if (!amDrops) { el.hidden = true; return; }
   const p = amDrops;
   el.hidden = false;
-  $('#amDropsText').textContent = 'This text holds ' + p.n + ' boss kill' + (p.n === 1 ? '' : 's') + ' seen by the guild (' + p.fresh + ' new).'
+  $('#amDropsText').textContent = 'This text holds ' + p.n + ' boss kill' + (p.n === 1 ? '' : 's') + ' seen by the guild (' + p.fresh + ' new'
+    + (p.known ? ', ' + p.known + ' already on the site from the data build' : '') + ').'
     + (p.changed ? ' ' + p.changed + ' already in the ledger get more detail.' : '')
     + (p.bad ? ' ' + p.bad + ' line' + (p.bad === 1 ? '' : 's') + ' could not be read and ' + (p.bad === 1 ? 'is' : 'are') + ' skipped.' : '')
-    + ' The kills build the drop rates on the Loot Tables tab and carry no player names.';
+    + ' The kills build the drop rates on the Loot Tables tab and carry no player names.'
+    + ' The kills the site owner\'s addon recorded or heard in the guild arrive by themselves with each data build; a kill counts once, however often it is pasted.';
   $('#amDropsAdd').disabled = !(p.fresh || p.changed || p.names);
 }
 const INSTANCE_ZONE = {532: 'kara', 565: 'gruul', 544: 'mag', 548: 'ssc', 550: 'tk', 534: 'hyjal', 564: 'bt', 568: 'za', 580: 'swp'};
@@ -4231,21 +4249,31 @@ function dropMergeInto(r, k){
   if (r[1] === 0 && k.npc > 0 && r[6] === k.src) { r[1] = k.npc; changed = true; }
   return changed;
 }
-// What "Add the kills" would do: n kills in the text, fresh ones the ledger does not have, changed
-// ones it has with less, and the names it does not know yet.
-function dropPlan(parsed, st){
+// A kill of the data build's file (data/drops-<game>.js, F-187): [id, npc, instance, difficulty, day, G|E,
+// [item, count, ...]], the ledger's form without the origin.
+function dropBaseOk(r){
+  return Array.isArray(r) && r.length === 7 && /^[0-9a-f]{8}$/.test(r[0]) && Number.isInteger(r[1]) && r[1] >= 0 && Number.isInteger(r[2]) && r[2] > 0
+    && Number.isInteger(r[3]) && Number.isInteger(r[4]) && r[4] >= 0 && (r[5] === 'G' || r[5] === 'E')
+    && Array.isArray(r[6]) && r[6].length % 2 === 0 && r[6].every(Number.isInteger);
+}
+const dropBaseKills = drops => (drops && Array.isArray(drops.k) ? drops.k : []).filter(dropBaseOk);
+// What "Add the kills" would do: n kills in the text, fresh ones neither the ledger nor the data build's
+// file has, known ones only the file has (adding them changes no count), changed ones the ledger has
+// with less, and the names it does not know yet.
+function dropPlan(parsed, st, drops){
   const obj = x => x && typeof x === 'object' && !Array.isArray(x) ? x : {};
   const have = new Map((Array.isArray(st.dropObs) ? st.dropObs : []).filter(dropRecOk).map(r => [r[0], r]));
-  let fresh = 0, changed = 0, names = 0;
+  const base = new Set(dropBaseKills(drops).map(r => r[0]));
+  let fresh = 0, known = 0, changed = 0, names = 0;
   for (const k of parsed.kills) {
     const r = have.get(k.h);
-    if (!r) fresh++;
+    if (!r) { if (base.has(k.h)) known++; else fresh++; }
     else if (dropMergeInto(r.slice(0, 7).concat([r[7].slice()]), k)) changed++;
   }
   const dn = obj(st.dropNames), dz = obj(st.dropZones);
   for (const npc of Object.keys(parsed.names)) if (!(npc in dn)) names++;
   for (const inst of Object.keys(parsed.zones)) if (!(inst in dz)) names++;
-  return {n: parsed.kills.length, fresh, changed, names, bad: parsed.bad, parsed};
+  return {n: parsed.kills.length, fresh, known, changed, names, bad: parsed.bad, parsed};
 }
 // Adds the kills to the ledger, merged by id; importing the same text twice changes nothing. Names of
 // bosses and instances are taken only where none is known. Broken entries (an old backup) go.
@@ -4269,14 +4297,16 @@ function dropImport(st, parsed){
 // "9 of 41 (22 %)" from five kills on, "2 of 3" below.
 function dropRateText(n, K){ return K >= 5 ? n + ' of ' + K + ' (' + Math.round(n / K * 100) + ' %)' : n + ' of ' + K; }
 // The loot tables per dungeon and raid from the observations: data/forever.js counts the kills up
-// to its day (obsThrough), the ledger's kills after that day add to them, so no kill counts twice.
+// to its day (obsThrough), the kills after that day add to them, so no kill counts twice. Those kills
+// are the data build's (drops: data/drops-<game>.js, F-187) and the ledger's, one per kill id: a kill in
+// both counts once, with the items of both and the earlier day; names of the ledger win over the file's.
 // A boss whose name has a table in data/forever.js lists those items too (0 of K until one is
 // seen). A zone data/forever.js does not know comes from the addon's DZ line, from its first kill.
 // Kills without an NPC (fallback records) cannot be placed at a boss and count nowhere. A kill counts
 // by its id: one data/forever.js already holds (obsIds, the ids of its last day) is not counted again
 // when a client dated it a day later (looted after midnight). Every table keyed by a name or key has
 // no prototype: names come from other players' clients ("constructor", "toString" are just names).
-function dropTables(data, st){
+function dropTables(data, st, drops){
   data = data || {};
   const dict = () => Object.create(null);
   const obj = x => Object.assign(dict(), x && typeof x === 'object' && !Array.isArray(x) ? x : {});
@@ -4295,7 +4325,7 @@ function dropTables(data, st){
     cur.kind = z.kind || cur.kind || null; cur.inst = z.inst || cur.inst || null;
   }
   for (const z of Object.values(zones)) { if (z.inst) byInst[z.inst] = z.key; byName[z.name] = z.key; }
-  const dz = obj(st.dropZones), dn = obj(st.dropNames);
+  const dz = Object.assign(obj(drops && drops.zones), obj(st.dropZones)), dn = Object.assign(obj(drops && drops.names), obj(st.dropNames));
   const zoneOf = inst => {
     if (byInst[inst]) return byInst[inst];
     const d = Array.isArray(dz[inst]) ? dz[inst] : null;
@@ -4306,12 +4336,22 @@ function dropTables(data, st){
   };
   const through = Number.isInteger(data.obsThrough) ? data.obsThrough : -1, bosses = dict();
   for (const b of (data.obsBosses || [])) if (b && b.npc > 0) bosses[b.npc] = {npc: b.npc, name: String(b.name || dn[b.npc] || 'Boss ' + b.npc), zone: b.zone, kills: Number(b.kills) || 0, obs: obj(b.obs)};
-  for (const r of (Array.isArray(st.dropObs) ? st.dropObs : []).filter(dropRecOk)) {
-    if (r[1] <= 0 || r[4] <= through || baseIds.has(r[0])) continue;
-    const b = bosses[r[1]] || (bosses[r[1]] = {npc: r[1], name: String(dn[r[1]] || 'Boss ' + r[1]), zone: null, kills: 0, obs: dict()});
+  const kills = new Map();
+  const take = (id, npc, inst, day, items) => {
+    const k = kills.get(id);
+    if (!k) { kills.set(id, {npc, inst, day, items: new Set(items.filter((x, i) => i % 2 === 0))}); return; }
+    if (day < k.day) k.day = day;
+    if (k.npc === 0 && npc > 0) { k.npc = npc; k.inst = inst; }
+    for (let i = 0; i < items.length; i += 2) k.items.add(items[i]);
+  };
+  for (const r of dropBaseKills(drops)) take(r[0], r[1], r[2], r[4], r[6]);
+  for (const r of (Array.isArray(st.dropObs) ? st.dropObs : []).filter(dropRecOk)) take(r[0], r[1], r[2], r[4], r[7]);
+  for (const [id, r] of kills) {
+    if (r.npc <= 0 || r.day <= through || baseIds.has(id)) continue;
+    const b = bosses[r.npc] || (bosses[r.npc] = {npc: r.npc, name: String(dn[r.npc] || 'Boss ' + r.npc), zone: null, kills: 0, obs: dict()});
     b.kills++;
-    if (!b.zone) b.zone = zoneOf(r[2]);
-    for (let i = 0; i < r[7].length; i += 2) b.obs[r[7][i]] = (b.obs[r[7][i]] || 0) + 1;
+    if (!b.zone) b.zone = zoneOf(r.inst);
+    for (const item of r.items) b.obs[item] = (b.obs[item] || 0) + 1;
   }
   const out = dict();
   for (const b of Object.values(bosses)) {
@@ -4880,7 +4920,7 @@ $('#glPreview').addEventListener('click', () => {
   amGuild = blocks.length ? amGuildResolve(amParseGuildBank(blocks), state) : null;
   // the boss kills of the text "Drops für die Website" have their own button
   const drops = blocks.length ? amParseDrops(blocks) : null;
-  amDrops = drops && (drops.kills.length || drops.bad || Object.keys(drops.names).length || Object.keys(drops.zones).length) ? dropPlan(drops, state) : null;
+  amDrops = drops && (drops.kills.length || drops.bad || Object.keys(drops.names).length || Object.keys(drops.zones).length) ? dropPlan(drops, state, DROPS) : null;
   amDropsRender();
   // the loot prio changed in game (LC lines) has its own button too
   const lc = blocks.length ? amParsePrio(blocks) : null;
@@ -5158,7 +5198,7 @@ $('#amDropsAdd').addEventListener('click', () => {
   if (!amDrops || readOnly || archiveOn) return;
   fitShelf(state);
   const r = dropImport(state, amDrops.parsed);
-  amDrops = dropPlan(amDrops.parsed, state);
+  amDrops = dropPlan(amDrops.parsed, state, DROPS);
   amDropsRender();
   if (r.added || r.merged || r.names) markDirty();
   say(r.added || r.merged ? 'Added ' + r.added + ' boss kill' + (r.added === 1 ? '' : 's') + (r.merged ? ', more detail for ' + r.merged : '') + '. The Loot Tables tab shows them.'

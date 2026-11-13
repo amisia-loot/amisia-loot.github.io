@@ -138,7 +138,7 @@ def test_check_utf8(tmp_path):
 def test_data_steps_order():
     names = [s[0] for s in build.data_steps()]
     assert names == ['scan archive', 'dungeons', 'gear', 'map', 'dungeon quests', 'quests', 'quest items', 'professions', 'talents',
-                     'mage scrolls', 'raid check', 'enchants', 'dungeon art', 'bis', 'scan lists']
+                     'mage scrolls', 'raid check', 'enchants', 'dungeon art', 'site drops', 'bis', 'scan lists']
     steps = {s[0]: s for s in build.data_steps(sv='/x/Amisia.lua', wago='/w', refresh_att=True)}
     assert steps['gear'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua', '--refresh-att']
     assert steps['bis'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua']
@@ -149,6 +149,9 @@ def test_data_steps_order():
     # the scans by id (D-104): boss NPCs from the NPC scan, the lists and names last
     assert steps['dungeons'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua']
     assert steps['scan lists'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua']
+    # the guild's boss kills for the site (F-187): before the BiS build, which reads the same archive
+    assert steps['site drops'][1:] == ('build_site_drops.py', ['--sv', '/x/Amisia.lua'], None, None)
+    assert {s[0]: s for s in build.data_steps()}['site drops'][2] == [], 'without --sv: the default file when it is there'
     assert steps['talents'][4] == 'skip' and steps['professions'][4] == 'skip'
     assert steps['mage scrolls'][2] == ['--wago', '/w'] and steps['mage scrolls'][4] == 'skip'
     import build_magescrolls

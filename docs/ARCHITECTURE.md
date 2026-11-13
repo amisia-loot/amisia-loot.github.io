@@ -228,6 +228,8 @@ ScanQuests/ScanNpcs.lua (by id, D-104) -> AmisiaDB.scan.quests/npcs -> scan arch
                                             encounter's name), build_scan_lists -> Data/ScanNames.lua (titles, names)
 client table QuestV2 + the NPC ids of the data files -> build_scan_lists.py -> Data/ScanLists.lua (what the scans ask)
                                             -> tools/build_scan.py -> Amisia-Website/data/forever.js, tools/drop_obs.json
+Drops/DropSync.lua (own and heard kills) -> AmisiaDB.drops -> build_site_drops.py (build.py data, F-187, D-119) -> tools/drop_obs.json
+                                            (for good) -> Amisia-Website/data/drops-forever.js (no names, BUILD_ID raised) -> Loot Tables
 client tables (export_db2.ps1 on the PC) -> ~/addons/_wago --------------+
 wago.tools CSV exports (build.py tables)  -> ~/addons/_cache/wago --------+-> tools/client_tables.py: per table the
 AllTheThings' copies (4 tables)           -> ~/addons/_cache/att/.config/.wago   newest build, then more rows
@@ -248,7 +250,8 @@ tools/scan_archive.json (quest scan, D-104) + client tables in deDE (Map, LFGDun
 ItemSparse (client table, export_db2)   -> build_gear.py -> Data/GearData.lua (RP, the reputation an item asks for)
 raid recording, awards, bank, points  -> "#AMISIA 2" export text --- paste --> Import tab (amParse...)
                                       <-- paste "#AMISIA-WL/ALTS/LC/PTS" --- "Copy for the addon"
-drops text ("Drops für die Website")  -> "#AMISIA 2" DZ/DN/DK ----- paste --> Loot Tables (amParseDrops)
+drops text ("Drops für die Website")  -> "#AMISIA 2" DZ/DN/DK ----- paste --> Loot Tables (amParseDrops; other officers:
+                                         the owner's kills come with data/drops-forever.js, one count per kill id)
 wishlist text                         -> "#AMISIA 2" WL ------------ paste --> Wishlist (amParseWishes)
 Amisia clients  <--- addon messages (Comm: sync, exchanges) --->  Amisia clients
 ```
@@ -275,6 +278,11 @@ Amisia clients  <--- addon messages (Comm: sync, exchanges) --->  Amisia clients
   are listed in `Amisia/LICENSES/AllTheThings-MIT.txt`. "Generated file is current" tests
   live in `tools/tests/test_build_*.py`.
 - After a change to an `Amisia-Website/data/*.js` file, bump `BUILD_ID` in `Amisia-Website/index.html`.
+  `tools/build_site_drops.py` does it itself for `data/drops-forever.js` (only when the file's content changed).
+- The guild's drop records live for good in `tools/drop_obs.json` (committed; the addon keeps 28 days): every
+  `build.py data` joins the SavedVariables' `drops.k` into it (step "site drops", D-119) and writes the public
+  `Amisia-Website/data/drops-forever.js` from it (kills without exporter, origin or any name but bosses' and
+  instances'); `build_bis.py` reads the same archive for the base stock of the drop rates (`ns.BIS.O`).
 
 ## Comm (addon messages)
 
@@ -643,7 +651,7 @@ The loot toast's settings (F-152) were `ui.lootToast*` until 2.71.0; since then 
 
 | Command | Does |
 |---|---|
-| `data [--sv FILE] [--wago DIR] [--refresh-att]` | first, without `--wago`, the choice of the client tables (`tools/client_tables.py`, printed per table: build, rows, source); then every generator in order: scan archive (and its marker), dungeons, gear, map, dungeon quests, quests, professions, talents, mage scrolls, raid check, dungeon art, BiS; a step without its client tables is skipped or uses its kept snapshot; ends with `git diff --stat`; no network |
+| `data [--sv FILE] [--wago DIR] [--refresh-att]` | first, without `--wago`, the choice of the client tables (`tools/client_tables.py`, printed per table: build, rows, source); then every generator in order: scan archive (and its marker), dungeons, gear, map, dungeon quests, quests, professions, talents, mage scrolls, raid check, dungeon art, site drops (`tools/drop_obs.json`, `Amisia-Website/data/drops-forever.js`, BUILD_ID; D-119), BiS; a step without its client tables is skipped or uses its kept snapshot; ends with `git diff --stat`; no network |
 | `tables [--version V] [--tables T ...]` | the client tables from wago.tools' CSV exports for the newest `wowf` build (or V) into `~/addons/_cache/wago` (`tools/fetch_tables.py`, D-101); a table already there is never asked for again |
 | `diff [OLD NEW] [--out FILE]` | what a new client build brings (`tools/build_diff.py`, D-103): the tables of two builds on disk (default: the build of main's data against the newest on disk), new, removed and changed rows of items (quality, slot, the changed fields), quests (QuestV2), dungeons and bosses, flight points, the spells of talents and professions; floats compared as numbers; no network |
 | `check` | luaparse syntax, addon tests (deDE, then enUS), `tools/l10n.py check`, layout rules (`tools/ui_layout.py rules`, both locales), `pytest tools/tests` (incl. generated-file-current and `test_contracts.py`), UTF-8 without BOM, TOC against the folder, luacheck |
@@ -664,7 +672,7 @@ Actions (`.github/workflows/check.yml`) runs the checks on push.
 |---|---|
 | `~/addons/Amisia` (N100) | the only working copy; commits and pushes happen here |
 | `~/addons/_release/Amisia` | committed HEAD of `Amisia/`, written only by `tools/release_addon.sh`; Syncthing folder `amisia` (send-only) -> `C:\Users\aobiw\VuloSync\Amisia` on the PC, junctioned into `_forever_\Interface\AddOns\Amisia` (Forever; until 2026-10-31 `_classic_beta_`) and, for the raid part (D-57), into `_anniversary_\Interface\AddOns\Amisia` (TBC Anniversary) and `_classic_era_\Interface\AddOns\Amisia` (Classic Era); only Forever's SavedVariables come back |
-| `~/addons/_SavedVariables/Amisia.lua` | receive-only copy of the PC's SavedVariables (folder `vfui-savedvariables`); read only; its scan part goes into `tools/scan_archive.json` with every `build.py data`, after which the addon trims it |
+| `~/addons/_SavedVariables/Amisia.lua` | receive-only copy of the PC's SavedVariables (folder `vfui-savedvariables`); read only; its scan part goes into `tools/scan_archive.json` with every `build.py data`, after which the addon trims it; its drop records (`drops.k`) into `tools/drop_obs.json` and `Amisia-Website/data/drops-forever.js` (D-119; nothing trimmed) |
 | `~/.config/amisia/curseforge.token` | the CurseForge API token for `tools/curseforge.py` (D-58); only on the N100, never in the repository; the project is `## X-Curse-Project-ID` in `Amisia.toc` |
 | `~/addons/_SavedVariables/!BugGrabber.lua` | receive-only copy of the PC's error catcher SavedVariables (same Syncthing folder); read only by `build.py errors`, `check` and `release` |
 | `~/addons/_wago` | receive-only client tables (folder `amisia-wago`), exported on the PC by `tools/export_db2.ps1`, run by the Windows task "Amisia Client-Tabellen" (`tools/install_export_task.ps1`, D-51); still possible, no longer the only source of the tables (D-101) |

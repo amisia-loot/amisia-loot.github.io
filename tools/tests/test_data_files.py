@@ -1,6 +1,7 @@
 """The data files of the site since 2.0: WoW Forever, plus the TBC Anniversary archive.
 
-data/ holds the Forever loot tables and, for the read-only archive only, the TBC loot and crafting
+data/ holds the Forever loot tables, the guild's Forever boss kills of the data build (drops-forever.js,
+tools/build_site_drops.py, F-187) and, for the read-only archive only, the TBC loot and crafting
 tables and the TBC boss names. Every file index.html loads must exist, and the TBC boss name table
 must stay exactly what it was before the other games were filtered out.
 """
@@ -23,9 +24,9 @@ def page():
 
 def test_data_holds_forever_and_the_tbc_archive_only():
     names = sorted(os.listdir(DATA))
-    allowed = re.compile(r'^(forever|tbc|craft-tbc)(\.[0-9a-f]{8}\.jpg|\.js)$|^bossnames\.js$')
+    allowed = re.compile(r'^(forever|tbc|craft-tbc)(\.[0-9a-f]{8}\.jpg|\.js)$|^bossnames\.js$|^drops-forever\.js$')
     assert [n for n in names if not allowed.match(n)] == [], names
-    for need in ('forever.js', 'tbc.js', 'craft-tbc.js', 'bossnames.js'):
+    for need in ('forever.js', 'tbc.js', 'craft-tbc.js', 'bossnames.js', 'drops-forever.js'):
         assert need in names
     for prefix in ('forever.', 'tbc.', 'craft-tbc.'):
         assert len([n for n in names if n.startswith(prefix) and n.endswith('.jpg')]) == 1, prefix
@@ -57,8 +58,9 @@ def test_every_file_the_page_loads_exists():
     src = page()
     files = set(re.findall(r"file:'(data/[^']+)'", src))
     files |= {'data/craft-%s.js' % k for k in re.findall(r"craft:'([a-z]+)'", src)}
+    files |= set(re.findall(r"drops:'(data/[^']+)'", src))
     files.add('data/bossnames.js')
-    assert files == {'data/forever.js', 'data/tbc.js', 'data/craft-tbc.js', 'data/bossnames.js'}, files
+    assert files == {'data/forever.js', 'data/tbc.js', 'data/craft-tbc.js', 'data/bossnames.js', 'data/drops-forever.js'}, files
     for f in sorted(files):
         assert os.path.isfile(os.path.join(SITE, f)), f
         sp = sprite_of(os.path.basename(f))

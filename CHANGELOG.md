@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(site): the website's Loot Tables get the guild's boss kills from each data build, without pasting (F-187)
+
+    The kills the site owner's addon recorded or heard in the guild now reach the Loot Tables tab of the website
+    with every data build: no more "Drops for the website", copy and paste for them. Pasting still works for other officers, and a kill
+    counts once however it arrives; the Import tab says how many of a pasted text the site has already. The public
+    file holds drop statistics only, no player, guild or realm names. Nothing changes in the addon.
+
 ## [v2.81.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.81.0) (2026-11-13)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.80.0...v2.81.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

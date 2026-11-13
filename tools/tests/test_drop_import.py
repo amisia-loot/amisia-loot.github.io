@@ -59,7 +59,7 @@ def test_the_drop_lines_are_read(out):
 
 
 def test_the_plan_and_the_import(out):
-    assert out['plan1'] == {'n': 4, 'fresh': 4, 'changed': 0, 'names': 4, 'bad': 7}
+    assert out['plan1'] == {'n': 4, 'fresh': 4, 'known': 0, 'changed': 0, 'names': 4, 'bad': 7}
     assert out['import1'] == {'added': 4, 'merged': 0, 'names': 4}
     s = out['state1']
     assert s['dropObs'] == [
@@ -73,13 +73,13 @@ def test_the_plan_and_the_import(out):
 
 
 def test_importing_twice_changes_nothing(out):
-    assert out['plan2'] == {'n': 4, 'fresh': 0, 'changed': 0, 'names': 0, 'bad': 7}
+    assert out['plan2'] == {'n': 4, 'fresh': 0, 'known': 0, 'changed': 0, 'names': 0, 'bad': 7}
     assert out['import2'] == {'added': 0, 'merged': 0, 'names': 0}
     assert out['state2'] == out['state1']
 
 
 def test_the_same_kill_from_someone_else_is_merged(out):
-    assert out['plan3'] == {'n': 2, 'fresh': 1, 'changed': 1, 'names': 1, 'bad': 0}
+    assert out['plan3'] == {'n': 2, 'fresh': 1, 'known': 0, 'changed': 1, 'names': 1, 'bad': 0}
     assert out['import3'] == {'added': 1, 'merged': 1, 'names': 1}
     s = out['state3']
     recs = {r[0]: r for r in s['dropObs']}
@@ -208,3 +208,46 @@ def test_the_tables_escape_what_they_show():
     assert 'icoHTML(' in body and ",0,false)" in body.replace(' ', ''), 'observation rows draw items without a link'
     assert 'wowhead' not in body.lower()
 
+
+
+# ---------------------------------------------------------------- the data build's kills (F-187, D-119)
+FALDRIM = ['Halle der Thane', 'party', 2, [['Faldrim Ambossmahl', 2, [[219004, '1 of 2'], [219006, '1 of 2']]]]]
+KURGOR = ['Geschmolzener Kern', 'raid', 1, [['Kurgor der Wächter', 1, [[219005, '1 of 1']]]]]
+
+
+def test_the_kills_of_the_data_build_alone_fill_the_tables(out):
+    """data/drops-forever.js without anything pasted: its kills count; broken rows and fallback kills do not."""
+    assert out['base']['fileOnly'] == [['Halle der Thane', 'party', 2, [['Faldrim (file)', 2, [[219004, '1 of 2']]]]]]
+    p = out['page']['base']
+    assert p['count'] == '1 boss · 1 kill' and 'Kills seen by the guild: 1' in p['body']
+    assert '&lt;b&gt;Boss&lt;/b&gt;' in p['body'] and '<b>Boss' not in p['body'], 'names from the file are escaped'
+    assert p['download'] is True, 'nothing in the ledger to download'
+
+
+def test_without_the_file_the_ledger_counts_as_before(out):
+    b = out['base']
+    assert b['ledgerOnly'] == [KURGOR, FALDRIM]
+    assert b['ledgerNull'] == b['ledgerOnly'] and b['ledgerBroken'] == b['ledgerOnly'], 'a missing or broken file changes nothing'
+
+
+def test_a_kill_in_the_file_and_in_the_ledger_counts_once(out):
+    b = out['base']
+    assert b['both'] == [KURGOR, FALDRIM], 'a0000001 and a0000002 are in both: two kills, not four; the ledger names win'
+    assert b['add'] == [['Halle der Thane', 'party', 3, [['Faldrim Ambossmahl', 3, [[219004, '2 of 3']]]]]], \
+        'a kill only the ledger has adds to the file'
+    assert b['pastedTwice'] == b['both'], 'pasting the same text twice adds nothing'
+    assert b['through'] == [['Halle der Thane', 'party', 2, [['Faldrim', 2, [[219004, '1 of 2']]]]]], \
+        'kills up to obsThrough of data/forever.js are counted there, not again'
+
+
+def test_the_paste_says_which_kills_the_site_has_already(out):
+    assert out['base']['plan'] == {'n': 4, 'fresh': 1, 'known': 3, 'changed': 0, 'names': 4, 'bad': 7}
+
+
+def test_the_page_loads_the_file_and_says_kills_arrive_by_themselves():
+    src = page()
+    assert "drops:'data/drops-forever.js'" in src
+    assert 'dropTables(DATA, state, DROPS)' in src and 'dropPlan(drops, state, DROPS)' in src
+    assert 'dropTables(DATA, state)' not in src, 'every caller passes the file'
+    assert "arrive by themselves with each data build" in src
+    assert 'already on the site from the data build' in src

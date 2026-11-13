@@ -237,6 +237,9 @@ def data_steps(sv=None, wago=WAGO, refresh_att=False):
         # the permanent enchantments of the enchant suggestions (F-128)
         ('enchants', 'build_enchants.py', ['--wago', wago], ENCHANT_TABLES, 'skip'),
         ('dungeon art', 'build_dungeonart.py', ['--wago', wago], ['Map', 'LoadingScreens'], []),
+        # the guild's boss kills (F-187, D-119): the SavedVariables into tools/drop_obs.json and the site's
+        # data/drops-forever.js (BUILD_ID raised when it changes); before the BiS build, which reads the archive
+        ('site drops', 'build_site_drops.py', sv_args, None, None),
         ('bis', 'build_bis.py', ['--wago', wago] + sv_args, None, None),
         # last: reads the NPC ids of the files above; the quest list from QuestV2, the scanned names (D-104)
         ('scan lists', 'build_scan_lists.py', ['--wago', wago] + sv_args, None, None),
@@ -304,7 +307,7 @@ def cmd_data(args):
         done.append(f'{name} {time.time() - t0:.0f}s')
     say()
     say('built: ' + ', '.join(done) + (('; skipped: ' + ', '.join(skipped)) if skipped else ''))
-    stat = git(ROOT, 'diff', '--stat', '--', ADDON_REL + '/Data', 'tools').rstrip()
+    stat = git(ROOT, 'diff', '--stat', '--', ADDON_REL + '/Data', 'tools', 'Amisia-Website/data', 'Amisia-Website/index.html').rstrip()
     say('changed:\n' + stat if stat else 'changed: nothing (every generated file is current)')
     return 0
 
