@@ -5,6 +5,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(drops): Guild > Tools shows who shares drop data and syncs on demand (F-189)
+
+    The drop data part no longer says "last exchange none yet": it tells when your client last announced itself and
+    last received kills. "Who shares (n)" lists, in place of the boss list, the guild members heard since you logged
+    in, with their class colour, when they were heard, the kills they announced and how far you match ("same", "has
+    more: waiting", "3 kills pulled" ...). "Sync now" (or `/amisia drops sync`) announces your data right away, at
+    most once a minute, and after about a minute says how many members answered and how many new kills came. Greyed
+    with the reason in instances, in combat, without a guild or with sharing off. The list stays in memory only and
+    is never sent; the exchange's protocol is unchanged.
+
 - feat(site): the website's Loot Tables get the guild's boss kills from each data build, without pasting (F-187)
 
     The kills the site owner's addon recorded or heard in the guild now reach the Loot Tables tab of the website

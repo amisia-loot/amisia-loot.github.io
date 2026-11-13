@@ -171,7 +171,9 @@ assert(D and D.head and D.state and D.share and D.list and D.web and D.area and 
 assert(D.head.inherits.ListHeaderVisualTemplate, "a section header of the client")
 local st = D.state:GetText()
 assert(has(st, "6 Kills (2 eigene, 4 gehörte)") and has(st, "3 Bosse"), st)
-assert(has(st, "neuester Tag " .. NS.DropsDate(today)) and has(st, "letzter Austausch"), st)
+assert(has(st, "neuester Tag " .. NS.DropsDate(today)), st)
+-- when this client announced itself and last received kills (F-189), no "letzter Austausch"
+assert(has(st, "Noch nicht angekündigt, zuletzt Kills empfangen " .. NS.FmtDayTime(d.heard) .. ".") and not has(st, "letzter Austausch"), st)
 assert(#D.list.items == 10, "the list per instance and boss: " .. #D.list.items)
 assert(has(D.list.rows[1].name:GetText(), "Geschmolzener Kern"))
 assert(D.list.rows[3].rate:GetText() == "gesehen 2-mal in 2 Kills")
@@ -186,11 +188,89 @@ assert(D.share:GetChecked() == false)
 D.share:Click()
 assert(NS.Get("drops.share") == true, "on again")
 
+---------------------------------------------------------------------------
+-- who shares and "Jetzt abgleichen" (F-189, D-121)
+---------------------------------------------------------------------------
+local tipLines = {}
+local realAddLine = GameTooltip.AddLine
+GameTooltip.AddLine = function(_, t) tipLines[#tipLines + 1] = t end
+local function tip(frame)
+    wipe(tipLines)
+    frame.scripts.OnEnter(frame)
+    return table.concat(tipLines, " / ")
+end
+-- outside instances, where the exchange may talk
+STUB.instance = { name = "Sturmwind", type = "none", id = 0 }
+NS.Refresh()
+assert(D.who and D.sync and D.empty, "the parts of the exchange")
+assert(D.who:GetText() == "Wer teilt (0)" and D.sync:GetText() == "Jetzt abgleichen", D.who:GetText())
+assert(D.sync:IsEnabled(), "outside instances the link may start")
+assert(D.sync.isLink and D.who.isLink, "quiet links, the one red button stays Drops für die Website")
+assert(has(tip(D.sync), "Höchstens einmal in der Minute"), tip(D.sync))
+-- nobody heard yet: the members in place of the list say so, with the reason when one is known
+D.who:Click()
+assert(D.who:GetText() == "Zur Liste" and D.list:IsShown() and #D.list.items == 0 and D.empty:IsShown())
+assert(D.empty.text:GetText() == "Noch kein Gildenmitglied mit Drop-Daten gehört (seit dem Einloggen).", D.empty.text:GetText())
+NS.Set("drops.share", false)
+NS.Refresh()
+assert(D.empty.text:GetText() == "Noch kein Gildenmitglied mit Drop-Daten gehört (seit dem Einloggen). Teilen ist aus.", D.empty.text:GetText())
+assert(not D.sync:IsEnabled() and tip(D.sync) == "Teilen ist aus.", tip(D.sync))
+assert(has(D.state:GetText(), "Teilen ist aus: Amisia tauscht keine Drop-Daten mit der Gilde."), D.state:GetText())
+NS.Set("drops.share", true)
+STUB.instance = { name = "Halle der Thane", type = "party", id = 2834, diff = 1 }
+NS.Refresh()
+assert(not D.sync:IsEnabled() and tip(D.sync) == "In Instanzen tauscht Amisia keine Drop-Daten.", tip(D.sync))
+assert(has(D.empty.text:GetText(), "In Instanzen tauscht Amisia keine Drop-Daten."), D.empty.text:GetText())
+STUB.instance = { name = "Sturmwind", type = "none", id = 0 }
+NS.Refresh()
+assert(D.sync:IsEnabled())
+-- a member announces: its row, the name in its class colour, heard, the kills it announced, the
+-- comparison; the page follows by itself; a stranger outside the roster never shows
+STUB.guild = { { name = "Fraktur", class = "SHAMAN", rank = 3 } }
+STUB.fire("GUILD_ROSTER_UPDATE")
+STUB.fire("CHAT_MSG_ADDON", "Amisia", ("1DV\t2\t5\t%d\t0:abcd:5"):format(today), "GUILD", "Fraktur", "Vulo", 0, 0, "", 0)
+STUB.fire("CHAT_MSG_ADDON", "Amisia", ("1DV\t2\t9\t%d\t0:abce:9"):format(today), "GUILD", "Pug", "Vulo", 0, 0, "", 0)
+STUB.tick(2)
+assert(#D.list.items == 1 and not D.empty:IsShown(), "one member: " .. #D.list.items)
+local mrow = D.list.rows[1]
+assert(has(mrow.name:GetText(), "|c" .. RAID_CLASS_COLORS.SHAMAN.colorStr .. "Fraktur|r"), mrow.name:GetText())
+assert(has(mrow.name:GetText(), "gerade eben gehört, 5 Kills"), mrow.name:GetText())
+local mstate = mrow.rate:GetText()
+assert(mstate == "hat andere: wartet" or mstate == "du holst gerade", mstate)
+assert(D.who:GetText() == "Zur Liste")
+assert(has(tip(mrow), "Angekündigt gerade eben: 5 Kills der letzten vier Wochen, neuester Tag " .. NS.DropsDate(today) .. "."), tip(mrow))
+assert(has(tip(mrow), "Von dort geholt: 0 neue Kills. Von dir geholt: 0 Kills."), tip(mrow))
+-- the ages follow once a second while the members show (the page's own update), nothing per frame
+STUB.tick(120)
+tf.ticker:GetScript("OnUpdate")(tf.ticker, 0.5)
+assert(has(mrow.name:GetText(), "gerade eben"), "not before a second: " .. mrow.name:GetText())
+tf.ticker:GetScript("OnUpdate")(tf.ticker, 0.6)
+assert(has(D.list.rows[1].name:GetText(), "vor 2 Min. gehört, 5 Kills"), D.list.rows[1].name:GetText())
+-- "Jetzt abgleichen": the line says it runs, the link is grey, then the result from what arrived
+D.sync:Click()
+assert(has(D.state:GetText(), "Abgleich läuft ..."), D.state:GetText())
+assert(not D.sync:IsEnabled() and tip(D.sync) == "Der Abgleich läuft schon.", tip(D.sync))
+STUB.tick(200)
+assert(has(D.state:GetText(), "Abgleich: niemand hat geantwortet (wer schon gleich ist, meldet sich nicht)."), D.state:GetText())
+-- within its minute after the announcement the link waits and says how long
+NS.DROPSYNC_LIMITS.manualGap = 1000
+NS.Refresh()
+assert(not D.sync:IsEnabled() and has(tip(D.sync), "Wieder in ") and has(tip(D.sync), " s."), tip(D.sync))
+NS.DROPSYNC_LIMITS.manualGap = 60
+NS.Refresh()
+assert(D.sync:IsEnabled())
+-- back to the list
+D.who:Click()
+assert(D.who:GetText() == "Wer teilt (1)" and #D.list.items == 10 and not D.empty:IsShown(), D.who:GetText())
+GameTooltip.AddLine = realAddLine
+
 -- layout at the main window's size
 do
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(tf, 602, 478)
     L.column("tools page with drops", tf.rows[1].name, tf.rows[4].name, tf.next, D.head, D.state, D.share, D.list)
-    L.row("drop controls", D.share, D.shareLabel, D.web)
+    L.row("drop controls", D.share, D.shareLabel, D.who, D.sync, D.web)
+    L.inside("drop who", D.who)
+    L.inside("drop sync", D.sync)
     L.row("drop list", D.list, D.list.bar)
     L.inside("drop list bar", D.list.bar)
     local _, lr = L.span(D.list)

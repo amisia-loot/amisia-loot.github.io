@@ -896,6 +896,16 @@ S.STATES = {
         NS.ShowPage("tools")
         STUB.instance = S.toolsInstance or STUB.instance
     end },
+    -- who shares (F-189): three guild members announced their drop data; the members in place of the list
+    { page = "tools", name = "tools-who", open = function()
+        local today = NS.DropsToday()
+        for i, who in ipairs({ "Fraktur", "Chorf", "Anna Bergmann" }) do
+            STUB.fire("CHAT_MSG_ADDON", "Amisia", ("1DV\t2\t%d\t%d\t0:abc%d:%d"):format(10 * i, today, i, 10 * i), "GUILD", who, "Vuloo", 0, 0, "", 0)
+        end
+        NS.ShowPage("tools")
+        local D = NS.PageFrame("tools").drops
+        if D.who:GetText() ~= NS.L["Zur Liste"] then D.who:Click() end
+    end },
     -- the scene's priest opens the mage scrolls by command (any class may); last, as the page list
     -- keeps its row from then on
     { page = "scrolls", name = "scrolls", always = true, open = function() NS.ShowMageScrolls() end },

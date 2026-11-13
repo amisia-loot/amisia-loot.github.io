@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-189 Drop-Austausch sichtbar: wer teilt, Jetzt abgleichen
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du Gilde > Werkzeuge öffnest (Expertenmodus), dann steht unter "Drop-Daten" nach den Kills "Angekündigt vor ... Min." (oder "Noch nicht angekündigt") und "zuletzt Kills empfangen ..." statt "letzter Austausch".
+- Prüfung: Wenn ein zweites Gildenmitglied mit Amisia nach dir einloggt oder "Jetzt abgleichen" klickt, dann steht es nach wenigen Minuten unter "Wer teilt (1)" mit seinem Namen in Klassenfarbe, "vor ... gehört, n Kills" und dem Vergleich ("gleich", "hat mehr: wartet", "n Kills geholt" ...); "Zur Liste" zeigt wieder die Bosse.
+- Prüfung: Wenn du "Jetzt abgleichen" klickst (oder `/amisia drops sync`), dann steht "Abgleich läuft ..." und nach etwa einer Minute "Abgleich: ... geantwortet, ... neue Kills." oder "Abgleich: niemand hat geantwortet ..."; gleich danach ist der Link grau mit dem Tooltip "Wieder in ... s.".
+- Prüfung: Wenn du in einem Dungeon bist oder "Mit der Gilde teilen" aus ist, dann ist "Jetzt abgleichen" grau und sein Tooltip nennt den Grund; "Wer teilt" ohne Mitglieder sagt "Noch kein Gildenmitglied mit Drop-Daten gehört (seit dem Einloggen)." mit dem Grund.
+- Notiz: Spec `docs/specs/2026-11-13-drop-austausch.md`; DECISIONS D-121. Die Liste lebt nur in der Sitzung und wird nie gespeichert oder gesendet; das Protokoll ist unverändert (2.81.0-Clients tauschen weiter). Wer vor dir online war und nichts Neues hat, kündigt erst nach einem neuen eigenen Kill wieder an und fehlt bis dahin in der Liste.
+
 ### F-188 Alles Fehlende scannen: die Scans nacheinander, nach Instanz und Kampf von selbst weiter
 - Version: -
 - Status: geplant

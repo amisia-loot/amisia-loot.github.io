@@ -3,13 +3,16 @@
 -- state in plain words, a progress bar while the total is known, and only the actions that fit the
 -- state; a line "Nächster Schritt" when there is something to do. Above the rows "Alles Fehlende scannen"
 -- (F-188, D-120): what is open, or the queue's plan while it runs, and its link. Under it the guild's drop data:
--- kills own and heard, the list per instance and boss with the rates, the sharing switch and the text
--- "Drops für die Website" (in place of the list).
+-- kills own and heard, when this client last announced and last received kills, the list per instance and
+-- boss with the rates, the sharing switch, "Wer teilt" (F-189, D-121: the members heard this session, in
+-- place of the list), "Jetzt abgleichen" and the text "Drops für die Website" (in place of the list).
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local page
-local exportOpen = false
+-- what stands under the drop controls: "list" (per instance and boss), "who" (Wer teilt, F-189) or
+-- "export" (the text Drops für die Website)
+local dropView = "list"
 local exportText = ""
 
 -- rows of 18 under the drop controls down to the footer (10 x 18 = 180 of 195)
@@ -37,9 +40,73 @@ local function itemTooltip(owner, id)
     GameTooltip:Show()
 end
 
+-- An age as "gerade eben", "vor 3 Min.", "vor 2 Std.".
+local function ago(secs)
+    secs = math.max(0, secs or 0)
+    if secs < 60 then return L["gerade eben"] end
+    if secs < 7200 then return L["vor %d Min."]:format(math.floor(secs / 60)) end
+    return L["vor %d Std."]:format(math.floor(secs / 3600))
+end
+
+-- The comparison with one member (ns.DropSyncMembers) in words.
+local function memberState(m)
+    local st = m.state
+    if st == "pulling" then return L["du holst gerade"] end
+    if st == "equal" then return m.got > 0 and L["gleich, %d Kills geholt"]:format(m.got) or L["gleich"] end
+    if st == "got" then return L["%d Kills geholt"]:format(m.got) end
+    if st == "nothing" then return L["geholt, nichts Neues dabei"] end
+    if st == "more" then return L["hat mehr: wartet"] end
+    if st == "other" then return L["hat andere: wartet"] end
+    if st == "later" then return L["hat andere: beim nächsten Abgleich"] end
+    if st == "gave" then return L["hat %d Kills von dir geholt"]:format(m.gave) end
+    if st == "less" then return L["hat weniger als du"] end
+    return L["fragt bei dir an"]
+end
+
+-- The rows of "Wer teilt": the name in its class colour (from the guild roster), when it was heard and
+-- the kills it announced, the comparison on the right.
+local function memberItems()
+    local class = {}
+    for _, g in ipairs(ns.GuildRoster() or {}) do
+        if type(g.name) == "string" then class[g.name:lower()] = g.class end
+    end
+    local items = {}
+    for _, m in ipairs(ns.DropSyncMembers()) do
+        local info = m.heard and L["%s gehört, %d Kills"]:format(ago(m.heard), m.total or 0) or L["%s gefragt"]:format(ago(m.asked))
+        items[#items + 1] = { kind = "member", m = m, text = ns.ClassColored(m.name, class[m.name:lower()]) .. "  " .. T.GREY .. info .. "|r",
+            rate = memberState(m) }
+    end
+    return items
+end
+
+local function memberTooltip(owner, m)
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    GameTooltip:SetText(m.name)
+    if m.heard then
+        GameTooltip:AddLine(L["Angekündigt %s: %d Kills der letzten vier Wochen, neuester Tag %s."]:format(ago(m.heard), m.total or 0,
+            m.newest and ns.DropsDate(m.newest) or L["keiner"]), 1, 1, 1, true)
+    else
+        GameTooltip:AddLine(L["Keine Ankündigung gehört; hat dich %s gefragt."]:format(ago(m.asked)), 1, 1, 1, true)
+    end
+    GameTooltip:AddLine(L["Von dort geholt: %d neue Kills. Von dir geholt: %d Kills."]:format(m.got, m.gave), 0.8, 0.8, 0.8, true)
+    GameTooltip:Show()
+end
+
+local function syncTooltip(b)
+    GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
+    GameTooltip:SetText(L["Jetzt abgleichen"])
+    local ok, why, wait = ns.DropSyncCanSync()
+    if ok then
+        GameTooltip:AddLine(L["Kündigt deine Drop-Daten jetzt der Gilde an: wer etwas anderes hat, holt es, und Amisia holt bei den Mitgliedern, die schon gemeldet haben. Höchstens einmal in der Minute."], 1, 1, 1, true)
+    else
+        GameTooltip:AddLine(ns.DropSyncWhyText(why, wait) or "", 1, 1, 1, true)
+    end
+    GameTooltip:Show()
+end
+
 local function buildDrops(f)
-    -- the guild's drop data under its section header: the state, sharing and the text for the website,
-    -- the list (or the text) down to the footer
+    -- the guild's drop data under its section header: the state, sharing, "Wer teilt", "Jetzt abgleichen"
+    -- and the text for the website, the list (or the members, or the text) down to the footer
     local D = W.Page(f, { view = true })
     local top = D:Bands({ "header", { "line", lines = 2 }, "row" })
     D.head = W.SectionHeader(D, L["Drop-Daten"], false)
@@ -47,13 +114,28 @@ local function buildDrops(f)
     D.state = D:Line(2)
 
     D.share = W.Toggle(D, function(on) ns.Set("drops.share", on); ns.Refresh() end)
-    D.shareLabel = W.Text(D, T.FONT.text, 180)
+    D.shareLabel = W.Text(D, T.FONT.text, 130)
     D.shareLabel:SetText(L["Mit der Gilde teilen"])
     W.Tooltip(D.share, L["Drop-Daten mit der Gilde teilen"], L["Ohne Namen, nur außerhalb von Instanzen, nur unter geprüften Gildenmitgliedern."])
 
+    D.who = W.Link(D, L["Wer teilt"], function()
+        dropView = dropView == "who" and "list" or "who"
+        if D.area.box:HasFocus() then D.area.box:ClearFocus() end
+        ns.Refresh()
+    end)
+    W.FitChip(D.who)
+    W.Tooltip(D.who, L["Wer teilt"], L["Die Gildenmitglieder, deren Drop-Daten Amisia seit dem Einloggen gehört hat, und wie weit ihr gleich seid. Nur hier zu sehen, nirgends gespeichert oder gesendet."])
+    D.sync = W.Link(D, L["Jetzt abgleichen"], function()
+        ns.DropSyncNow()
+        ns.Refresh()
+    end)
+    W.FitChip(D.sync)
+    D.sync:SetScript("OnEnter", syncTooltip)
+    D.sync:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
     D.web = W.Button(D, L["Drops für die Website"], 160, function()
-        exportOpen = not exportOpen
-        if exportOpen then
+        dropView = dropView == "export" and "list" or "export"
+        if dropView == "export" then
             setExport(D, ns.DropsExportText())
             D.area.box:SetFocus()
             D.area.box:HighlightText()
@@ -63,7 +145,6 @@ local function buildDrops(f)
         ns.Refresh()
     end)
     W.FitChip(D.web, 160)
-    D:Place(3, { D.share, D.shareLabel }, { D.web })
     D:Footer({ "areaHint" })
 
     -- rows of 18 under the controls down to the footer; the list is 590 wide, its thin bar beside it
@@ -74,7 +155,9 @@ local function buildDrops(f)
         r.rate:SetPoint("RIGHT", -6, 0)
         r.rate:SetJustifyH("RIGHT")
         r:SetScript("OnEnter", function(self)
-            if self.item and self.item.kind == "item" then itemTooltip(self, self.item.id) end
+            local e = self.item
+            if e and e.kind == "item" then itemTooltip(self, e.id) end
+            if e and e.kind == "member" then memberTooltip(self, e.m) end
         end)
         r:SetScript("OnLeave", function() GameTooltip:Hide() end)
     end, function(r, e)
@@ -86,6 +169,8 @@ local function buildDrops(f)
         r.rate:SetText(e.rate)
         r.rate:SetTextColor(rateColor[1], rateColor[2], rateColor[3])
     end)
+    D.empty = D:Empty(T.EMPTY.W, D.list)
+    D.empty:Hide()
     D.area = W.ReadOnlyArea(D, function() return exportText end)
     D.area:SetPoint("TOPLEFT", 0, top)
     D.area:SetPoint("BOTTOMRIGHT", 0, D:Bottom())
@@ -95,20 +180,61 @@ local function buildDrops(f)
     return D
 end
 
-local function fillDrops(D)
-    local s = ns.DropsStatus()
+-- The exchange in one sentence: sharing off; the manual run ("Abgleich läuft ..." and its result); else
+-- when this client last announced itself and last received kills.
+local function exchangeText(heardAt)
+    if not ns.Get("drops.share") then return L["Teilen ist aus: Amisia tauscht keine Drop-Daten mit der Gilde."] end
+    local info = ns.DropSyncInfo()
+    if info.manual then return info.manual end
+    return (info.announced and L["Angekündigt %s"]:format(ago(info.announced)) or L["Noch nicht angekündigt"])
+        .. L[", zuletzt Kills empfangen %s."]:format(heardAt and ns.FmtDayTime(heardAt) or L["noch nie"])
+end
+
+-- The parts of the exchange (F-189), also once a second while the page shows and something waits: the
+-- state line, the links "Wer teilt (n)" and "Jetzt abgleichen", and the members in place of the list.
+-- The counts of the records come from the last full refresh (D.status; DROPS_CHANGED refreshes it).
+local function fillExchange(D)
+    local s = D.status or ns.DropsStatus()
     if s.kills == 0 then
-        D.state:SetText(ns.Get("drops.record")
+        -- a manual run's line after the short form, so both fit the two lines
+        local run = ns.DropSyncInfo().manual
+        D.state:SetText(run and (L["Noch keine Kills."] .. " " .. run) or ns.Get("drops.record")
             and L["Noch keine Kills. Amisia zeichnet geöffnete Lootfenster von Bossen in Dungeons und Raids auf."]
             or L["Noch keine Kills. Amisia zeichnet geöffnete Lootfenster von Bossen in Dungeons und Raids auf (Aufzeichnen ist in den Einstellungen aus)."])
     else
-        D.state:SetText(L["%d Kills (%d eigene, %d gehörte), %d Bosse, neuester Tag %s, letzter Austausch %s."]:format(
-            s.kills, s.own, s.heard, s.bosses, s.newest and ns.DropsDate(s.newest) or L["keiner"],
-            s.heardAt and ns.FmtDayTime(s.heardAt) or L["noch keiner"]))
+        D.state:SetText(L["%d Kills (%d eigene, %d gehörte), %d Bosse, neuester Tag %s."]:format(
+            s.kills, s.own, s.heard, s.bosses, s.newest and ns.DropsDate(s.newest) or L["keiner"]) .. " " .. exchangeText(s.heardAt))
     end
+    local whoText = dropView == "who" and L["Zur Liste"] or L["Wer teilt (%d)"]:format(ns.DropSyncInfo().members)
+    if D.who:GetText() ~= whoText then D.who:SetText(whoText) end
+    local ok = ns.DropSyncCanSync()
+    if ok then D.sync:Enable() else D.sync:Disable() end
+    if dropView == "who" then
+        local items = memberItems()
+        D.list:SetItems(items)
+        if #items == 0 then
+            local why = ns.DropSyncBlocked()
+            local text = L["Noch kein Gildenmitglied mit Drop-Daten gehört (seit dem Einloggen)."]
+            D.empty:Set(L["Noch niemand gehört"], why and (text .. " " .. ns.DropSyncWhyText(why)) or text)
+        end
+        D.empty:SetShown(#items == 0)
+    else
+        D.empty:Hide()
+    end
+    -- the controls again when a link's width changed
+    local sig = D.who:GetText() .. "|" .. D.sync:GetText()
+    if sig ~= D.sig then
+        D.sig = sig
+        D:Place(3, { D.share, D.shareLabel }, { D.who, D.sync, D.web })
+    end
+end
+
+local function fillDrops(D)
     D.share:SetChecked(ns.Get("drops.share") and true or false)
-    D.list:SetItems(ns.DropsBossList())
-    if exportOpen then
+    D.status = ns.DropsStatus()
+    if dropView ~= "who" then D.list:SetItems(ns.DropsBossList()) end
+    fillExchange(D)
+    if dropView == "export" then
         D.list:Hide()
         D.area:Show()
         D.areaHint:Show()
@@ -124,6 +250,16 @@ local function fillDrops(D)
         D.list:Show()
         D.web:SetText(L["Drops für die Website"])
     end
+end
+
+-- Whether the exchange part changes by itself while the page shows: a manual run waits for answers, the
+-- link waits for its minute, or the members are shown (their ages).
+local function exchangeTicks()
+    if dropView == "who" then return true end
+    local info = ns.DropSyncInfo()
+    if info.manual then return true end
+    local _, why = ns.DropSyncCanSync()
+    return why == "wait"
 end
 
 ---------------------------------------------------------------------------
@@ -394,14 +530,17 @@ local function buildScans(f)
         end
     end
     f.next = f:Line(6)
-    -- while a scan runs and the page shows: the rows' texts and bars once a second, nothing rebuilt
+    -- while a scan runs and the page shows: the rows' texts and bars once a second, nothing rebuilt; the
+    -- drop exchange's line, links and members likewise while they change by themselves (F-189)
     local since = 0
     f.ticker = CreateFrame("Frame", nil, f)
     f.ticker:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate Tools scans", function(_, elapsed)
         since = since + (elapsed or 0)
         if since < TICK then return end
         since = 0
-        if runningScan() and ns.CurrentPage() == "tools" then fillScans(f) end
+        if ns.CurrentPage() ~= "tools" then return end
+        if runningScan() then fillScans(f) end
+        if f.drops and exchangeTicks() then fillExchange(f.drops) end
     end))
 end
 
@@ -426,16 +565,17 @@ function ns.ShowDropsExport()
         ns.msg(L["Der Text \"Drops für die Website\" steht auf der Seite Werkzeuge; sie zeigt Amisia im Expertenmodus (Einstellungen)."])
         return
     end
-    exportOpen = true
+    dropView = "export"
     ns.Refresh()
     setExport(page.drops, ns.DropsExportText())
     page.drops.area.box:SetFocus()
     page.drops.area.box:HighlightText()
 end
 
--- New or merged records: the page shows them, at most once a second and only while shown.
+-- New or merged records, and the exchange's own changes (a member heard, a pull, a blob, the manual
+-- run; F-189): the page shows them, at most once a second and only while shown.
 local refreshPending, refreshAt = false, nil
-ns.Listen("DROPS_CHANGED", function()
+local function refreshSoon()
     if not page or not page:IsShown() or ns.CurrentPage() ~= "tools" or refreshPending then return end
     refreshPending = true
     local wait = refreshAt and math.max(0, 1 - (GetTime() - refreshAt)) or 0
@@ -444,4 +584,6 @@ ns.Listen("DROPS_CHANGED", function()
         refreshAt = GetTime()
         if page and page:IsShown() and ns.CurrentPage() == "tools" then ns.Refresh() end
     end)
-end)
+end
+ns.Listen("DROPS_CHANGED", refreshSoon)
+ns.Listen("DROPSYNC_CHANGED", refreshSoon)

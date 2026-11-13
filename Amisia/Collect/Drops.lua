@@ -1140,18 +1140,27 @@ ns.DROPS_SETTINGS = { key = "drops", label = L["Drop-Daten"], order = 47, group 
 } }
 ns.RegisterSettings(ns.DROPS_SETTINGS)
 
-ns.RegisterSlash("drops", { args = "[export]", desc = L["Stand der Drop-Daten der Gilde"], run = function(rest)
+ns.RegisterSlash("drops", { args = "[export|sync]", desc = L["Stand der Drop-Daten der Gilde"], run = function(rest)
     local word = (rest or ""):match("^(%S*)"):lower()
     if word == "export" then
         ns.ShowDropsExport()
         return
+    elseif word == "sync" or word == "abgleichen" then
+        -- "Jetzt abgleichen" (F-189): announce now, within the exchange's limits
+        local ok, why, wait = ns.DropSyncNow(true)
+        if ok then
+            ns.msg(L["Abgleich gestartet: Amisia kündigt deine Drop-Daten der Gilde an; das Ergebnis kommt in etwa einer Minute."])
+        else
+            ns.msg(L["Abgleich geht gerade nicht: %s"]:format(ns.DropSyncWhyText(why, wait) or "?"))
+        end
+        return
     elseif word ~= "" then
-        ns.msg(L["Aufruf: /amisia drops [export]"])
+        ns.msg(L["Aufruf: /amisia drops [export|sync]"])
         return
     end
     local s = ns.DropsStatus()
-    ns.msg(L["Drop-Daten: %d Kills (%d eigene, %d gehörte), %d Bosse, neuester Tag %s, letzter Austausch %s. Aufzeichnen %s, Teilen %s."]:format(
+    ns.msg(L["Drop-Daten: %d Kills (%d eigene, %d gehörte), %d Bosse, neuester Tag %s, zuletzt Kills empfangen %s, Wer teilt: %d. Aufzeichnen %s, Teilen %s."]:format(
         s.kills, s.own, s.heard, s.bosses, s.newest and ns.DropsDate(s.newest) or L["keiner"],
-        s.heardAt and ns.FmtDayTime(s.heardAt) or L["noch keiner"],
+        s.heardAt and ns.FmtDayTime(s.heardAt) or L["noch nie"], ns.DropSyncInfo().members,
         ns.Get("drops.record") and L["an"] or L["aus"], ns.Get("drops.share") and L["an"] or L["aus"]))
 end })

@@ -3167,3 +3167,48 @@ Chatzeile einmal je Login, solange es gilt.
 Weiter draußen, Kampf, Kampfsperre, Anhalten von Hand, nichts offen, Planzeile und nächster Schritt, neuer Build mit
 Stempeln, die Chatzeile einmal, nur im Expertenmodus, abschaltbar, nichts gespeichert), `tests/test_tools_page.lua`
 (Kopfzeile, grauer Link, Plan, Anhalten, "Nichts offen."), `tests/ui_scene.lua` (`tools-all`).
+
+## D-121 Drop-Austausch sichtbar: wer teilt nur im Speicher, "Jetzt abgleichen" einmal in der Minute, Protokoll unverändert
+
+**Datum:** 2026-11-13
+**Entscheidung:** Der Drop-Austausch (`Collect/DropSync.lua`) zeigt auf Gilde > Werkzeuge, wer teilt und wie weit man
+gleich ist, und lässt sich von Hand anstoßen (F-189, Spec `docs/specs/2026-11-13-drop-austausch.md`). Regeln:
+- **Nur, was das Protokoll schon sagt:** kein neues Feld, keine neue Art, Drop-Protokoll bleibt 2. Die Liste nimmt
+  die Ankündigung (DV: Kills, neuester Tag, Prüfsumme und Zahl je Woche) und den Austausch selbst (wer fragt: DQ,
+  DR; wer antwortet: DI, DW, DK; was ankam). Der Vergleich: "gleich" (alle vier Wochen gleich), "du holst gerade",
+  "n Kills geholt"/"geholt, nichts Neues dabei" (nach seiner Ankündigung ganz geholt), "hat weniger als du"/"hat n
+  Kills von dir geholt" (was er ankündigte, war hier schon), "hat mehr/andere: wartet" (wartet aufs Holen), "hat
+  andere: beim nächsten Abgleich", "fragt bei dir an" (fragt ohne gehörte Ankündigung). Merge nimmt nie etwas
+  zurück, darum bleibt "geholt" und "war schon hier" bis zur nächsten Ankündigung wahr.
+- **Nur im Speicher, nur Gildenmitglieder:** Name ist der Absender des Servers in der Schreibweise der Gildenliste,
+  aufgenommen erst nach `ns.TrustWait(name, "member")`; höchstens 40 (das am längsten nicht gesehene geht); nie
+  gespeichert, nie gesendet (D-25). Zahlen einer Ankündigung begrenzt (Kills 0-999999, neuester Tag in den
+  behaltenen Tagen).
+- **"Jetzt abgleichen"** (ruhiger Link, `/amisia drops sync`/`abgleichen`): eine DV an die Gilde wie die
+  automatische, dazu sofort holen bei gehörten Mitgliedern, die nur auf ihre Streuung (0-30 s) warten; die Wartezeit
+  eines beschäftigten Absenders (DW) bleibt. Höchstens einmal in der Minute nach der letzten Ankündigung (auch der
+  automatischen, gezählt ab dem Absenden): jeder Empfänger verwirft eine zweite DV desselben Absenders innerhalb von
+  60 Sekunden ohnehin; die 30 Minuten der automatischen Ankündigung bleiben (sie schützen den Gildenkanal vor
+  Funk ohne Klick). Grau mit Grund: Teilen aus, keine Gilde, Instanz, Kampf, Kampfsperre, Raid-Abgleich,
+  Schlachtfeld, läuft schon, nichts anzukündigen und niemand zu holen, "Wieder in n s.". Alles Weitere über die
+  bisherigen Grenzen (Sitzungsbytes, 30 Anfragen je Stunde, eine offene Anfrage).
+- **Ergebnis aus dem, was ankam:** ein Lauf endet frühestens 45 s nach dem Klick, sobald nichts geholt wird und
+  keine Anfrage auf ihren Blob wartet, spätestens nach 3 Minuten: "n Mitglieder haben geantwortet, m neue Kills"
+  (geantwortet: fragte oder antwortete in der Zeit) oder "niemand hat geantwortet"; 5 Minuten sichtbar.
+- **Seite:** die Statuszeile sagt, wann dieser Client sich zuletzt ankündigte und zuletzt Kills empfing ("letzter
+  Austausch" entfällt); "Wer teilt (n)" zeigt die Mitglieder an der Stelle der Bossliste (10 Zeilen, Scrollbalken).
+  Aktualisiert über das interne Ereignis `DROPSYNC_CHANGED` (höchstens einmal je Sekunde) und, solange sich etwas
+  von selbst ändert (Lauf, Minute, Alter in der Liste), einmal je Sekunde über den Takt der Seite; nichts je Frame.
+
+**Grund:** Nutzer 2026-11-13 zu Vorschlag 7 der Seite Werkzeuge ("mach alle aber nach deinen vorschlag"): "letzter
+Austausch noch keiner" sagte nicht, ob und mit wem getauscht wird.
+
+**Folge:** Kein neuer gespeicherter Schlüssel, keine Einstellung, keine Nachricht. Grenze: ein Mitglied, das vor
+diesem Client online war und nichts Neues hat, kündigt erst nach einem neuen eigenen Kill wieder an und fehlt bis
+dahin in der Liste; "Jetzt abgleichen" bittet niemanden um seine Ankündigung (das bräuchte eine Protokolländerung).
+Annahmen (nicht gefragt): nur Sitzung; die Mitglieder an der Stelle der Bossliste; 60 s Abstand; 45 s/3 min/5 min.
+
+**Durchgesetzt durch:** `tests/test_drop_who.lua` (wer teilt nach einer DV, Zustände über ein Holen, der Lauf mit
+Ergebnis, die Minute, die Gründe, ein Fremder erscheint nie, nichts gesendet oder gespeichert, Deckel 40, Zahlen
+geprüft, `/amisia drops sync`), `tests/test_drops_view.lua` (Statuszeile, Links, Tooltips, leere Liste mit Grund,
+Zeile mit Klassenfarbe, Takt der Seite, Ergebnis, Layout), `tests/ui_scene.lua` (`tools-who`).

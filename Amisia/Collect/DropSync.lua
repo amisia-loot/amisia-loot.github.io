@@ -11,6 +11,12 @@
 -- merged (Drops.lua), never overwritten; no names are sent or stored but the bosses' and
 -- instances'.
 --
+-- Who shares (F-189, D-121): the members this client heard announce (DV) or that asked it, with what
+-- they announced and the state of the comparison, in memory for the session only (40 at most, never
+-- saved or sent: D-25); "Jetzt abgleichen" announces now (at most once a minute) and pulls the
+-- members waiting, and says after a short while who answered and how many kills came. The protocol
+-- is unchanged.
+--
 -- Drop protocol 2 (1 checked ids only; 2 adds the items to the checksums, groups buckets in one
 -- request and answers busy with DW): clients of protocol 1 and 2 ignore each other's DV, so they
 -- never pull from each other.
@@ -40,6 +46,10 @@ local L = {
     originMax = 600, senderMax = 1500,  -- new records per origin and per sender in a session
     starEvery = 7 * 86400,              -- a whole bucket ("*") at most once a week per bucket
     listMax = 16, diEntries = 12, diChars = 200, drChars = 230,
+    membersMax = 40,                    -- members kept for the list "Wer teilt" (memory only)
+    manualGap = 60,                     -- "Jetzt abgleichen": a minute after the last announcement
+    manualMin = 45, manualMax = 180,    -- its result after 45 s once nothing runs, after 3 min at most
+    manualShow = 300,                   -- the result stays shown five minutes
 }
 ns.DROPSYNC_LIMITS = L
 
@@ -57,6 +67,10 @@ local lastBlob
 local partsLog = {}       -- { GetTime(), parts } of the blobs sent
 local originNew, senderNew = {}, {}
 local firstAt, announced, lastDV, addedAtDV, learnedAtDV, reannounced, emptyAtFirst
+local dvSentAt            -- when the last DV really went (the queue may hold it a little)
+local members = {}        -- lower name -> { name, low, at (DV heard), total, newest, weeks, asked, got, gave, pulledAt, coveredAt }
+local manual              -- the run of "Jetzt abgleichen": { at, learned, answered = { [low] = true }, slash, done, n, kills }
+local manualAt
 local learned = 0         -- records new to this client from the exchange this session
 -- lower name -> when the last DQ or DR went to that sender. Its Comm takes one DQ per week and one DR
 -- per first bucket in 60 s from one asker and drops the rest silently; a pull cut off by combat or an
@@ -89,20 +103,24 @@ end
 local battlefield = ns.InBattlefield
 
 -- Sharing on, the message layer there, in a guild, outside instances and battlegrounds, out of
--- combat, no lockdown, no raid recording with sync.
-function ns.DropSyncCanTalk()
-    if not AmisiaDB or not ns.Get("drops.share") then return false end
-    if not ns.CommAvailable() or not ns.CommPacking() then return false end
-    if type(IsInGuild) ~= "function" or ns.Plain(IsInGuild()) ~= true then return false end
-    if type(IsInInstance) == "function" and ns.Plain((IsInInstance())) == true then return false end
+-- combat, no lockdown, no raid recording with sync. Returns nil, or why not: "off", "comm",
+-- "guild", "instance", "combat", "lockdown", "raid", "battlefield".
+function ns.DropSyncBlocked()
+    if not AmisiaDB or not ns.Get("drops.share") then return "off" end
+    if not ns.CommAvailable() or not ns.CommPacking() then return "comm" end
+    if type(IsInGuild) ~= "function" or ns.Plain(IsInGuild()) ~= true then return "guild" end
+    if type(IsInInstance) == "function" and ns.Plain((IsInInstance())) == true then return "instance" end
     local _, kind = GetInstanceInfo()
     kind = ns.Plain(kind)
-    if kind ~= nil and kind ~= "none" then return false end
-    if type(InCombatLockdown) == "function" and InCombatLockdown() then return false end
-    if ns.CommHeld() then return false end
-    if raidSynced() or battlefield() then return false end
-    return true
+    if kind ~= nil and kind ~= "none" then return "instance" end
+    if type(InCombatLockdown) == "function" and InCombatLockdown() then return "combat" end
+    if ns.CommHeld() then return "lockdown" end
+    if raidSynced() then return "raid" end
+    if battlefield() then return "battlefield" end
+    return nil
 end
+
+function ns.DropSyncCanTalk() return ns.DropSyncBlocked() == nil end
 local canTalk = function() return ns.DropSyncCanTalk() end
 
 ---------------------------------------------------------------------------
@@ -130,17 +148,48 @@ local function charge(n, low)
 end
 
 -- low: the asker this message answers (its bytes count against its share).
-local function send(kind, fields, chan, target, key, low)
+local function send(kind, fields, chan, target, key, low, sent)
     local n = #"Amisia" + #tostring(ns.SYNC_PROTO) + #kind + 1 + #table.concat(fields, "\t")
     if not afford(n, low) then
         debugLine(ns.L["Sendegrenze erreicht."])
         return false
     end
-    local ok = ns.CommSend(kind, fields, chan, target, { low = true, when = canTalk, key = key })
+    local ok = ns.CommSend(kind, fields, chan, target, { low = true, when = canTalk, key = key, sent = sent })
     if not ok then return false end
     charge(n, low)
     stats[kind:lower()] = stats[kind:lower()] + 1
     return true
+end
+
+---------------------------------------------------------------------------
+-- Who shares (F-189): the members heard or asking, in memory only
+---------------------------------------------------------------------------
+local function changed() ns.FireSoon("DROPSYNC_CHANGED") end
+
+-- The entry of a verified member (the server's sender, the roster's spelling); a new one past the cap
+-- pushes out the one seen longest ago.
+local function memberOf(name)
+    local low = name:lower()
+    local e = members[low]
+    if e then
+        e.name = name
+        return e
+    end
+    e = { name = name, low = low, got = 0, gave = 0 }
+    members[low] = e
+    local n, oldest, oldestAt = 0, nil, nil
+    for k, x in pairs(members) do
+        n = n + 1
+        local seen = math.max(x.at or 0, x.asked or 0)
+        if k ~= low and (not oldestAt or seen < oldestAt) then oldest, oldestAt = k, seen end
+    end
+    if n > L.membersMax and oldest then members[oldest] = nil end
+    return e
+end
+
+-- A member that answered (or asked) while "Jetzt abgleichen" waits for answers.
+local function answered(low)
+    if manual and not manual.done then manual.answered[low] = true end
 end
 
 ---------------------------------------------------------------------------
@@ -220,7 +269,8 @@ local function sendDV()
     if ix.total == 0 then return false end
     local weeks = {}
     for w = 0, 3 do weeks[#weeks + 1] = ("%d:%s:%d"):format(w, ix.weeks[w].hash, ix.weeks[w].n) end
-    return send("DV", { tostring(ns.DROP_PROTO), tostring(ix.total), tostring(ix.newest), table.concat(weeks, ",") }, "GUILD", nil, "DV")
+    return send("DV", { tostring(ns.DROP_PROTO), tostring(ix.total), tostring(ix.newest), table.concat(weeks, ",") }, "GUILD", nil, "DV",
+        nil, function() dvSentAt = now(); changed() end)
 end
 
 -- The first announcement after the login: 60 to 180 s, spread by the random client id (no draw
@@ -308,18 +358,20 @@ local function evictPeer()
     table.remove(peers, worst)
 end
 
-local function queuePeer(name, weeks, at, nb)
+-- busy: nb is a busy sender's wait (DW), which "Jetzt abgleichen" keeps (it only skips the jitter).
+local function queuePeer(name, weeks, at, nb, busy)
     local low = name:lower()
     for i, p in ipairs(peers) do
         if p.low == low then table.remove(peers, i) break end
     end
-    peers[#peers + 1] = { name = name, low = low, weeks = weeks, at = at or now(), nb = nb or now() }
+    peers[#peers + 1] = { name = name, low = low, weeks = weeks, at = at or now(), nb = nb or now(), busy = busy }
     while #peers > L.peersMax do evictPeer() end
 end
 
 -- Stops the pull; a peer that was cut off by the conditions (not by silence) waits again.
 local function stopPull(again)
     if pull and again then queuePeer(pull.name, pull.weeks, pull.at, now()) end
+    if pull then changed() end
     pull = nil
 end
 
@@ -346,8 +398,12 @@ startNext = function()
         if #wants > 0 then
             pull = { name = p.name, low = p.low, weeks = p.weeks, at = p.at, wants = wants, wi = 0 }
             stats.pulls = stats.pulls + 1
+            changed()
             return nextWeek()
         end
+        -- nothing to pull: what the member announced is here already (for the list "Wer teilt")
+        local e = members[p.low]
+        if e then e.coveredAt = t end
     end
 end
 
@@ -355,7 +411,11 @@ nextWeek = function()
     pull.wi = pull.wi + 1
     local w = pull.wants[pull.wi]
     if not w then
+        -- every week asked: the member is pulled (for the list "Wer teilt")
+        local e = members[pull.low]
+        if e then e.pulledAt = now() end
         pull = nil
+        changed()
         return startNext()
     end
     pull.w, pull.stage, pull.parts, pull.n, pull.got, pull.deadline = w, "DI", {}, nil, 0, now() + L.diWait
@@ -444,6 +504,14 @@ ns.CommOn("DV", function(sender, f, chan)
             stats.refused = stats.refused + 1
             return
         end
+        -- what the member announced, for the list "Wer teilt": numbers checked (Comm checked the form)
+        local e = memberOf(name)
+        e.at, e.weeks = now(), weeks
+        e.total = int(tonumber(f[2]), 0, 999999) and tonumber(f[2]) or nil
+        local newest = tonumber(f[3])
+        local today = ns.DropsToday()
+        e.newest = int(newest, today - ns.DROPS_KEEP_DAYS, today + 1) and newest or nil
+        changed()
         if pull and pull.low == name:lower() then return end
         queuePeer(name, weeks, now(), now() + math.random() * L.pullJitter)
     end)
@@ -453,6 +521,7 @@ ns.CommOn("DI", function(sender, f, chan)
     if chan ~= "WHISPER" or not pull or pull.stage ~= "DI" then return end
     local name = ns.TrustName(sender)
     if not name or name:lower() ~= pull.low or tonumber(f[1]) ~= pull.w then return end
+    answered(pull.low)
     local i, n = tonumber(f[2]), tonumber(f[3])
     if pull.n and pull.n ~= n then
         stats.bad = stats.bad + 1
@@ -499,10 +568,12 @@ ns.CommOn("DW", function(sender, f, chan)
     local name = ns.TrustName(sender)
     if not name or name:lower() ~= pull.low then return end
     stats.busy = stats.busy + 1
+    answered(pull.low)
     if pull.akey then asked[pull.akey] = nil end
     local wait = math.max(30, math.min(tonumber(f[1]) or L.busyWait, 3600))
-    queuePeer(pull.name, pull.weeks, now(), now() + wait + math.random() * L.pullJitter)
+    queuePeer(pull.name, pull.weeks, now(), now() + wait + math.random() * L.pullJitter, true)
     pull = nil
+    changed()
     startNext()
 end)
 
@@ -619,6 +690,10 @@ ns.CommOnBlob("DK", function(sender, tbl, chan, key)
     local _, n = ns.DropsMergeAll(take)
     stats.new, stats.merged = stats.new + n.new, stats.merged + n.merged
     learned = learned + n.new
+    local e = members[low]
+    if e then e.got = e.got + n.new end
+    answered(low)
+    changed()
     ns.DropsLearnNames(names, zones, encs)
     if d then d.heard = time() end
     -- a request takes its one answer: one blob, or the two halves of a big one
@@ -646,7 +721,13 @@ local function fromMember(sender, chan, fn)
             stats.refused = stats.refused + 1
             return
         end
-        if canTalk() then fn(name) end
+        if canTalk() then
+            local e = memberOf(name)
+            e.asked = now()
+            answered(e.low)
+            changed()
+            fn(name)
+        end
     end)
 end
 
@@ -844,6 +925,9 @@ local function serveOne()
     local a = askerOf(s.low)
     a.served, a.at = t, t
     partsLog[#partsLog + 1] = { t, n or parts }
+    local e = members[s.low]
+    if e then e.gave = e.gave + #tbl.r end
+    changed()
     if more then
         -- the second half: the ids after the first half
         local rest = {}
@@ -852,6 +936,148 @@ local function serveOne()
     else
         table.remove(serve, i)
     end
+end
+
+---------------------------------------------------------------------------
+-- "Jetzt abgleichen" (F-189, D-121): announce now and pull the members waiting
+---------------------------------------------------------------------------
+-- The last announcement: queued, gone, or a manual run without one.
+local function lastSent()
+    local t = -math.huge
+    if lastDV and lastDV > t then t = lastDV end
+    if dvSentAt and dvSentAt > t then t = dvSentAt end
+    if manualAt and manualAt > t then t = manualAt end
+    return t
+end
+
+-- Whether "Jetzt abgleichen" may start: true, or false and why: "running", a reason of
+-- ns.DropSyncBlocked, "wait" with the seconds left (a minute after the last announcement, the gap
+-- every receiver keeps for DV anyway), "nothing" (no kill of four weeks to announce, nobody waiting).
+function ns.DropSyncCanSync()
+    if manual and not manual.done then return false, "running" end
+    local why = ns.DropSyncBlocked()
+    if why then return false, why end
+    local wait = lastSent() + L.manualGap - now()
+    if wait > 0 then return false, "wait", math.ceil(wait) end
+    if not anyRecent() and #peers == 0 then return false, "nothing" end
+    return true
+end
+
+-- Announces this client now (one DV to the guild, as the automatic one) and pulls the members heard
+-- that wait for their spread (a busy sender's wait stays); the guild's normal exchange does the rest.
+-- slash: say the result in the chat. Returns true, or false and why (as ns.DropSyncCanSync).
+function ns.DropSyncNow(slash)
+    local ok, why, wait = ns.DropSyncCanSync()
+    if not ok then return false, why, wait end
+    local t = now()
+    manualAt = t
+    if anyRecent() and sendDV() then
+        announced, lastDV, addedAtDV, learnedAtDV = true, t, ns.DropsAdded(), learned
+    end
+    for _, p in ipairs(peers) do
+        if not p.busy and p.nb > t then p.nb = t end
+    end
+    manual = { at = t, learned = learned, answered = {}, slash = slash and true or nil }
+    if not pull then startNext() end
+    changed()
+    return true
+end
+
+local function plural(n, one, many) return (n == 1 and one or many):format(n) end
+
+-- The line of the manual run: "Abgleich läuft ..." and then its result (five minutes); nil without one.
+function ns.DropSyncResultText()
+    if not manual then return nil end
+    if not manual.done then return ns.L["Abgleich läuft ..."] end
+    if now() - manual.doneAt > L.manualShow then return nil end
+    if manual.n == 0 then return ns.L["Abgleich: niemand hat geantwortet (wer schon gleich ist, meldet sich nicht)."] end
+    return ns.L["Abgleich: %s geantwortet, %s."]:format(
+        plural(manual.n, ns.L["%d Mitglied hat"], ns.L["%d Mitglieder haben"]),
+        plural(manual.kills, ns.L["%d neuer Kill"], ns.L["%d neue Kills"]))
+end
+
+-- The run ends 45 s after the click once no pull runs and no request waits for its blob, after three
+-- minutes at the latest; what arrived is its result.
+local function manualTick()
+    if not manual or manual.done then return end
+    local age = now() - manual.at
+    if age < L.manualMin or (age < L.manualMax and (pull or #serve > 0)) then return end
+    local n = 0
+    for _ in pairs(manual.answered) do n = n + 1 end
+    manual.done, manual.doneAt, manual.n, manual.kills = true, now(), n, math.max(0, learned - manual.learned)
+    if manual.slash then ns.msg(ns.DropSyncResultText()) end
+    changed()
+end
+
+local WHY = {
+    off = ns.L["Teilen ist aus."], comm = ns.L["Addon-Nachrichten sind nicht verfügbar."], guild = ns.L["Du bist in keiner Gilde."],
+    instance = ns.L["In Instanzen tauscht Amisia keine Drop-Daten."], combat = ns.L["Im Kampf tauscht Amisia keine Drop-Daten."],
+    lockdown = ns.L["In der Kampfsperre tauscht Amisia keine Drop-Daten."],
+    raid = ns.L["Während ein Raid abgeglichen wird, wartet der Drop-Austausch."],
+    battlefield = ns.L["Im Schlachtfeld tauscht Amisia keine Drop-Daten."],
+    running = ns.L["Der Abgleich läuft schon."], nothing = ns.L["Keine Kills der letzten vier Wochen zum Ankündigen."],
+}
+-- The reason as text ("wait": "Wieder in %d s.").
+function ns.DropSyncWhyText(why, wait)
+    if why == "wait" then return ns.L["Wieder in %d s."]:format(wait or 0) end
+    return WHY[why]
+end
+
+-- Whether an announcement of a member equals the own weeks (counts and checksums).
+local function sameWeeks(weeks, ix)
+    for w = 0, 3 do
+        local t, m = weeks[w], ix.weeks[w]
+        local n = t and t.n or 0
+        if n ~= m.n or (n > 0 and t.h ~= m.hash) then return false end
+    end
+    return true
+end
+
+-- The state of the comparison with one member, from what the protocol told: "pulling", "equal", "got"
+-- (pulled after its announcement), "nothing" (pulled, nothing new), "more"/"other" (holds other kills,
+-- waits to be pulled; more: announced more than this client holds), "later" (other kills, not
+-- waiting: cut off or kept too long), "gave" (it pulled from this client), "less" (lacks some of the
+-- own: what it announced was found here already, or differs only where it has none), "asks" (asked
+-- without an announcement heard). Records are merged and never taken back, so what a member
+-- announced and this client pulled or found here stays covered until its next announcement.
+local function stateOf(e, ix, queued)
+    if pull and pull.low == e.low then return "pulling" end
+    if not e.weeks then return e.gave > 0 and "gave" or "asks" end
+    if sameWeeks(e.weeks, ix) then return "equal" end
+    if e.pulledAt and e.pulledAt >= e.at then return e.got > 0 and "got" or "nothing" end
+    if e.coveredAt and e.coveredAt >= e.at then return e.gave > 0 and "gave" or "less" end
+    if #wantsOf(e.weeks) > 0 then
+        if not queued[e.low] then return "later" end
+        return (e.total or 0) > ix.total and "more" or "other"
+    end
+    return e.gave > 0 and "gave" or "less"
+end
+
+-- The list "Wer teilt" (F-189): every member heard or asking this session, the last seen first:
+-- { name, heard (seconds since its announcement, or nil), asked (seconds since its last request, or
+-- nil), seen, total, newest, got, gave, state }.
+function ns.DropSyncMembers()
+    local ix, t, queued, out = indexNow(), now(), {}, {}
+    for _, p in ipairs(peers) do queued[p.low] = true end
+    for _, e in pairs(members) do
+        local heard, askedAgo = e.at and t - e.at, e.asked and t - e.asked
+        out[#out + 1] = { name = e.name, heard = heard, asked = askedAgo, seen = math.min(heard or math.huge, askedAgo or math.huge),
+            total = e.total, newest = e.newest, got = e.got, gave = e.gave, state = stateOf(e, ix, queued) }
+    end
+    table.sort(out, function(a, b)
+        if a.seen ~= b.seen then return a.seen < b.seen end
+        return a.name < b.name
+    end)
+    return out
+end
+
+-- { members = n, announced = seconds since this client's last announcement went (or nil), manual =
+-- the run's line or nil }
+function ns.DropSyncInfo()
+    local n = 0
+    for _ in pairs(members) do n = n + 1 end
+    local went = dvSentAt or lastDV
+    return { members = n, announced = went and now() - went or nil, manual = ns.DropSyncResultText() }
 end
 
 ---------------------------------------------------------------------------
@@ -873,6 +1099,7 @@ local function tick()
     if not pull then startNext() end
     announce()
     serveOne()
+    manualTick()
     for k, a in pairs(asked) do
         if t - a.at > L.askKeep then asked[k] = nil end
     end
