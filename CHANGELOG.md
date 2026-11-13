@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.80.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.80.0) (2026-11-13)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.79.0...v2.80.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(layer): see your world layer and change it with the guild's help (F-185)
 
     Amisia reads the layer of the zone from the NPCs you target, mouse over or see name plates of, and
