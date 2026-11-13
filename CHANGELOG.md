@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.81.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.81.0) (2026-11-13)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.80.0...v2.81.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(layer): the layer window is easy to find (F-185)
 
     The window "Layer" now has its own entry in the minimap quick menu (right-click; its tooltip names
