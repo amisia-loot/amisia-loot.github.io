@@ -35,6 +35,7 @@ local asked2 = {}    -- ids already put into again
 local misses = {}    -- the last empty ids of phase A in a row
 local credit, rate, hits = 0, 5, 0
 local sinceReport = 0
+local pausedIn       -- the last run ended because the character entered an instance
 
 local function now() return GetTime() end
 
@@ -67,9 +68,10 @@ end
 
 local function settingRate() return ns.Get("tools.npcRate") or 5 end
 
-local function finish(why)
+local function finish(why, how)
     local was = running
     running = nil
+    pausedIn = how == "instance" or nil
     if ticker then ticker:Cancel(); ticker = nil end
     local q = NS_.DB()
     -- the ids waiting for their second ask are asked again on the next start
@@ -89,7 +91,10 @@ end
 -- "name\ttitle\trank\tkind", the empty ones at the end left out.
 local function store(id, name, sub, rank, kind)
     local q = NS_.DB()
-    if not q.list[id] then q.n = q.n + 1 end
+    if not q.list[id] then
+        q.n = q.n + 1
+        if ns.ScanAdded then ns.ScanAdded() end
+    end
     local f = { name, sub or "", rank or "", kind or "" }
     while #f > 1 and f[#f] == "" do f[#f] = nil end
     q.list[id] = table.concat(f, "\t")
@@ -167,7 +172,7 @@ NS_.Estimate = estimate
 local function tick()
     if not running then return end
     if SB.Blocked(false) then return end
-    if SB.Blocked(true) then finish(L["pausiert in der Instanz"]) return end
+    if SB.Blocked(true) then finish(L["pausiert in der Instanz"], "instance") return end
     local q = NS_.DB()
     local t = now()
     credit = credit + rate / 10
@@ -226,7 +231,7 @@ local function startPhase(phase)
     waiting, again, asked2, misses = {}, {}, {}, {}
     credit, hits = 0, 0
     rate = settingRate()
-    running = phase
+    running, pausedIn = phase, nil
     SB.SetBusy("npcs")
     sinceReport = 0
     ticker = C_Timer.NewTicker(0.1, ns.Perf.Wrap("Ticker Scan npcs", tick))
@@ -279,7 +284,7 @@ local function ready()
     local why = SB.Blocked(true)
     if why then return nil, L["Der NPC-Scan läuft nicht %s."]:format(why) end
     local list = SB.List("NA")
-    if not list or #list == 0 then return nil, L["Diese Version hat keine Liste der NPCs (Data/ScanLists.lua)."] end
+    if not list or #list == 0 then return nil, L["Diese Version hat keine Liste der NPCs."] end
     if SB.Verdict("npc") == "none" then return nil, L["Der Client nennt keine NPC-Namen per Nummer: NPC-Scan beendet."] end
     local q = NS_.DB()
     local loc = SB.Locale()
@@ -336,6 +341,35 @@ function NS_.Start()
 end
 
 function NS_.Running() return running end
+
+-- The progress for the tools page (F-186): { running ("A", "B", "mini" or nil), phase (the phase
+-- running or next: "A", "B", nil when both are through), done, total (the ids of that phase; nil
+-- without the lists), seconds (left at the rate), started (a phase began and is not through), doneA,
+-- finished (both phases), n (names waiting in the file), none (the client gives no names), pausedIn }.
+function NS_.Progress()
+    local q = AmisiaDB and AmisiaDB.scan and type(AmisiaDB.scan.npcs) == "table" and AmisiaDB.scan.npcs or nil
+    local p = { running = running, pausedIn = pausedIn, none = SB.Verdict("npc") == "none",
+                n = q and (tonumber(q.n) or ns.Count(q.list or {})) or 0 }
+    p.doneA = q and q.doneA ~= nil or false
+    p.finished = p.doneA and q.doneB ~= nil
+    if running == "mini" then return p end
+    local phase = (running == "A" or running == "B") and running or (not p.doneA and "A") or (not p.finished and "B") or nil
+    p.phase = phase
+    if not phase then return p end
+    local list = SB.List("NA")
+    local _, nb = SB.RangesB()
+    local total = phase == "A" and (list and #list) or nb
+    if not total or total == 0 then return p end
+    local was = running
+    running = phase   -- remaining() counts the phase that runs
+    local left = remaining(q or { a = 1 })
+    running = was
+    p.total = total
+    p.done = math.max(0, total - left)
+    p.started = p.done > 0
+    p.seconds = estimate(left, (was == phase) and rate or settingRate(), phase)
+    return p
+end
 
 function NS_.Stop()
     if running == "mini" then

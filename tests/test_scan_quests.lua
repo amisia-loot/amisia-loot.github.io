@@ -234,15 +234,15 @@ NS.Set("ui.expert", true)
 NS.ShowPage("tools")
 assert(NS.CurrentPage() == "tools")
 local f = NS.PageFrame("tools")
-assert(has(f.state:GetText(), "Quest-Scan fertig: 30 Quests") or has(f.state:GetText(), "Quest-Scan angehalten"), f.state:GetText())
-assert(has(f.state:GetText(), "NPC-Scan: noch nicht gelaufen"), f.state:GetText())
--- the links of the head row start the scans
-local labels = {}
-for _, b in ipairs(f.buttons) do labels[#labels + 1] = b:GetText() end
-assert(table.concat(labels, ","):find("Quest-Scan,NPC-Scan,Anhalten", 1, true), table.concat(labels, ","))
-f.buttons[4]:Click()
-assert(QS.Running(), "the link Quest-Scan starts it")
-f.buttons[6]:Click()
+local qrow = f.rowByKey.quests
+assert(has(qrow.state:GetText(), "Angehalten: ") and qrow.bar:IsShown(), qrow.state:GetText())
+assert(f.rowByKey.npcs.state:GetText() == "Noch nicht gelaufen.", f.rowByKey.npcs.state:GetText())
+-- the row's links start and stop the scan
+assert(qrow.acts.resume:IsShown() and not qrow.acts.start:IsShown() and not qrow.acts.stop:IsShown())
+qrow.acts.resume:Click()
+assert(QS.Running(), "Fortsetzen resumes it")
+assert(qrow.acts.stop:IsShown() and not qrow.acts.resume:IsShown(), "Anhalten only on the row that runs")
+qrow.acts.stop:Click()
 assert(not QS.Running(), "Anhalten stops it")
 NS.Reset("ui.expert")
 print("quest scan: batches, answers, placeholders, timeouts, resume, pause, the 50-stop, combat, instance")

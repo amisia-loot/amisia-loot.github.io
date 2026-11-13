@@ -196,16 +196,27 @@ do
     L.inside("bank list", bf.list)
     assert(bf.add.box.inherits.InputBoxTemplate, "the link box is the client's input box")
 end
--- tools: the red buttons in a row
+-- tools: one row per scan task (F-186), each with its name, state and quiet links only (D-67, D-118)
 NS.Set("ui.expert", true)
 NS.ShowPage("tools")
 do
     local tf = NS.PageFrame("tools")
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(tf, 602, 478)
-    L.row("tools buttons", unpack(tf.buttons))
-    L.column("tools page", tf.buttons[1], tf.state, tf.hint)
-    assert(tf.buttons[1].inherits.SharedButtonSmallTemplate and tf.buttons[1]._h == 22, "the scan: the one red button")
-    for k = 2, #tf.buttons do assert(tf.buttons[k].isLink, "the others quiet links (D-67)") end
+    local names = {}
+    for _, r in ipairs(tf.rows) do
+        names[#names + 1] = r.name
+        local parts = { r.name, r.state }
+        if r.bar:IsShown() then parts[#parts + 1] = r.bar end
+        for _, act in ipairs({ "resume", "start", "retry", "stop", "toggle" }) do
+            local b = r.acts[act]
+            assert(b.isLink, "a quiet link (D-67): " .. act)
+            if b:IsShown() then parts[#parts + 1] = b end
+        end
+        L.row("tools row " .. r.key, unpack(parts))
+        L.fits(r.state)
+    end
+    L.column("tools page", unpack(names))
+    L.column("tools rows and the next step", names[4], tf.next, tf.drops.head)
 end
 NS.Reset("ui.expert")
 -- settings: a plain scroll frame with the thin bar, the sections under the client's list header (a

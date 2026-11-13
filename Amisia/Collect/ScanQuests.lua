@@ -46,6 +46,7 @@ local timeouts = 0    -- in a row
 local nextReport
 local rewardsOn, xpOn -- the parts this run reads (the probe's verdicts at the start)
 local same            -- { sig, ids } of the quests in a row with the same reward items
+local pausedIn        -- the last run ended because the character entered an instance
 
 local function now() return GetTime() end
 
@@ -235,8 +236,9 @@ local function report(fmt, ...)
     if ns.Refresh then ns.Refresh() end
 end
 
-local function finish(why)
+local function finish(why, how)
     running = false
+    pausedIn = how == "instance" or nil
     if ticker then ticker:Cancel(); ticker = nil end
     local q = QS.DB()
     -- the ids still waiting are asked again on the next start
@@ -251,7 +253,10 @@ end
 
 local function stored(qid, line)
     local q = QS.DB()
-    if not q.list[qid] then q.n = q.n + 1 end
+    if not q.list[qid] then
+        q.n = q.n + 1
+        if ns.ScanAdded then ns.ScanAdded() end
+    end
     q.list[qid] = line
 end
 
@@ -290,7 +295,7 @@ local function tick()
     if not running then return end
     local why = SB.Blocked(false)
     if why then return end   -- combat or a lockdown: wait
-    if SB.Blocked(true) then finish(L["pausiert in der Instanz"]) return end
+    if SB.Blocked(true) then finish(L["pausiert in der Instanz"], "instance") return end
     local list = SB.List("Q") or {}
     local q = QS.DB()
     local t = now()
@@ -374,7 +379,7 @@ function QS.Start()
     local why = SB.Blocked(true)
     if why then return nil, L["Der Quest-Scan läuft nicht %s."]:format(why) end
     local list = SB.List("Q")
-    if not list or #list == 0 then return nil, L["Diese Version hat keine Liste der Quests (Data/ScanLists.lua)."] end
+    if not list or #list == 0 then return nil, L["Diese Version hat keine Liste der Quests."] end
     local q = QS.DB()
     local loc = SB.Locale()
     if q.loc and q.loc ~= loc and next(q.list) then
@@ -393,7 +398,7 @@ function QS.Start()
     rate = ns.Get("tools.questRate") or 20
     first = { asked = 0, answered = 0, start = q.next, none = q.none }
     nextReport = (math.floor(q.next / QS.REPORT_EVERY) + 1) * QS.REPORT_EVERY
-    running = true
+    running, pausedIn = true, nil
     SB.SetBusy("quests")
     ticker = C_Timer.NewTicker(0.1, ns.Perf.Wrap("Ticker Scan quests", tick))
     ns.msg(L["Quest-Scan gestartet: %d von %d Quests offen, %d pro Sekunde, etwa %s. /amisia scan quests stop hält an."]:format(
@@ -406,7 +411,28 @@ function QS.Stop()
     if running then finish(L["angehalten"]) end
 end
 
--- One line of progress (chat, the tools page).
+-- The progress for the tools page (F-186): { running, done, total (the quests of the list; nil
+-- without it), seconds (left at the rate now), started (a run began and is not through), finished, n
+-- (quests waiting in the file), pausedIn }.
+function QS.Progress()
+    local q = AmisiaDB and AmisiaDB.scan and type(AmisiaDB.scan.quests) == "table" and AmisiaDB.scan.quests or nil
+    local list = SB.List("Q")
+    local total = list and #list > 0 and #list or nil
+    local nxt = q and tonumber(q.next) or 1
+    local p = { running = running, pausedIn = pausedIn, finished = q and q.done ~= nil or false,
+                n = q and (tonumber(q.n) or ns.Count(q.list or {})) or 0 }
+    -- a run began (it set its time on the way out) and is not through: it resumes where it was
+    p.started = (nxt > 1 or (q ~= nil and q.at ~= nil)) and not p.finished
+    if total then
+        p.total = total
+        p.done = math.max(0, math.min(total, nxt - 1))
+        local r = running and rate or (ns.Get("tools.questRate") or 20)
+        p.seconds = (total - p.done) / math.max(r or 1, 0.1)
+    end
+    return p
+end
+
+-- One line of progress (chat).
 function QS.Status()
     local q = AmisiaDB and AmisiaDB.scan and type(AmisiaDB.scan.quests) == "table" and AmisiaDB.scan.quests or nil
     local list = SB.List("Q")

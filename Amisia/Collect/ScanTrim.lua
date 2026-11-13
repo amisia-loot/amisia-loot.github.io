@@ -294,7 +294,7 @@ local function ready()
     local m = ns.Data("SCAN_DONE")
     if type(m) ~= "table" then
         if lastRun then return nil, L["Schon aufgeräumt: was jetzt im Scan steht, ist neu seit dem letzten Build."] end
-        return nil, L["Diese Version kennt keine ausgewerteten Scan-Daten (Data/ScanDone.lua fehlt)."]
+        return nil, L["Diese Version kennt keine ausgewerteten Scan-Daten."]
     end
     return m, s
 end

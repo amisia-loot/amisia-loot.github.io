@@ -1,7 +1,9 @@
--- Tools (expert mode): the item scan, the quest and NPC scans by id (D-104) and the collector that build
--- the data files, and the guild's
--- drop data: kills own and heard, the list per instance and boss with the rates, the sharing switch
--- and the text "Drops für die Website" (in place of the list).
+-- Tools (expert mode): one row per task that gathers data for the N100's builds (F-186, D-118): the
+-- item scan ("Ausrüstung"), the quest and NPC scans by id (D-104) and the item collector, each with its
+-- state in plain words, a progress bar while the total is known, and only the actions that fit the
+-- state; a line "Nächster Schritt" when there is something to do. Under it the guild's drop data:
+-- kills own and heard, the list per instance and boss with the rates, the sharing switch and the text
+-- "Drops für die Website" (in place of the list).
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -123,38 +125,249 @@ local function fillDrops(D)
     end
 end
 
-ns.RegisterPanel{ key = "tools", label = L["Werkzeuge"], sub = L["Daten teilen, einfügen und prüfen."], icon = "Interface\\Icons\\INV_Misc_Gear_01", order = 80, group = "guild", expert = true,
+---------------------------------------------------------------------------
+-- The scan rows (F-186)
+---------------------------------------------------------------------------
+local SCAN_ROWS = { "gear", "quests", "npcs", "collect" }
+local ROW_NAME = { gear = L["Ausrüstung"], quests = L["Quests"], npcs = L["NPCs"], collect = L["Sammler"] }
+local ACTIONS = { "resume", "start", "retry", "stop", "toggle" }
+local TICK = 1   -- seconds between two updates of the rows while a scan runs and the page shows
+
+local function percent(p) return math.floor(100 * p.done / p.total) end
+local function dur(seconds) return ns.ScanById.Duration(seconds) end
+
+-- Which scan runs: "gear", "quests", "npcs" or nil.
+local function runningScan()
+    if ns.ScanRunning and ns.ScanRunning() then return "gear" end
+    if ns.QuestScan and ns.QuestScan.Running() then return "quests" end
+    if ns.NpcScan and ns.NpcScan.Running() then return "npcs" end
+    return nil
+end
+
+local function inInstance()
+    local ok, _, kind = pcall(GetInstanceInfo)
+    kind = ok and ns.Plain(kind) or nil
+    return kind ~= nil and kind ~= "none"
+end
+
+-- What a finished or idle scan holds: n lines wait in the file for the N100's build, or (none left)
+-- everything was taken over (D-34: the addon trims what the build has); never ran: "Noch nicht gelaufen".
+local WAITING = {
+    gear = { L["%d neue Items warten auf die Übernahme."], L["Fertig: %d neue Items warten auf die Übernahme."] },
+    quests = { L["%d neue Quests warten auf die Übernahme."], L["Fertig: %d neue Quests warten auf die Übernahme."] },
+    npcs = { L["%d neue Namen warten auf die Übernahme."], L["Fertig: %d neue Namen warten auf die Übernahme."] },
+}
+local function waiting(key, n, finished, ran)
+    if n > 0 then return WAITING[key][finished and 2 or 1]:format(n) end
+    if finished or ran then return L["Fertig: alles übernommen."] end
+    return L["Noch nicht gelaufen."]
+end
+
+-- A running or paused scan with a known total: the text and the bar's value.
+local function progressText(p, runningFmt, pausedFmt)
+    if not p.total then return p.running and L["Läuft ..."] or L["Angehalten."], nil end
+    local fmt = p.running and runningFmt or pausedFmt
+    return fmt:format(percent(p), dur(p.seconds)), p.done / p.total
+end
+
+-- Each row's model: { state, bar (0..1 or nil), resume, start, retry (a count), stop, toggle (label) }.
+local function gearRow()
+    local p = ns.ScanProgress()
+    local m = { start = not p.running, retry = not p.running and p.retry > 0 and p.retry or nil, stop = p.running }
+    if p.running then
+        m.state, m.bar = progressText(p, p.kind == "retry" and L["Wiederholt Offene: %d %%, etwa %s übrig"]
+            or L["Läuft: %d %%, etwa %s übrig"], L["Angehalten: %d %%, noch etwa %s"])
+    elseif p.resumable then
+        m.state, m.bar = progressText(p, L["Läuft: %d %%, etwa %s übrig"], L["Angehalten: %d %%, noch etwa %s"])
+        m.resume = true
+    else
+        local s = AmisiaDB and AmisiaDB.scan or {}
+        m.state = waiting("gear", p.items, p.finished, s.next ~= nil or s.trim ~= nil)
+    end
+    return m
+end
+
+local function questRow()
+    local QS = ns.QuestScan
+    local p = QS.Progress()
+    local m = { stop = p.running }
+    if p.running or p.started then
+        m.state, m.bar = progressText(p, L["Läuft: %d %%, etwa %s übrig"], L["Angehalten: %d %%, noch etwa %s"])
+        m.resume = not p.running
+    else
+        local q = AmisiaDB and AmisiaDB.scan and AmisiaDB.scan.quests
+        m.state = waiting("quests", p.n, p.finished, type(q) == "table" and q.at ~= nil)
+        m.start = true
+    end
+    return m
+end
+
+local function npcRow()
+    local p = ns.NpcScan.Progress()
+    local m = { stop = p.running ~= nil }
+    if p.running == "mini" then
+        m.state = L["Prüft zuerst drei bekannte NPCs ..."]
+    elseif p.none and not p.running then
+        m.state = L["Der Client nennt keine NPC-Namen."]
+    elseif p.running == "B" or (not p.running and p.phase == "B") then
+        if p.running or p.started then
+            m.state, m.bar = progressText(p, L["Sucht neue NPCs: %d %%, etwa %s übrig"], L["Suche nach neuen NPCs angehalten: %d %%, noch etwa %s"])
+        else
+            m.state = p.total and L["Bekannte NPCs fertig; die Suche nach neuen dauert etwa %s."]:format(dur(p.seconds))
+                or L["Bekannte NPCs fertig; die Suche nach neuen ist offen."]
+        end
+        m.resume = not p.running
+    elseif p.running or p.started then
+        m.state, m.bar = progressText(p, L["Läuft: %d %%, etwa %s übrig"], L["Angehalten: %d %%, noch etwa %s"])
+        m.resume = not p.running
+    else
+        m.state = waiting("npcs", p.n, p.finished, p.doneA)
+        -- a finished NPC scan has nothing left to ask (a start would only say its state)
+        m.start = not p.finished
+    end
+    return m
+end
+
+local function collectRow()
+    local on = ns.Get("tools.collect") and true or false
+    local n = ns.CollectCount()
+    local m = { toggle = on and L["Ausschalten"] or L["Einschalten"] }
+    if n > 0 then
+        m.state = (on and L["An: %d Items mit Quelle warten auf die Übernahme."] or L["Aus: %d Items mit Quelle warten auf die Übernahme."]):format(n)
+    else
+        m.state = on and L["An: alles übernommen."] or L["Aus."]
+    end
+    return m
+end
+
+local MODELS = { gear = gearRow, quests = questRow, npcs = npcRow, collect = collectRow }
+
+-- The line "Nächster Schritt" (D-118), the first that fits: a scan stopped by an instance; new entries
+-- of this session not yet written (SavedVariables are written at logout and /reload); items without an
+-- answer to ask again. Nothing while a scan runs, else nil.
+local function nextStep()
+    if runningScan() then return nil end
+    local paused = ns.ScanProgress().pausedIn or (ns.QuestScan.Progress().pausedIn) or (ns.NpcScan.Progress().pausedIn)
+    if paused then
+        return inInstance() and L["Ein Scan hielt in der Instanz an: außerhalb von Instanzen in seiner Zeile fortsetzen."]
+            or L["Ein Scan hielt in der Instanz an: in seiner Zeile fortsetzen."]
+    end
+    local added = ns.ScanAddedCount()
+    if added > 0 then
+        return L["%d neue Einträge seit dem Einloggen: ausloggen oder /reload, damit sie gespeichert werden."]:format(added)
+    end
+    local retry = ns.ScanProgress().retry
+    if retry > 0 then return L["%d Items ohne Antwort: Offene wiederholen."]:format(retry) end
+    return nil
+end
+
+local function onAction(key, act)
+    if act == "toggle" then
+        ns.Set("tools.collect", not ns.Get("tools.collect"))
+    elseif act == "stop" then
+        ns.ScanCommand("stop")
+    elseif key == "gear" then
+        ns.ScanCommand(act == "resume" and "" or act == "retry" and "retry" or "gear")
+    else
+        ns.ScanCommand(key)
+    end
+    ns.Refresh()
+end
+
+local ACTION_LABEL = { resume = L["Fortsetzen"], start = L["Starten"], stop = L["Anhalten"], retry = L["Offene wiederholen"], toggle = L["Einschalten"] }
+
+local function buildScanRow(f, i, key)
+    local r = { key = key, band = i, acts = {} }
+    r.name = W.Text(f, T.FONT.head, T.TOOLS.NAME_W)
+    r.name:SetText(ROW_NAME[key])
+    r.state = W.Text(f, T.FONT.text)
+    r.bar = W.ProgressBar(f)
+    r.bar:Hide()
+    for _, act in ipairs(ACTIONS) do
+        local b = W.Link(f, ACTION_LABEL[act], function() onAction(key, act) end)
+        W.FitChip(b)
+        b:Hide()
+        r.acts[act] = b
+    end
+    return r
+end
+
+-- Sets one row from its model; places the band again only when its parts come or go.
+local function fillScanRow(f, r, busy)
+    local m = MODELS[r.key]()
+    r.state:SetText(m.state or "")
+    local sig = m.bar and "b" or ""
+    if m.bar then r.bar:SetValue(m.bar) end
+    r.bar:SetShown(m.bar ~= nil)
+    for _, act in ipairs(ACTIONS) do
+        local b, want = r.acts[act], m[act]
+        if act == "retry" and want then b:SetText(L["Offene wiederholen (%d)"]:format(want)) end
+        if act == "toggle" and want then b:SetText(want) end
+        b:SetShown(want and true or false)
+        -- one scan at a time (D-104): while another runs, this row's starts are greyed with the reason
+        local blockedNow = busy and busy ~= r.key and act ~= "toggle" and act ~= "stop"
+        if blockedNow then b:Disable() else b:Enable() end
+        b.blockedBy = blockedNow and busy or nil
+        if want then sig = sig .. act end
+    end
+    if sig ~= r.sig then
+        r.sig = sig
+        local right = { r.bar }
+        for _, act in ipairs(ACTIONS) do right[#right + 1] = r.acts[act] end
+        f:Place(r.band, { r.name, { r.state, fill = true } }, right, { shown = true })
+    end
+end
+
+local function fillScans(f)
+    local busy = runningScan()
+    for _, r in ipairs(f.rows) do fillScanRow(f, r, busy) end
+    local step = nextStep()
+    f.next:SetText(step and (T.LABEL .. L["Nächster Schritt:"] .. "|r " .. step) or "")
+    f.next:SetShown(step ~= nil)
+end
+
+local function blockedTip(b)
+    if not b.blockedBy then return end
+    GameTooltip:SetOwner(b, "ANCHOR_RIGHT")
+    GameTooltip:SetText(L["Es läuft schon ein Scan"])
+    GameTooltip:AddLine(L["Immer nur ein Scan zur Zeit: erst den laufenden anhalten."], 1, 1, 1, true)
+    GameTooltip:Show()
+end
+
+local function buildScans(f)
+    -- four rows of controls (one per task) and the line "Nächster Schritt"
+    f:Bands({ "row", "row", "row", "row", "line" })
+    f.rows, f.rowByKey = {}, {}
+    for i, key in ipairs(SCAN_ROWS) do
+        local r = buildScanRow(f, i, key)
+        f.rows[i], f.rowByKey[key] = r, r
+        for _, b in pairs(r.acts) do
+            b:SetScript("OnEnter", blockedTip)
+            b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        end
+    end
+    f.next = f:Line(5)
+    -- while a scan runs and the page shows: the rows' texts and bars once a second, nothing rebuilt
+    local since = 0
+    f.ticker = CreateFrame("Frame", nil, f)
+    f.ticker:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate Tools scans", function(_, elapsed)
+        since = since + (elapsed or 0)
+        if since < TICK then return end
+        since = 0
+        if runningScan() and ns.CurrentPage() == "tools" then fillScans(f) end
+    end))
+end
+
+ns.RegisterPanel{ key = "tools", label = L["Werkzeuge"], sub = L["Scans für die Daten, Drops der Gilde."], icon = "Interface\\Icons\\INV_Misc_Gear_01", order = 80, group = "guild", expert = true,
     create = function(parent)
         local f = W.Page(parent)
-        -- the head row: the scans' buttons; under it their state (item scan, quest scan, NPC scan, collector)
-        -- and what to do with it (two lines)
-        f:Bands({ "row", { "line", lines = 4 }, { "line", lines = 2 } })
-        local gear = W.Button(f, L["Ausrüstungs-Scan"], 140, function() ns.ScanCommand("gear"); ns.Refresh() end)
-        local resume = W.Link(f, L["Scan fortsetzen"], function() ns.ScanCommand(""); ns.Refresh() end)
-        local retry = W.Link(f, L["Offene wiederholen"], function() ns.ScanCommand("retry"); ns.Refresh() end)
-        local quests = W.Link(f, L["Quest-Scan"], function() ns.ScanCommand("quests"); ns.Refresh() end)
-        local npcs = W.Link(f, L["NPC-Scan"], function() ns.ScanCommand("npcs"); ns.Refresh() end)
-        local stop = W.Link(f, L["Anhalten"], function() ns.ScanCommand("stop"); ns.Refresh() end)
-        W.FitChip(gear, 140)
-        W.FitChip(resume)
-        W.FitChip(retry)
-        W.FitChip(quests)
-        W.FitChip(npcs)
-        W.FitChip(stop)
-        f:Place(1, { gear, resume, retry, quests, npcs, stop })
-        f.state = f:Line(2)
-        local hint = f:Line(3)
-        hint:SetText(L["Der Scan läuft nur außerhalb von Instanzen. Danach ausloggen, damit die Datei geschrieben wird; tools/build_gear.py und tools/build_scan.py lesen sie. Sammler und Scan-Rate stehen in den Einstellungen."])
+        buildScans(f)
         f.drops = buildDrops(f)
-        -- the parts the layout tests read
-        f.buttons, f.hint = { gear, resume, retry, quests, npcs, stop }, hint
         page = f
         return f
     end,
     refresh = function(f)
-        f.state:SetText(ns.ScanStatus() .. "\n" .. (ns.QuestScan and ns.QuestScan.Status() or "") .. "\n"
-            .. (ns.NpcScan and ns.NpcScan.Status() or "") .. "\n" .. (ns.Get("tools.collect") and L["Item-Sammler: an, %d Items mit Quelle."]
-            or L["Item-Sammler: aus, %d Items mit Quelle."]):format(ns.CollectCount()))
+        fillScans(f)
         fillDrops(f.drops)
     end }
 

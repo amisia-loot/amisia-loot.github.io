@@ -867,6 +867,29 @@ S.STATES = {
         AmisiaDB.settings.bis.dpart = "quests"
         NS.ShowDungeon("deadmines")
     end },
+    -- the scan rows of the tools page (F-186): nothing ran; an item scan running (percent, time, bar,
+    -- the other starts greyed); everything through (items and quests waiting, the NPC names taken over,
+    -- the next step with this session's entries)
+    { page = "tools", name = "tools-idle", open = function()
+        AmisiaDB.scan.count, AmisiaDB.scan.retry = 0, {}
+        NS.ShowPage("tools")
+    end },
+    { page = "tools", name = "tools-running", open = function()
+        S.toolsInstance = STUB.instance
+        STUB.instance = { name = "Elwynn Forest", type = "none", id = 0 }
+        NS.ScanStart(1, 2000)
+        STUB.tick(1)
+        NS.ShowPage("tools")
+    end },
+    { page = "tools", name = "tools-finished", open = function()
+        NS.ScanStop()
+        local s = AmisiaDB.scan
+        s.next, s.done, s.count, s.retry = s.to + 1, time(), 412, { 7, 8, 9 }
+        s.quests = { loc = "deDE", next = 6627, done = time(), at = time(), n = 4901, list = {}, none = "" }
+        s.npcs = { v = 2, loc = "deDE", a = 2135, b = 279114, doneA = time(), doneB = time(), at = time(), n = 0, list = {}, empty = "" }
+        NS.ShowPage("tools")
+        STUB.instance = S.toolsInstance or STUB.instance
+    end },
     -- the scene's priest opens the mage scrolls by command (any class may); last, as the page list
     -- keeps its row from then on
     { page = "scrolls", name = "scrolls", always = true, open = function() NS.ShowMageScrolls() end },

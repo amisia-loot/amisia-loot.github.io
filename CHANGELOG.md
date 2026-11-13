@@ -11,6 +11,17 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
     your layer) instead of hiding under "Dungeons & Raids" after "Map", and its own row at the end of the
     Guild tab in the Amisia window, next to its settings. "/amisia layer" still opens it too.
 
+- feat(tools): the Tools page shows one row per scan with its state in plain words and a next step (F-186)
+
+    Gear, quests, NPCs and the collector each get a row with their state ("Running: 10 %, about 2 h 05 min
+    left", "Paused", "Done: everything taken over"), a progress bar while a run is going or paused, and only
+    the actions that fit: start, resume, stop on the running row only, "Retry open ones (n)" only with open
+    ones, the collector's on/off switch. Only one scan runs at a time: the other starts are greyed (the item
+    scan now also waits for a running quest or NPC scan). A line "Next step" says when a scan stopped in an
+    instance or how many new entries wait for a logout or /reload to be saved. No item ids and no file
+    names on the page any more; a finished scan whose data the last release took over says so instead of
+    "0 names saved".
+
 ## [v2.80.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.80.0) (2026-11-13)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.79.0...v2.80.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

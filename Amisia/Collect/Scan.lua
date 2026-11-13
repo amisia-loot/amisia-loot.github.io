@@ -17,6 +17,9 @@ local clock = 0
 local nextReport
 local queue   -- ids from the retry list while /amisia scan retry runs, else nil
 local savedRate   -- the rate to put back after a retry run
+local listTotal, listKind   -- the ids of a list run (gear list, retry) and its kind ("list", "retry")
+local pausedIn    -- the last run ended because the character entered an instance
+local added = 0   -- new lines and notes since the addon loaded (item scan, quest and NPC scans, collector)
 
 local GetItemInfoAny = C_Item.GetItemInfo
 local GetItemInfoInstantAny = C_Item.GetItemInfoInstant
@@ -71,7 +74,7 @@ local function store(id)
         equipLoc, icon, classID, subclassID = equipLoc or loc, icon or ico, classID or cls, subclassID or sub
     end
     local s = scanDB()
-    if not s.items[id] then s.count = s.count + 1 end
+    if not s.items[id] then s.count = s.count + 1; added = added + 1 end
     local fields = {
         (name:gsub("[\t\n]", " ")), tostring(q or 0), tostring(ilvl or 0), tostring(minLevel or 0),
         tostring(classID or ""), tostring(subclassID or ""), tostring(equipLoc or ""), tostring(icon or ""), tostring(bindType or ""),
@@ -85,14 +88,22 @@ end
 ns.StoreItem = store
 ns.ScanDB = scanDB
 
-local function finish(why)
+-- New entries this session (F-186): the SavedVariables are written at logout and /reload only, so the
+-- tools page says how many wait for that. The quest and NPC scans and the collector count here too.
+function ns.ScanAdded(n) added = added + (n or 1) end
+function ns.ScanAddedCount() return added end
+
+-- how a run ended: "done" (everything asked), "instance" (paused by an instance), nil (stopped)
+local function finish(why, how)
     running = false
-    queue = nil
+    queue, listTotal, listKind = nil, nil, nil
+    pausedIn = how == "instance" or nil
     if savedRate then scanDB().rate = savedRate; savedRate = nil end
     if ticker then ticker:Cancel(); ticker = nil end
     pending, pendingCount = {}, 0
     local s = scanDB()
     s.at = time()
+    s.done = how == "done" and s.at or nil
     ns.msg(L["Scan %s: %d Items gespeichert, nächste ID %d, %d offen zum Wiederholen."]:format(why or L["beendet"], s.count, s.next or 0, #s.retry))
     if ns.Refresh then ns.Refresh() end
 end
@@ -106,7 +117,7 @@ local function tick()
     local s = scanDB()
     if not running then return end
     if InCombatLockdown() then return end
-    if inInstance() then finish(L["pausiert in der Instanz"]) return end
+    if inInstance() then finish(L["pausiert in der Instanz"], "instance") return end
     if not GetTime then clock = clock + 0.1 end
     local t = now()
     for id, p in pairs(pending) do
@@ -132,7 +143,7 @@ local function tick()
                 batch = batch - 1
             end
         end
-        if #queue == 0 and pendingCount == 0 then finish(L["fertig"]) end
+        if #queue == 0 and pendingCount == 0 then finish(L["fertig"], "done") end
         return
     end
     while batch > 0 and pendingCount < MAX_PENDING and s.next <= s.to do
@@ -150,7 +161,7 @@ local function tick()
             if ns.Refresh then ns.Refresh() end
         end
     end
-    if s.next > s.to and pendingCount == 0 then finish(L["fertig"]) end
+    if s.next > s.to and pendingCount == 0 then finish(L["fertig"], "done") end
 end
 
 local function onResult(id, success)
@@ -165,22 +176,44 @@ local function onResult(id, success)
         end
     end
     local s = scanDB()
-    if pendingCount == 0 and ((queue and #queue == 0) or (not queue and s.next > s.to)) then finish(L["fertig"]) end
+    if pendingCount == 0 and ((queue and #queue == 0) or (not queue and s.next > s.to)) then finish(L["fertig"], "done") end
 end
 ns.OnEvent("ITEM_DATA_LOAD_RESULT", onResult)
 ns.OnEvent("GET_ITEM_INFO_RECEIVED", onResult)
 
 function ns.ScanRunning() return running end
 
+-- Why no item run may start now, or nil: one runs, a scan by id runs (D-104: one scan at a time),
+-- an instance.
+local function blocked()
+    if running then return L["Der Scan läuft schon. /amisia scan stop hält ihn an."] end
+    if ns.ScanById and ns.ScanById.Busy() then return L["Erst den laufenden Scan anhalten (/amisia scan stop)."] end
+    if inInstance() then return L["Der Scan läuft nur außerhalb von Instanzen."] end
+    return nil
+end
+
+local function startList(ids, kind)
+    queue, listTotal, listKind = ids, #ids, kind
+    pausedIn = nil
+    scanDB().done = nil
+    pending, pendingCount = {}, 0
+    nextReport = math.huge
+    running = true
+end
+
 function ns.ScanStart(from, to)
     if not request then return nil, L["Dieser Client kann keine Items nachladen."] end
-    if running then return nil, L["Der Scan läuft schon. /amisia scan stop hält ihn an."] end
-    if inInstance() then return nil, L["Der Scan läuft nur außerhalb von Instanzen."] end
+    local why = blocked()
+    if why then return nil, why end
     local s = scanDB()
+    -- a resume (no start given) keeps the range's start, so its progress counts the whole range
+    local first = tonumber(s.from)
+    local resume = not tonumber(from) and not tonumber(to) and first and s.next and s.to and first <= s.next and s.next <= s.to
     from = tonumber(from) or s.next or 1
     to = tonumber(to) or s.to or DEFAULT_TO
     if from < 1 or to < from then return nil, L["Bereich prüfen: /amisia scan <von> <bis>"] end
-    s.from, s.to, s.next = math.floor(from), math.floor(to), math.floor(from)
+    s.from, s.to, s.next = math.floor(resume and first or from), math.floor(to), math.floor(from)
+    s.done, pausedIn = nil, nil
     pending, pendingCount = {}, 0
     nextReport = (math.floor(s.next / REPORT_EVERY) + 1) * REPORT_EVERY
     running = true
@@ -193,15 +226,12 @@ end
 -- Asks again for every id that got no usable answer, at a quarter of the rate.
 function ns.ScanRetry()
     if not request then return nil, L["Dieser Client kann keine Items nachladen."] end
-    if running then return nil, L["Der Scan läuft schon. /amisia scan stop hält ihn an."] end
-    if inInstance() then return nil, L["Der Scan läuft nur außerhalb von Instanzen."] end
+    local why = blocked()
+    if why then return nil, why end
     local s = scanDB()
     if #s.retry == 0 then return nil, L["Keine offenen IDs."] end
-    queue = s.retry
+    startList(s.retry, "retry")
     s.retry = {}
-    pending, pendingCount = {}, 0
-    nextReport = math.huge
-    running = true
     local slow = math.max(10, math.floor(s.rate / 4))
     savedRate = s.rate
     s.rate = slow
@@ -214,15 +244,13 @@ end
 -- has seen yet (items Forever only reveals later).
 function ns.ScanList(ids, label)
     if not request then return nil, L["Dieser Client kann keine Items nachladen."] end
-    if running then return nil, L["Der Scan läuft schon. /amisia scan stop hält ihn an."] end
-    if inInstance() then return nil, L["Der Scan läuft nur außerhalb von Instanzen."] end
+    local why = blocked()
+    if why then return nil, why end
     if not ids or #ids == 0 then return nil, L["Keine IDs zu scannen."] end
     local s = scanDB()
-    queue = {}
-    for i = 1, #ids do queue[i] = ids[i] end
-    pending, pendingCount = {}, 0
-    nextReport = math.huge
-    running = true
+    local copy = {}
+    for i = 1, #ids do copy[i] = ids[i] end
+    startList(copy, "list")
     ticker = C_Timer.NewTicker(0.1, ns.Perf.Wrap("Ticker Scan items", tick))
     ns.msg(L["%s: %d IDs mit %d Anfragen pro Sekunde. Danach ausloggen, damit die Datei geschrieben wird."]:format(label or "Scan", #ids, s.rate))
     return true
@@ -242,6 +270,33 @@ end
 function ns.ScanStop()
     if not running then return end
     finish(L["angehalten"])
+end
+
+-- The item scan's progress for the tools page (F-186): { running, kind ("range", "list", "retry"),
+-- done, total (the ids this run asks: its range or its list; nil when unknown), seconds (left at the
+-- rate), resumable (a range not through), finished (the last run asked everything), pausedIn, items
+-- (lines waiting in the file), retry (ids to ask again) }.
+function ns.ScanProgress()
+    local s = AmisiaDB and AmisiaDB.scan or {}
+    local rate = math.max(tonumber(s.rate) or DEFAULT_RATE, 1)
+    local p = { running = running, pausedIn = pausedIn, items = tonumber(s.count) or 0,
+                retry = type(s.retry) == "table" and #s.retry or 0, finished = s.done ~= nil }
+    local from, to, nxt = tonumber(s.from), tonumber(s.to), tonumber(s.next)
+    local rangeOpen = from and to and nxt and to >= from and nxt <= to
+    if running and queue then
+        p.kind, p.total = listKind, listTotal
+        local left = #queue + pendingCount
+        p.done = math.max(0, (listTotal or 0) - left)
+        p.seconds = left / rate
+    elseif running or rangeOpen then
+        -- the range asks every id from its start to its end (ids the client knows to be missing cost
+        -- no request, but a place in the batch all the same)
+        p.kind, p.total = "range", to - from + 1
+        p.done = math.max(0, math.min(p.total, nxt - from))
+        p.seconds = (p.total - p.done) / rate
+        p.resumable = not running
+    end
+    return p
 end
 
 function ns.ScanStatus()
@@ -312,7 +367,7 @@ ns.RegisterSettings{ key = "tools", label = L["Werkzeuge"], order = 95, group = 
     { key = "tools.npcRate", type = "slider", label = L["NPC-Scan (Abfragen pro Sekunde)"], default = 5, min = 1, max = 20, step = 1,
       tip = L["So viele NPC-Tooltips liest /amisia scan npcs pro Sekunde; bleiben bekannte NPCs leer, wird der Scan von selbst langsamer."] },
     { key = "tools.scanAutotrim", type = "toggle", label = L["Ausgewertete Scan-Daten beim Login entfernen"], default = true,
-      tip = L["Was der Build schon im Scan-Archiv hat (Data/ScanDone.lua), fliegt ein paar Sekunden nach dem Login aus der gespeicherten Datei; nur Neues bleibt. /amisia scan aufräumen macht es sofort."] },
+      tip = L["Was der Datenbau schon übernommen hat, fliegt ein paar Sekunden nach dem Login aus der gespeicherten Datei; nur Neues bleibt. /amisia scan aufräumen macht es sofort."] },
 }}
 ns.RegisterSlash("scan", { args = L["[von bis] | gear | quests | npcs | retry | aufräumen | stop | status | rate <n>"], desc = L["Item-Scan, Quest-Scan, NPC-Scan"], run = function(rest)
     ns.ScanCommand(rest)

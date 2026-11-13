@@ -39,6 +39,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-186 Werkzeuge: eine Zeile je Scan, Klartext und nächster Schritt
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du Gilde > Werkzeuge öffnest (Expertenmodus), dann stehen oben vier Zeilen Ausrüstung, Quests, NPCs und Sammler mit ihrem Stand in Worten (z. B. "Fertig: alles übernommen.", "Angehalten: 0 %, noch etwa 7 h 48 min"), ohne Nummern von IDs und ohne Dateinamen.
+- Prüfung: Wenn du in der Zeile Quests "Starten" klickst, dann zeigt sie "Läuft: x %, etwa ... übrig" mit einem Balken, der jede Sekunde weiterläuft, und rechts nur "Anhalten"; die "Starten" der anderen Zeilen sind grau (Tooltip "Es läuft schon ein Scan"), bis du "Anhalten" klickst.
+- Prüfung: Wenn ein Scan in dieser Sitzung etwas gefunden hat und nichts mehr läuft, dann steht darunter "Nächster Schritt: n neue Einträge seit dem Einloggen: ausloggen oder /reload, damit sie gespeichert werden."; gehst du während eines Scans in einen Dungeon, sagt die Zeile stattdessen, dass er draußen in seiner Zeile fortgesetzt wird.
+- Prüfung: Wenn du in der Zeile Sammler "Ausschalten" klickst, dann steht dort "Aus" und in den Einstellungen (Werkzeuge) ist "Item-Sammler" aus; "Einschalten" stellt beides zurück.
+- Notiz: Spec `docs/specs/2026-11-13-werkzeuge-scans.md`; DECISIONS D-118. "NPC-Scan fertig: 0 Namen gespeichert" war kein Fehler: der Datenbau hatte die Namen übernommen und das Addon sie beim Login weggeräumt (D-34); jetzt "Fertig: alles übernommen.". "3111111" war das Ende eines von Hand getippten Bereichs (`/amisia scan 300000 3111111`), der Prozentwert bezieht sich auf diesen Bereich.
+
 ### F-185 Layer erkennen und in der Gilde wechseln
 - Version: 2.80.0
 - Status: gebaut

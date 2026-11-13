@@ -3044,3 +3044,46 @@ einfach zu finden machen". Das Fenster "Layer" hat einen eigenen Eintrag in der 
 hält keinen Reiter mehr offen: ein Klick auf einen Reiter ohne Seite öffnete nichts.
 
 **Durchgesetzt durch:** `tests/test_layer.lua` (GUID, zwei Kreaturen, Gesteuertes, geheim, Instanz, Bosskampf, Sperre, Zonenwechsel, Ablauf, Buchstaben, Drossel, Fenster, Chip, Befehl, Minimap-Menü in der ersten Ebene, Selbsttest-Zeile), `tests/test_main_sidebar.lua` (Zeile "Layer" im Reiter Gilde), `tests/test_nav_find.lua` (Schnellmenü), `tests/test_layer_change.lua` (zwei Clients: Frage über GUILD, Antwort nur geflüstert von einem anderen Layer, Fremder und fremdes Präfix ohne Antwort, Bitte, Frage und sofortige Einladung, Grenzen, nur die Einladung des Gebetenen, Wechsel, Verlassen nur der eigenen Zweiergruppe, "Kein Wechsel"), `tests/test_layer_chat.lua` (Regel der Bitte, nur Gilde, Zone, gemeinsame Grenzen, eine Frage für YI und Chatzeile, Chatzeile geöffnet, Annehmen nur von Gildenmitgliedern nach der Chat-Bitte), `tests/ui_scene.lua` (Fenster `layer`, `layer-chip`), `tools/tests/test_contracts.py` (Nachrichtenarten und Abstände).
+
+## D-118 Werkzeuge: eine Zeile je Scan, Stand in Worten, ehrliche Prozente, ein nächster Schritt
+
+**Datum:** 2026-11-13
+**Entscheidung:** Der Scan-Teil der Seite Werkzeuge (F-186, Spec `docs/specs/2026-11-13-werkzeuge-scans.md`) hat
+vier Zeilen: Ausrüstung (Item-Scan), Quests, NPCs (Scans per Nummer, D-104), Sammler. Jede Zeile: Name, Stand in
+Worten, ein Balken (`W.ProgressBar`) und "x %, etwa ... übrig" nur bei bekannter Gesamtzahl, und nur die
+Aktionen des Zustands als ruhige Links: "Starten", "Fortsetzen" bei einem angehaltenen Lauf, "Anhalten" nur in
+der laufenden Zeile, "Offene wiederholen (n)" nur mit offenen Items, beim Sammler "Ein-/Ausschalten" (schreibt
+`tools.collect`). Regeln:
+- **Ehrliche Prozente:** bezogen auf das, was der Lauf fragt: der Bereich von seinem Anfang bis zu seinem Ende
+  (ein "Fortsetzen" behält den Anfang), die Liste eines Listenlaufs, die Questliste, die Liste der NPC-Phase;
+  ohne Gesamtzahl kein Prozent. Restzeit aus der Rate (`SB.Duration`).
+- **Kein Text mit Technik:** keine ID-Nummern, keine Datei- und Werkzeugnamen auf der Seite; auch die
+  Chatzeilen der Scans nennen keine Dateien mehr. Eine leere Datei nach einem fertigen Scan heißt "Fertig: alles
+  übernommen." (das Aufräumen von D-34), eine volle "Fertig: n neue ... warten auf die Übernahme.".
+- **Ein Scan zur Zeit:** läuft einer, sind die Starts der anderen Zeilen grau (Tooltip mit dem Grund); auch der
+  Item-Scan startet nicht, solange ein Scan per Nummer läuft.
+- **Nächster Schritt**, das Erste, was zutrifft, sonst leer; nichts, solange ein Scan läuft: (1) ein Scan hielt
+  in dieser Sitzung in einer Instanz an, (2) neue Einträge seit dem Laden (ein Zähler über Item-Scan, Quest-Scan,
+  NPC-Scan und Sammler): ausloggen oder `/reload`, damit sie gespeichert werden, (3) Items ohne Antwort.
+- **Kein roter Knopf** im Scan-Teil: die eine rote Aktion der Seite bleibt "Drops für die Website" in ihrer
+  Ansicht (D-67); die Zahl der Seite in `tools/ui_red_budget.json` sinkt von 2 auf 1.
+- **Leistung:** die Zeilen werden einmal gebaut; ein laufender Scan setzt einmal je Sekunde nur Texte und Balken
+  (OnUpdate, nur solange die Seite offen ist); ein Band wird nur neu gelegt, wenn Aktionen kommen oder gehen.
+
+**Grund:** Nutzer 2026-11-13 auf der Seite Werkzeuge: "wie können wir die werkzeuge und das scannen und übermittel
+der daten verbesserm"; von sieben Vorschlägen "Ja, 1 bis 3" (eine Zeile je Aufgabe, Klartext statt Technik, eine
+Zeile "Nächster Schritt"). Die Seite zeigte "nächste ID 302971 von 3111111" und "NPC-Scan fertig: 0 Namen
+gespeichert", das wie ein Fehler aussah.
+
+**Folge:** "3111111" war das Ende eines von Hand getippten Bereichs (Standard ist 250000); die Seite zeigt ihn
+ehrlich (0 %, etwa 7 h 48 min bei 100 je Sekunde). Neu gespeichert: `scan.done`. Nicht Teil: ein Knopf für alle
+Scans, die automatische Übernahme auf dem N100, Drops für die Website ohne Einfügen, die Anzeige des Austauschs in
+der Gilde; der Teil "Drop-Daten" bleibt. Annahme (nicht gefragt): die Zahl der ausgelieferten Namen zeigt die
+Zeile nicht (die Daten zählen Quests und NPCs nur zusammen); der Zähler neuer Einträge zählt auch den Sammler beim
+normalen Spielen.
+
+**Durchgesetzt durch:** `tests/test_tools_page.lua` (Zustände, Prozente und Restzeit, Fortsetzen, Listenlauf,
+fertig mit Wartenden und übernommen, Offene, Sammler an/aus, ein Scan zur Zeit, die Reihenfolge des nächsten
+Schritts, kein Dateiname und keine ID im Text), `tests/test_pages.lua`, `tests/test_drops_view.lua`,
+`tests/test_scan_quests.lua`, `tests/ui_scene.lua` (`tools-idle`, `tools-running`, `tools-finished`),
+`tools/tests/test_ui_layout.py::test_rule_red_budget`.

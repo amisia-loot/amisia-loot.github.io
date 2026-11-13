@@ -36,7 +36,10 @@ local function addSource(id, source)
     for _, v in ipairs(list) do
         if v == source then return end
     end
-    if #list < MAX_SOURCES then list[#list + 1] = source end
+    if #list < MAX_SOURCES then
+        list[#list + 1] = source
+        if ns.ScanAdded then ns.ScanAdded() end
+    end
 end
 
 -- Random suffixes ("...des Adlers"): which an item can roll is not in the client tables, so the

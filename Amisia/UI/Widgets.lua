@@ -561,6 +561,33 @@ function W.SlicedAtlas(holder, layer, sublevel, atlas, cap, height)
     return parts
 end
 
+-- A progress bar in the look of the profession window's skill bar (T.PROGRESS: width, height, the
+-- fill's inset and colour; without the atlas a dark flat ground). bar:SetValue(f) fills it to f (0 to
+-- 1; nil or below 0 empty); bar.value keeps it.
+function W.ProgressBar(parent, width)
+    local P = T.PROGRESS
+    local bar = CreateFrame("Frame", nil, parent)
+    bar:SetSize(width or P.W, P.H)
+    if not W.SlicedAtlas(bar, "BACKGROUND", 0, "Professions-skillbar-bg", P.CAP, P.H) then
+        W.Flat(bar, P.BG[1], P.BG[2], P.BG[3], P.BG[4], "BACKGROUND")
+    end
+    bar.fill = bar:CreateTexture(nil, "ARTWORK")
+    bar.fill:SetColorTexture(P.COLOR[1], P.COLOR[2], P.COLOR[3], P.COLOR[4])
+    bar.fill:SetPoint("LEFT", P.INSET, 0)
+    bar.fill:SetHeight(P.H - 2 * P.INSET)
+    W.SlicedAtlas(bar, "OVERLAY", 0, "Professions-skillbar-frame", P.CAP, P.H)
+    function bar:SetValue(f)
+        f = tonumber(f) or 0
+        f = math.max(0, math.min(1, f))
+        self.value = f
+        local w = math.floor((self:GetWidth() - 2 * P.INSET) * f + 0.5)
+        self.fill:SetWidth(math.max(1, w))
+        self.fill:SetShown(w >= 1)
+    end
+    bar:SetValue(0)
+    return bar
+end
+
 -- The empty state of a page: the addon's emblem faint, a title and a line of help, centred in
 -- the place the list would fill. e:Set(title, text) fills it (e:SetText and e:GetText: the line of
 -- help alone); Show/Hide as any frame. Pages place it with p:Empty (W.Page).

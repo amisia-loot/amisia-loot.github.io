@@ -969,6 +969,12 @@ T.LINK_TINT = { 0.78, 0.74, 0.62 }
 -- field BOX_Y below the top
 T.LINKWIN = { W = 380, H = 104, TEXT_Y = 34, BOX_Y = 58 }
 
+-- the progress bar (W.ProgressBar, F-186): the profession window's skill bar W x H, its end caps CAP
+-- px, the fill INSET px inside in the classic profession window's blue; BG the flat ground without the art
+T.PROGRESS = { W = 70, H = 14, CAP = 6, INSET = 2, COLOR = { 0.25, 0.42, 0.85, 0.85 }, BG = { 0, 0, 0, 0.5 } }
+-- the scan rows of the tools page (F-186): the name column NAME_W wide
+T.TOOLS = { NAME_W = 64 }
+
 -- the question window (W.Confirm, AmisiaConfirmFrame): the text under the title bar, wrapped, the
 -- two red buttons at the bottom right; its height follows the text.
 T.CONFIRM = {
