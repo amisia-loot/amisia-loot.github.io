@@ -5,6 +5,20 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(layer): changing layers also works with players outside the guild (F-191)
+
+    The Layer window has a new link "Ask in the channel": it opens the chat channel of your zone with the usual
+    request line ("inv layer"), and for one minute Amisia accepts the next invite, whoever sends it. With the new
+    setting "Also help players outside the guild" (off by default) Amisia asks you whether to invite a player who
+    whispers such a request or writes it into a channel; "Invite strangers without asking" does it at once for
+    requests in your zone's channel. The limits are the guild's: never in instances, six invites in ten minutes.
+
+- feat(selftest): `/amisia selftest layer` checks what the layer features need from the game (F-192)
+
+    The report shows the zone id of every creature in sight, the layer changes of this session, what Amisia's
+    invites, accepts and leaves did, and whether the game lets an addon invite, accept and leave without a key
+    press. It ends with a verdict in plain words and the steps to check a real change.
+
 - feat(quests): the quest item settings get their own section "Quest items" (F-193)
 
     Settings > Dungeons & Raids now has a section "Quest items" with a button that opens "Clear away quest items",

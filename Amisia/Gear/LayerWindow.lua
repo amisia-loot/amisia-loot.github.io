@@ -1,8 +1,9 @@
 -- The window "Layer" (F-185, D-117, ns.LayerWindow, AmisiaLayerFrame, tokens T.LAYER) and the layer chip
 -- (AmisiaLayerChip, layer.chip). The window: large the current layer ("Layer B", else "unbekannt"), grey
 -- under it the zone or "Ziele oder überfahre einen NPC."; "Gesehen in dieser Zone" with a row per layer of
--- the zone ("Layer A · hier · vor 3 Min.", "Gilde" for one only the guild reported); "Wechsel in der Gilde"
--- with the red button "Gilde fragen", a status line, the answers ("Name · Layer C" with the link
+-- the zone ("Layer A · hier · vor 3 Min.", "Gilde" for one only the guild reported); "Layer wechseln"
+-- with the red button "Gilde fragen" and the link "Im Gildenchat fragen", under them the link "Im Kanal
+-- fragen" (players outside the guild, F-191), a status line, the answers ("Name · Layer C" with the link
 -- "Einladung erbitten") and "Gruppe verlassen" once a swap group stands (Gear/LayerChange.lua). Movable, its
 -- place in settings.layerWindow, the x closes it; never shown in an instance (it closes on entering one).
 -- Opened by /amisia layer, the minimap menu (its own entry) and its row in the side bar of the tab Gilde.
@@ -75,12 +76,14 @@ local function build()
     end
     F.more = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD)
     F.swapHead = W.Text(F, T.FONT.head, S.W - 2 * S.PAD)
-    F.swapHead:SetText(L["Wechsel in der Gilde"])
+    F.swapHead:SetText(L["Layer wechseln"])
     F.ask = W.Button(F, L["Gilde fragen"], nil, function() say(SW.Ask()) end)
     W.FitChip(F.ask)
     W.Tooltip(F.ask, L["Gilde fragen"], L["Fragt die Gildenmitglieder mit Amisia, wer in dieser Zone auf einem anderen Layer ist. Nur wer allein ist, kann danach eingeladen werden."])
     F.chat = W.Link(F, L["Im Gildenchat fragen"], function() say(SW.AskChat()) end)
     W.Tooltip(F.chat, L["Im Gildenchat fragen"], L["Öffnet den Gildenchat mit deiner Bitte (Einstellung \"Text für Im Gildenchat fragen\"); du schickst sie mit Enter ab. So erreichst du Gildenmitglieder mit anderen Layer-Addons. Eine Minute lang nimmt Amisia dann die Einladung eines Gildenmitglieds an."])
+    F.channel = W.Link(F, L["Im Kanal fragen"], function() say(SW.AskChannel()) end)
+    W.Tooltip(F.channel, L["Im Kanal fragen"], L["Öffnet den Chatkanal aus den Einstellungen (Layer: Kanal, sonst 1, meist Allgemein) mit deiner Bitte; du schickst sie mit Enter ab. So erreichst du alle Spieler der Zone, mit und ohne Layer-Addon. Eine Minute lang nimmt Amisia dann die nächste Einladung an, egal von wem."])
     F.status = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD, true)
     F.status:SetHeight(2 * S.LINE_H)
     F.status:SetJustifyV("TOP")
@@ -116,6 +119,7 @@ function LW.StatusText(st)
         if p.invited then return L["Einladung von %s kam."]:format(p.name), false end
         return L["Einladung bei %s erbeten."]:format(p.name), false
     end
+    if st.chatAll then return L["Im Kanal gefragt: eine Minute lang nimmt Amisia die nächste Einladung an."], false end
     if st.chat then return L["Im Gildenchat gefragt: eine Minute lang nimmt Amisia die Einladung eines Gildenmitglieds an."], false end
     if r and GetTime() - r.at <= SW.REQ_LIFE then
         if #st.answers > 0 then return L["Antworten von anderen Layern: %d"]:format(#st.answers), false end
@@ -123,6 +127,8 @@ function LW.StatusText(st)
         return L["Keine Antwort von einem anderen Layer."], false
     end
     local ok, why = SW.CanAsk()
+    -- without a guild the channel is the way: its reason would only name the guild
+    if not ok and not ns.InGuild() then return L["Frag im Kanal: wer dich einlädt, bringt dich auf seinen Layer."], false end
     if not ok then return why, false end
     return L["Frag die Gilde, wer auf einem anderen Layer ist."], false
 end
@@ -182,6 +188,9 @@ function LW.Refresh()
     F.chat:ClearAllPoints()
     F.chat:SetPoint("LEFT", F.ask, "RIGHT", S.GAP, 0)
     y = y - T.BUTTON_H - S.GAP
+    F.channel:ClearAllPoints()
+    F.channel:SetPoint("TOPLEFT", S.PAD, y)
+    y = y - S.ROW_H
     local text, leave = LW.StatusText(st)
     F.status:SetText(text or "")
     F.status:ClearAllPoints()
@@ -286,5 +295,5 @@ end
 ns.OnEvent("PLAYER_ENTERING_WORLD", world)
 ns.OnEvent("ZONE_CHANGED_NEW_AREA", world)
 
-ns.RegisterSlash("layer", { desc = L["Fenster Layer: dein Layer in dieser Zone, Wechsel in der Gilde"], forever = true,
+ns.RegisterSlash("layer", { desc = L["Fenster Layer: dein Layer in dieser Zone, Wechsel in der Gilde und im Kanal"], forever = true,
     run = function() LW.Toggle() end })

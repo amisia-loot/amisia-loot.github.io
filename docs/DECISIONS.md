@@ -3278,3 +3278,34 @@ in den Abschnitt, die Schlüssel ziehen nicht um.
 
 **Durchgesetzt durch:** `tools/tests/test_contracts.py` (Abschnitt in ARCHITECTURE.md), `tests/test_settings_tips.lua`
 und `tests/test_settings_pages.lua`.
+
+## D-124 Layer über die Gilde hinaus: nur die Chat-Zeile, Helfen als Einstellung, ein Selbsttest dazu
+
+**Datum:** 2026-11-13
+**Entscheidung:** Ändert D-117 in einem Punkt: der Layer-Wechsel endet nicht mehr an der Gildengrenze (F-191, Spec
+`docs/specs/2026-11-13-layer-fuer-alle.md`). Regeln:
+- **Der Weg ist die Chat-Zeile:** die kurze Bitte ("inv layer", `SW.IsRequestLine`), die Spieler mit und ohne
+  Layer-Addon schreiben. Amisias eigene Nachrichten (YQ, YA, YI) bleiben in der Gilde; die versteckten Nachrichten
+  eines anderen Addons spricht Amisia weiter nicht (D-04 gilt: Ideen und Anordnung, kein Code, kein Format aus
+  fremdem Code).
+- **Fragen kann jeder:** "Im Kanal fragen" öffnet die Chatzeile mit `/<layer.channel> <layer.chatText>`, der Spieler
+  schickt sie selbst ab (Addons schreiben nicht in den Chat). 60 Sekunden lang ist die nächste Einladung der
+  Wechsel, egal von wem; `layer.autoAccept` nimmt sie an.
+- **Helfen ist eine Einstellung, aus:** `layer.others` lässt Amisia Bitten von Fremden (Flüstern, Kanäle) mit einer
+  Frage beantworten, höchstens eine in 5 Sekunden; `layer.othersAuto` lädt ohne Frage ein, aber nur bei einer Bitte
+  in einem Kanal der eigenen Zone. Die Grenzen der Einladungen sind die von D-117. Ohne `layer.others` schaut Amisia
+  keine Kanalzeile an; Sagen und Schreien nie.
+- **Selbsttest (F-192):** `/amisia selbsttest layer` prüft im Client, was D-117 und diese Entscheidung offen lassen:
+  die Zonen-Kennung der Kreaturen in Sicht, die Wechsel der Sitzung, und ob das Spiel Einladen, Annehmen und
+  Verlassen ohne Tastendruck sperrt. Er lädt nur einen Namen ein, den niemand hat, und ruft Annehmen und Verlassen
+  nur auf, wenn sie nichts tun können (allein, keine Einladung offen). Nichts wird gespeichert.
+
+**Grund:** Nutzer 2026-11-13: "das layer ding soll auch mit anderen spieler und addons gehen nicht nur mit
+gildenmitgliedern", davor zu Vorschlag 2 der Verbesserungen (Selbsttest für den Layer): "Erst Punkt 2".
+**Folge:** Annahmen (nicht gefragt): Helfen ist aus, damit niemand, der Amisia wegen der Beute installiert hat,
+Fragen von Fremden bekommt; ohne Frage nur im Zonenkanal; Kanal 1 als Vorgabe. Offen beim Nutzer: ob Amisia das
+versteckte Format eines anderen Layer-Addons sprechen soll (dafür müsste dessen Code gelesen werden, was D-04
+verbietet).
+**Durchgesetzt durch:** `tests/test_layer_others.lua` (aus: nichts; Frage, Abstand, Zonenkanal, Grenzen, Kanal-Bitte,
+ohne Gilde, Spur), `tests/test_selftest_layer.lua` (Bericht, Urteile, drei Aufrufe, gesperrt, Gruppe, Kampf, keine
+Funktionen, nichts gesendet), `tests/test_layer_chat.lua` (ohne die Einstellung bleiben Fremde und Kanäle ungelesen).

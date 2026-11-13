@@ -36,6 +36,12 @@ local cur               -- { map, uid, at = the last time a creature of uid was 
 local zoneMap           -- the player's zone map (cached until a zone event), false: none
 local lastAt = {}       -- source -> time of its last read
 local sweptAt = 0
+-- for /amisia selbsttest layer (Core/SelfTestLayer.lua), this session only: how many units each source
+-- read (read) and how many gave a zoneUID (ok), secret GUIDs, and the current layer's changes
+-- ({ at, map, uid, grouped } and { at, zone = true } for a zone change between two of them), newest last
+local MAX_HISTORY = 30
+local stats = { read = {}, ok = {}, secret = 0 }
+local history = {}
 
 local function now() return GetTime() end
 
@@ -137,12 +143,25 @@ local function sweep(force)
     if gone then ns.Fire("LAYER", "list") end
 end
 
+local function remember(e)
+    history[#history + 1] = e
+    if #history > MAX_HISTORY then table.remove(history, 1) end
+end
+
+local function grouped()
+    local f = rawget(_G, "IsInGroup")
+    if type(f) ~= "function" then return false end
+    local ok, v = pcall(f)
+    return ok and ns.Plain(v) == true
+end
+
 local function setCurrent(map, uid, t)
     if cur and cur.map == map and cur.uid == uid then
         cur.at = t
         return
     end
     cur = { map = map, uid = uid, at = t }
+    remember({ at = t, map = map, uid = uid, grouped = grouped() })
     ns.Fire("LAYER", "current")
 end
 
@@ -188,7 +207,11 @@ function LY.ReadUnit(unit, source)
         lastAt[source] = t
     end
     if type(unit) ~= "string" or blocked() then return nil end
-    local guid = call(rawget(_G, "UnitGUID"), unit)
+    local key = source or "other"
+    stats.read[key] = (stats.read[key] or 0) + 1
+    local okG, guid = pcall(rawget(_G, "UnitGUID") or error, unit)
+    if not okG then return nil end
+    if guid ~= nil and ns.Plain(guid) == nil then stats.secret = stats.secret + 1 end
     local _, uid, _, spawn = LY.Parse(guid)
     if not uid then return nil end
     -- anything a player controls (a guardian carries a creature GUID too)
@@ -203,8 +226,12 @@ function LY.ReadUnit(unit, source)
     local map = LY.Map()
     if not map then return nil end
     note(map, uid, spawn, t)
+    stats.ok[key] = (stats.ok[key] or 0) + 1
     return uid
 end
+
+-- This session's reads and the current layer's changes, for the self-test (see the tables above).
+function LY.Stats() return stats, history end
 
 -- A layer of map the guild reported (an answer to "Gilde fragen"): known from now on, so one own
 -- creature makes it current; its letter counts for everyone who knows the same ids.
@@ -335,6 +362,7 @@ ns.OnEvent("NAME_PLATE_UNIT_ADDED", function(unit) LY.ReadUnit(unit, "plate") en
 -- A new zone or world: the zone map is read again and the current layer is unknown.
 local function zoneChanged()
     zoneMap = nil
+    if #history > 0 and not history[#history].zone then remember({ at = now(), zone = true }) end
     if cur then
         cur = nil
         ns.Fire("LAYER", "current")
@@ -352,15 +380,21 @@ ns.RegisterSettings{ key = "layer", label = L["Layer"], order = 62, group = "gui
     { key = "layer.answer", type = "toggle", label = L["Layer-Anfragen der Gilde beantworten"], default = true,
       tip = L["Fragt ein Gildenmitglied mit Amisia nach einem anderen Layer und bist du in derselben Zone auf einem anderen, sagt dein Amisia ihm leise deinen Layer. Nichts geht in den Chat."] },
     { key = "layer.chat", type = "toggle", label = L["Auch auf Chat-Anfragen aus der Gilde reagieren"], default = true,
-      tip = L["Schreibt ein Gildenmitglied eine kurze Bitte wie \"inv layer\" in den Gildenchat oder flüstert sie dir (so fragen andere Layer-Addons), behandelt Amisia sie wie eine Bitte aus Amisia: dieselbe Frage oder Einladung, dieselben Grenzen. Nur wenn die Gildenliste dieselbe Zone nennt, lädt Amisia ohne Frage ein. Öffentliche Kanäle liest Amisia nie."] },
+      tip = L["Schreibt ein Gildenmitglied eine kurze Bitte wie \"inv layer\" in den Gildenchat oder flüstert sie dir (so fragen andere Layer-Addons), behandelt Amisia sie wie eine Bitte aus Amisia: dieselbe Frage oder Einladung, dieselben Grenzen. Nur wenn die Gildenliste dieselbe Zone nennt, lädt Amisia ohne Frage ein. Öffentliche Kanäle liest Amisia nur mit \"Auch Spielern außerhalb der Gilde helfen\"."] },
+    { key = "layer.others", type = "toggle", label = L["Auch Spielern außerhalb der Gilde helfen"], default = false,
+      tip = L["Flüstert dir irgendein Spieler eine kurze Bitte wie \"inv layer\" oder schreibt sie in einen Kanal, in dem du bist (so fragen Spieler mit und ohne Layer-Addon), fragt Amisia dich, ob du ihn einladen willst. Dieselben Grenzen wie in der Gilde: nie in Instanzen, höchstens sechs Einladungen in zehn Minuten, höchstens eine Frage alle fünf Sekunden."] },
+    { key = "layer.othersAuto", type = "toggle", label = L["Fremde ohne Frage einladen"], default = false,
+      tip = L["Mit \"Auch Spielern außerhalb der Gilde helfen\": bittet ein Fremder im Kanal deiner Zone (Allgemein), lädt Amisia ihn sofort ein. Bitten per Flüstern und in anderen Kanälen fragen dich weiter, weil die Zone des Spielers unbekannt ist."] },
     { key = "layer.chatText", type = "text", label = L["Text für \"Im Gildenchat fragen\""], default = "inv layer",
       validate = function(v) return ns.LayerChange and ns.LayerChange.ChatText(v) or nil end,
       invalid = L["Eine Zeile, höchstens 40 Zeichen."],
-      tip = L["Diese Zeile öffnet \"Im Gildenchat fragen\" im Chat, du schickst sie mit Enter ab. Stell sie auf das, worauf die Layer-Addons deiner Gilde hören."] },
+      tip = L["Diese Zeile öffnen \"Im Gildenchat fragen\" und \"Im Kanal fragen\" im Chat, du schickst sie mit Enter ab. Stell sie auf das, worauf die Layer-Addons der anderen hören."] },
+    { key = "layer.channel", type = "slider", label = L["Kanal für \"Im Kanal fragen\""], default = 1, min = 1, max = 10,
+      tip = L["Die Nummer des Chatkanals, in den \"Im Kanal fragen\" deine Bitte schreibt. 1 ist meist Allgemein, der Kanal deiner Zone."] },
     { key = "layer.autoInvite", type = "toggle", label = L["Ohne Frage einladen"], default = false,
       tip = L["Bittet dich ein Gildenmitglied, das du beantwortet hast, um eine Einladung auf deinen Layer, lädt Amisia es sofort ein. Aus: Amisia fragt dich erst. Nie in Instanzen, höchstens sechs Einladungen in zehn Minuten."] },
     { key = "layer.autoAccept", type = "toggle", label = L["Einladung des Gefragten annehmen"], default = true,
-      tip = L["Hast du ein Gildenmitglied um eine Einladung auf seinen Layer gebeten, nimmt Amisia genau seine Einladung an (eine Minute lang); nach \"Im Gildenchat fragen\" die Einladung eines Gildenmitglieds. Jede andere Einladung fragt das Spiel wie immer."] },
+      tip = L["Hast du ein Gildenmitglied um eine Einladung auf seinen Layer gebeten, nimmt Amisia genau seine Einladung an (eine Minute lang); nach \"Im Gildenchat fragen\" die Einladung eines Gildenmitglieds, nach \"Im Kanal fragen\" die nächste Einladung, egal von wem. Jede andere Einladung fragt das Spiel wie immer."] },
     { key = "layer.autoLeave", type = "toggle", label = L["Gruppe nach dem Wechsel verlassen"], default = false,
       tip = L["Ist der Wechsel gelungen, verlässt Amisia die Zweiergruppe mit dem Einladenden nach den eingestellten Sekunden. Nie eine Gruppe, in der du vorher warst oder in der mehr sind."] },
     { key = "layer.leaveSeconds", type = "slider", label = L["Verlassen nach Sekunden"], default = 30, min = 5, max = 120,
@@ -370,4 +404,5 @@ ns.RegisterSettings{ key = "layer", label = L["Layer"], order = 62, group = "gui
 -- for the tests
 function LY._reset()
     maps, cur, zoneMap, lastAt, sweptAt = {}, nil, nil, {}, 0
+    stats, history = { read = {}, ok = {}, secret = 0 }, {}
 end

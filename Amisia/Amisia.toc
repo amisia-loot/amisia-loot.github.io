@@ -189,4 +189,5 @@ Core\SelfTestCalendar.lua
 Core\SelfTestCalendarWrite.lua
 Core\SelfTestGroup.lua
 Core\SelfTestData.lua
+Core\SelfTestLayer.lua
 Core\PerfReport.lua

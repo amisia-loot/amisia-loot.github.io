@@ -1684,10 +1684,10 @@ end
 
 ns.ShowSelfTest = function() return ST.Show() end
 
-ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt] [kalender [schreiben]] [gruppe] [daten]"],
-    desc = L["prüft den Client, Bericht zum Kopieren (kurz: nur Probleme im Chat; kalender: die Kalender-Prüfung; kalender schreiben: die Schreibprüfung, schreibt in den Kalender; gruppe: Einladen, Raid-IDs, Buffs, Haltbarkeit, Verzauberungen; daten: NPC-Namen, Quests und Modelle per Nummer)"], run = function(rest)
+ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt] [kalender [schreiben]] [gruppe] [daten] [layer]"],
+    desc = L["prüft den Client, Bericht zum Kopieren (kurz: nur Probleme im Chat; kalender: die Kalender-Prüfung; kalender schreiben: die Schreibprüfung, schreibt in den Kalender; gruppe: Einladen, Raid-IDs, Buffs, Haltbarkeit, Verzauberungen; daten: NPC-Namen, Quests und Modelle per Nummer; layer: Layer-Kennung, Einladen, Annehmen und Verlassen ohne Tastendruck)"], run = function(rest)
     local opts = {}
-    local short, calendar, write, group, data = false, false, false, false, false
+    local short, calendar, write, group, data, layer = false, false, false, false, false, false
     for word in tostring(rest or ""):lower():gmatch("%S+") do
         if word == "kurz" or word == "short" then -- l10n-ok: the German and English sub-words
             short = true
@@ -1701,7 +1701,14 @@ ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt] [k
             group = true
         elseif word == "daten" or word == "data" then -- l10n-ok: the German and English sub-words
             data = true
+        elseif word == "layer" then -- l10n-ok: the sub-word, the same in both languages
+            layer = true
         end
+    end
+    -- the layer probe (SelfTestLayer.lua, Forever only): three calls from timers, then its report
+    if layer then
+        if ST.Layer then return ST.Layer.Start() end
+        return ns.msg(L["Die Layer-Prüfung gibt es nur in WoW Forever."])
     end
     -- the data probe (SelfTestData.lua): asks for NPCs and quests by id and waits for the answers
     if data and ST.Data then return ST.Data.Start() end
