@@ -3212,3 +3212,45 @@ Annahmen (nicht gefragt): nur Sitzung; die Mitglieder an der Stelle der Bosslist
 Ergebnis, die Minute, die Gründe, ein Fremder erscheint nie, nichts gesendet oder gespeichert, Deckel 40, Zahlen
 geprüft, `/amisia drops sync`), `tests/test_drops_view.lua` (Statuszeile, Links, Tooltips, leere Liste mit Grund,
 Zeile mit Klassenfarbe, Takt der Seite, Ergebnis, Layout), `tests/ui_scene.lua` (`tools-who`).
+
+## D-122 Der N100 übernimmt den Spielstand von selbst: dritter Auslöser, ein Branch je Tag, nie nach main
+
+**Datum:** 2026-11-13
+**Entscheidung:** Erweitert D-51 und D-103: `tools/auto_data.py` hat einen dritten Auslöser C, die SavedVariables
+`~/addons/_SavedVariables/Amisia.lua` (F-190, Spec `docs/specs/2026-11-13-spielstand-uebernehmen.md`).
+- **Nur wenn A und B nichts bauen** und kein neuer Client-Build wartet (ein Export eines neueren Builds als die
+  Daten auf main, nicht versucht, sein Bericht jünger als ein Tag; oder ein unvollständig geladener Build von
+  wago.tools): der Datenbau soll den Spielstand mit den Tabellen von main bauen, nicht einen halben Client-Build
+  mitnehmen. Ein versuchter, nicht auf main gelandeter Build hält C nicht auf; der Block nennt ihn dann.
+- **Wann:** der Inhalt (SHA-256; Größe und Zeit nur als Vorabblick) weicht von der zuletzt übernommenen Datei ab
+  (`~/addons/_auto/amisia-sv.json`), die Datei ruht seit `SV_SETTLE` = 5 Minuten, und der letzte Lauf von C ist
+  `SV_GAP` = 6 Stunden her. `--force-sv` übernimmt sofort; aus mit `~/addons/_auto/amisia-sv.off` oder
+  `AMISIA_AUTO_SV=0`. Ein Lauf zählt für den Abstand, auch wenn er abbricht.
+- **Wie:** im Worktree `~/addons/.amisia-auto`, losgelöst auf dem committeten main: `build.py data --sv <Datei>`;
+  keine Änderung an Archiven und erzeugten Dateien heißt "nichts Neues" (kein Branch, keine Prüfung); sonst
+  `build.py check`, Commit (auch rot), Branch `auto/sv-<JJJJ-MM-TT>` auf den Commit. Ein zweiter Lauf am selben Tag
+  fängt wieder bei main an und setzt den Branch des Tages neu. Die neuesten 5 `auto/sv-*` bleiben, ältere werden
+  gelöscht; `auto/data-*` bleiben. Der Worktree wird immer entfernt.
+- **Festhalten:** ein Block "Spielstand vom <Zeit der Datei>: ..." in `~/addons/_auto/amisia-data.txt` (zwischen dem
+  Bericht eines Client-Builds und der Zeile von wago.tools; jeder neue Bericht behält ihn): Branch und Commit,
+  Prüfung grün oder ROT mit den ersten fehlschlagenden Zeilen, "Neu gegenüber main" (neue und geänderte Einträge
+  je Archiv gegenüber dem committeten main: Items, Item-Quellen, Questnamen, NPC-Namen, beobachtete Quests,
+  Quest-Items, Quest-Merkmale, Eingänge, Lehrer, Kills) und die geänderten Dateien.
+- **Veralteter Bericht:** hat main die Daten des Client-Builds, über den der Bericht spricht, ersetzt der nächste
+  Lauf ihn einmal durch eine Zeile "main hat diese Daten inzwischen".
+- **Weiter verboten (D-51):** kein Push, kein Merge, kein Commit auf main, kein Release, keine Änderung an den
+  SavedVariables; kein Netz durch C. Der Timer bleibt derselbe; keine neue systemd-Einheit.
+
+**Grund:** Nutzer 2026-11-13 zu Vorschlag 5 der Seite Werkzeuge ("mach alle aber nach deinen vorschlag"): die
+Scan-Daten lagen nach dem Ausloggen auf dem N100, kamen aber erst mit einem Datenbau von Hand ins Addon, meist kurz
+vor einem Release, wo ein Dungeonname ohne Eintrag aus dem Spielstand die Prüfung rot machte.
+
+**Folge:** Zu Beginn einer Sitzung meldet Claude auch den Block "Spielstand vom ..." (was neu ist, ob rot).
+Veröffentlicht wird wie bisher nur auf Wort des Nutzers: `build.py data` auf main, dann `build.py release`.
+Ein Abend voller Logouts kostet höchstens einen Bau und eine Prüfung je 6 Stunden. Annahmen (nicht gefragt): 6 h,
+5 min, ein Branch je Tag, 5 Branches, was als "neu" zählt; kein CHANGELOG-Eintrag (kein Spieler merkt es, D-60).
+
+**Durchgesetzt durch:** `tools/tests/test_auto_data.py` (Ruhe und Abstand, gleicher Inhalt, `--force-sv`, A und B
+vor C, wartender Build, "nichts Neues" ohne Branch, rote Prüfung mit Branch, kaputte Datei, Block neben Bericht und
+Blick, veralteter Bericht, Worktree entfernt, main und sein Arbeitsverzeichnis unverändert auch wenn schmutzig,
+nur die neuesten 5 Branches, `--dry-run`, Schalter).

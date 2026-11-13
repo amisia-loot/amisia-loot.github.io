@@ -32,7 +32,8 @@
   Machines and folders: ARCHITECTURE.md, "Machines".
 - New client build: the PC exports the tables by itself and the N100 builds and checks them on branch
   `auto/data-<build>` (D-51). At the start of a session read `~/addons/_auto/amisia-data.txt` and tell the
-  user when data is ready or red; release only when the user asks.
+  user when data is ready or red, and what its block "Spielstand vom ..." says is new or red (the SavedVariables
+  built on `auto/sv-<date>`, D-122); release only when the user asks.
 - Client tables may be fetched from wago.tools, but only by `python3 tools/build.py tables`
   (`tools/fetch_tables.py`: its API and CSV exports of product `wowf`, one request at a time, nothing twice;
   DECISIONS D-101, which changed D-03). `build.py data` never touches the network; it takes per table the

@@ -84,7 +84,8 @@ python3 tools/build.py perf [--sv FILE] [--rows N]
 - `tools/auto_data.py` (D-51): run every 15 minutes by the systemd user timer (`tools/systemd/install.sh`
   installs it). When `~/addons/_wago` has a complete, settled export of a build newer than the data on main,
   it builds and checks the data on branch `auto/data-<build>` in its own worktree and writes the outcome to
-  `~/addons/_auto/amisia-data.txt`; it never pushes, merges or releases. `--dry-run`, `--force`, `--base`.
+  `~/addons/_auto/amisia-data.txt`; it never pushes, merges or releases. `--dry-run`, `--force`, `--base`,
+  `--look-now`, `--sv`, `--force-sv`.
   On the PC `tools/install_export_task.ps1` (once, as administrator) sets up the task that runs
   `export_db2.ps1` after logon and every two hours.
 - `auto_data.py` runs `build.py data` without `--wago`, so the automatic build also takes the newest copy of
@@ -100,6 +101,22 @@ python3 tools/build.py perf [--sv FILE] [--rows N]
   `~/addons/_auto/amisia-wago.off`, or `AMISIA_AUTO_WAGO=0` in the service's environment. `--look-now`
   looks inside the day. auto_data.py names no address of the site and does not import the fetcher: it
   runs it as a program, like `build.py tables`.
+- Its third trigger (D-122, F-190): the SavedVariables. When A and B build nothing and no new client build
+  waits (an export newer than main's data, not tried, its report less than a day old; a wago.tools fetch that
+  came back incomplete), and `~/addons/_SavedVariables/Amisia.lua` has a content (SHA-256) other than the file
+  taken over last, has rested 5 minutes (`SV_SETTLE`) and the last run of this trigger is 6 hours ago
+  (`SV_GAP`; state in `~/addons/_auto/amisia-sv.json`): `build.py data --sv <file>` in the worktree detached at
+  the committed main (every builder writes beside its own script, so the worktree's archives; the main checkout
+  may be dirty or mid-release). Nothing changed: one line "nichts Neues", no branch, no check. Otherwise
+  `build.py check`, a commit (red too) and branch `auto/sv-<YYYY-MM-DD>`; a second run the same day starts from
+  main again and moves the day's branch; only the newest 5 `auto/sv-*` stay. A block `Spielstand vom ...` in
+  `amisia-data.txt` (kept under every later build report, above the wago.tools line) names branch, commit, the
+  check (red: its first failing lines), what is new against main per archive (new and changed entries: items,
+  item sources, quest and NPC names, observed quests, quest items, quest tags, entrances, trainers, kills) and
+  the changed files. A file without `AmisiaDB` or one the build's parser refuses is a line in the block, not a
+  crash. `--force-sv` takes it over now; off: `~/addons/_auto/amisia-sv.off` or `AMISIA_AUTO_SV=0`; `--sv FILE`
+  for another file. Before the triggers, a report about a client build whose data main has by now is replaced
+  by one line saying so.
 - After every automatic build `tools/build_diff.py` compares main's build with the new one: its first lines
   ("new in this build") go to the end of `amisia-data.txt`, the whole report to
   `~/addons/_auto/amisia-data-diff.txt`. Not into the branch: the report is rebuilt any time with

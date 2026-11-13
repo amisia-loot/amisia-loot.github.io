@@ -1584,6 +1584,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Sammeln und Daten
 
+### F-190 Der N100 übernimmt den Spielstand von selbst
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du ausloggst und danach 5 Minuten Ruhe, bis zu 15 Minuten Takt und (außer beim ersten Mal) 6 Stunden seit dem letzten Lauf vergangen sind, dann steht in `~/addons/_auto/amisia-data.txt` ein Block "Spielstand vom <Zeit>: übernommen auf Branch auto/sv-<Tag> (...), Prüfung grün." mit "Neu gegenüber main: ... Items, ... Kills ..." und den geänderten Dateien.
+- Prüfung: Wenn der Spielstand die Prüfung rot macht, dann sagt der Block "Prüfung ROT:" mit den ersten fehlschlagenden Zeilen, und der Branch `auto/sv-<Tag>` bleibt.
+- Prüfung: Wenn der Spielstand nichts Neues bringt, dann steht dort nur "Spielstand vom ...: nichts Neues gegenüber main." und es entsteht kein Branch.
+- Prüfung: Wenn C gelaufen ist, dann zeigen `git status` und `git log -1` auf main dasselbe wie vorher; veröffentlicht wird erst mit `build.py data` auf main und `build.py release`.
+- Notiz: Spec `docs/specs/2026-11-13-spielstand-uebernehmen.md`; DECISIONS D-122. Nur auf dem N100 (`tools/auto_data.py`, derselbe Timer), nichts davon im Spiel. Sofort: `python3 tools/auto_data.py --force-sv`; nachsehen: `--dry-run`; aus: `~/addons/_auto/amisia-sv.off`. Ein Bericht über einen Client-Build, dessen Daten main schon hat, wird durch eine Zeile "main hat diese Daten inzwischen" ersetzt.
+
 ### F-053 Item-Scan
 - Version: 1.2.1
 - Status: im Spiel geprüft (2026-10-06)

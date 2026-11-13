@@ -28,8 +28,26 @@ report into ~/addons/_auto/amisia-data-diff.txt); the outcome goes to ~/addons/_
 (read by Claude at the start of a session, CLAUDE.md) and the worktree is removed again (the branch
 stays).
 
+C. the user's SavedVariables (D-122), when A and B have nothing to build and no new client build waits (an
+   export of a build newer than main's data, not tried, its report less than a day old; or a wago.tools
+   fetch that came back incomplete): ~/addons/_SavedVariables/Amisia.lua (Syncthing brings it after every
+   logout; only read) differs from the file taken over last (size and mtime first, the SHA-256 of its
+   content decides; ~/addons/_auto/amisia-sv.json), has not changed for SV_SETTLE seconds and the last run
+   of this trigger is SV_GAP hours ago or more. Then in the same worktree, detached at main: `build.py data
+   --sv <file>`; when no archive and no generated file changed, one line "nichts Neues" and no branch;
+   otherwise `build.py check`, a commit, and branch auto/sv-<YYYY-MM-DD> (the date of the run) set to that
+   commit; a second run on the same day starts from main again and moves the day's branch (the newest file
+   holds everything the earlier one had). Only the newest SV_KEEP auto/sv-* branches stay. What the file
+   added against main (new and changed entries per archive, the changed files) and the check's outcome go
+   into a block "Spielstand vom ..." of amisia-data.txt, kept under every later build report. Off with
+   ~/addons/_auto/amisia-sv.off or AMISIA_AUTO_SV=0; `--force-sv` takes the file over now (no gap, even
+   when it was taken over already).
+
+Before the triggers: a report about a client build whose data main has by now (merged, or built by hand)
+is replaced by one line that says so.
+
 It never pushes, never merges into main and never releases: the user starts the release (DECISIONS
-D-51). `--dry-run` only says what it would do; `--force` tries the newest export again; `--look-now`
+D-51, D-122). `--dry-run` only says what it would do; `--force` tries the newest export again; `--look-now`
 looks at wago.tools even when the last look is less than a day old.
 """
 import argparse
@@ -59,6 +77,30 @@ WAGO_OFF_ENV = 'AMISIA_AUTO_WAGO'
 WAGO_LINE = 'wago.tools (täglich'
 DIFF_FILE = 'amisia-data-diff.txt'
 VERSION = re.compile(r'^\d+\.\d+\.\d+\.\d+$')
+# trigger C, the SavedVariables (D-122)
+SV_FILE = os.path.expanduser('~/addons/_SavedVariables/Amisia.lua')
+SV_STATE = 'amisia-sv.json'
+SV_OFF_FILE = 'amisia-sv.off'
+SV_OFF_ENV = 'AMISIA_AUTO_SV'
+SV_SETTLE = 300                 # seconds the file must be unchanged (Syncthing may still be writing)
+SV_GAP = 6 * 3600               # seconds between two runs of trigger C: one evening of logouts, one build
+SV_KEEP = 5                     # auto/sv-* branches kept; older ones are deleted
+SV_BRANCH = 'auto/sv-'
+SV_HEAD = 'Spielstand vom '     # first line of the block in amisia-data.txt
+SV_PATHS = ('Amisia/Data', 'tools', 'Amisia-Website')   # what a data build may change
+# what "new" counts: (archive, key, label); key "a/*" sums the dicts under a (one per locale)
+SV_COUNTS = (
+    ('tools/scan_archive.json', 'items', 'Items'),
+    ('tools/scan_archive.json', 'sources', 'Item-Quellen'),
+    ('tools/scan_archive.json', 'quests/*', 'Questnamen'),
+    ('tools/scan_archive.json', 'npcs/*', 'NPC-Namen'),
+    ('tools/quest_obs.json', 'q', 'Quests beobachtet'),
+    ('tools/quest_item_archive.json', 'links', 'Quest-Items'),
+    ('tools/quest_tag_archive.json', 'tags', 'Quest-Merkmale'),
+    ('tools/entrance_archive.json', 'entrances', 'Eingänge'),
+    ('tools/trainer_archive.json', 'trainers', 'Lehrer'),
+    ('tools/drop_obs.json', 'k', 'Kills'),
+)
 
 
 def build_key(b):
@@ -110,8 +152,8 @@ def data_build(text):
     return m.group(1) if m else None
 
 
-def git(*args, cwd=ROOT, check=True):
-    p = subprocess.run(['git', *args], cwd=cwd, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+def git(*args, cwd=None, check=True):
+    p = subprocess.run(['git', *args], cwd=cwd or ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if check and p.returncode != 0:
         raise RuntimeError(f'git {" ".join(args)}: {p.stdout.strip()}')
     return p.stdout
@@ -210,19 +252,52 @@ def branch_exists(branch):
     return bool(git('rev-parse', '--verify', '--quiet', f'refs/heads/{branch}', check=False).strip())
 
 
-def set_status_line(state_dir, line):
-    """Puts the one line of the daily look into amisia-data.txt, keeping the rest of it."""
-    path = os.path.join(state_dir, 'amisia-data.txt')
+def split_status(state_dir):
+    """amisia-data.txt in its three parts: (the build report's lines, the lines of the block "Spielstand
+    vom ..." (D-122; it holds no empty line), the line of the daily look or None)."""
     try:
-        with open(path, encoding='utf-8') as fh:
-            lines = [ln for ln in fh.read().splitlines() if not ln.startswith(WAGO_LINE)]
+        with open(os.path.join(state_dir, 'amisia-data.txt'), encoding='utf-8') as fh:
+            lines = fh.read().splitlines()
     except OSError:
         lines = []
-    while lines and not lines[-1].strip():
-        lines.pop()
+    rest, block, look, inside = [], [], None, False
+    for ln in lines:
+        if ln.startswith(WAGO_LINE):
+            look, inside = ln, False
+        elif ln.startswith(SV_HEAD):
+            block, inside = [ln], True
+        elif inside and ln.strip():
+            block.append(ln)
+        else:
+            inside = False
+            rest.append(ln)
+    while rest and not rest[-1].strip():
+        rest.pop()
+    return rest, block, look
+
+
+def write_status(state_dir, rest, block, look):
+    """The build report, then the block of the SavedVariables, then the line of the look, an empty line
+    between them."""
+    out = list(rest)
+    for part in (block, [look] if look else []):
+        if part:
+            out += ([''] if out else []) + list(part)
     os.makedirs(state_dir, exist_ok=True)
-    with open(path, 'w', encoding='utf-8') as fh:
-        fh.write('\n'.join(lines + ([''] if lines else []) + [line]) + '\n')
+    with open(os.path.join(state_dir, 'amisia-data.txt'), 'w', encoding='utf-8') as fh:
+        fh.write('\n'.join(out) + '\n')
+
+
+def set_status_line(state_dir, line):
+    """Puts the one line of the daily look into amisia-data.txt, keeping the rest of it."""
+    rest, block, _ = split_status(state_dir)
+    write_status(state_dir, rest, block, line)
+
+
+def set_sv_block(state_dir, lines):
+    """Puts the block of the SavedVariables into amisia-data.txt, keeping the build report and the look."""
+    rest, _, look = split_status(state_dir)
+    write_status(state_dir, rest, lines, look)
 
 
 def daily_look(args, on_main, state, now=None, ask=ask_latest, fetch=fetch_build, built=branch_exists,
@@ -314,7 +389,7 @@ def build_branch(args, newest, on_main, trigger):
             rc, out = run([py, 'tools/build.py', 'check'], args.worktree)
             changed = git('status', '--porcelain', '--untracked-files=no', cwd=args.worktree).strip()
             if changed:
-                git('add', '-A', 'Amisia/Data', 'tools', cwd=args.worktree)
+                git('add', '-A', *present(args.worktree, SV_PATHS), cwd=args.worktree)
                 msg = (f'Daten für Client-Build {newest} (automatisch gebaut, Prüfung '
                        f'{"grün" if rc == 0 else "rot"})\n\n{TRAILER}\n')
                 subprocess.run(['git', 'commit', '-q', '-F', '-'], cwd=args.worktree, input=msg, text=True, check=True)
@@ -335,11 +410,267 @@ def build_branch(args, newest, on_main, trigger):
     head = f'Amisia-Daten für Client-Build {newest} ({started}): ' + ('bereit' if result == 'ok' else 'FEHLER')
     source = 'Export des PCs' if trigger == 'export' else 'von wago.tools geladen'
     write_report(args.state_dir, state, [head, f'{args.base} hat Daten von {on_main}. Tabellen: {source}.'] + lines)
-    last = load_state(os.path.join(args.state_dir, WAGO_STATE)).get('line')
-    if last:    # the line of the last look stays in the status file
-        set_status_line(args.state_dir, last)
+    # the block of the last SavedVariables and the line of the last look stay in the status file
+    write_status(args.state_dir, split_status(args.state_dir)[0],
+                 load_state(os.path.join(args.state_dir, SV_STATE)).get('lines') or [],
+                 load_state(os.path.join(args.state_dir, WAGO_STATE)).get('line'))
     print(head)
     return 0 if result == 'ok' else 1
+
+
+def present(root, paths):
+    """The paths of paths that exist under root (git add stops on a path that matches nothing)."""
+    return [p for p in paths if os.path.exists(os.path.join(root, p))]
+
+
+def settle_stale(args, on_main, state, now=None, log=print):
+    """When main has the data of the client build the report talks about (merged, or built by hand), the
+    report is replaced by one line saying so (once; the block of the SavedVariables and the look stay).
+    True when it did (or would, with --dry-run)."""
+    b = state.get('build')
+    if (not b or not on_main or state.get('settled') or not VERSION.match(str(b)) or not VERSION.match(on_main)
+            or build_key(on_main) < build_key(b)):
+        return False
+    when = datetime.datetime.fromtimestamp(time.time() if now is None else now).strftime('%Y-%m-%d %H:%M')
+    line = (f'Amisia-Daten für Client-Build {b}: {args.base} hat diese Daten inzwischen (bemerkt {when}); '
+            f'der Bericht vom {state.get("at")} ({"bereit" if state.get("result") == "ok" else "FEHLER"}, '
+            f'Branch {state.get("branch")}) ist erledigt.')
+    if args.dry_run:
+        log('would replace the report of ' + b + ': ' + line)
+        return True
+    state['settled'] = when
+    with open(os.path.join(args.state_dir, 'amisia-data.json'), 'w', encoding='utf-8') as fh:
+        json.dump(state, fh, indent=1)
+    _, block, look = split_status(args.state_dir)
+    write_status(args.state_dir, [line], block, look)
+    log(line)
+    return True
+
+
+# ---------------------------------------------------------------- trigger C: the SavedVariables (D-122)
+def sv_on(state_dir, env=None):
+    """Trigger C is on unless ~/addons/_auto/amisia-sv.off exists or AMISIA_AUTO_SV is 0/off/no."""
+    env = os.environ if env is None else env
+    if str(env.get(SV_OFF_ENV, '')).strip().lower() in ('0', 'off', 'no', 'false'):
+        return False
+    return not os.path.exists(os.path.join(state_dir, SV_OFF_FILE))
+
+
+def file_hash(path):
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, 'rb') as fh:
+        for chunk in iter(lambda: fh.read(1 << 20), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def stamp(t):
+    return datetime.datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M')
+
+
+def build_waiting(args, on_main, state, now=None):
+    """Why a new client build comes before the SavedVariables (a short German text), or None: an export of
+    a build newer than main's data that was not tried yet (still arriving or incomplete; its report less
+    than a day old), or a fetch of wago.tools that came back incomplete for a build newer than main's."""
+    now = time.time() if now is None else now
+    newer = lambda b: VERSION.match(str(b or '')) and (not on_main or build_key(b) > build_key(on_main))
+    try:
+        names = os.listdir(args.wago)
+    except OSError:
+        names = []
+    for name in names:
+        m = BUILD.match(name)
+        if m and newer(m.group(1)) and m.group(1) != state.get('build'):
+            try:
+                young = now - os.path.getmtime(os.path.join(args.wago, name)) < DAILY
+            except OSError:
+                young = False
+            if young:
+                return f'der Export von Client-Build {m.group(1)} ist noch nicht fertig'
+    look = load_state(os.path.join(args.state_dir, WAGO_STATE))
+    if look.get('result') == 'fetch incomplete' and newer(look.get('answer')) and look.get('answer') != state.get('build'):
+        return f'die Tabellen von Client-Build {look.get("answer")} sind unvollständig geladen'
+    return None
+
+
+def json_at(text):
+    try:
+        out = json.loads(text) if text else {}
+    except ValueError:
+        return {}
+    return out if isinstance(out, dict) else {}
+
+
+def entries(arch, key):
+    """{name: value} of one counted part of an archive; "a/*" joins the dicts under a (locale/name)."""
+    if key.endswith('/*'):
+        out = {}
+        for loc, part in (arch.get(key[:-2]) or {}).items():
+            if isinstance(part, dict):
+                out.update({f'{loc}/{k}': v for k, v in part.items()})
+        return out
+    part = arch.get(key)
+    if isinstance(part, list):
+        return {json.dumps(v, sort_keys=True): True for v in part}
+    return part if isinstance(part, dict) else {}
+
+
+def archive_news(base, worktree):
+    """What the data build added to the archives against base: ['312 Items', '4 Kills (1 geändert)', ...],
+    new entries and changed ones per counted part (SV_COUNTS); an archive that does not read counts nothing."""
+    out, cache = [], {}
+    for path, key, label in SV_COUNTS:
+        if path not in cache:
+            try:
+                with open(os.path.join(worktree, path), encoding='utf-8') as fh:
+                    new = json_at(fh.read())
+            except OSError:
+                new = {}
+            # the committed archive of base, not the main checkout's file (which may be dirty); a path
+            # base lacks gives git's message, which is no JSON: then everything counts as new
+            cache[path] = (json_at(git('show', f'{base}:{path}', check=False)), new)
+        old, new = cache[path]
+        a, b = entries(old, key), entries(new, key)
+        added = sum(1 for k in b if k not in a)
+        changed = sum(1 for k in b if k in a and a[k] != b[k])
+        if added or changed:
+            out.append(f'{added} {label}' + (f' ({changed} geändert)' if changed else ''))
+    return out
+
+
+def changed_files(worktree):
+    """The files a data build changed or added in the worktree (SV_PATHS), sorted."""
+    out = git('status', '--porcelain', '--', *present(worktree, SV_PATHS), cwd=worktree, check=False)
+    return sorted(ln[3:].strip().strip('"') for ln in out.splitlines() if len(ln) > 3)
+
+
+def failing_lines(out, n=10):
+    """The first failing lines of `build.py check` (its step lines "FAIL ...", pytest's "FAILED ..."), else its
+    end; the summary line "check: ..." last."""
+    lines = [ln.rstrip() for ln in out.splitlines() if ln.strip()]
+    bad = [ln for ln in lines if 'FAILED' in ln or re.match(r'^(fail|FAIL)\b', ln.strip())]
+    summary = [ln for ln in lines if ln.startswith('check:')][-1:]
+    picked = (bad[:n] if bad else lines[-n:])
+    return [ln for ln in picked if ln not in summary] + summary
+
+
+def take_over_sv(args, sv, on_main, now=None):
+    """Builds main with the SavedVariables sv in the worktree (detached at args.base) and, when something is
+    new, checks it, commits and sets the day's branch auto/sv-<date> to the commit. Returns (result, lines
+    of the block, branch or None, commit or None); result is 'ok', 'failed', 'nothing new' or 'unreadable'.
+    The worktree is removed again in any case."""
+    now = time.time() if now is None else now
+    head = SV_HEAD + stamp(os.path.getmtime(sv))
+    with open(sv, encoding='utf-8', errors='replace') as fh:
+        text = fh.read()
+    if 'AmisiaDB' not in text:   # a cheap look before a worktree; the build's own parser decides the rest
+        return 'unreadable', [f'{head}: nicht lesbar (keine Tabelle AmisiaDB in {sv}); nichts übernommen.'], None, None
+    branch = SV_BRANCH + datetime.datetime.fromtimestamp(now).strftime('%Y-%m-%d')
+    py = sys.executable
+    remove_worktree(args.worktree)
+    git('worktree', 'add', '--force', '--detach', args.worktree, args.base)
+    commit = None
+    try:
+        rc, out = run([py, 'tools/build.py', 'data', '--sv', sv], args.worktree)
+        if rc != 0:
+            return ('failed', [f'{head}: build.py data ist damit fehlgeschlagen, nichts übernommen:']
+                    + ['  ' + ln for ln in tail(out, 8)], None, None)
+        news, files = archive_news(args.base, args.worktree), changed_files(args.worktree)
+        if not news and not files:
+            return 'nothing new', [f'{head}: nichts Neues gegenüber {args.base}.'], None, None
+        tables = data_build(read(os.path.join(args.worktree, 'Amisia', 'Data', 'TalentData.lua')))
+        rc, out = run([py, 'tools/build.py', 'check'], args.worktree)
+        git('add', '-A', *present(args.worktree, SV_PATHS), cwd=args.worktree)
+        msg = (f'Spielstand vom {stamp(os.path.getmtime(sv))} übernommen (automatisch gebaut, Prüfung '
+               f'{"grün" if rc == 0 else "rot"})\n\n{TRAILER}\n')
+        subprocess.run(['git', 'commit', '-q', '--allow-empty', '-F', '-'], cwd=args.worktree, input=msg, text=True,
+                       check=True)
+        commit = git('rev-parse', '--short', 'HEAD', cwd=args.worktree).strip()
+        git('branch', '-f', branch, commit)
+        lines = [f'{head}: übernommen auf Branch {branch} ({commit}), Prüfung ' + ('grün.' if rc == 0 else 'ROT:')]
+        if rc != 0:
+            lines += ['  ' + ln for ln in failing_lines(out)]
+        lines.append(f'Neu gegenüber {args.base}: ' + (', '.join(news) if news else 'keine neuen Einträge in den Archiven') + '.')
+        lines.append(f'Geänderte Dateien ({len(files)}): ' + ', '.join(files[:8]) + (' ...' if len(files) > 8 else '') + '.')
+        if tables and on_main and tables != on_main:
+            lines.append(f'Achtung: die Client-Tabellen auf dem N100 sind von Build {tables}, {args.base} hat {on_main}: '
+                         'der Branch enthält auch deren Änderungen.')
+        lines.append('Zum Veröffentlichen: build.py data auf main, dann build.py release.' if rc == 0 else
+                     'Vor dem nächsten Release klären: build.py data auf main bringt denselben Fehler.')
+        return ('ok' if rc == 0 else 'failed'), lines, branch, commit
+    finally:
+        remove_worktree(args.worktree)
+        prune_sv_branches()
+
+
+def read(path):
+    try:
+        with open(path, encoding='utf-8') as fh:
+            return fh.read()
+    except OSError:
+        return ''
+
+
+def prune_sv_branches(keep=SV_KEEP):
+    """Deletes the local auto/sv-* branches but the newest keep (the names sort by date)."""
+    names = sorted(git('for-each-ref', '--format=%(refname:short)', f'refs/heads/{SV_BRANCH}*', check=False).split())
+    for name in names[:-keep] if keep else names:
+        git('branch', '-D', name, check=False)
+
+
+def sv_trigger(args, on_main, now=None, take=take_over_sv, log=print):
+    """Trigger C (see the module's text). Returns the exit code: 1 when the check was red or the build broke."""
+    now = time.time() if now is None else now
+    if not sv_on(args.state_dir):
+        log(f'SavedVariables trigger off ({SV_OFF_FILE} in {args.state_dir} or {SV_OFF_ENV}=0)')
+        return 0
+    sv = args.sv
+    try:
+        st = os.stat(sv)
+    except OSError:
+        log(f'no SavedVariables at {sv}')
+        return 0
+    if now - st.st_mtime < SV_SETTLE:
+        log(f'{sv} changed {int(now - st.st_mtime)} s ago; waiting until it settles')
+        return 0
+    path = os.path.join(args.state_dir, SV_STATE)
+    last = load_state(path)
+
+    def save(rec):
+        os.makedirs(args.state_dir, exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as fh:
+            json.dump(rec, fh, indent=1)
+    force = getattr(args, 'force_sv', False)
+    if not force and (last.get('size'), last.get('mtime')) == (st.st_size, st.st_mtime):
+        log(f'SavedVariables unchanged since the take-over of {last.get("when")}')
+        return 0
+    digest = file_hash(sv)
+    if not force and digest == last.get('hash'):
+        save(dict(last, size=st.st_size, mtime=st.st_mtime))
+        log(f'SavedVariables touched, content unchanged since the take-over of {last.get("when")}')
+        return 0
+    at = last.get('at')
+    if not force and isinstance(at, (int, float)) and now - at < SV_GAP:
+        log(f'SavedVariables changed; next take-over from {stamp(at + SV_GAP)} (--force-sv: now)')
+        return 0
+    if args.dry_run:
+        log(f'would take over {sv} ({stamp(st.st_mtime)}) on {SV_BRANCH}{stamp(now)[:10]} ({args.base} has {on_main})')
+        return 0
+    rec = {'size': st.st_size, 'mtime': st.st_mtime, 'hash': digest, 'at': now, 'when': stamp(now),
+           'sv_when': stamp(st.st_mtime), 'result': None, 'branch': None, 'commit': None, 'lines': last.get('lines')}
+    save(rec)       # counts for the gap even when what follows breaks off
+    try:
+        result, lines, branch, commit = take(args, sv, on_main, now)
+    except Exception as e:      # git or the file: a status line, not a crash of the timer
+        result, lines, branch, commit = 'error', [f'{SV_HEAD}{stamp(st.st_mtime)}: abgebrochen ({type(e).__name__}: '
+                                                  f'{str(e).splitlines()[0][:160] if str(e) else ""}).'], None, None
+    rec.update(result=result, lines=lines, branch=branch, commit=commit)
+    save(rec)
+    set_sv_block(args.state_dir, lines)
+    for ln in lines:
+        log(ln)
+    return 0 if result in ('ok', 'nothing new') else 1
 
 
 def main(argv=None):
@@ -352,6 +683,8 @@ def main(argv=None):
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--force', action='store_true', help='try the newest build again')
     ap.add_argument('--look-now', action='store_true', help='look at wago.tools even when the last look is not a day old')
+    ap.add_argument('--sv', default=SV_FILE, help=f'the SavedVariables of trigger C (default {SV_FILE}; only read)')
+    ap.add_argument('--force-sv', action='store_true', help='take the SavedVariables over now: no gap, even unchanged')
     args = ap.parse_args(argv)
 
     os.makedirs(args.state_dir, exist_ok=True)
@@ -364,6 +697,7 @@ def main(argv=None):
 
     on_main = data_build(git('show', f'{args.base}:Amisia/Data/TalentData.lua', check=False))
     state = load_state(os.path.join(args.state_dir, 'amisia-data.json'))
+    settle_stale(args, on_main, state)
     builds = complete_builds(args.wago)
     newest = builds[-1] if builds else None
     if not newest:
@@ -378,7 +712,20 @@ def main(argv=None):
     else:
         return build_branch(args, newest, on_main, 'export')
     # trigger B: the PC's export had nothing to build
-    return daily_look(args, on_main, state)
+    built = []
+
+    def build(*a):
+        built.append(a[1])
+        return build_branch(*a)
+    rc = daily_look(args, on_main, state, build=build)
+    if built:
+        return rc
+    # trigger C: no client build built or waiting (D-122)
+    why = build_waiting(args, on_main, state)
+    if why:
+        print(f'SavedVariables wait: {why}')
+        return rc
+    return sv_trigger(args, on_main) or rc
 
 
 if __name__ == '__main__':
