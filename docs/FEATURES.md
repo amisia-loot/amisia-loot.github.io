@@ -40,16 +40,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-197 [Einladen] hinter "ist jetzt online"
-- Version: -
-- Status: geplant
+- Version: 2.84.0
+- Status: gebaut
 - Prüfung: Wenn ein Gildenmitglied oder Freund online kommt, dann steht hinter "<Name> ist jetzt online." ein blaues [Einladen]; ein Klick darauf lädt ihn ein und der Chat sagt "Eingeladen: <Name>".
 - Prüfung: Wenn du in einer Gruppe bist, aber nicht Gruppenleiter (im Raid auch nicht Assistent), dann steht kein [Einladen] da; für jemanden, der schon in deiner Gruppe ist, auch nicht.
 - Prüfung: Wenn du "[Einladen] bei "ist jetzt online"" (Einstellungen, Raid, Gruppeneinladungen) ausschaltest, dann steht die Zeile wieder wie vom Spiel.
 - Notiz: DECISIONS D-127. Kein gespeicherter Schlüssel außer der Einstellung, keine Nachricht; ohne Spec (kleine Erweiterung). Der Link ist ein Addon-Link des Clients (`|Haddon:...|h`), Blizzards SetItemRef wird nicht überschrieben.
 
 ### F-195 Minimap-Symbol mit Alt frei verschieben
-- Version: -
-- Status: geplant
+- Version: 2.84.0
+- Status: gebaut
 - Prüfung: Wenn du die Alt-Taste hältst und das Amisia-Symbol an der Minimap mit der linken Maustaste ziehst, dann folgt es der Maus über den ganzen Bildschirm und bleibt dort stehen, wo du loslässt, auch nach `/reload`; der Tooltip nennt "Alt + Ziehen: Frei verschieben".
 - Prüfung: Wenn du es danach ohne Alt ziehst, dann sitzt es wieder am Rand der Minimap und wandert an ihm entlang; "Fensterposition zurücksetzen" (Einstellungen, Allgemein, Oberfläche) setzt es ebenfalls an den Rand.
 - Notiz: DECISIONS D-125; erweitert F-004. Gespeichert in `settings.minimap.x`/`y`; ohne Spec (kleine Erweiterung).
@@ -343,8 +343,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: DECISIONS D-92. Nur die eigenen Seiten: was andere Clients annehmen (Abgleich, Vergaben, Punkte), hängt weiter am Offiziersrang in der Gilde.
 
 ### F-194 Raid-Aufstellung: Spielerliste nach Klasse sortieren
-- Version: -
-- Status: geplant
+- Version: 2.84.0
+- Status: gebaut
 - Prüfung: Wenn du unter Aufstellung im Planer mit der Spielerliste (Quelle "Gilde" oder "Raid") "nach Klasse" anhakst, dann stehen die Spieler nach Klasse zusammen (Klassen nach ihrem Namen, wie in "Alle Klassen"), innerhalb einer Klasse nach Namen, Spieler ohne bekannte Klasse am Ende; ohne Haken wieder nur nach Namen.
 - Prüfung: Wenn "nach Klasse" an ist und du zusätzlich eine Klasse wählst, "nur online" umschaltest oder suchst, dann bleibt die Reihenfolge nach Klasse; nach /reload ist der Haken wieder aus.
 - Notiz: Erweitert F-161 (dessen fünf Prüfungen voll sind). Kein gespeicherter Schlüssel, keine Nachricht, keine Entscheidung nötig: der Haken gilt wie "nur online" bis zum /reload.
@@ -721,8 +721,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Raid und Loot
 
 ### F-196 Raid-Notiz für Cooldowns und Einteilungen
-- Version: -
-- Status: geplant
+- Version: 2.84.0
+- Status: gebaut
 - Braucht: Raid
 - Prüfung: Wenn ein Offizier im Raid unter Raid-Notiz Text mit `{totenkopf} Tank: Name` schreibt und "An Raid senden" klickt, dann sehen die anderen mit Amisia binnen Sekunden die Chatzeile und im Fenster den Totenkopf und den Namen in Klassenfarbe; ihre eigenen Zeilen sind gelb.
 - Prüfung: Wenn du das Fenster verschiebst, die Größe änderst, das Schloss schließt und `/reload` machst, dann steht es an derselben Stelle in derselben Größe, gesperrt, mit derselben Notiz und deiner eigenen Notiz darunter.
