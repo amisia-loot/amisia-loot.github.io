@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.83.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.83.0) (2026-11-13)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.82.0...v2.83.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(layer): changing layers also works with players outside the guild (F-191)
 
     The Layer window has a new link "Ask in the channel": it opens the chat channel of your zone with the usual
