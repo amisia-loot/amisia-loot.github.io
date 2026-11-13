@@ -712,6 +712,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Raid und Loot
 
+### F-196 Raid-Notiz für Cooldowns und Einteilungen
+- Version: -
+- Status: geplant
+- Braucht: Raid
+- Prüfung: Wenn ein Offizier im Raid unter Raid-Notiz Text mit `{totenkopf} Tank: Name` schreibt und "An Raid senden" klickt, dann sehen die anderen mit Amisia binnen Sekunden die Chatzeile und im Fenster den Totenkopf und den Namen in Klassenfarbe; ihre eigenen Zeilen sind gelb.
+- Prüfung: Wenn du das Fenster verschiebst, die Größe änderst, das Schloss schließt und `/reload` machst, dann steht es an derselben Stelle in derselben Größe, gesperrt, mit derselben Notiz und deiner eigenen Notiz darunter.
+- Prüfung: Wenn du im Bosskampf `/amisia notiz` eingibst oder im Minimap-Menü "Raid-Notiz" klickst, dann öffnet und schließt sich das Fenster ohne Fehlermeldung und ohne "Aktion blockiert".
+- Prüfung: Wenn du mitten im Abend in den Raid kommst oder `/reload` machst, dann hast du nach spätestens etwa einer Minute die aktuelle Notiz.
+- Prüfung: Wenn ein Raider ohne Offiziersrang, der weder Raidleiter noch Assistent ist, die Seite öffnet, dann kann er die Raid-Notiz nicht senden; ein Assistent kann es.
+- Notiz: Spec `docs/specs/2026-11-13-raid-notiz.md`.
+
 ### F-013 Raid-Aufnahme (Anwesenheit, Bosse, Loot)
 - Version: 2.57.0
 - Status: gebaut
