@@ -39,6 +39,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-204 Fenster Layer zu einer kleinen Leiste einklappen
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du im Fenster Layer (`/amisia layer`) oben rechts neben dem x auf das rote "-" klickst, dann wird es zu einer kleinen Leiste mit dem Layer-Symbol, groß "Layer B" (oder "Layer ?") und grau darunter der Zone (ohne bekannten Layer "Ziele einen NPC an."); ein Klick auf die Leiste öffnet das Fenster wieder an derselben Stelle.
+- Prüfung: Wenn die Leiste steht und du `/reload` machst, dann ist sie danach wieder da; in einem Dungeon verschwindet sie und draußen kommt sie wieder; ihr x schließt sie, bis du das Fenster wieder öffnest und einklappst.
+- Notiz: Nutzer 2026-11-14: "können wir das große Fenster einklappen lassen und dann so aussehen wie das zweite Bild". Wartende Antworten auf "Gilde fragen" stehen grün als "Antworten: 2" in der grauen Zeile.
+
 ### F-202 Module: Kern, Raid und Ausrüstung & Dungeons als eigene Addons
 - Version: 2.85.0
 - Status: gebaut

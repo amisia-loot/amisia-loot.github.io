@@ -7,6 +7,11 @@
 -- "Einladung erbitten") and "Gruppe verlassen" once a swap group stands (Gear/LayerChange.lua). Movable, its
 -- place in settings.layerWindow, the x closes it; never shown in an instance (it closes on entering one).
 -- Opened by /amisia layer, the minimap menu (its own entry) and its row in the side bar of the tab Gilde.
+-- The client's "-" left of the x folds it to the bar AmisiaLayerMiniBar (F-204): the window's symbol, the
+-- layer ("Layer B", "Layer ?") over a grey line (the zone, "Antworten: 2" while answers wait, "Ziele einen
+-- NPC an." while the layer is unknown); a click opens the window again with its top right corner where the
+-- bar's is, the x closes the bar. Folded, it stays through /reload (settings.layerWindow.mini, the bar on
+-- the window's place); hidden in instances.
 -- The chip: a small box "Layer B" ("Layer ?"), movable (settings.layerChip), a click opens the window;
 -- hidden in instances. A plain frame, nothing protected.
 local ADDON, ns = ...
@@ -19,7 +24,7 @@ local LY, SW = ns.Layer, ns.LayerChange
 local LW = {}
 ns.LayerWindow = LW
 
-local F, chip
+local F, chip, mini
 local GREY, GREEN = T.GREY, T.GREEN
 
 local function state(key)
@@ -32,6 +37,19 @@ end
 local function place()
     if F then W.PlaceWindow(F, state("layerWindow"), "RIGHT", UIParent, "RIGHT", -60, 220) end
     if chip then W.PlaceWindow(chip, state("layerChip"), "TOP", UIParent, "TOP", 0, -120) end
+    if mini then W.PlaceWindow(mini, state("layerWindow"), "RIGHT", UIParent, "RIGHT", -60, 220) end
+end
+
+-- A frame on UIParent with its top right corner at right, top (UIParent's coordinates), anchored to
+-- UIParent's top right so that W.PlaceWindow puts it back there.
+local function topRightAt(f, right, top)
+    f:ClearAllPoints()
+    f:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", right - UIParent:GetRight(), top - UIParent:GetTop())
+end
+
+local function zoneName(zone)
+    local info = zone and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(zone)
+    return type(info) == "table" and ns.Plain(info.name) or ""
 end
 
 function ns.ResetLayerPosition()
@@ -57,6 +75,37 @@ local function buildAnswer()
     r.link:SetPoint("RIGHT", 0, 0)
     W.Tooltip(r.link, L["Einladung erbitten"], L["Bittet dieses Gildenmitglied, dich in seine Gruppe einzuladen; die Einladung bringt dich auf seinen Layer."])
     return r
+end
+
+-- The minimize button (as the main window's, D-71, D-84): the client's red "-" (UIPanelHideButtonNoScripts)
+-- left of the close button with the frame's corner art for two buttons; without the template the old
+-- client's smaller-window button.
+local function buildMinButton()
+    local modern = F.NineSlice ~= nil
+    local ok, b = pcall(CreateFrame, "Button", nil, F, "UIPanelHideButtonNoScripts")
+    if not ok or not b then
+        b = CreateFrame("Button", nil, F)
+        b:SetNormalTexture("Interface\\Buttons\\UI-Panel-SmallerButton-Up")
+        b:SetPushedTexture("Interface\\Buttons\\UI-Panel-SmallerButton-Down")
+        b:SetHighlightTexture("Interface\\Buttons\\UI-Panel-SmallerButton-Highlight", "ADD")
+    end
+    local size = modern and S.MIN or S.MIN_OLD
+    b:SetSize(size, size)
+    if F.CloseButton and modern then
+        b:SetPoint("TOPRIGHT", F.CloseButton, "TOPLEFT", 0, -1)
+        if F.SetBorder then
+            if not pcall(F.SetBorder, F, "ButtonFrameTemplateNoPortraitMinimizable") then
+                pcall(F.SetBorder, F, "ButtonFrameTemplateNoPortrait")
+            end
+        end
+    elseif F.CloseButton then
+        b:SetPoint("RIGHT", F.CloseButton, "LEFT", 0, 0)
+    else
+        b:SetPoint("TOPRIGHT", -S.MIN, 0)
+    end
+    b:SetScript("OnClick", function() LW.Minimize() end)
+    W.Tooltip(b, L["Minimieren"], L["Klappt das Fenster zu einer kleinen Leiste zusammen; ein Klick darauf öffnet es wieder."])
+    return b
 end
 
 local function build()
@@ -90,6 +139,7 @@ local function build()
     F.status:SetJustifyV("TOP")
     F.answers = {}
     for i = 1, S.ANSWERS do F.answers[i] = buildAnswer() end
+    F.minBtn = buildMinButton()
     F.leave = W.Link(F, L["Gruppe verlassen"], function() say(SW.Leave()) end)
     W.Tooltip(F.leave, L["Gruppe verlassen"], L["Verlässt die Gruppe, die für den Layer-Wechsel entstand. Der Layer bleibt meist, bis du die Zone wechselst."])
     local acc = 0
@@ -140,8 +190,7 @@ function LW.Refresh()
     local zone = LY.Map()
     if uid then
         F.value:SetText(name)
-        local info = zone and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(zone)
-        F.sub:SetText(type(info) == "table" and ns.Plain(info.name) or "")
+        F.sub:SetText(zoneName(zone))
     else
         F.value:SetText(L["unbekannt"])
         F.sub:SetText(L["Ziele oder überfahre einen NPC."])
@@ -226,6 +275,9 @@ function LW.Show()
         ns.msg(L["Das Fenster Layer gibt es nicht in Instanzen."])
         return false
     end
+    local st = state("layerWindow")
+    if st then st.mini = nil end
+    if mini then mini:Hide() end
     build()
     F:Show()
     LW.Refresh()
@@ -235,7 +287,120 @@ end
 function LW.Hide() if F then F:Hide() end end
 function LW.Shown() return F ~= nil and F:IsShown() end
 function LW.Toggle()
-    if LW.Shown() then LW.Hide() else LW.Show() end
+    if LW.MiniShown() then LW.Restore()
+    elseif LW.Shown() then LW.Hide() else LW.Show() end
+end
+
+---------------------------------------------------------------------------
+-- The bar (F-204): the window folded
+---------------------------------------------------------------------------
+local function buildMini()
+    if mini then return mini end
+    local ok, bar = pcall(CreateFrame, "Button", "AmisiaLayerMiniBar", UIParent, "TooltipBackdropTemplate")
+    if not ok or not bar then
+        bar = CreateFrame("Button", "AmisiaLayerMiniBar", UIParent)
+        W.Flat(bar, 0.05, 0.05, 0.06, 0.95)
+    end
+    bar:SetSize(S.MINI_W, S.MINI_H)
+    bar:SetFrameStrata("MEDIUM")
+    bar:SetClampedToScreen(true)
+    bar:SetMovable(true)
+    bar:EnableMouse(true)
+    bar:RegisterForDrag("LeftButton")
+    -- a drag is no click (moved, cleared at every press)
+    bar:SetScript("OnMouseDown", function(self) self.moved = nil end)
+    bar:SetScript("OnDragStart", function(self) self.moved = true self:StartMoving() end)
+    bar:SetScript("OnDragStop", function(self)
+        self:StopMovingOrSizing()
+        W.SaveWindowPlace(self, state("layerWindow"))
+    end)
+    bar:SetScript("OnClick", function(self)
+        if self.moved then self.moved = nil return end
+        LW.Restore()
+    end)
+    bar.icon = bar:CreateTexture(nil, "ARTWORK")
+    bar.icon:SetSize(S.MINI_ICON, S.MINI_ICON)
+    bar.icon:SetPoint("LEFT", S.MINI_ICON_X, 0)
+    local art = T.NAV_ICONS["win:layer"]
+    if art and art.file then bar.icon:SetTexture(art.file) else bar.icon:Hide() end
+    bar.name = W.Text(bar, T.FONT.title, S.MINI_TEXT_W)
+    bar.name:SetPoint("LEFT", S.MINI_TEXT_X, S.MINI_NAME_Y)
+    bar.sub = W.Text(bar, T.FONT.hint, S.MINI_TEXT_W)
+    bar.sub:SetPoint("LEFT", S.MINI_TEXT_X, S.MINI_SUB_Y)
+    local okX, x = pcall(CreateFrame, "Button", nil, bar, "UIPanelCloseButtonNoScripts")
+    if not okX or not x then
+        x = CreateFrame("Button", nil, bar)
+        local t = W.Text(x, T.FONT.title)
+        t:SetPoint("CENTER")
+        t:SetText("x")
+    end
+    x:SetSize(S.MINI_X, S.MINI_X)
+    x:SetPoint("RIGHT", -S.MINI_X_R, 0)
+    x:SetScript("OnClick", function()
+        local st = state("layerWindow")
+        if st then st.mini = nil end
+        bar:Hide()
+    end)
+    W.Tooltip(x, L["Schließen"], L["Schließt die Leiste; /amisia layer öffnet das Fenster wieder."])
+    W.Tooltip(bar, L["Layer"], L["Klick: das Fenster Layer wieder öffnen. Ziehen: die Leiste verschieben."])
+    bar.close = x
+    local acc = 0
+    bar:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate LayerMiniBar", function(_, elapsed)
+        acc = acc + (elapsed or 0)
+        if acc < S.TICK then return end
+        acc = 0
+        LW.UpdateMini()
+    end))
+    bar:Hide()
+    mini = bar
+    place()
+    return bar
+end
+
+-- The bar's grey line: answers waiting, else the zone, else how to learn the layer.
+function LW.MiniSub(known, zone, st)
+    local r = st and st.req
+    if r and not st.swap and not st.pending and #st.answers > 0 and GetTime() - r.at <= SW.REQ_LIFE then
+        return GREEN .. L["Antworten: %d"]:format(#st.answers) .. "|r"
+    end
+    if known then return zoneName(zone) end
+    return L["Ziele einen NPC an."]
+end
+
+function LW.UpdateMini()
+    if not mini or not mini:IsShown() then return end
+    local uid, _, name = LY.Current()
+    mini.name:SetText(uid and name or L["Layer %s"]:format("?"))
+    mini.sub:SetText(LW.MiniSub(uid ~= nil, LY.Map(), SW.State()))
+end
+
+function LW.MiniShown() return mini ~= nil and mini:IsShown() end
+LW.Mini = function() return mini end
+
+-- The window folds to the bar, the bar's top right corner where the window's is; kept through /reload.
+function LW.Minimize()
+    if not F or not F:IsShown() then return end
+    local right, top = F:GetRight(), F:GetTop()
+    buildMini()
+    F:Hide()
+    local st = state("layerWindow")
+    if right and top then
+        topRightAt(mini, right, top)
+        W.SaveWindowPlace(mini, st)
+    end
+    if st then st.mini = true end
+    mini:Show()
+    LW.UpdateMini()
+end
+
+-- The bar's click: the window again, its top right corner where the bar's is.
+function LW.Restore()
+    if not LW.MiniShown() then return end
+    local right, top = mini:GetRight(), mini:GetTop()
+    if LW.Show() and right and top then
+        topRightAt(F, right, top)
+        W.SaveWindowPlace(F, state("layerWindow"))
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -283,14 +448,28 @@ LW.Chip = function() return chip end
 ns.Listen("LAYER", function()
     LW.UpdateChip()
     LW.Refresh()
+    LW.UpdateMini()
 end)
-ns.Listen("LAYER_CHANGE", function() LW.Refresh() end)
+ns.Listen("LAYER_CHANGE", function()
+    LW.Refresh()
+    LW.UpdateMini()
+end)
 ns.Listen("SETTING", function(path)
     if path == "layer.chip" then LW.UpdateChip() end
 end)
 
 local function world()
-    if LY.InInstance() and F and F:IsShown() then F:Hide() end
+    if LY.InInstance() then
+        if F and F:IsShown() then F:Hide() end
+        if mini then mini:Hide() end
+    else
+        local st = state("layerWindow")
+        if st and st.mini and not LW.Shown() and not LW.MiniShown() then
+            buildMini()
+            mini:Show()
+            LW.UpdateMini()
+        end
+    end
     LW.UpdateChip()
 end
 ns.OnEvent("PLAYER_ENTERING_WORLD", world)

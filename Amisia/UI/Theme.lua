@@ -526,8 +526,14 @@ T.QUESTSTART = { W = 260, PAD = 18, TOP = 32, ICON = 44, MARK = 22, MARK_X = 10,
 -- lines of LINE_H), the answers (ANSWERS rows ANSWER_H high, the name NAME_W wide, the link at the right end) and the
 -- link "Gruppe verlassen"; BOTTOM to the lower edge. TICK: the ages' refresh while shown. The chip
 -- (AmisiaLayerChip): CHIP_W by CHIP_H on a dark ground (SHADE) with a gold edge, its text CHIP_PAD in.
+-- The minimize button (MIN square, MIN_OLD on the old clients) folds the window to the bar
+-- AmisiaLayerMiniBar (F-204): MINI_W by MINI_H, the window's symbol MINI_ICON square at MINI_ICON_X, from
+-- MINI_TEXT_X the layer (MINI_NAME_Y) over the grey line (MINI_SUB_Y), both MINI_TEXT_W wide; its x
+-- MINI_X square, MINI_X_R from the right.
 T.LAYER = { W = 300, PAD = 14, TOP = 30, VALUE_H = 22, LINE_H = 14, GAP = 8, HEAD_H = 16, ROW_H = 18, ROWS = 6,
-    ANSWERS = 5, ANSWER_H = 22, NAME_W = 160, BOTTOM = 14, TICK = 5, CHIP_W = 84, CHIP_H = 22, CHIP_PAD = 6, SHADE = 0.78 }
+    ANSWERS = 5, ANSWER_H = 22, NAME_W = 160, BOTTOM = 14, TICK = 5, CHIP_W = 84, CHIP_H = 22, CHIP_PAD = 6, SHADE = 0.78,
+    MIN = 24, MIN_OLD = 20, MINI_W = 180, MINI_H = 36, MINI_ICON = 22, MINI_ICON_X = 9, MINI_TEXT_X = 38,
+    MINI_NAME_Y = 7, MINI_SUB_Y = -7, MINI_TEXT_W = 112, MINI_X = 20, MINI_X_R = 6 }
 
 T.DUNGEONBAR = { H = 26, PAD = 6, GAP = 10, NAME_W = 130, CLOSE = 14, SHADE = 0.78, LIST_GAP = 2, LIST_W = 300, ROW_H = 18,
     ROW_NAME_W = 196, ROW_NOTE_W = 84, MAX_ROWS = 20, TICK = 0.5 }

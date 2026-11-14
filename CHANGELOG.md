@@ -12,6 +12,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
     a window you switched off stays off. The minimap menu has a new entry "Target window", and /amisia target
     shows or hides it; without a target, a line tells you how to set one.
 
+- feat(layer): the Layer window folds to a small bar (F-204)
+
+    The new "-" next to the window's x folds the Layer window to a small bar with its symbol, your layer
+    ("Layer B") and the zone under it, or how many answers wait. A click on the bar opens the window again in
+    the same place, its x closes it. The bar stays through /reload and hides in instances.
+
 - fix(raidnote): officers can write the raid note and its templates outside a raid (F-196)
 
     Outside a raid the raid note's field took the cursor but threw every keystroke away. Officers can now write

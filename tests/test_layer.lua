@@ -151,16 +151,39 @@ assert(AmisiaLayerChip:IsShown() and AmisiaLayerChip.text:GetText() == "Layer A"
 F:Hide()
 AmisiaLayerChip:Click()
 assert(F:IsShown(), "a click on the chip opens the window")
+-- the "-" folds the window to the bar (F-204): "Layer A" over the zone; a click, the command open it again
+local LW = NS.LayerWindow
+F.minBtn:Click()
+local bar = AmisiaLayerMiniBar
+assert(not F:IsShown() and bar and bar:IsShown(), "folded to the bar")
+assert(bar.name:GetText() == "Layer A" and bar.sub:GetText() == "Wald von Elwynn", tostring(bar.sub:GetText()))
+assert(AmisiaDB.settings.layerWindow.mini == true, "kept for the reload")
+bar:Click()
+assert(F:IsShown() and not bar:IsShown() and AmisiaDB.settings.layerWindow.mini == nil, "a click opens the window again")
+F.minBtn:Click()
+NS.Dispatch("layer")
+assert(F:IsShown() and not bar:IsShown(), "the command opens it too")
+F.minBtn:Click()
+-- waiting answers show on the bar's line
+local sub = LW.MiniSub(true, 1429, { req = { at = GetTime() }, answers = { {}, {} } })
+assert(has(sub, "Antworten: 2"), sub)
+assert(LW.MiniSub(true, 1429, { req = { at = GetTime() }, answers = { {} }, swap = {} }) == "Wald von Elwynn", "not during a swap")
+assert(LW.MiniSub(false, 1429, { answers = {} }) == "Ziele einen NPC an.")
 -- an instance hides both; the window will not open there
 STUB.instance = { name = "Die Todesminen", type = "party", id = 36 }
 STUB.fire("PLAYER_ENTERING_WORLD")
-assert(not F:IsShown() and not AmisiaLayerChip:IsShown(), "not in an instance")
+assert(not F:IsShown() and not AmisiaLayerChip:IsShown() and not bar:IsShown(), "not in an instance")
 NS.Dispatch("layer")
 assert(not F:IsShown() and has(STUB.messages[#STUB.messages], "nicht in Instanzen"))
 assert(LY.TooltipLine() == nil)
 STUB.instance = { name = "Elwynn Forest", type = "none", id = 0 }
 STUB.fire("PLAYER_ENTERING_WORLD")
 assert(AmisiaLayerChip:IsShown() and AmisiaLayerChip.text:GetText() == "Layer ?", "the chip again, layer unknown")
+assert(bar:IsShown() and bar.name:GetText() == "Layer ?" and bar.sub:GetText() == "Ziele einen NPC an.", "the folded bar again")
+bar.close:Click()
+assert(not bar:IsShown() and AmisiaDB.settings.layerWindow.mini == nil, "its x closes the bar for good")
+STUB.fire("PLAYER_ENTERING_WORLD")
+assert(not bar:IsShown(), "closed stays closed")
 
 -- the self-test row reads the target's GUID
 STUB.targetGUID = guid(4012, 299, "1A1")
