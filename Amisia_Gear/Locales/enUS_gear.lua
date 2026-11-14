@@ -926,6 +926,8 @@ L["Zeit in der Leiste"] = "Time in the bar"
 L["\"Zeit 12:40\": die Uhr des Laufs (Lauf-Zeiten), solange sie läuft."] = "\"Time 12:40\": the run's clock (run times) while it runs."
 L["Route in der Leiste"] = "Route in the bar"
 L["\"Route 3/7\": der Stopp der Route, der du folgst; Rechtsklick geht weiter."] = "\"Route 3/7\": the stop of the route you follow; a right click goes on."
+L["Bosse und Zeit anderen Addons überlassen"] = "Leave bosses and time to other addons"
+L["Ist ein anderes Addon geladen, das die Bosse und die Zeit eines Dungeons selbst zeigt, lässt Amisia \"Bosse\" und \"Zeit\" in der Leiste weg und öffnet das Fenster \"Lauf-Zeiten\" nicht von selbst. Gemessen wird weiter, die Zeiten stehen auf der Seite."] = "If another addon is loaded that shows a dungeon's bosses and time itself, Amisia leaves \"Bosses\" and \"Time\" out of the bar and does not open the \"Run times\" window by itself. The clock keeps measuring; the times stay on the page."
 
 -- gear without a known source (F-175, D-107)
 L["+ %d weitere ohne bekannte Quelle"] = "+ %d more without a known source"

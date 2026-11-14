@@ -13,9 +13,10 @@
 -- data has no such row. "Gold" shows numbers with the client's coin icons. At the bottom the result
 -- ("Neue Bestzeit! -0:40", "Erste gemessene Zeit", "+1:40 zur Bestzeit", "Nicht beendet") and the link
 -- "Alle Zeiten" (the part Zeiten of the page). Many bosses wrap into rows (W.Grid); the window grows.
--- It opens by itself when a clock starts (the settings runtimes.window and, in a raid, runtimes.raids),
--- stays while the clock runs (a ghost outside too), shows the result until the character leaves the
--- instance and closes when a clock ends unfinished. A plain frame, nothing secure: it is built on
+-- It opens by itself when a clock starts (the settings runtimes.window and, in a raid, runtimes.raids;
+-- not with another addon that shows the time, ns.DungeonBar.Yield, F-205), stays while the clock runs
+-- (a ghost outside too), shows the result until the character leaves the instance and closes when a
+-- clock ends unfinished. A plain frame, nothing secure: it is built on
 -- entering an instance (out of combat), shown in a fight without any protected call. Movable, its
 -- place in settings.runTimerWindow; the grip in the lower right corner scales it (its scale there
 -- too); Escape leaves it open.
@@ -382,6 +383,8 @@ function TW.Shown() return F ~= nil and F:IsShown() and shownKey or nil end
 -- A clock started (RunTimes.Fight): the window opens when the settings say so.
 function TW.Started(kind)
     if not ns.Get("runtimes.window") then return end
+    -- another addon shows the time already (F-205, D-131)
+    if ns.DungeonBar and ns.DungeonBar.Yield() then return end
     if kind == "raid" and not ns.Get("runtimes.raids") then return end
     local l = RT.Live()
     if l then TW.Show(l.k) end

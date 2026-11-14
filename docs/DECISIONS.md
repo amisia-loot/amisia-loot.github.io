@@ -109,6 +109,10 @@ softres.it's Knopf "Gargul"), in der Markierung des Würfel-Fensters ("Runde von
 des Roll-Fensters der Lootleitung ("Gargul-Runde: Gargul sagt den Gewinner an.") und in Kommentaren.
 Die Chatmuster (`Raid/RollWatch.lua`) nennen kein Addon. Einstellungen heißen weiter "andere
 Loot-Addons". Kein anderes Addon wird genannt.
+**Ausnahme (2026-11-14, F-205, D-131):** Die Ordnernamen `ForeverDungeonJournal` und `FojjiCore` stehen klein
+geschrieben in genau einer Codezeile, der Liste `OTHER_DUNGEON_ADDONS` in `Gear/DungeonBar.lua`, nach der die
+Dungeon-Leiste sucht. Kein Text, kein Kommentar, kein Commit, keine Chatzeile nennt sie; das Spiel sagt "ein anderes
+Addon". Nutzer 2026-11-14 auf die Frage, ob dafür ihre Namen in den Code dürfen: "Automatisch erkennen".
 **Durchgesetzt durch:** `tools/tests/test_contracts.py::test_other_addons_are_not_named_in_the_addon`
 (Liste bekannter Addon-Namen; die Ausnahme `NAMED_HERE` erlaubt "gargul" nur in acht Dateien und dort
 nur in Kommentaren und Texten von `L[...]`),
@@ -3564,3 +3568,21 @@ Ordner an (`Amisia_Gear` nur in `_forever_`) und entfernt dabei nur Verknüpfung
 Späteres beim Laden, Texte im richtigen Locale-File), `tests/test_without_raid.lua` und `tests/test_without_gear.lua`
 (jede Seite und jedes Fenster ohne das Modul, `tests/run.py` mit "--[[without raid]]"), `tests/test_registry.lua`
 (unbekannte Einstellungen bleiben), `tests/test_module_load.lua` (geteilter Namensraum, Reihenfolge, Warten, PLAYER_LOGIN, spät geladenes Modul), `tools/tests/test_load_order.py::test_a_module_shares_the_core_namespace`, `build.py check` (jede TOC gegen ihren Ordner); Schritt 3: `tests/test_modules.lua`, `tests/test_modules_tbc.lua`, `tests/test_modules_without_raid.lua` (Abschnitt, Befehl, Hinweis), `tests/test_without_raid_comm.lua` (Feld `m`, "ohne Raid", Raid-Nachrichten ohne Raid-Modul), `tests/test_version.lua`, `tools/tests/test_install_junctions.py`.
+
+## D-131 Bosse und Zeit im Dungeon anderen Addons überlassen
+
+**Datum:** 2026-11-14
+**Entscheidung:** Ist ein Addon geladen, dessen Ordner mit einem Namen aus `OTHER_DUNGEON_ADDONS`
+(`Gear/DungeonBar.lua`, D-05) beginnt, und ist `dungeonbar.others` ("Bosse und Zeit anderen Addons überlassen",
+Abschnitt Dungeon-Leiste) an (Standard), dann lässt die Dungeon-Leiste die Abschnitte "Bosse" und "Zeit" weg und
+das Fenster "Lauf-Zeiten" öffnet sich nicht von selbst (`DBar.Yield`, `TW.Started`). "Quests" und "Route" bleiben,
+die Uhr misst weiter, Bestzeiten und Zeiten der Seite bleiben. Gesucht wird über die AddOn-Liste des Clients
+(`GetNumAddOns`, `GetAddOnInfo`, `IsAddOnLoaded`, je `C_AddOns` oder die alte Globale), einmal je Ladebildschirm
+(`PLAYER_ENTERING_WORLD`), weil der Kern nach seinem eigenen `ADDON_LOADED` keines mehr hört.
+**Grund:** Nutzer 2026-11-14: "können wir die dungeon anzeige für bosse und zeit ausschalten wenn andere addon so
+was auch haben"; auf die Rückfragen "Automatisch erkennen" und "Bosse + Zeit + Fenster".
+**Folge:** Ein Ordner, der nur mit dem Namen beginnt (ein Teil-Addon), zählt auch. Wer beide Anzeigen will, schaltet
+die Einstellung aus. Ein weiteres Addon kommt nur über die Liste und `NAMED_IN_CODE` im Vertragstest dazu.
+**Durchgesetzt durch:** `tests/test_dungeon_bar.lua` (installiert, aber nicht geladen: nichts; geladen: Bosse und
+Zeit weg, Quests bleiben, die Uhr misst, das Fenster bleibt zu; Einstellung aus und wieder an; Ordner mit dem Namen
+am Anfang; Client ohne die Aufrufe), `tools/tests/test_contracts.py::test_the_named_exception_stays_narrow`.

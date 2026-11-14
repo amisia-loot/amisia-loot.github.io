@@ -256,4 +256,45 @@ rows()[1]:Click()
 assert(NS.CurrentPage() == "raidjournal", "a raid's boss opens the page Raids")
 enter(OUT)
 assert(not bar:IsShown(), "gone outside")
-print("dungeon bar: entering and leaving, combat build, bosses, quests, time, route, lists, place, close, settings, raids, slash")
+
+---------------------------------------------------------------------------
+-- another addon that shows bosses and time (F-205, D-131): "Bosse" and "Zeit" give way, the window
+-- "Lauf-Zeiten" does not open by itself, quests stay; the setting dungeonbar.others brings them back
+---------------------------------------------------------------------------
+NS.Set("dungeonbar.raids", false)
+assert(NS.Get("dungeonbar.others") == true, "on by default")
+local A = C_AddOns
+local keep = { A.GetNumAddOns, A.GetAddOnInfo, A.IsAddOnLoaded }
+local LIST = { { "Amisia", true }, { "Some_Other", true }, { "ForeverDungeonJournal", false } }
+A.GetNumAddOns = function() return #LIST end
+A.GetAddOnInfo = function(i) if type(i) == "number" then return LIST[i][1], LIST[i][1], "", true end return keep[2](i) end
+A.IsAddOnLoaded = function(i) return type(i) == "number" and LIST[i][2] or false end
+enter(OUT)
+assert(DBar.OtherAddon() == nil and not DBar.Yield(), "installed but not loaded: no matter")
+LIST[3][2] = true
+assert(DBar.OtherAddon() == nil, "looked for once per loading screen")
+enter(OUT)
+assert(DBar.OtherAddon() == "ForeverDungeonJournal" and DBar.Yield(), "loaded: found")
+TW.Hide()
+STUB.tick(31 * 60)
+enter(OUT); enter(THANES)
+assert(bar:IsShown() and not seg.bosses:IsShown() and seg.quests:IsShown(), "Bosse gives way, quests stay")
+STUB.fire("PLAYER_REGEN_DISABLED"); STUB.fire("PLAYER_REGEN_ENABLED")
+assert(NS.RunTimes.Live() ~= nil, "the clock still measures")
+assert(not seg.time:IsShown() and not TW.Shown(), "Zeit gives way, the window stays shut")
+NS.Set("dungeonbar.others", false)
+NS.SettingItem("dungeonbar.others").onChange(false)
+assert(seg.bosses:IsShown() and seg.time:IsShown(), "the setting off: both back")
+NS.Set("dungeonbar.others", true)
+NS.SettingItem("dungeonbar.others").onChange(true)
+assert(not seg.bosses:IsShown() and not seg.time:IsShown(), "and gone again")
+-- a folder that only starts with the name counts too
+LIST[3][1] = "FojjiCore_Forever"
+enter(THANES)
+assert(DBar.OtherAddon() == "FojjiCore_Forever", "a part of it")
+A.GetNumAddOns, A.GetAddOnInfo, A.IsAddOnLoaded = keep[1], keep[2], keep[3]
+enter(THANES)
+assert(DBar.OtherAddon() == nil, "a client without the calls: none")
+NS.Dispatch("zeiten stop")
+enter(OUT)
+print("dungeon bar: entering and leaving, combat build, bosses, quests, time, route, lists, place, close, settings, raids, slash, other addons")

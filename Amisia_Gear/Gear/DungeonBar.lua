@@ -19,6 +19,9 @@
 -- `/amisia leiste`. A view on other modules: no data of its own, nothing sent. A plain frame without
 -- protected calls, built the first time it shows (also in a fight after a /reload). Its place in
 -- settings.dungeonBar, reset by "Fensterposition zurücksetzen".
+-- With another addon loaded that shows a dungeon's bosses and run time itself (DBar.OtherAddon, F-205,
+-- D-131) and dungeonbar.others on, "Bosse" and "Zeit" give way and the window "Lauf-Zeiten" does not
+-- open by itself (DBar.Yield); quests and route stay, the clock still measures.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -133,6 +136,42 @@ function DBar.Route()
     local f = ns.Routes and ns.Routes.Following()
     if not f or type(f.stops) ~= "table" or #f.stops == 0 then return nil end
     return f.i, #f.stops, f
+end
+
+---------------------------------------------------------------------------
+-- Another addon that shows bosses and time (F-205, D-131)
+---------------------------------------------------------------------------
+-- Their folder names in lower case; a loaded addon whose folder starts with one counts. The only place
+-- that names them (D-05, exception of 2026-11-14); the game's texts say "ein anderes Addon".
+local OTHER_DUNGEON_ADDONS = { "foreverdungeonjournal", "fojjicore" }
+local other          -- the folder of a loaded one, false for none, nil: not looked yet
+
+local function findOther()
+    local A = _G.C_AddOns
+    local num = (A and A.GetNumAddOns) or _G.GetNumAddOns
+    local info = (A and A.GetAddOnInfo) or _G.GetAddOnInfo
+    local loaded = (A and A.IsAddOnLoaded) or _G.IsAddOnLoaded
+    if not (num and info and loaded) then return false end
+    local ok, n = pcall(num)
+    for i = 1, (ok and tonumber(n)) or 0 do
+        local name = info(i)
+        local low = type(name) == "string" and name:lower() or ""
+        for _, p in ipairs(OTHER_DUNGEON_ADDONS) do
+            if low:sub(1, #p) == p and loaded(i) then return name end
+        end
+    end
+    return false
+end
+
+-- The folder of a loaded addon that shows a dungeon's bosses and time itself, or nil.
+function DBar.OtherAddon()
+    if other == nil then other = findOther() end
+    return other or nil
+end
+
+-- Whether Amisia's bosses and time give way (the setting dungeonbar.others and such an addon loaded).
+function DBar.Yield()
+    return ns.Get("dungeonbar.others") ~= false and DBar.OtherAddon() ~= nil
 end
 
 ---------------------------------------------------------------------------
@@ -423,7 +462,8 @@ local function on(s) return ns.Get("dungeonbar." .. s) ~= false end
 -- The segments' words for key k: { bosses = text or nil, ... }.
 function DBar.Texts(k)
     local out = {}
-    if on("bosses") then
+    local yield = DBar.Yield()
+    if on("bosses") and not yield then
         local keys = shownKeys(k)
         if #keys > 1 then
             -- not known yet which dungeon of the map (D-106): how many bosses the candidates have
@@ -449,7 +489,7 @@ function DBar.Texts(k)
             if share > 0 then out.quests = out.quests .. " " .. GOLD .. L["· %d teilen"]:format(share) .. "|r" end
         end
     end
-    if on("time") then
+    if on("time") and not yield then
         local secs = DBar.Clock(k)
         if secs then out.time = L["Zeit %s"]:format(ns.RunTimes.Fmt(secs)) end
     end
@@ -541,7 +581,8 @@ end
 
 local function soon() dirty = true end
 
-ns.OnEvent("PLAYER_ENTERING_WORLD", function() DBar.Update() end)
+-- each loading screen looks for the other addons again (one loaded on demand since)
+ns.OnEvent("PLAYER_ENTERING_WORLD", function() other = nil; DBar.Update() end)
 ns.OnEvent("ZONE_CHANGED_NEW_AREA", function() DBar.Update() end)
 ns.Listen("RUN", function() if bar then DBar.Update() end end)
 ns.Listen("RUNTIMES", function() if key then DBar.Refresh() end end)
@@ -568,11 +609,13 @@ ns.RegisterSettings{ key = "dungeonbar", label = L["Dungeon-Leiste"], order = 53
       tip = L["\"Zeit 12:40\": die Uhr des Laufs (Lauf-Zeiten), solange sie läuft."] },
     { key = "dungeonbar.route", type = "toggle", label = L["Route in der Leiste"], default = true, onChange = apply,
       tip = L["\"Route 3/7\": der Stopp der Route, der du folgst; Rechtsklick geht weiter."] },
+    { key = "dungeonbar.others", type = "toggle", label = L["Bosse und Zeit anderen Addons überlassen"], default = true, onChange = apply,
+      tip = L["Ist ein anderes Addon geladen, das die Bosse und die Zeit eines Dungeons selbst zeigt, lässt Amisia \"Bosse\" und \"Zeit\" in der Leiste weg und öffnet das Fenster \"Lauf-Zeiten\" nicht von selbst. Gemessen wird weiter, die Zeiten stehen auf der Seite."] },
 } }
 
 -- for the tests
 function DBar._reset()
-    override, open, dirty, cands = nil, nil, false, nil
+    override, open, dirty, cands, other = nil, nil, false, nil, nil
     if list then list:Hide() end
 end
 end)

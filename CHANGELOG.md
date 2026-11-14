@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): bosses and time give way to other dungeon addons (F-205)
+
+    If another loaded addon already shows a dungeon's bosses and run time, the dungeon bar leaves out
+    "Bosses" and "Time" and the "Run times" window no longer opens by itself. Quests and route stay, and
+    your times are still measured. Turn it off under Settings > Dungeon bar > "Leave bosses and time to
+    other addons".
+
 ## [v2.86.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.86.0) (2026-11-14)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.85.0...v2.86.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

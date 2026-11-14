@@ -503,7 +503,15 @@ def test_no_foreign_libraries_menus_or_combat_log():
 
 # other addons are never named in what ships (AllTheThings only where its licence asks; see D-04)
 OTHER_ADDONS = ('gargul', 'rclootcouncil', 'questie', 'atlasloot', 'oneforall', 'restedxp', 'tomtom', 'weakauras',
-                'bigwigs', 'deadly boss mods', 'cepgp', 'monolithdkp', 'essentialdkp', 'zygor', 'guidelime')
+                'bigwigs', 'deadly boss mods', 'cepgp', 'monolithdkp', 'essentialdkp', 'zygor', 'guidelime',
+                'fojji', 'foreverdungeonjournal')
+
+# D-05, exception of 2026-11-14 (F-205, D-131): the folder names of the addons that show a dungeon's bosses
+# and time stand in one line of code, the list the dungeon bar looks for; nowhere else, no text, no comment.
+NAMED_IN_CODE = {
+    'fojji': ('Gear/DungeonBar.lua', 'local OTHER_DUNGEON_ADDONS = {'),
+    'foreverdungeonjournal': ('Gear/DungeonBar.lua', 'local OTHER_DUNGEON_ADDONS = {'),
+}
 
 
 # D-05, exception of 2026-10-11 (spec docs/specs/2026-10-11-softres-gargul.md): "Gargul" only in these
@@ -534,6 +542,9 @@ def _comment_start(line):
 
 
 def _named_where_allowed(rel, line, name):
+    if name in NAMED_IN_CODE:
+        where, start = NAMED_IN_CODE[name]
+        return rel == where and line.startswith(start)
     if rel not in NAMED_HERE.get(name, ()):
         return False
     low = line.lower()
@@ -557,6 +568,10 @@ def test_other_addons_are_not_named_in_the_addon():
 
 def test_the_named_exception_stays_narrow():
     assert set(NAMED_HERE) == {'gargul'}
+    assert set(NAMED_IN_CODE) == {'fojji', 'foreverdungeonjournal'}
+    assert _named_where_allowed('Gear/DungeonBar.lua', 'local OTHER_DUNGEON_ADDONS = { "fojjicore" }', 'fojji')
+    assert not _named_where_allowed('Gear/DungeonBar.lua', '-- fojjicore', 'fojji')
+    assert not _named_where_allowed('Gear/RunTimer.lua', 'local OTHER_DUNGEON_ADDONS = { "fojjicore" }', 'fojji')
     assert not _named_where_allowed('Raid/Awards.lua', '-- Gargul', 'gargul')
     assert not _named_where_allowed('Raid/Rolls.lua', 'local x = "Gargul"', 'gargul')
     assert _named_where_allowed('Raid/Rolls.lua', 'ns.msg(L["Gargul-Runde"])', 'gargul')
