@@ -49,6 +49,27 @@ assert(has(lead, "[Einladen]"), "the leader gets it")
 local _, member = OI.Filter(nil, "CHAT_MSG_SYSTEM", line("Kim Eisherz"))
 assert(member == line("Kim Eisherz"), "already in the group")
 
+-- the name in its class colour: a guild member by the roster, a friend by the friend list
+local group = STUB.roster
+STUB.guild = { { name = "Sickofme Nevermore", class = "SHAMAN", online = true, rank = 3 } }
+STUB.friends = { { name = "Anna Bergmann", className = "Priester" } }
+_G.LOCALIZED_CLASS_NAMES_MALE = _G.LOCALIZED_CLASS_NAMES_MALE or { PRIEST = "Priester" }
+_G.LOCALIZED_CLASS_NAMES_MALE.PRIEST = _G.LOCALIZED_CLASS_NAMES_MALE.PRIEST or "Priester"
+if NS.GuildRosterChanged then NS.GuildRosterChanged() end
+STUB.fire("GUILD_ROSTER_UPDATE")
+assert(OI.ClassOf("Sickofme Nevermore") == "SHAMAN", tostring(OI.ClassOf("Sickofme Nevermore")))
+local _, coloured = OI.Filter(nil, "CHAT_MSG_SYSTEM", line("Sickofme Nevermore"))
+local hex = RAID_CLASS_COLORS.SHAMAN.colorStr
+assert(has(coloured, "|h[|c" .. hex .. "Sickofme Nevermore|r]|h ist jetzt online."), coloured)
+assert(has(coloured, "[Einladen]"), "the link too")
+assert(OI.ClassOf("Anna Bergmann") == "PRIEST", "a friend")
+assert(OI.Colour(line("Niemand Hier"), "Niemand Hier") == line("Niemand Hier"), "no class: as it is")
+NS.Set("invites.onlineClass", false)
+local _, plain = OI.Filter(nil, "CHAT_MSG_SYSTEM", line("Sickofme Nevermore"))
+assert(not has(plain, "|c" .. hex), "switch off: no colour")
+NS.Reset("invites.onlineClass")
+STUB.guild, STUB.friends, STUB.roster = {}, {}, group
+
 -- a click invites
 local invited
 _G.C_PartyInfo = _G.C_PartyInfo or {}

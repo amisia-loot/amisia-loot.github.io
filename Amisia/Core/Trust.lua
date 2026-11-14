@@ -232,14 +232,14 @@ find = function(name)
     return nil
 end
 
--- A guild member: { name, rank, guid, online }; nil when not in the guild; nil, "unknown" when the
--- roster cannot be read (empty or the lockdown).
+-- A guild member: { name, rank, guid, online, class (token or "") }; nil when not in the guild; nil,
+-- "unknown" when the roster cannot be read (empty or the lockdown).
 function ns.GuildMember(name)
     local list = readable(false)
     if not list then return nil, "unknown" end
     local m = find(name)
     if not m then return nil end
-    return { name = m.name, rank = m.rank, guid = m.guid, online = m.online }
+    return { name = m.name, rank = m.rank, guid = m.guid, online = m.online, class = m.class or "" }
 end
 
 -- The guild roster for reading only: { { name, rank, guid, online, class, level, className, rankName,

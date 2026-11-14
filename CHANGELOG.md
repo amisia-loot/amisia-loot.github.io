@@ -5,6 +5,11 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(invites): the name in "has come online" shows in its class colour (F-197)
+
+    When a guild member or a friend comes online, their name in the game's line "<Name> has come online." now
+    shows in their class colour. Turn it off under Settings > Raid > Group invites.
+
 - feat(toast): the "+item" and "+gold" text is off by default (F-152)
 
     The short "+Name" and "+1g 2s 3c" text in the middle of the screen when you loot or turn in a quest no

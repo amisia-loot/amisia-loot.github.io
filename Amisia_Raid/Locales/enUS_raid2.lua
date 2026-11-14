@@ -1527,6 +1527,8 @@ L["Einladen kann nur der Gruppenleiter (im Raid auch Assistenten)."] = "Only the
 L["%s ist schon in deiner Gruppe."] = "%s is already in your group."
 L["Eingeladen: %s"] = "Invited: %s"
 L["[Einladen] bei \"ist jetzt online\""] = "[Invite] on \"has come online\""
+L["Name bei \"ist jetzt online\" in Klassenfarbe"] = "Name in \"has come online\" in its class colour"
+L["Der Name in der Zeile \"ist jetzt online\" steht in der Farbe seiner Klasse, für Gilde und Freundesliste."] = "The name in the line \"has come online\" shows in its class colour, for your guild and friend list."
 L["Kommt jemand aus Gilde oder Freundesliste online, steht hinter der Zeile im Chat ein [Einladen]; ein Klick lädt ihn ein. Nicht, wenn er schon in deiner Gruppe ist oder du in der Gruppe nicht einladen darfst."] = "When someone from your guild or friend list comes online, an [Invite] follows the chat line; a click invites them. Not when they are already in your group or you may not invite in your group."
 
 -- F-202 (D-130): texts that more than one part uses, or another part than the file they stood in

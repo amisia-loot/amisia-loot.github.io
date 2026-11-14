@@ -3405,6 +3405,10 @@ Forever, TBC Anniversary und Era gleich, Blizzards Quelle `ItemRefHandlersShared
 für sich selbst, für jemanden in der eigenen Gruppe oder wenn man in der Gruppe nicht einladen darf (Leiter; im
 Raid auch Assistenten); eine geheime Zeile (Kampfsperre) bleibt, wie sie ist. Einstellung `invites.onlineLink`
 (an) im Abschnitt Gruppeneinladungen.
+Nachtrag 2026-11-14: Der Name in derselben Zeile steht in seiner Klassenfarbe (`invites.onlineClass`, an); die Klasse
+aus der Gildenliste, sonst aus der Freundesliste (Klassenname des Clients zum Kürzel); ohne Klasse bleibt die Zeile.
+Nur diese Zeile, im selben Filter. Nutzer mit Bildschirmfoto: "können wir den namen die online kommen in der
+Klassenfarbe machen".
 
 **Grund:** Nutzer 2026-11-13 mit Bildschirmfoto: "wenn leute online kommen das da so invite text steht und man
 drauf drücken kann und sie so einlädt".
@@ -3414,7 +3418,8 @@ Packen macht `C_EncodingUtil`, das Minimap-Symbol und das Addon-Fach sind eigen;
 gefragt): an als Standard, auch für Freunde, keine Nachfrage vor dem Einladen.
 
 **Durchgesetzt durch:** `tests/test_online_invite.lua` (deutsche und englische Zeile, Felder nach dem Namen, andere
-Zeilen, sich selbst, geheime Zeile, Schalter, ohne Einladerecht, Leiter, schon in der Gruppe, Klick, fremde Links).
+Zeilen, sich selbst, geheime Zeile, Schalter, ohne Einladerecht, Leiter, schon in der Gruppe, Klick, fremde Links,
+Klassenfarbe aus Gilde und Freundesliste, ohne Klasse, Schalter der Farbe).
 
 ## D-128 Sprache wählen: jede Datei wartet auf ADDON_LOADED (`ns.Load`)
 

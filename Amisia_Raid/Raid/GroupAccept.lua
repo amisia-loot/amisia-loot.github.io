@@ -82,6 +82,8 @@ ns.RegisterSettings{ key = "invites", label = L["Gruppeneinladungen"], order = 1
     -- F-197: the link behind "ist jetzt online" (Raid/OnlineInvite.lua)
     { key = "invites.onlineLink", type = "toggle", label = L["[Einladen] bei \"ist jetzt online\""], default = true,
       tip = L["Kommt jemand aus Gilde oder Freundesliste online, steht hinter der Zeile im Chat ein [Einladen]; ein Klick lädt ihn ein. Nicht, wenn er schon in deiner Gruppe ist oder du in der Gruppe nicht einladen darfst."] },
+    { key = "invites.onlineClass", type = "toggle", label = L["Name bei \"ist jetzt online\" in Klassenfarbe"], default = true,
+      tip = L["Der Name in der Zeile \"ist jetzt online\" steht in der Farbe seiner Klasse, für Gilde und Freundesliste."] },
 }}
 
 -- for the tests

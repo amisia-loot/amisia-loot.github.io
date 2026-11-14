@@ -4,7 +4,8 @@
 -- click (the client's SetItemRef event of addon links, EventRegistry "SetItemRef") invites that player
 -- (C_PartyInfo.InviteUnit, else InviteUnit). No link for the player himself, someone already in the
 -- group or while this client is in a group it may not invite to; a secret line (the chat lockdown) stays
--- as it is. Sends nothing; nothing is saved.
+-- as it is. The name in the line shows in its class colour (invites.onlineClass, on): the class from the
+-- guild roster, else from the friend list. Sends nothing; nothing is saved.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -54,15 +55,54 @@ function OI.CanInvite()
     return IsInRaid() and UnitIsGroupAssistant("player") and true or false
 end
 
+-- The class token of a guild member or a friend, or nil.
+local function classToken(localized)
+    for _, list in ipairs({ _G.LOCALIZED_CLASS_NAMES_MALE or {}, _G.LOCALIZED_CLASS_NAMES_FEMALE or {} }) do
+        for token, shown in pairs(list) do
+            if shown == localized then return token end
+        end
+    end
+    return nil
+end
+
+function OI.ClassOf(name)
+    local m = ns.GuildMember(name)
+    if m and m.class ~= "" then return m.class end
+    local fl = _G.C_FriendList
+    if type(fl) ~= "table" or type(fl.GetNumFriends) ~= "function" or type(fl.GetFriendInfoByIndex) ~= "function" then return nil end
+    local ok, n = pcall(fl.GetNumFriends)
+    n = ok and tonumber(ns.Plain(n)) or 0
+    for i = 1, n do
+        local okF, f = pcall(fl.GetFriendInfoByIndex, i)
+        local fname = okF and type(f) == "table" and ns.Plain(f.name)
+        if type(fname) == "string" and ns.SameName(ns.FullName(fname) or fname, name) then
+            local cls = ns.Plain(f.className)
+            return type(cls) == "string" and classToken(cls) or nil
+        end
+    end
+    return nil
+end
+
+-- The line with the name shown between "[" and "]" in its class colour; as it is without a class.
+function OI.Colour(text, name)
+    local class = OI.ClassOf(name)
+    if not class then return text end
+    local out = text:gsub("(|h%[)(.-)(%]|h)", function(open, shown, close)
+        return open .. ns.ClassColored(shown, class) .. close
+    end, 1)
+    return out
+end
+
 local function linkFor(name)
     return ("%s|H%s%s|h[%s]|h|r"):format(COLOUR, PREFIX, name, L["Einladen##online"])
 end
 
 -- The chat filter: the line with the link, or it as it is.
 function OI.Filter(_, _, text, ...)
-    if not enabled() then return false, text, ... end
     local name = OI.NameOf(text)
-    if not name or not OI.CanInvite() then return false, text, ... end
+    if not name then return false, text, ... end
+    if ns.Get("invites.onlineClass") then text = OI.Colour(text, name) end
+    if not enabled() or not OI.CanInvite() then return false, text, ... end
     local me = ns.UnitFullName("player")
     if (me and ns.SameName(name, me)) or ns.InMyGroup(name) then return false, text, ... end
     return false, text .. " " .. linkFor(name), ...
