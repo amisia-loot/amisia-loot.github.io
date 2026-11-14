@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(map): the target window shows for the map pin and is easier to find (F-203)
+
+    If you used Amisia before 2.85.0, a saved setting kept the target window closed for the game's own map pin
+    (Ctrl + click on the world map). That setting is reset once, so the window now appears for every map pin;
+    a window you switched off stays off. The minimap menu has a new entry "Target window", and /amisia target
+    shows or hides it; without a target, a line tells you how to set one.
+
 - fix(raidnote): officers can write the raid note and its templates outside a raid (F-196)
 
     Outside a raid the raid note's field took the cursor but threw every keystroke away. Officers can now write

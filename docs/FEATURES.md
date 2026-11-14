@@ -1468,6 +1468,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du auf der Seite Karte eine Zeile anklickst, dann zeigt das Fenster ihren Namen statt "Kartenmarkierung".
 - Prüfung: Wenn du einen Dungeon betrittst oder in den Kampf kommst, dann gibt es keine Lua-Fehler und keine Meldung "Aktion blockiert"; draußen ist das Fenster wieder da.
 - Notiz: Spec `docs/specs/2026-11-14-zielfenster.md`; ersetzt den Pfeil von F-045. Eigene Umsetzung, nichts aus anderen Addons (D-03, D-04).
+- Notiz: Nachtrag 2026-11-14 (Nutzer: "das mit dem ziel muss leichter zu finden sein und geht iwie nicht"): ein gespeichertes altes "auto" hielt das Fenster bei der Kartenmarkierung zu; Schritt 7 von `Core/Migrate.lua` nimmt es weg. Neu: "Zielfenster" im Minimap-Menü und `/amisia ziel` (ohne Ziel sagt eine Zeile, wie man eins setzt). Prüfen: nach dem Update Strg + Klick auf die Weltkarte, das Fenster erscheint ohne Einstellung.
 
 ### F-105 Orte auf der Weltkarte (Eingänge, Flugmeister, Zeppeline, Schiffe)
 - Version: 2.67.0

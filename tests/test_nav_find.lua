@@ -175,7 +175,7 @@ local shownGroups = {}
 for _, b in ipairs(F.tabOrder) do shownGroups[#shownGroups + 1] = b.key end
 assert(table.concat(groups, " ") == table.concat(shownGroups, " "), table.concat(groups, " ") .. " / " .. table.concat(shownGroups, " "))
 -- on Forever the window "Layer" stands in the first level (F-185), then the raid note (F-196)
-local wantRest = (NS.LayerWindow and "Layer|" or "") .. "Raid-Notiz|Einstellungen|Aufnahme pausieren"
+local wantRest = (NS.LayerWindow and "Layer|" or "") .. (NS.TargetWindow and "Zielfenster|" or "") .. "Raid-Notiz|Einstellungen|Aufnahme pausieren"
 assert(table.concat(rest, "|") == wantRest, table.concat(rest, "|"))
 local function sub(key)
     local out = {}

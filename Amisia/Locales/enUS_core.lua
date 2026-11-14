@@ -936,4 +936,5 @@ L["gilt nach dem Neuladen"] = "applies after a reload"
 L["nicht installiert"] = "not installed"
 L["nur WoW Forever"] = "WoW Forever only"
 L["nur auf WoW Forever"] = "on WoW Forever only"
+L["Zielfenster"] = "Target window"
 end)

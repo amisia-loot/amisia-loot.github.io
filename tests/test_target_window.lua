@@ -69,4 +69,32 @@ assert(AmisiaArrow._w == 190 and AmisiaArrow.dist._w == 190 - 10 - 64 - 10 - 10,
 NS.Set("map.compact", false)
 assert(AmisiaArrow.dist._w == 250 - 10 - 64 - 10 - 10, "detailed: the room right of the compass")
 C_Map.ClearUserWaypoint()
+
+-- F-203, later: easier to reach. The saved old "auto" goes once (migration 7), so the pin shows the window
+local db = { settings = { map = { arrow = "auto", pins = false } } }
+NS.MIGRATIONS[7](db)
+assert(db.settings.map.arrow == nil and db.settings.map.pins == false, "auto goes, the rest stays")
+db = { settings = { map = { arrow = "off" } } }
+NS.MIGRATIONS[7](db)
+assert(db.settings.map.arrow == "off", "a chosen off stays")
+-- the minimap menu: an entry "Zielfenster" in the first level
+local entry
+for _, e in ipairs(NS.MinimapMenuEntries()) do if e[1] == "Zielfenster" then entry = e end end
+assert(entry and has(entry.tip, "Strg + Klick"), "the menu entry with how to set a target")
+-- without a target: a line says how to set one; "auto" became "Immer"
+NS.Set("map.arrow", "auto")
+entry[2]()
+assert(NS.Get("map.arrow") == "on", "switched to always")
+assert(has(lastMsg(), "Kein Ziel. Strg + Klick"), lastMsg())
+-- a pin: the window shows; the entry hides it again, /amisia ziel brings it back
+C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(1411, 0.3, 0.3))
+assert(AmisiaArrow:IsShown() and AmisiaArrow.label:GetText() == "Kartenmarkierung", "the pin's window")
+local tip
+for _, e in ipairs(NS.MinimapMenuEntries()) do if e[1] == "Zielfenster" then tip = e.tip end end
+assert(has(tip, "Kartenmarkierung"), tostring(tip))
+entry[2]()
+assert(NS.Get("map.arrow") == "off" and not AmisiaArrow:IsShown(), "hidden by the entry")
+SlashCmdList.AMISIA("ziel")
+assert(NS.Get("map.arrow") == "on" and AmisiaArrow:IsShown(), "/amisia ziel shows it again")
+C_Map.ClearUserWaypoint()
 print("target window ok")

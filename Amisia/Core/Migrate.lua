@@ -168,6 +168,12 @@ ns.MIGRATIONS = {
     -- 6 (2.75.0): the Scarlet Monastery is four dungeons, one per wing (F-174, D-106): what was saved
     -- under its old key "sm" goes to the wings
     function(db) ns.MigrateSplitDungeon(db, "sm", "Scarlet Monastery") end,
+    -- 7 (2.85.1): the target window shows for the client's map pin too (F-203): the old "auto",
+    -- the default before, goes so the new default "Immer" holds; "Aus" stays
+    function(db)
+        local m = type(db.settings) == "table" and db.settings.map
+        if type(m) == "table" and m.arrow == "auto" then m.arrow = nil end
+    end,
 }
 
 local newer   -- the schema of a file a newer Amisia saved, for the one chat line

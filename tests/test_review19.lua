@@ -187,7 +187,7 @@ for _, b in ipairs(AmisiaMenu.buttons) do
     if b:IsShown() and b.label:GetText() == "Zielfenster ausblenden" then b:Click() break end
 end
 assert(NS.Get("map.arrow") == "off", "hidden")
-assert(has(lastMsg(), "Zielfenster aus. Wieder an: /amisia karte pfeil oder in den Einstellungen."), lastMsg())
+assert(has(lastMsg(), "Zielfenster aus. Wieder an: /amisia ziel oder im Minimap-Menü."), lastMsg())
 NS.MapClearTarget()
 
 ---------------------------------------------------------------------------

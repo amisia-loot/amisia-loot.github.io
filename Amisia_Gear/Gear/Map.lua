@@ -743,7 +743,7 @@ local arrow                       -- the frame, made the first time it is needed
 local pin = { label = "", pin = true }
 local pinArrivedAt
 local function clientPin()
-    if not Map.ClientWaypoints() then return nil end
+    if not (C_Map and type(C_Map.GetUserWaypoint) == "function") then return nil end
     local ok, point = pcall(C_Map.GetUserWaypoint)
     if not ok or type(point) ~= "table" or type(point.position) ~= "table" then return nil end
     local map = ns.Plain(point.uiMapID)
@@ -956,7 +956,7 @@ local function arrowMenu(f)
             local now = ns.Get("map.arrow")
             if m and now ~= "off" then m.arrowBefore = now end
             ns.Set("map.arrow", "off")
-            ns.msg(L["Zielfenster aus. Wieder an: /amisia karte pfeil oder in den Einstellungen."])
+            ns.msg(L["Zielfenster aus. Wieder an: /amisia ziel oder im Minimap-Menü."])
         end },
     })
 end
@@ -1063,6 +1063,37 @@ function Map.UpdateArrow()
     arrowUpdate(arrow, nil)
     if arrowWanted() then arrow:Show() end
 end
+
+-- The window from the minimap menu and /amisia ziel (F-203, Nachtrag): a window switched off or on "auto" goes
+-- to "Immer"; with a target it shows (or hides when it shows); without one a line says how to set one.
+local function windowOpen()
+    local mode = ns.Get("map.arrow")
+    if mode ~= "on" then
+        ns.Set("map.arrow", "on")
+        ns.msg(L["Zielfenster an: es zeigt sich bei jedem Ziel und jeder Kartenmarkierung."])
+    elseif arrow and arrow:IsShown() then
+        local m = db()
+        if m then m.arrowBefore = "on" end
+        ns.Set("map.arrow", "off")
+        ns.msg(L["Zielfenster aus. Wieder an: /amisia ziel oder im Minimap-Menü."])
+        return
+    end
+    Map.UpdateArrow()
+    if not Map.Shown() then
+        ns.msg(L["Kein Ziel. Strg + Klick auf die Weltkarte setzt eine Kartenmarkierung, oder klick auf der Seite Karte eine Zeile an; dann erscheint das Zielfenster."])
+    elseif not (arrow and arrow:IsShown()) then
+        ns.msg(L["Das Zielfenster zeigt sich draußen, nicht in Instanzen."])
+    end
+end
+
+-- The tooltip line of the menu entry: the target, or how to set one.
+local function windowTip()
+    local t = Map.Shown()
+    if t then return (L["Ziel: %s, %s %s."]):format(t.label or "?", zoneName(t.map), Map.Coords(t)) end
+    return L["Kompass, Entfernung und Koordinaten zu deiner Kartenmarkierung (Strg + Klick auf die Weltkarte) oder deinem Ziel aus Amisia."]
+end
+
+ns.TargetWindow = { Open = windowOpen, Tip = windowTip }
 
 -- Puts the window back to its start (the saved position is gone already).
 function ns.MapResetArrow()
@@ -1184,6 +1215,9 @@ local function statusLine()
     if not t then return L["Kein Ziel gesetzt. /amisia karte <Item-Link> setzt eins."] end
     return (L["Ziel: %s, %s %s."]):format(t.label or "?", zoneName(t.map), Map.Coords(t))
 end
+
+ns.RegisterSlash("ziel", { en = "target", desc = L["Zielfenster mit Kompass zeigen oder ausblenden"],
+    run = function() windowOpen() end })
 
 ns.RegisterSlash("karte", { en = "map", args = L["[<Link> | aus | pins | pfeil]"],
     desc = L["Karte: Ziel zur Quelle eines Items, Pins und Pfeil"],

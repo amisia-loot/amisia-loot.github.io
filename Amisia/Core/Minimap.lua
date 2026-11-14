@@ -67,6 +67,11 @@ function ns.MinimapMenuEntries(group)
         e[#e + 1] = { L["Layer"], function() ns.LayerWindow.Toggle() end, tipTitle = L["Layer"],
             tip = (ns.Layer and ns.Layer.TooltipLine()) or L["Dein Layer in dieser Zone und der Wechsel in der Gilde."] }
     end
+    -- F-203: the target window in the first level (Forever, Gear/Map.lua)
+    if ns.TargetWindow then
+        e[#e + 1] = { L["Zielfenster"], function() ns.TargetWindow.Open() end, tipTitle = L["Zielfenster"],
+            tip = ns.TargetWindow.Tip() }
+    end
     -- F-196: the window "Raid-Notiz" in the first level (Raid/RaidNoteWindow.lua), also in a fight
     if ns.RaidNote and ns.RaidNote.Window then
         e[#e + 1] = { L["Raid-Notiz"], function() ns.RaidNote.Window.Toggle() end, tipTitle = L["Raid-Notiz"],

@@ -1195,5 +1195,10 @@ L["Ein kleines Fenster mit Kompass, Entfernung, Zeit und Koordinaten für dein Z
 L["Zielfenster kompakt"] = "Compact target window"
 L["Nur Kompass und Entfernung. Auch mit dem Knopf oben rechts im Fenster."] = "Only the compass and the distance. Also with the button at the window's top right."
 L["Zielfenster ausblenden"] = "Hide the target window"
-L["Zielfenster aus. Wieder an: /amisia karte pfeil oder in den Einstellungen."] = "Target window off. Back on: /amisia map arrow or in the settings."
+L["Zielfenster aus. Wieder an: /amisia ziel oder im Minimap-Menü."] = "Target window off. Back on: /amisia target or in the minimap menu."
+L["Zielfenster an: es zeigt sich bei jedem Ziel und jeder Kartenmarkierung."] = "Target window on: it shows for every target and every map pin."
+L["Kein Ziel. Strg + Klick auf die Weltkarte setzt eine Kartenmarkierung, oder klick auf der Seite Karte eine Zeile an; dann erscheint das Zielfenster."] = "No target. Ctrl + click on the world map sets a map pin, or click a row on the Map page; the target window then shows."
+L["Das Zielfenster zeigt sich draußen, nicht in Instanzen."] = "The target window shows outside, not in instances."
+L["Kompass, Entfernung und Koordinaten zu deiner Kartenmarkierung (Strg + Klick auf die Weltkarte) oder deinem Ziel aus Amisia."] = "Compass, distance and coordinates to your map pin (Ctrl + click on the world map) or your target from Amisia."
+L["Zielfenster mit Kompass zeigen oder ausblenden"] = "Show or hide the target window with its compass"
 end)

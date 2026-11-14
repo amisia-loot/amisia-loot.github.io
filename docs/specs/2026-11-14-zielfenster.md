@@ -91,3 +91,8 @@ Nichts. Nur lokal, nichts wird gesendet.
 - 2026-11-14: Frage 2: "Ersetzen, immer zeigen" -> das Fenster ersetzt `AmisiaArrow`, `map.arrow` Standard "Immer".
 - 2026-11-14: Frage 3 nicht gestellt: Vorschlag übernommen (m auf Deutsch, yd auf Englisch, wie bisher).
 - 2026-11-14: Spec: "Passt, bauen".
+- 2026-11-14 Nachtrag nach dem ersten Test ("das mit dem ziel muss leichter zu finden sein und geht iwie nicht"): ein
+  gespeichertes "auto" (Standard vor F-203) hielt das Fenster bei der Kartenmarkierung zu; Schritt 7 von
+  `Core/Migrate.lua` nimmt es weg (gewähltes "Aus" bleibt). Dazu "Zielfenster" in der ersten Ebene des Minimap-Menüs
+  und `/amisia ziel` (en `target`): stellt "Immer" ein, zeigt oder blendet das Fenster aus; ohne Ziel sagt eine Zeile,
+  wie man eins setzt.
