@@ -8,7 +8,10 @@ local LT = NS.Theme.LOOTTOAST
 STUB.item(4711, "Rute von Helcular", 2)
 local link = "|cff1eff00|Hitem:4711::::::::30:::::::|h[Rute von Helcular]|h|r"
 local me = UnitName("player")
-assert(NS.Get("toast.show") == true, "on by default")
+assert(NS.Get("toast.show") == false, "off by default (D-79, addendum 2026-11-14)")
+STUB.fire("CHAT_MSG_LOOT", LOOT_ITEM_SELF:format(link))
+assert(#NS.LootToastLines() == 0, "nothing while off")
+NS.Set("toast.show", true)
 
 -- looted: one line
 STUB.fire("CHAT_MSG_LOOT", LOOT_ITEM_SELF:format(link))
@@ -39,7 +42,7 @@ NS.Reset("toast.quality")
 NS.Set("toast.show", false)
 STUB.fire("CHAT_MSG_LOOT", LOOT_ITEM_SELF:format(link))
 assert(#NS.LootToastLines() == 0, "off")
-NS.Reset("toast.show")
+NS.Set("toast.show", true)
 -- at most MAX at once, the oldest goes
 for _ = 1, LT.MAX + 2 do STUB.fire("CHAT_MSG_LOOT", LOOT_ITEM_SELF:format(link)) end
 assert(#NS.LootToastLines() == LT.MAX, "at most " .. LT.MAX)

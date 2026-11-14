@@ -462,7 +462,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ### F-152 Anzeige erhaltener Items beim Looten und bei Questbelohnungen
 - Version: 2.67.0
 - Status: gebaut
-- Prüfung: Wenn du etwas lootest oder eine Quest mit Belohnung abgibst, dann steht kurz "+Name" mit dem Symbol des Items in seiner Qualitätsfarbe links über der Bildschirmmitte und blendet aus.
+- Prüfung: Wenn du Amisia neu hast oder "Erhaltene Items anzeigen" nie umgestellt hast, dann erscheint beim Looten kein "+Name" und kein "+92" mit Münzen mehr: die Anzeige ist ab Werk aus (Einstellungen, Item-Anzeige).
+- Prüfung: Wenn du dort "Erhaltene Items anzeigen" einschaltest und etwas lootest oder eine Quest mit Belohnung abgibst, dann steht kurz "+Name" mit dem Symbol des Items in seiner Qualitätsfarbe links über der Bildschirmmitte und blendet aus.
 - Prüfung: Wenn du unter Einstellungen, Oberfläche "Erhaltene Items anzeigen" ausschaltest, dann erscheint nichts mehr; "Ab Qualität" blendet schlechtere Items aus; "Anzeige ausprobieren" zeigt ein Beispiel.
 - Prüfung: Wenn du Gold lootest oder für eine Quest bekommst, dann steht kurz "+1g 2s 3c" mit Münzen in Gold-, Silber- und Kupferfarbe da; unter Einstellungen, Oberfläche schaltet "Erhaltenes Gold anzeigen" das ab und "Schriftgröße der Anzeige" macht Text und Symbol größer oder kleiner.
 - Notiz: D-79. Ohne Spec: eine kleine Anzeige ohne Daten und Nachrichten (docs/specs/README).

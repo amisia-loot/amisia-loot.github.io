@@ -146,6 +146,7 @@ assert(#AmisiaDB.perf.runs[1].rows > 0, "the handlers of the events were measure
 
 -- a wrapped call site still does its work: the loot toast's OnUpdate, a ticker, a tooltip part
 NS.Dispatch("leistung")
+NS.Set("toast.show", true)
 assert(NS.LootToast(2589, 1, STUB.link(2589, "Linen Cloth", 1)), "the loot toast shows a line")
 local holder = _G.AmisiaLootToast
 holder.scripts.OnUpdate(holder, 0.1)

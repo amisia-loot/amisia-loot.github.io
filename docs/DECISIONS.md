@@ -1966,6 +1966,8 @@ Quellen, Spielstil; der Tooltip sagt warum) statt "Quellen", das Suchfeld nimmt 
 - Items: "Du erhaltet Beute" immer; "Ihr erhaltet Gegenstand" (in die Taschen gelegt, so kommen Questbelohnungen) nur, solange kein Händler-, Handels-, Post-, Bank-, Gildenbank- oder Auktionshausfenster offen ist. Dort sind es Käufe und Übergaben.
 - Gold: nur die Loot-Zeile `CHAT_MSG_MONEY` (auch der Anteil der Gruppe), gelesen mit den Wörtern des Clients (`GOLD_AMOUNT`, `SILVER_AMOUNT`, `COPPER_AMOUNT`), und das Gold einer Quest (`QUEST_TURNED_IN`). Verkauf, Post und Handel zeigen nichts. Das Wachsen der Geldbörse (`PLAYER_MONEY`) zählt nicht mehr.
 
+**Nachtrag 2026-11-14 (Nutzer mit einem Bildschirmfoto von "+92" mit Kupfermünzen: "können wir das loot scrolling text standardmäßig auslassen"):** `toast.show` steht ab Werk auf aus. Wer die Anzeige nie umgestellt hat, sieht sie nach dem Update nicht mehr; wer sie eingeschaltet hatte, behält sie. Alle anderen Einstellungen der Item-Anzeige (D-89) bleiben, auch `toast.money` an: es wirkt erst, wenn die Anzeige an ist.
+
 ## D-80 Kein Extrafenster für Ausrüstung: die Ziele im Ausrüstungsplaner
 
 **Datum:** 2026-11-08

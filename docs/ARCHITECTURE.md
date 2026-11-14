@@ -692,7 +692,7 @@ window, 70-150 %, also Ctrl + mouse wheel over it); `ui.goalScale` (the window "
 the window (D-80, step 3 of `Core/Migrate.lua` drops it and `settings.goalWindow`); `ui.resetPosition` resets the main window,
 the gear table, the roll window, the talent window, the raid calendar window, the run timer, the loot toast, the dungeon bar, the window "Questgegenstände aufräumen", the window "Layer" and its chip.
 The loot toast's settings (F-152) were `ui.lootToast*` until 2.71.0; since then the section `toast` ("Item-Anzeige",
-`UI/LootToast.lua`, D-89, step 5 of `Core/Migrate.lua` moved the four): `toast.show` (on), `toast.money` (on: money too),
+`UI/LootToast.lua`, D-89, step 5 of `Core/Migrate.lua` moved the four): `toast.show` (off since 2026-11-14, D-79), `toast.money` (on: money too),
 `toast.quality` (the lowest quality shown, "0" all to "4" epic), the buttons `toast.move` (the move mode) and
 `toast.resetPos`, `toast.size` (10-32, 16), `toast.font` ("default", "friz", "arial", "skurri", "morpheus"),
 `toast.outline` ("default", "none", "OUTLINE", "THICKOUTLINE"), `toast.shadow` (on), `toast.icon` (on), `toast.align`

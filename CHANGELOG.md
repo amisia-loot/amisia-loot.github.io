@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(toast): the "+item" and "+gold" text is off by default (F-152)
+
+    The short "+Name" and "+1g 2s 3c" text in the middle of the screen when you loot or turn in a quest no
+    longer shows unless you switch it on: Settings, "Item display", "Show items you get". If you had switched
+    it on yourself, it stays on.
+
 - fix(map): the target window shows for the map pin and is easier to find (F-203)
 
     If you used Amisia before 2.85.0, a saved setting kept the target window closed for the game's own map pin

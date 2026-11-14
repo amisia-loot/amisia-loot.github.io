@@ -380,7 +380,7 @@ local FONT_VALUES = { { "default", L["Standard"] }, { "friz", "Friz Quadrata" },
     { "skurri", "Skurri" }, { "morpheus", "Morpheus" } }
 
 ns.RegisterSettings{ key = "toast", label = L["Item-Anzeige"], order = 88, group = "amisia", pages = { "about" }, items = {
-    { key = "toast.show", type = "toggle", label = L["Erhaltene Items anzeigen"], default = true,
+    { key = "toast.show", type = "toggle", label = L["Erhaltene Items anzeigen"], default = false,
       tip = L["Zeigt kurz \"+Item\" mit Symbol in der Mitte des Bildschirms, wenn du etwas lootest oder als Questbelohnung bekommst; Käufe, Handel und Post nicht."] },
     { key = "toast.money", type = "toggle", label = L["Erhaltenes Gold anzeigen"], default = true,
       tip = L["Zeigt auch Gold, Silber und Kupfer, das du lootest oder für Quests bekommst, mit den Münzen in ihrer Farbe."] },
