@@ -500,6 +500,15 @@ T.QUESTITEMS = { W = 460, PAD = 12, TOP = 30, HEAD_H = 24, LIST_GAP = 6, ROWS = 
 T.TARGETWIN = { W = 250, H = 84, COMPACT_W = 190, SHADE = 0.78, RING = 64, ARROW = 36, PAD = 10, GAP = 10,
     TOP = 8, LINE_GAP = 2, ETA_GAP = 6, BTN = 16, BTN_GAP = 2 }
 
+-- The light over the map pin (F-206, Gear/MapBeacon.lua, AmisiaBeacon): a column BEAM_H high, its bright core
+-- BEAM_W and its soft glow GLOW_W wide (GLOW_ALPHA), in COLOR and added to the world behind it; the ring at its
+-- foot RING_W x RING_H (an ellipse); BOX_GAP over the column the box BOX_H high, BOX_MIN to BOX_MAX wide (PAD
+-- left and right of the longer line, PAD_Y over the name and under the distance), on a dark ground (SHADE)
+-- with a gold edge. TICK: how often the distance follows.
+T.BEACON = { BEAM_H = 220, BEAM_W = 14, GLOW_W = 56, GLOW_ALPHA = 0.4, COLOR = { 1, 0.78, 0.3 },
+    RING_W = 84, RING_H = 28, BOX_GAP = 6, BOX_H = 40, BOX_MIN = 80, BOX_MAX = 220, PAD = 10, PAD_Y = 5,
+    SHADE = 0.8, TICK = 0.1 }
+
 -- The window "Raid-Notiz" (F-196, Raid/RaidNoteWindow.lua, AmisiaRaidNote): W x H at first, EDGE_X from the
 -- screen's right edge; sized by the grip (GRIP square) between MIN_W x MIN_H and MAX_W x MAX_H; the line
 -- "von ..." TOP under the window's top, FROM_H high, the note under it, PAD from the edges and BAR room

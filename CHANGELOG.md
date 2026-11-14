@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(map): a column of light over the map pin (F-206)
+
+    While you follow a map pin (Ctrl + click on the world map, or an Amisia target), a golden column of
+    light with a glowing ring on the ground stands over the place, with the pin's name and the distance
+    above it. It hides while the place is not on screen. Turn it off under Settings > Map and waypoint, "Column of light
+    at the map pin". The new textures need one full restart of the game; /reload is not enough.
+
 ## [v2.87.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.87.0) (2026-11-14)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.86.0...v2.87.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

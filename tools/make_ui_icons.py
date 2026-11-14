@@ -7,8 +7,8 @@ thicker stroke, coloured with a gold gradient (light at the top, deep at the bot
 rim so it reads on the dark hub, scaled down to SIZE and written to
 Amisia/Media/Icons/ui/<key>.tga. The keys are those of ns.Theme.NAV_ICONS and T.TAB_ICONS
 ("tab_<group>" for a tab). Also Amisia's own shapes of the item slots: slot_ring (a thin rounded
-frame, white, coloured by the addon) and slot_mask (the rounded icon inside it); boss_ring and the
-target window's dial compass_ring (F-203).
+frame, white, coloured by the addon) and slot_mask (the rounded icon inside it); boss_ring, the
+target window's dial compass_ring (F-203) and the map pin's light, beacon_beam and beacon_ring (F-206).
 
     python tools/make_ui_icons.py [--preview DIR] [--offline]
 
@@ -165,11 +165,54 @@ def compass_ring():
 COMPASS_STROKE, COMPASS_TICK, COMPASS_NORTH = 3, 6, 9    # at SIZE px
 
 
+def beacon_beam():
+    """The light column over the map pin (F-206): BEAM_W x BEAM_H, white (coloured and added by the
+    addon), bright in the middle and soft to the sides, full at the foot and fading out to the top."""
+    import math
+    img = Image.new('RGBA', (BEAM_W, BEAM_H), (255, 255, 255, 0))
+    px = img.load()
+    for y in range(BEAM_H):
+        up = 1 - y / (BEAM_H - 1)                 # 1 at the top row, 0 at the foot
+        fade = (1 - up) ** 0.7
+        for x in range(BEAM_W):
+            d = abs((x + 0.5) / BEAM_W - 0.5) * 2  # 0 in the middle, 1 at the edge
+            a = math.exp(-(d / BEAM_SOFT) ** 2) * fade
+            px[x, y] = (255, 255, 255, int(round(255 * a)))
+    return img
+
+
+BEAM_W, BEAM_H, BEAM_SOFT = 32, 256, 0.42
+
+
+def beacon_ring():
+    """The glowing ring on the ground at the map pin (F-206): round (the addon squashes it into an
+    ellipse), white, a thin bright line in a soft glow."""
+    from PIL import ImageDraw
+    size = BEACON_RING * SHAPE_SCALE
+    s = SHAPE_SCALE
+    glow = Image.new('RGBA', (size, size), (255, 255, 255, 0))
+    inset = 10 * s
+    ImageDraw.Draw(glow).ellipse([inset, inset, size - 1 - inset, size - 1 - inset], outline=(255, 255, 255, 150),
+                                 width=8 * s)
+    glow = glow.filter(ImageFilter.GaussianBlur(5 * s))
+    line = Image.new('RGBA', (size, size), (255, 255, 255, 0))
+    inset = 12 * s
+    ImageDraw.Draw(line).ellipse([inset, inset, size - 1 - inset, size - 1 - inset], outline=(255, 255, 255, 255),
+                                 width=3 * s)
+    glow.alpha_composite(line)
+    return glow.resize((BEACON_RING, BEACON_RING), Image.LANCZOS)
+
+
+BEACON_RING = 128
+
+
 SHAPES = {
     'slot_ring': lambda: rounded(False, 0, RING_RADIUS, RING_STROKE),
     'slot_mask': lambda: rounded(True, MASK_INSET, MASK_RADIUS),
     'boss_ring': lambda: circle_ring(BOSS_RING_STROKE),
     'compass_ring': compass_ring,
+    'beacon_beam': beacon_beam,
+    'beacon_ring': beacon_ring,
 }
 
 

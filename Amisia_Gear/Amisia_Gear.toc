@@ -70,6 +70,7 @@ Gear\MageScrolls.lua
 Gear\Map.lua
 Gear\MapPins.lua
 Gear\MapPlaces.lua
+Gear\MapBeacon.lua
 Gear\QuestGiverPins.lua
 Gear\Routes.lua
 Gear\RouteMap.lua

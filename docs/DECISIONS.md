@@ -3586,3 +3586,26 @@ die Einstellung aus. Ein weiteres Addon kommt nur über die Liste und `NAMED_IN_
 **Durchgesetzt durch:** `tests/test_dungeon_bar.lua` (installiert, aber nicht geladen: nichts; geladen: Bosse und
 Zeit weg, Quests bleiben, die Uhr misst, das Fenster bleibt zu; Einstellung aus und wieder an; Ordner mit dem Namen
 am Anfang; Client ohne die Aufrufe), `tools/tests/test_contracts.py::test_the_named_exception_stays_narrow`.
+
+## D-132 Lichtsäule über der Kartenmarkierung: am Navigationspunkt des Spiels, nur lesen
+
+**Datum:** 2026-11-14
+**Entscheidung:** Solange das Spiel seine Kartenmarkierung verfolgt (`C_SuperTrack.IsSuperTrackingUserWaypoint`:
+Amisias Ziel mit der Markierung des Spiels oder Strg + Klick auf die Weltkarte) und einen Navigationspunkt hat
+(`C_Navigation.GetFrame`), steht auf dem Bildschirm eine goldene Lichtsäule über dem Ort (F-206, `Gear/MapBeacon.lua`):
+ein heller Kern und ein weicher Schein (eigene Textur `beacon_beam`), am Fuß ein leuchtender Ring (`beacon_ring`, zur
+Ellipse gestaucht), darüber ein Kästchen mit Name ("Kartenmarkierung" oder Amisias Ziel) und Entfernung. Sie hängt
+mit dem Fuß am Navigationspunkt, den das Spiel über dem Ort in der Welt hält, und ist unsichtbar, solange der Ort nicht
+im Bild ist (`HasValidScreenPosition`) oder das Spiel den Punkt am Rand hält (`WasClampedToScreen`); die Richtung
+zeigt dann das Zielfenster (D-129). Sie liest nur: keine Markierung, kein Verfolgen, keine Maus, Ebene BACKGROUND.
+Schalter `map.beacon` ("Lichtsäule an der Kartenmarkierung", Abschnitt "Karte und Wegpunkt", an).
+**Grund:** Nutzer 2026-11-14 mit Bildschirmfoto eines anderen Addons: "können mir das auch mitübernehmen ... wenn wir
+eine kartenmarkierung machen". Eigene Umsetzung, eigene Texturen, kein Code und kein Name des anderen Addons (D-03,
+D-04, D-05).
+**Folge:** Die Säule ist ein flaches Bild auf dem Bildschirm, keine Figur in der Welt: gleich groß in jeder Entfernung,
+sie kippt nicht mit der Kamera. Ohne `C_Navigation` (andere Clients) gibt es sie nicht. Neue Texturen brauchen einmal
+einen Neustart des Spiels, `/reload` reicht nicht.
+**Durchgesetzt durch:** `tests/test_map_beacon.lua` (nicht gebaut ohne Markierung, Fuß am Navigationspunkt, Name
+und Entfernung, Rand und kein Bildpunkt, Amisias Ziel, Verfolgen aus, Punkt weg und neu, Einstellung, Markierung
+gelöscht, Client ohne Navigation).
+

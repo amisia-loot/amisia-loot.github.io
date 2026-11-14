@@ -1476,6 +1476,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: seit 2.55.0 auf eigener Pin-Ebene statt als Datenlieferant der Weltkarte (Taint-Fehler, DECISIONS D-64); seit 2.57.1 öffnet der Client die Karte selbst (`C_Map.OpenWorldMap`).
 - Notiz: 2.57.0: Seite Karte öffnet auf "Alle Zonen" (nach Zonen, nächste zuerst), Chip "Quests" (nächster Questweg-Schritt, auch als "!" auf der Weltkarte, Einstellung `map.pinsQuests`), Ansicht "Ohne Ort", Zielkarte mit Richtung und Pfeil, Knopf "Karte" je Zeile, deutsche Namen aus eigener Beobachtung.
 
+### F-206 Lichtsäule über der Kartenmarkierung
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du mit Strg + Klick auf die Weltkarte eine Markierung setzt und die Karte schließt, dann steht über dem Ort eine goldene Lichtsäule mit leuchtendem Ring am Boden und darüber ein Kästchen "Kartenmarkierung" mit der Entfernung, die beim Laufen kleiner wird (nach dem Update einmal das Spiel ganz neu starten, sonst fehlt die Textur).
+- Prüfung: Wenn du dich so drehst, dass der Ort hinter dir liegt, dann ist die Säule weg und kommt wieder, sobald er im Bild ist; mit einem Ziel von Amisia (z. B. "Ziel setzen" im Planer) steht dessen Name im Kästchen.
+- Prüfung: Wenn du unter Einstellungen > Karte und Wegpunkt "Lichtsäule an der Kartenmarkierung" ausschaltest, dann ist die Säule sofort weg; Markierung und Zielfenster bleiben.
+- Notiz: DECISIONS D-132. Ein flaches Bild auf dem Bildschirm am Navigationspunkt des Spiels, gleich groß in jeder Entfernung. Liest nur, setzt nichts.
+
 ### F-203 Zielfenster mit Kompass für Kartenmarkierung und Ziel
 - Version: 2.86.0
 - Status: gebaut

@@ -1909,6 +1909,15 @@ _G.C_SuperTrack = {
     SetSuperTrackedUserWaypoint = function(on) STUB.waypoint.superTracked = on and true or false end,
     IsSuperTrackingUserWaypoint = function() return STUB.waypoint.superTracked end,
 }
+-- The client's navigation (Forever): STUB.nav.frame the frame it keeps over the followed place (nil: none),
+-- valid (the place has a screen position), clamped (held at the screen's edge), distance in yards.
+STUB.nav = { frame = nil, valid = true, clamped = false, distance = nil }
+_G.C_Navigation = {
+    GetFrame = function() return STUB.nav.frame end,
+    HasValidScreenPosition = function() return STUB.nav.valid end,
+    WasClampedToScreen = function() return STUB.nav.clamped end,
+    GetDistance = function() return STUB.nav.distance end,
+}
 -- The player's facing in radians (STUB.facing; nil = unknown).
 _G.GetPlayerFacing = function() return STUB.facing end
 -- The world map: shown or not and the map it shows (mapID); OpenWorldMap opens it on a map. Its
