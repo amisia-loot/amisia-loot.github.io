@@ -474,13 +474,12 @@ end
 local function startNext()
     if pull or #peers == 0 or not canTalk() then return end
     local t, ready = now(), {}
+    -- the stale ones go first: removing one while collecting would shift the indices kept already
     for i = #peers, 1, -1 do
-        local p = peers[i]
-        if t - p.at > LIM.peerKeep then
-            table.remove(peers, i)
-        elseif p.nb <= t then
-            ready[#ready + 1] = i
-        end
+        if t - peers[i].at > LIM.peerKeep then table.remove(peers, i) end
+    end
+    for i, p in ipairs(peers) do
+        if p.nb <= t then ready[#ready + 1] = i end
     end
     if #ready == 0 then return end
     if hourCount() >= LIM.pqPerHour then

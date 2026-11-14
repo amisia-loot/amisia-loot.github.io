@@ -316,13 +316,12 @@ end
 startNext = function()
     if pull or not canTalk() then return end
     local t, ready = now(), {}
+    -- the stale ones go first: removing one while collecting would shift the indices kept already
     for i = #peers, 1, -1 do
-        local p = peers[i]
-        if t - p.at > L.peerKeep then
-            table.remove(peers, i)
-        elseif p.nb <= t and not (cqAt[p.low] and t - cqAt[p.low] < KEY_GAP) then
-            ready[#ready + 1] = i
-        end
+        if t - peers[i].at > L.peerKeep then table.remove(peers, i) end
+    end
+    for i, p in ipairs(peers) do
+        if p.nb <= t and not (cqAt[p.low] and t - cqAt[p.low] < KEY_GAP) then ready[#ready + 1] = i end
     end
     while #ready > 0 do
         local pick = math.random(#ready)

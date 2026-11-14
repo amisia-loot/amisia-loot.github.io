@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(sync): no more Lua error "attempt to index local 'p'" after a long fight or dungeon (F-037, F-036)
+
+    When a guild member's announcement had grown too old while nothing could be asked (in a fight or an instance)
+    and a newer one was waiting, the next exchange of sources, drops or crafters stopped with a Lua error in
+    CollectSync.lua. The old announcement is now dropped first and the newer sender is asked as intended.
+
 - feat(raid): click a raid mark to put it into the raid note (F-198)
 
     Raid > Raid note has a row of the eight raid marks above the note. A click puts {skull}, {cross} ... at the
