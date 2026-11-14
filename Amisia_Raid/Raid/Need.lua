@@ -351,7 +351,9 @@ local function expected(since)
     if not (m and m.at == at and m.group == group and m.seen == d and m.rev == rev and m.me == me) then
         local list = {}
         for name, e in pairs(d) do
+            -- a client without the raid module (its hello said so, F-202) answers nothing
             if type(name) == "string" and type(e) == "table" and (tonumber(e.p) or 0) >= 1 and not ns.SameName(name, me) and ns.InMyGroup(name)
+                and not ns.VersionWithoutRaid(e)
                 and (not since or (type(e.v) == "string" and e.v:match("^%d+%.%d+%.%d+$") and ns.CompareVersion(e.v, since) >= 0)) then
                 list[#list + 1] = name
             end

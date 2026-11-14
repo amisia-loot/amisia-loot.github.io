@@ -41,14 +41,14 @@ end
 assert(BUS.count({ sender = "Pug" }) == 0, "Pug is in no guild")
 local vuloHello
 for _, m in ipairs(BUS.sent) do if m.sender == "Vulo Sturmwind" and m.kind == "HI" then vuloHello = m.text end end
-assert(vuloHello == "1HI\t" .. own .. "\t1\tO\t-", vuloHello)
+assert(vuloHello == "1HI\t" .. own .. "\t1\tO\t-\trg", "the modules last (F-202): " .. vuloHello)
 local kimHello
 for _, m in ipairs(BUS.sent) do if m.sender == "Kim Eisherz" and m.kind == "HI" then kimHello = m.text end end
-assert(kimHello == "1HI\t" .. own .. "\t1\t-\t-", "a raider: " .. kimHello)
+assert(kimHello == "1HI\t" .. own .. "\t1\t-\t-\trg", "a raider: " .. kimHello)
 -- what Vulo saw: the guild, by the time seen
 local seen = C("Vulo Sturmwind", "NS.VersionSeen()")
 assert(#seen == 3, #seen)
-for _, e in ipairs(seen) do assert(e.where == "guild" and e.v == own and e.p == 1 and e.mp == 1) end
+for _, e in ipairs(seen) do assert(e.where == "guild" and e.v == own and e.p == 1 and e.mp == 1 and e.m == "rg") end
 local byName = {}
 for _, e in ipairs(seen) do byName[e.name] = e end
 assert(byName["Fraktur"].flags == "O" and byName["Kim Eisherz"].flags == "-" and byName["Lia Weide"])

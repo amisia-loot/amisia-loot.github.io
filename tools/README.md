@@ -89,6 +89,11 @@ python3 tools/build.py perf [--sv FILE] [--rows N]
   it builds and checks the data on branch `auto/data-<build>` in its own worktree and writes the outcome to
   `~/addons/_auto/amisia-data.txt`; it never pushes, merges or releases. `--dry-run`, `--force`, `--base`,
   `--look-now`, `--sv`, `--force-sv`.
+  On the PC `tools/install_junctions.ps1` (once, as administrator, after the first release with three folders;
+  F-202) replaces the old junction `...\Interface\AddOns\Amisia` -> `%USERPROFILE%\VuloSync\Amisia` with one junction
+  per folder: `Amisia` and `Amisia_Raid` in `_forever_`, `_anniversary_` and `_classic_era_`, `Amisia_Gear` in
+  `_forever_` only. It removes junctions only, never a real folder, changes nothing while a subfolder is missing,
+  prints each step, and a second run says "ok" (`-DryRun` only prints; `tools/tests/test_install_junctions.py`).
   On the PC `tools/install_export_task.ps1` (once, as administrator) sets up the task that runs
   `export_db2.ps1` after logon and every two hours.
 - `auto_data.py` runs `build.py data` without `--wago`, so the automatic build also takes the newest copy of
@@ -1214,8 +1219,11 @@ Makes the addon's icon `Amisia.tga` (128x128, genuine 32-bit TGA) from the pictu
 `tools/art/Amisia.png` (see-through ground; not shipped). It is the one icon of the addon everywhere
 it shows: window portraits, addon list and compartment, minimap button. The picture is scaled so every
 visible pixel sits inside the round portrait; the windows and the minimap button lay a black disc under
-it (`W.DISC`). `--preview DIR` also writes PNGs to look at (one on the black disc). A changed texture
-needs a full client restart before WoW shows it; `/reload` is not enough. Requires Pillow.
+it (`W.DISC`). The modules' icons in the addon list (F-202), `Amisia_Raid.tga` and `Amisia_Gear.tga`, are
+the same picture with a round badge at the bottom right (a dark disc, a gold ring and the line art of the tab:
+Lucide `dices`, `shield` from `tools/art/lucide`, drawn by `make_ui_icons.py`). `--preview DIR` also writes PNGs
+to look at (one on the black disc). A changed texture needs a full client restart before WoW shows it;
+`/reload` is not enough. Requires Pillow (and resvg-py for the badges).
 
 ## make_ui_icons.py
 

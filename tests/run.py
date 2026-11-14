@@ -31,7 +31,8 @@ the addon, ADDON_LOADED). The test text itself runs in a director runtime of its
                        (stub clock), or a function)
 
 Modules (F-202, D-130): a test file with a line "--[[without raid]]" or "--[[without gear]]" in its first
-lines runs without the files of that module (tools/modules.py), as a client where it is switched off.
+lines runs without the files of that module (tools/modules.py), as a client where it is switched off. In a
+multi-client test "--[[without raid for Kim_Eisherz Lia_Weide]]" takes it away from those clients only.
 
 Clients: a test file with a line "--[[game tbc]]" or "--[[game era]]" in its first lines runs as that
 client: only the TOC files whose load condition lets it load them, WOW_PROJECT_ID of that client,
@@ -172,10 +173,23 @@ WITHOUT_LINE = re.compile(r'^--\[\[without (raid|gear)\]\]\s*$', re.M)
 def file_without(source):
     m = WITHOUT_LINE.search(source[:2000])
     return m.group(1) if m else None
+
+
+# "--[[without raid for Kim_Eisherz]]": in a multi-client test, those clients only lack the module
+WITHOUT_FOR_LINE = re.compile(r'^--\[\[without (raid|gear) for ([^\]\n]+)\]\]\s*$', re.M)
+
+
+def clients_without(source):
+    """{client name: module} of the "--[[without <module> for <names>]]" lines."""
+    out = {}
+    for m in WITHOUT_FOR_LINE.finditer(source[:2000]):
+        for name in m.group(2).split():
+            out[name.replace('_', ' ')] = m.group(1)
+    return out
 CLIENTS = re.compile(r'\A--\[\[clients ([^\]\n]*)\]\]\n?')
 
 
-def fresh(source='', player=None, setup=None, locale=None):
+def fresh(source='', player=None, setup=None, locale=None, without=None):
     lua = LuaRuntime(unpack_returned_tuples=True)
     RUNTIMES.append(lua)
     with open(os.path.join(ROOT, 'tests', 'wow_stub.lua'), encoding='utf-8') as fh:
@@ -209,7 +223,7 @@ def fresh(source='', player=None, setup=None, locale=None):
     lua.globals().ADDON_FILE = addon_file
     # the TOCs of the core and its modules (the paths), in load order
     lua.globals().ADDON_TOCS = lua.table_from([os.path.join(modules.folder(m), modules.toc_name(m)) for m in modules.MODULES])
-    without = file_without(source)
+    without = without or file_without(source)
     # the modules this client has (F-202): the stub's C_AddOns answers for them, and the core waits for
     # the ADDON_LOADED of those it will load (Locales/Locale.lua); the gear module is Forever's only
     present = [m for m in ('raid', 'gear') if m != without and not (m == 'gear' and game)]
@@ -332,11 +346,12 @@ class Bus:
         self.director = LuaRuntime(unpack_returned_tuples=True)
         self.director.execute(DIRECTOR_PRELUDE)
         self.clients = {}
+        self.without = clients_without(source)
         for name in names:
             def setup(lua, name=name):
                 lua.execute(CLIENT_PRELUDE)
                 lua.globals().BUS_PY = lambda p, t, c, tg, clock, name=name: self.sent(name, p, t, c, tg, clock)
-            self.clients[name] = fresh(source, player=name, setup=setup)
+            self.clients[name] = fresh(source, player=name, setup=setup, without=self.without.get(name))
         g = self.director.globals()
         bus = g.BUS
         g.C = self.run
@@ -431,7 +446,7 @@ class Bus:
             lua.globals().BUS_PY = lambda p, t, c, tg, clock, name=name: self.sent(name, p, t, c, tg, clock)
             lua.globals().BUS_GLOBAL('AmisiaDB', saved)
             lua.globals().BUS_STUB(world)
-        self.clients[name] = fresh(self.source, player=name, setup=setup)
+        self.clients[name] = fresh(self.source, player=name, setup=setup, without=self.without.get(name))
 
     def set_raid(self, names):
         names = [str(v).replace('_', ' ') for v in names.values()] if names else []

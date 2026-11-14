@@ -114,4 +114,5 @@ L["nur Stufe %d"] = "only level %d"
 L["nur Stufe 60"] = "only level 60"
 L["nur frei"] = "only free"
 L["tot"] = "dead"
+L["Amisia %s ohne Raid-Modul: meldet nichts an den Raid-Check, nur Buffs."] = "Amisia %s without the raid module: reports nothing to the raid check, buffs only."
 end)

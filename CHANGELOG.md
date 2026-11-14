@@ -5,6 +5,18 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(modules): Amisia is now three addons: the core, Amisia: Raid and Amisia: Gear & Dungeons (F-202)
+
+    The AddOn list now shows three entries instead of one: Amisia (the core: window, settings, overview, guild
+    sync), Amisia: Raid (recording, awards, rolls, soft reserves, points, lineup, calendar, raid check) and, on
+    WoW Forever only, Amisia: Gear & Dungeons (gear, planner, dungeons, quests, map, professions, talents), each
+    with its own icon. Untick a module you do not need, or use Settings > General > Modules, which asks to
+    reload; /amisia modules lists the core and the modules with version and state. Install all three folders
+    together: if a module folder is missing or has another version than the core, Amisia says so once after
+    login. A guild member without the raid module shows as "no raid" in the raid check and the version list
+    instead of outdated. Your data and settings stay as they are. After updating, restart the game client
+    completely (a /reload is not enough for the new folders and icons).
+
 - fix(import): pasting a text without a block of the site no longer gives a Lua error on TBC and Era (F-202)
 
     On TBC Anniversary and Classic Era, a pasted text that held none of the site's blocks (Points page,

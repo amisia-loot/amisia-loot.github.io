@@ -7,6 +7,9 @@ renamed to .tga stays invisible), from the picture the user chose (2026-10-15):
   round portrait (every visible pixel within FIT of the radius), so the client's round mask and gold
   ring cut nothing off; the ground stays see-through (the windows and the minimap button lay a black
   disc under it, W.DISC).
+- Amisia_Raid.tga and Amisia_Gear.tga (128x128, F-202): the icons of the modules in the addon list, the
+  same picture with a small round badge at the bottom right: a dark disc with a gold ring and the gold
+  line art of the module's tab (make_ui_icons.py: Lucide "dices" for Raid, "shield" for Gear).
 
     python tools/make_icons.py [--preview DIR]
 
@@ -53,6 +56,35 @@ def write_tga(img, path):
         fh.write(header + Image.merge('RGBA', (b, g, r, a)).tobytes())
 
 
+# module -> the Lucide icon on its badge (the tab icons of make_ui_icons.py: tab_raid, tab_gear)
+BADGES = {'Amisia_Raid': 'dices', 'Amisia_Gear': 'shield'}
+BADGE = 66                 # the badge's diameter at SIZE px
+BADGE_RING = 4             # its gold ring
+BADGE_GROUND = (22, 15, 8, 245)
+BADGE_GOLD = (214, 160, 62, 255)
+GLYPH = 0.62               # the line art's share of the badge
+
+
+def badged(base, glyph, scale=4):
+    """base with the badge of glyph (a Lucide name) at the bottom right."""
+    from PIL import ImageDraw
+    import make_ui_icons as ui
+    big = BADGE * scale
+    badge = Image.new('RGBA', (big, big), (0, 0, 0, 0))
+    d = ImageDraw.Draw(badge)
+    d.ellipse([0, 0, big - 1, big - 1], fill=BADGE_GOLD)
+    r = BADGE_RING * scale
+    d.ellipse([r, r, big - 1 - r, big - 1 - r], fill=BADGE_GROUND)
+    badge = badge.resize((BADGE, BADGE), Image.LANCZOS)
+    art = ui.draw(ui.mask(ui.svg_of(glyph, offline=True)))
+    g = round(BADGE * GLYPH)
+    art = art.resize((g, g), Image.LANCZOS)
+    badge.alpha_composite(art, ((BADGE - g) // 2, (BADGE - g) // 2))
+    out = base.copy()
+    out.alpha_composite(badge, (base.width - BADGE, base.height - BADGE))
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
     ap.add_argument('--preview', help='also write PNGs into this folder')
@@ -72,6 +104,14 @@ def main():
         on.alpha_composite(img)
         on.resize((img.width * 3, img.height * 3), Image.LANCZOS).save(os.path.join(args.preview, 'Amisia_on_black.png'))
     print(f'{os.path.relpath(path)}: {img.width}x{img.height}')
+    for name, glyph in BADGES.items():
+        mod = badged(img, glyph)
+        mpath = os.path.join(args.out, name + '.tga')
+        write_tga(mod, mpath)
+        assert os.path.getsize(mpath) == 18 + mod.width * mod.height * 4
+        if args.preview:
+            mod.save(os.path.join(args.preview, name + '.png'))
+        print(f'{os.path.relpath(mpath)}: {mod.width}x{mod.height}')
 
 
 if __name__ == '__main__':

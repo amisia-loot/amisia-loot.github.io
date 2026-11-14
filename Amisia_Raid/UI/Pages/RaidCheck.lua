@@ -83,7 +83,11 @@ local function buffTooltip(owner, r)
             GameTooltip:AddLine(L["Fehlt: %s"]:format(ns.RaidCheck.GROUP_NAME[key]), 0.88, 0.34, 0.29, true)
         end
     end
-    GameTooltip:AddLine(r.ver and L["Amisia %s"]:format(r.ver) or L["Ohne Amisia: nur Buffs."], 0.6, 0.6, 0.6, true)
+    if r.noRaid then
+        GameTooltip:AddLine(L["Amisia %s ohne Raid-Modul: meldet nichts an den Raid-Check, nur Buffs."]:format(r.ver or "?"), 0.6, 0.6, 0.6, true)
+    else
+        GameTooltip:AddLine(r.ver and L["Amisia %s"]:format(r.ver) or L["Ohne Amisia: nur Buffs."], 0.6, 0.6, 0.6, true)
+    end
     GameTooltip:Show()
 end
 
@@ -112,7 +116,7 @@ local function fillBuff(row, r)
             row.buffs:SetText(color(GREEN, L["alle"]))
         end
     end
-    row.ver:SetText(r.ver and r.ver or color(GREY, "-"))
+    row.ver:SetText(r.noRaid and color(GREY, L["ohne Raid"]) or (r.ver and r.ver or color(GREY, "-")))
 end
 
 local function gearTooltip(owner, r)
@@ -120,7 +124,8 @@ local function gearTooltip(owner, r)
     GameTooltip:AddLine(r.name, 1, 0.82, 0)
     local rep = r.rep
     if not rep then
-        GameTooltip:AddLine(L["Ohne Amisia: nur Buffs."], 0.85, 0.85, 0.85, true)
+        GameTooltip:AddLine(r.noRaid and L["Amisia %s ohne Raid-Modul: meldet nichts an den Raid-Check, nur Buffs."]:format(r.ver or "?")
+            or L["Ohne Amisia: nur Buffs."], 0.85, 0.85, 0.85, true)
     else
         GameTooltip:AddLine(L["Laut Amisia des Spielers, %s."]:format(ago(rep.at)), 0.85, 0.85, 0.85, true)
         local names = ns.RaidCheck.SlotNames

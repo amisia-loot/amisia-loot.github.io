@@ -369,10 +369,13 @@ local function call(name, ...)
 end
 
 -- One row: { name, unit, g, c, l, me, state = "ok"/"offline"/"dead"/"far", src = "read"/"self"/nil,
--- cons = classification, missing = { group keys }, ver, rep = the own report (XA) }.
+-- cons = classification, missing = { group keys }, ver, noRaid = Amisia without the raid module (its
+-- hello said so, F-202: it answers no raid check), rep = the own report (XA) }.
 local function readRow(m, versions)
     local r = { name = m.name, unit = m.unit, g = m.g, c = m.c, l = m.l, me = ns.SameName(m.name, me()), state = "ok" }
-    r.ver = r.me and ns.VERSION or (versions[m.name:lower()] or nil)
+    local seen = not r.me and versions[m.name:lower()] or nil
+    r.ver = r.me and ns.VERSION or (seen and seen.v or nil)
+    r.noRaid = seen and ns.VersionWithoutRaid and ns.VersionWithoutRaid(seen) or nil
     r.rep = RC.AnswerOf(m.name)
     if not m.online then
         r.state = "offline"
@@ -416,7 +419,7 @@ function RC.Rows()
         return { at = lastRows.at, combat = locked, list = lastRows.list, need = lastRows.need }
     end
     local versions = {}
-    for _, e in ipairs(ns.VersionSeen and ns.VersionSeen() or {}) do versions[e.name:lower()] = e.v end
+    for _, e in ipairs(ns.VersionSeen and ns.VersionSeen() or {}) do versions[e.name:lower()] = e end
     local list = {}
     if not locked then
         for _, m in ipairs(roster()) do list[#list + 1] = readRow(m, versions) end

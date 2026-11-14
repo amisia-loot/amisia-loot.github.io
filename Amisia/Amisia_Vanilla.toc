@@ -1,7 +1,7 @@
 ## Interface: 11509
 ## Title: Amisia
-## Notes: Amisia's core: main window, settings, overview, guild sync and loot toasts. The modules Amisia: Raid and Amisia: Gear & Dungeons add the raid tools and the gear, dungeon and map pages.
-## Notes-deDE: Kern von Amisia: Hauptfenster, Einstellungen, Übersicht, Gildenabgleich und Beute-Anzeige. Die Module Amisia: Raid und Amisia: Ausrüstung & Dungeons bringen die Raid-Werkzeuge und die Seiten für Ausrüstung, Dungeons und Karte.
+## Notes: Raid loot, rolls and gear for your guild. This is Amisia's core: window, settings, overview and guild sync. The raid tools come with Amisia: Raid, the gear, dungeon and map pages with Amisia: Gear & Dungeons (WoW Forever only); all three folders belong together.
+## Notes-deDE: Raid-Loot, Rolls und Ausrüstung für deine Gilde. Das ist der Kern von Amisia: Fenster, Einstellungen, Übersicht und Gildenabgleich. Die Raid-Werkzeuge bringt Amisia: Raid, Ausrüstung, Dungeons und Karte bringt Amisia: Ausrüstung & Dungeons (nur WoW Forever); alle drei Ordner gehören zusammen.
 ## Author: mrvulo
 ## Version: 2.84.0
 ## Category: VuloUI
@@ -27,6 +27,7 @@ Core\Chat.lua
 Core\Comm.lua
 Core\Trust.lua
 Core\Version.lua
+Core\Modules.lua
 Core\Feedback.lua
 Core\Inspect.lua
 UI\Theme.lua

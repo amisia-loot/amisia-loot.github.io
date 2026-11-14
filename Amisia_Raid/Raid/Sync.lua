@@ -1946,7 +1946,9 @@ ns.CommOn("HI", function(sender, f, chan, raw)
     if not name then return end
     ns.TrustWait(name, "member", function(ok)
         if not ok then return end
-        if ns.IsVerifiedOfficer(name) == true and tostring(raw):sub(1, 1) == tostring(ns.SYNC_PROTO) then officers[name:lower()] = name end
+        -- an officer without the raid module (5th field without "r", F-202) takes no officer part
+        local noRaid = type(f[5]) == "string" and f[5]:match("^%l*$") and not f[5]:find("r", 1, true)
+        if ns.IsVerifiedOfficer(name) == true and tostring(raw):sub(1, 1) == tostring(ns.SYNC_PROTO) and not noRaid then officers[name:lower()] = name end
         if not tostring(f[3]):find("L", 1, true) and claims[name:lower()] then
             claims[name:lower()] = nil
             update()

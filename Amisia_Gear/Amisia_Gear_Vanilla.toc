@@ -6,7 +6,7 @@
 ## Author: mrvulo
 ## Version: 2.84.0
 ## Category: VuloUI
-## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia
+## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia_Gear
 ## Dependencies: Amisia
 ## OptionalDeps: Amisia_Raid
 # Written by tools/build.py from Amisia_Gear.toc (D-57, D-130): Amisia_Gear loads on WoW Forever only, this client gets no file. Edit Amisia_Gear.toc.

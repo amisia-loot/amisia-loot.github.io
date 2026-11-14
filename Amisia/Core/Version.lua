@@ -2,7 +2,8 @@
 -- guild per session after the login and one into the raid on entering it or starting a recording;
 -- a question (VQ) on request, answered by whisper after a random delay. Only senders of the own
 -- guild count. A newer version is pointed out once per version, and only when an officer or two
--- members run it.
+-- members run it. The hello names the loaded modules (F-202): a member without the raid module shows
+-- as "ohne Raid", not as outdated.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -70,9 +71,27 @@ local function ownKey()
     return s and ns.RaidKey and ns.RaidKey(s) or "-"
 end
 
+-- The loaded modules (F-202, D-130): "r" the raid module, "g" the gear module ("rg", "r", "g", "").
+local function ownModules()
+    return (ns.HasModule("raid") and "r" or "") .. (ns.HasModule("gear") and "g" or "")
+end
+ns.VersionModules = ownModules
+
+-- The modules a hello named: lower-case letters (at most 8), else nil (an older Amisia without the
+-- field runs every part: nil counts as all).
+local function modulesOf(field)
+    if type(field) == "string" and #field <= 8 and field:match("^%l*$") then return field end
+    return nil
+end
+
+-- Whether an entry of the seen list runs Amisia without the raid module (its hello said so).
+function ns.VersionWithoutRaid(e)
+    return type(e) == "table" and type(e.m) == "string" and not e.m:find("r", 1, true)
+end
+
 local function hello(chan, target, opts)
     if not versionOn() then return nil end
-    return ns.CommSend("HI", { ns.VERSION, tostring(ns.SYNC_MIN_PROTO), ownFlags(), ownKey() }, chan, target, opts)
+    return ns.CommSend("HI", { ns.VERSION, tostring(ns.SYNC_MIN_PROTO), ownFlags(), ownKey(), ownModules() }, chan, target, opts)
 end
 
 -- Once per session, 20 to 60 s after the login, not again after a /reload within 30 minutes.
@@ -191,7 +210,7 @@ local function trim(d)
     for i = 1, #list - SEEN_MAX do d.seen[list[i].name] = nil end
 end
 
--- Every version seen: { name, v, p, mp, flags, k, o, where = "raid"|"guild", at }, the raid first
+-- Every version seen: { name, v, p, mp, flags, k, o, m, where = "raid"|"guild", at }, the raid first
 -- (by name), then the guild (newest first).
 function ns.VersionSeen()
     local out, d = {}, db()
@@ -216,7 +235,7 @@ function ns.VersionSeen()
     end
     for name, e in pairs(d.seen) do
         if type(name) == "string" and type(e) == "table" then
-            out[#out + 1] = { name = name, v = e.v, p = e.p, mp = e.mp, flags = e.flags, k = e.k, o = e.o,
+            out[#out + 1] = { name = name, v = e.v, p = e.p, mp = e.mp, flags = e.flags, k = e.k, o = e.o, m = e.m,
                               where = inGroup(name) and "raid" or "guild", at = e.at }
         end
     end
@@ -295,6 +314,7 @@ ns.CommOn("HI", function(sender, f, chan, raw)
     ns.TrustWait(name, "member", function(ok)
         if not ok then return end
         record(name, { v = f[1], p = proto, mp = tonumber(f[2]) or 0, flags = f[3], k = f[4] ~= "-" and f[4] or nil,
+                       m = modulesOf(f[5]),
                        where = ns.InMyGroup(name) and "raid" or "guild", at = time(),
                        o = ns.IsVerifiedOfficer(name) == true or nil })
     end)
@@ -316,6 +336,9 @@ function ns.VersionLoaded(DB)
         end
     end
     trim(d)
+    for _, e in pairs(d.seen) do
+        if e.m ~= nil and not modulesOf(e.m) then e.m = nil end
+    end
     if d.warned ~= nil and type(d.warned) ~= "string" then d.warned = nil end
     if d.helloAt ~= nil and type(d.helloAt) ~= "number" then d.helloAt = nil end
 end
@@ -334,13 +357,13 @@ end
 
 -- The rows of the version list: the own client, every version seen and, 10 s after a raid
 -- question, the raid members without an answer ({ missing = true }). Each row: name, v, p, flags,
--- where, at, class, self, outdated (older than the highest in the group), tooOld (protocol under
--- the keeper's minimum).
+-- where, at, class, self, m, outdated (older than the highest in the group), tooOld (protocol under
+-- the keeper's minimum), noRaid (Amisia without the raid module: neither outdated nor too old, F-202).
 function ns.VersionRows()
     local rows, me = {}, ns.UnitFullName("player")
     local inRaid = homeRaid()
     rows[1] = { name = me or "?", v = ns.VERSION, p = ns.SYNC_PROTO, mp = ns.SYNC_MIN_PROTO, flags = ownFlags(),
-                where = inRaid and "raid" or "guild", at = time(), self = true }
+                where = inRaid and "raid" or "guild", at = time(), self = true, m = ownModules() }
     for _, e in ipairs(ns.VersionSeen()) do
         if not ns.SameName(e.name, me) then rows[#rows + 1] = e end
     end
@@ -372,16 +395,18 @@ function ns.VersionRows()
         r.class = r.class or classOf(r.name)
         r.keeper = keeper ~= nil and ns.SameName(r.name, keeper)
         if r.v then
-            r.outdated = top ~= nil and ns.CompareVersion(r.v, top) < 0
-            r.tooOld = keeperMin ~= nil and (r.p or 0) < keeperMin
+            r.noRaid = ns.VersionWithoutRaid(r) or nil
+            r.outdated = not r.noRaid and top ~= nil and ns.CompareVersion(r.v, top) < 0
+            r.tooOld = not r.noRaid and keeperMin ~= nil and (r.p or 0) < keeperMin
         end
     end
     return rows
 end
 
--- "Hüter", "Offizier", "Raider" or "-".
+-- "Hüter", "Offizier", "Raider", "ohne Raid" or "-".
 function ns.VersionView(r)
     if r.missing or not r.flags then return "-" end
+    if r.noRaid then return L["ohne Raid"] end
     if r.keeper then return L["Hüter"] end
     if r.flags:find("O", 1, true) then return L["Offizier"] end
     return L["Raider"]

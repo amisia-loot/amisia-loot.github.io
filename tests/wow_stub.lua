@@ -106,7 +106,13 @@ STUB.tocMeta = {}
 -- the modules Amisia_Raid and Amisia_Gear a test loads, F-202); a name not listed is not installed.
 STUB.addons = {}
 _G.C_AddOns = { GetAddOnMetadata = function(addon, field)
-    if addon ~= "Amisia" then return nil end
+    if addon ~= "Amisia" then
+        -- a module: its own version (STUB.addons[name].version), else the core's TOC (one release)
+        local a = STUB.addons[addon]
+        if not a then return nil end
+        if field == "Version" and a.version then return a.version end
+        return STUB.tocMeta[field]
+    end
     return STUB.tocMeta[field]
 end }
 -- name, title, notes, loadable, reason as the client answers (an unknown name: not loadable, "MISSING")
@@ -126,6 +132,16 @@ C_AddOns.GetAddOnEnableState = function(name)
     return (a and a.enabled ~= false) and 2 or 0
 end
 C_AddOns.IsAddOnLoadOnDemand = function() return false end
+-- the AddOn list's check box for a character (F-202): the state an installed addon has after the next
+-- /reload; every call noted in STUB.addonSwitch ({ name, on, character })
+STUB.addonSwitch = {}
+local function switch(name, on, character)
+    STUB.addonSwitch[#STUB.addonSwitch + 1] = { name = name, on = on, character = character }
+    local a = STUB.addons[name]
+    if a then a.enabled = on end
+end
+C_AddOns.EnableAddOn = function(name, character) switch(name, true, character) end
+C_AddOns.DisableAddOn = function(name, character) switch(name, false, character) end
 STUB.officer = true
 _G.C_GuildInfo = { CanEditOfficerNote = function() return STUB.officer end }
 _G.MouseIsOver = function() return false end

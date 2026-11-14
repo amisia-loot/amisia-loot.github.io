@@ -3522,7 +3522,26 @@ CurseForge). Am PC zeigen die Verknüpfungen bis zum Skript aus Schritt 3 noch a
 müssen dann neu angelegt werden. Die Tests laden jeden Ordner mit eigenem `ns` und feuern `ADDON_LOADED` je Addon wie
 der Client; "--[[without raid]]" lässt den ganzen Ordner weg, und der `C_AddOns` des Stubs meldet das Modul als aus.
 
+**Nachtrag 2026-11-14 (Schritt 3):** Ob ein Modul an ist, weiß nur der Client (AddOn-Liste je Charakter), kein
+`AmisiaDB`-Schlüssel. Der Abschnitt "Module" (Allgemein, `Core/Modules.lua`) zeigt je Modul den Haken des Clients
+(`C_AddOns.GetAddOnEnableState`), ein Klick ruft `C_AddOns.EnableAddOn`/`DisableAddOn(addon, Charakter)` (alte
+Globale als Ersatz, geschützt) und fragt "Jetzt neu laden?" wie die Sprache (F-199), außer der Klick stellt wieder
+her, was gerade läuft. Ein Modul, das nicht installiert ist oder auf diesem Client nicht lädt (Ausrüstung außerhalb
+von Forever), steht grau mit Hinweis da. `/amisia module` (`modules`) listet Kern und Module mit Version und Zustand
+(an, aus, fehlt, nur WoW Forever; "nach /reload", solange die Liste anders sagt als läuft). Halbes Update: einmal
+pro Login, 8 s danach, eine Chatzeile, wenn ein geladenes Modul eine andere `## Version` hat als der Kern oder ein
+Modul, das hier laden kann, gar nicht installiert ist (das verlässliche Zeichen für "nur den Ordner Amisia
+ersetzt"); ein abgehaktes Modul ist eine Wahl und bekommt keinen Hinweis. Versionsruf: `HI` hat ein 5. Feld mit den
+geladenen Modulen (`r` Raid, `g` Ausrüstung, z. B. `rg`, `g`, leer), je Absender als `m` in `sync.seen`; ohne Feld
+(ältere Versionen) zählt "alle", alles außer höchstens 8 Kleinbuchstaben wird verworfen. Wer ohne Raid-Modul läuft,
+steht in Raid-Check und Versionsliste als "ohne Raid" (nicht veraltet, nicht zu alt), "Wer braucht das?" erwartet
+von ihm keine Antwort, und der Abgleich gibt ihm als Offizier keinen Offiziersteil. Raid-Nachrichten an einen Client
+ohne Raid-Modul laufen ins Leere (keine Empfänger registriert), ohne Lua-Fehler. Die Module haben eigene Symbole
+(`Media/Icons/Amisia_Raid.tga`, `Amisia_Gear.tga`, `tools/make_icons.py`: das Amisia-Symbol mit einer runden Plakette
+unten rechts, Würfel bzw. Schild wie die Reiter). Am PC legt `tools/install_junctions.ps1` die Verknüpfungen je
+Ordner an (`Amisia_Gear` nur in `_forever_`) und entfernt dabei nur Verknüpfungen, nie echte Ordner.
+
 **Durchgesetzt durch:** `tools/tests/test_module_deps.py` (Mitgliedschaft, keine ungeprüfte Verwendung, nichts
 Späteres beim Laden, Texte im richtigen Locale-File), `tests/test_without_raid.lua` und `tests/test_without_gear.lua`
 (jede Seite und jedes Fenster ohne das Modul, `tests/run.py` mit "--[[without raid]]"), `tests/test_registry.lua`
-(unbekannte Einstellungen bleiben), `tests/test_module_load.lua` (geteilter Namensraum, Reihenfolge, Warten, PLAYER_LOGIN, spät geladenes Modul), `tools/tests/test_load_order.py::test_a_module_shares_the_core_namespace`, `build.py check` (jede TOC gegen ihren Ordner).
+(unbekannte Einstellungen bleiben), `tests/test_module_load.lua` (geteilter Namensraum, Reihenfolge, Warten, PLAYER_LOGIN, spät geladenes Modul), `tools/tests/test_load_order.py::test_a_module_shares_the_core_namespace`, `build.py check` (jede TOC gegen ihren Ordner); Schritt 3: `tests/test_modules.lua`, `tests/test_modules_tbc.lua`, `tests/test_modules_without_raid.lua` (Abschnitt, Befehl, Hinweis), `tests/test_without_raid_comm.lua` (Feld `m`, "ohne Raid", Raid-Nachrichten ohne Raid-Modul), `tests/test_version.lua`, `tools/tests/test_install_junctions.py`.

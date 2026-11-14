@@ -43,7 +43,9 @@ local function fillRow(row, r)
     end
     row.name:SetText(classColored(r.name, r.class))
     local v = tostring(r.v or "-")
-    if r.self and r.tooOld then
+    if r.noRaid then
+        v = colored(GREY, v)
+    elseif r.self and r.tooOld then
         v = colored(RED, v)
     elseif r.outdated or r.tooOld then
         v = colored(ORANGE, v)
@@ -152,12 +154,13 @@ ns.RegisterPanel{ key = "about", label = L["Über und Befehle"], sub = L["Versio
             end
         end
         local rows = available and ns.VersionRows() or {}
-        local raidRows, withAmisia, outdated, guildRows = 0, 0, 0, 0
+        local raidRows, withAmisia, outdated, noRaid, guildRows = 0, 0, 0, 0, 0
         for _, r in ipairs(rows) do
             if r.where == "raid" then
                 raidRows = raidRows + 1
                 if r.v then withAmisia = withAmisia + 1 end
                 if r.outdated or r.tooOld then outdated = outdated + 1 end
+                if r.noRaid then noRaid = noRaid + 1 end
             else
                 guildRows = guildRows + (r.self and 0 or 1)
             end
@@ -169,7 +172,7 @@ ns.RegisterPanel{ key = "about", label = L["Über und Befehle"], sub = L["Versio
         end
         if inRaid then
             f.summary:SetText(L["Raid: %d von %d mit Amisia%s · %s"]:format(withAmisia, math.max(#ns.GroupRoster(), raidRows),
-                outdated > 0 and L[" · %d veraltet"]:format(outdated) or "", guildText))
+                (outdated > 0 and L[" · %d veraltet"]:format(outdated) or "") .. (noRaid > 0 and L[" · %d ohne Raid"]:format(noRaid) or ""), guildText))
         else
             f.summary:SetText(guildText)
         end
