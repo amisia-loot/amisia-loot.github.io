@@ -38,7 +38,7 @@ local function hm(t) return date("%H:%M", t or 0) end
 -- "05.10." (English "Oct 5") from "2026-10-05".
 local shortDate = ns.SoftResShortDate
 
-local byId, ordered = W.RaidById, W.RaidsNewestFirst
+local byId, ordered = ns.RaidById, ns.RaidsNewestFirst
 
 -- Tonight's bench before the raid, without creating it.
 local function tonightBench()

@@ -256,6 +256,22 @@ comparison marks, map and map pins), `Data/` (only generated files, from the bui
 `UI/` (theme, widgets, main window) and `UI/Pages/`, plus `Media/` and `LICENSES/`. The TOC loads
 them in dependency order; `build.py check` fails when a file is missing from it.
 
+### Modules (modules.py, F-202, D-130)
+
+Every addon file belongs to the core, the raid module or the gear module ("Ausrüstung & Dungeons");
+`tools/modules.py` holds the list and the check that the core calls no module and the modules call each
+other only guarded (the rule in `modules.check()`), run by `tools/tests/test_module_deps.py`.
+
+```
+python3 tools/modules.py            every forbidden reference, one line each (exit code 1 if any)
+python3 tools/modules.py files      the files of each part in TOC order
+python3 tools/modules.py symbols    the ns symbols each part defines
+```
+
+A Lua test with a line `--[[without raid]]` or `--[[without gear]]` runs without that module's files
+(`tests/run.py`); `tests/test_without_raid.lua` and `tests/test_without_gear.lua` open every page and
+window that way (`tests/module_scene.lua`).
+
 ### Lazy data
 
 The big generated files (`GearData`, `GearNoSource`, `GearWeights`, `MapData`, `QuestData`, `QuestItemData`, `ProfessionData`, `TalentData`, `MageScrollData`, `RaidCheckData`, `ScanDone`)

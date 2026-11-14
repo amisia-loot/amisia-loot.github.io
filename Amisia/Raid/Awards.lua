@@ -40,26 +40,11 @@ local function assign(a, src)
     for k, v in pairs(src) do a[k] = v end
 end
 
--- A note without bars and line breaks, trimmed and cut to max bytes (default NOTE_MAX) without
--- splitting a character; nil when nothing is left.
+-- A note without bars and line breaks, trimmed and cut to max bytes (default NOTE_MAX); the core's
+-- (Core/Registry.lua, F-202: the gear module's wishes use it too).
 local function cleanNote(text, max)
-    if type(text) ~= "string" then return nil end
-    max = tonumber(max) or NOTE_MAX
-    text = text:gsub("[\r\n]+", " "):gsub("|", ""):match("^%s*(.-)%s*$")
-    if #text > max then
-        local cut = max
-        -- a byte 10xxxxxx continues a character: step back to the character's start
-        while cut > 0 do
-            local b = text:byte(cut + 1)
-            if not b or b < 0x80 or b >= 0xC0 then break end
-            cut = cut - 1
-        end
-        text = text:sub(1, cut):match("^(.-)%s*$")
-    end
-    if text == "" then return nil end
-    return text
+    return ns.CleanNote(text, tonumber(max) or NOTE_MAX)
 end
-ns.CleanNote = cleanNote
 
 local function idUsed(s, id)
     for _, a in ipairs(s.awards or {}) do if a.id == id then return true end end

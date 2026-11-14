@@ -789,24 +789,6 @@ function W.RefreshOnItemNames(missing, shown)
     end)
 end
 
--- The recorded raid of an id (the pages Raid-Log and Vergaben).
-function W.RaidById(id)
-    for _, s in ipairs(ns.Sessions()) do
-        if s.id == id then return s end
-    end
-    return nil
-end
-
--- The raids newest first, the running recording in front.
-function W.RaidsNewestFirst()
-    local src, out, act = ns.Sessions(), {}, ns.Active()
-    if act then out[1] = act end
-    for i = #src, 1, -1 do
-        if src[i] ~= act then out[#out + 1] = src[i] end
-    end
-    return out
-end
-
 local GetItemInfo = C_Item.GetItemInfo
 -- An item's name in its quality colour (the saved names' quality, else the client's; white without).
 function W.ItemText(id)

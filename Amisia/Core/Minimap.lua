@@ -73,7 +73,10 @@ function ns.MinimapMenuEntries(group)
             tip = L["Das Fenster mit den Cooldowns und Einteilungen der Raidleitung."] }
     end
     e[#e + 1] = { L["Einstellungen"], function() ns.ShowPage("settings") end }
-    e[#e + 1] = { ns.IsEnabled() and L["Aufnahme pausieren"] or L["Aufnahme fortsetzen"], function() ns.SetEnabled(not ns.IsEnabled()) end }
+    -- the raid recording's switch (the raid module, F-202)
+    if ns.HasModule("raid") then
+        e[#e + 1] = { ns.IsEnabled() and L["Aufnahme pausieren"] or L["Aufnahme fortsetzen"], function() ns.SetEnabled(not ns.IsEnabled()) end }
+    end
     return e
 end
 

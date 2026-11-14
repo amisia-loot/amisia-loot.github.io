@@ -424,6 +424,7 @@ local function sectionComm(R)
             s = list[#list]
         end
         if not s then return "WERT", L["noch kein Raid aufgezeichnet"] end
+        if not ns.SyncBuild then return "WERT", L["nicht geladen"] end
         local sp, so = ns.SyncBuild(s)
         local pp, err = ns.CommPack(sp)
         local po = pp and ns.CommPack(so)
@@ -523,7 +524,7 @@ local function sectionMap(R, opts)
         check(R, c[1], function()
             if not fn(c[1]) then return "WERT", L["fehlt (Amisia zeigt die eigenen %s)"]:format(c[3]) end
             if not map then return "WERT", L["keine Karte"] end
-            if not (ns.Map and ns.Map.ClientPlaces) then return "WERT", L["keine Karte"] end
+            if not ns.Map or not ns.Map.ClientPlaces then return "WERT", L["keine Karte"] end
             local has, n, provider, pins = ns.Map.ClientPlaces(c[2], map)
             return "WERT", (has and L["Karte %d: %d Einträge, Anzeige der Karte %s, %d Pins des Spiels (Amisia zeigt keine eigenen %s)"]
                 or L["Karte %d: %d Einträge, Anzeige der Karte %s, %d Pins des Spiels (Amisia zeigt die eigenen %s)"]):format(map, n or 0, show(provider), pins or 0, c[3])
@@ -679,7 +680,7 @@ end
 local artTexture, artModel, dollModel
 local function sectionArt(R)
     local A = ns.DUNGEON_ART
-    if type(A) ~= "table" or type(A.D) ~= "table" then
+    if not A or type(A) ~= "table" or type(A.D) ~= "table" then
         add(R, FEHLT, L["Dungeonbilder"], L["keine Bilddaten"])
         return
     end
@@ -1413,14 +1414,14 @@ local function sectionData(R)
             d.bosses or 0, show(d.newest))
     end)
     check(R, L["Quellen-Sammler"], function()
-        if not ns.CollectCounts then return "WERT", L["nicht geladen"] end
+        if not ns.CollectCounts or not ns.CollectBytes then return "WERT", L["nicht geladen"] end
         if ns.CollectDB then ns.CollectDB() end
         local c, sy = ns.CollectCounts(), ns.CollectSyncStats and ns.CollectSyncStats() or {}
         return "WERT", L["%d Quests, %d Händler, %d Weltdrop-NPCs, %s; gelernt %d, gesendet %s"]:format(c.q, c.s, c.w,
             kb(ns.CollectBytes()), (sy.new or 0) + (sy.merged or 0), kb(sy.bytes or 0))
     end)
     check(R, L["Hersteller der Gilde"], function()
-        if not ns.Crafters then return "WERT", L["nicht geladen"] end
+        if not ns.Crafters or not ns.CraftersStats then return "WERT", L["nicht geladen"] end
         local n = 0
         for _ in pairs(type(db.crafters) == "table" and type(db.crafters.c) == "table" and db.crafters.c or {}) do n = n + 1 end
         local st = ns.CraftersStats()

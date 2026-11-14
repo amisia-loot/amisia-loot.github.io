@@ -210,7 +210,7 @@ local function answerFor(id)
         local total = type(u.total) == "number" and ("-%d"):format(clamp(math.floor(u.total * 10 + 0.5), 0, MAX_TENTHS)) or ""
         return ("%d:U:%d:%d:%s%s"):format(id, clamp(math.floor(u.gain + 0.5), 0, MAX_GAIN), clamp(u.pct or 999, 0, 999), slot, total)
     end
-    local c = ns.BisChar()
+    local c = ns.BisChar and ns.BisChar()
     local w = c and type(c.wish) == "table" and c.wish[id]
     if type(w) == "table" then
         return ("%d:W:%d:0:-"):format(id, clamp(math.floor(tonumber(w.prio) or 2), 1, 3))

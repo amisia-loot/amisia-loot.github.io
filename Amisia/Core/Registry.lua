@@ -30,6 +30,14 @@ ns.GAME = gameOf()
 ns.FOREVER = ns.GAME == "forever"
 ns.GAME_NAMES = { forever = "WoW Forever", tbc = "TBC Anniversary", era = "Classic Era" }
 
+-- The modules (F-202, D-130): "raid" (Amisia_Raid) and "gear" (Amisia_Gear, Ausrüstung & Dungeons). A
+-- module's first file (Raid/Module.lua, Gear/Module.lua) marks it loaded. The core uses a module's code
+-- only behind ns.HasModule or a check of the symbol itself, and the modules each other the same way
+-- (tools/modules.py checks it); a module that is not there is then simply missing, without an error.
+-- Ask in a function, not while the files load: a module's mark comes with its files.
+ns.MODULES = {}
+function ns.HasModule(key) return ns.MODULES[key] == true end
+
 local function byOrder(a, b)
     local oa, ob = a.order or 99, b.order or 99
     if oa ~= ob then return oa < ob end
@@ -58,6 +66,36 @@ function ns.StripCodes(s, rep)
     s = s:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|cn[%w_]+:", ""):gsub("|r", ""):gsub("|H.-|h", ""):gsub("|h", "")
     s = s:gsub("|T.-|t", ""):gsub("|A.-|a", ""):gsub("|", rep or "")
     return s
+end
+
+-- A note without bars and line breaks, trimmed and cut to max bytes (default 60) without splitting
+-- a character; nil when nothing is left. (Was Raid/Awards.lua's; the raid and the gear module use it.)
+function ns.CleanNote(text, max)
+    if type(text) ~= "string" then return nil end
+    max = tonumber(max) or 60
+    text = text:gsub("[\r\n]+", " "):gsub("|", ""):match("^%s*(.-)%s*$")
+    if #text > max then
+        local cut = max
+        -- a byte 10xxxxxx continues a character: step back to the character's start
+        while cut > 0 do
+            local b = text:byte(cut + 1)
+            if not b or b < 0x80 or b >= 0xC0 then break end
+            cut = cut - 1
+        end
+        text = text:sub(1, cut):match("^(.-)%s*$")
+    end
+    if text == "" then return nil end
+    return text
+end
+
+-- Whole days since a date "YYYY-MM-DD" (t.date; default: the soft-reserve list's), or nil without one.
+-- (Was Raid/SoftRes.lua's; the gear module's guild wishes use it too.)
+function ns.SoftResAge(sr)
+    sr = sr or (AmisiaDB and AmisiaDB.softres)
+    local y, m, d = tostring(sr and sr.date or ""):match("^(%d+)-(%d+)-(%d+)$")
+    if not y then return nil end
+    local t = time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 })
+    return t and math.max(0, math.floor((time() - t) / 86400)) or nil
 end
 
 -- Whether v is a whole number from lo to hi (either bound may be left out).
@@ -457,7 +495,9 @@ function ns.Reset(path)
 end
 
 -- Called by Core on ADDON_LOADED: moves the flat settings of 1.3 into their sections once and drops
--- stored values that no longer pass (a changed range, a hand-edited file).
+-- stored values of registered settings that no longer pass (a changed range, a hand-edited file). A
+-- key no loaded part registers stays as it is: it may be a module's that is switched off (F-202,
+-- D-130); only the ordered steps of Core/Migrate.lua remove old keys.
 function ns.ApplySettings(root)
     root.settings = root.settings or {}
     local s = root.settings

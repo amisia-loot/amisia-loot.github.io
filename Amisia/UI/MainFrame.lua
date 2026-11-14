@@ -43,20 +43,20 @@ local SIDE_WINDOWS = {
     { key = "talents", label = L["Talentrechner"], group = "talents", after = "talents", frame = "AmisiaTalentFrame",
       tip = L["Talente planen, im großen Fenster."],
       visible = function() return ns.Talents ~= nil and ns.Talents.Available() and ns.ToggleTalentFrame ~= nil end,
-      toggle = function() ns.ToggleTalentFrame() end },
+      toggle = function() if ns.ToggleTalentFrame then ns.ToggleTalentFrame() end end },
     { key = "rolls", label = L["Würfelfenster"], group = "raid", after = "rolls", frame = "AmisiaRollFrame",
       tip = L["Die laufende Würfelrunde: Würfe in Reihenfolge, Vergeben, Stechen."],
       visible = function() return ns.IsOfficerView() and ns.ToggleRollFrame ~= nil end,
-      toggle = function() ns.ToggleRollFrame() end },
+      toggle = function() if ns.ToggleRollFrame then ns.ToggleRollFrame() end end },
     { key = "softres", label = L["Soft-Reserve-Import"], row = L["Importieren"], group = "raid", after = "softres", frame = "AmisiaSoftResFrame",
       tip = L["Eine Soft-Reserve-Liste einfügen, prüfen und übernehmen."],
       visible = function() return ns.IsOfficerView() and ns.ToggleSoftResFrame ~= nil end,
-      toggle = function() ns.ToggleSoftResFrame() end },
+      toggle = function() if ns.ToggleSoftResFrame then ns.ToggleSoftResFrame() end end },
     -- F-185: the window "Layer" (Forever only, Gear/LayerWindow.lua), at the end of the tab Gilde
     { key = "layer", label = L["Layer"], group = "guild", frame = "AmisiaLayerFrame",
       tip = L["Dein Layer in dieser Zone und der Wechsel in der Gilde."],
       visible = function() return ns.LayerWindow ~= nil end,
-      toggle = function() ns.LayerWindow.Toggle() end },
+      toggle = function() if ns.LayerWindow then ns.LayerWindow.Toggle() end end },
 }
 
 -- settings.window: the place (point, rel, x, y), the dragged height (h, H_MIN to H_MAX; nil: HEIGHT)
@@ -169,8 +169,12 @@ local function errorPage(parent, err)
 end
 
 local function updateHeader()
-    local act = ns.Active and ns.Active()
-    if act then
+    -- the raid recording's state, with the raid module only (F-202)
+    local raid = ns.HasModule("raid")
+    local act = raid and ns.Active()
+    if not raid then
+        statusText:SetText("")
+    elseif act then
         local late = ns.LateCount(act)
         statusText:SetText(("%s|cff4fbf7a%s|r · %s%s"):format(DOT, act.zone or "?", L["%d Raider"]:format(ns.MemberCount(act)),
             late > 0 and (" · |cffe0a344" .. L["%d zu spät"]:format(late) .. "|r") or ""))
@@ -214,14 +218,16 @@ end
 -- The menu behind the status line (D-67): the recording and the view, which were two red buttons in
 -- the head. Each entry says what a click does; its tip says more.
 local function headMenu()
-    local menu = {
-        { ns.IsEnabled() and L["Aufnahme pausieren"] or L["Aufnahme fortsetzen"], function()
+    local menu = {}
+    -- the raid recording's switch, with the raid module only (F-202)
+    if ns.HasModule("raid") then
+        menu[1] = { ns.IsEnabled() and L["Aufnahme pausieren"] or L["Aufnahme fortsetzen"], function()
             ns.SetEnabled(not ns.IsEnabled())
             ns.Refresh()
         end, tip = ns.IsEnabled()
             and L["Pausiert die Raid-Aufnahme: Teilnehmer, Bosse und Beute werden nicht mehr mitgeschrieben. Die Pause bleibt auch nach einem /reload, bis du sie hier fortsetzt (oder im Schnellmenü der Minimap, /amisia pause)."]
-            or L["Die Raid-Aufnahme ist pausiert. \"Aufnahme fortsetzen\" schaltet sie wieder an; sie startet dann von selbst in einer Raidinstanz mit Raidgruppe."] },
-    }
+            or L["Die Raid-Aufnahme ist pausiert. \"Aufnahme fortsetzen\" schaltet sie wieder an; sie startet dann von selbst in einer Raidinstanz mit Raidgruppe."] }
+    end
     -- the switch only for whoever may have the officer view (D-87)
     if ns.MayOfficerView() then
         menu[#menu + 1] =
@@ -1260,9 +1266,11 @@ local function build()
     dragMoves(bar)
     local function statusTip(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        GameTooltip:AddLine(L["Raid-Aufnahme"], 1, 0.82, 0)
-        GameTooltip:AddLine(ns.IsEnabled() and L["Aufnahme an: startet von selbst in einer Raidinstanz mit Raidgruppe."]
-            or L["Aufnahme pausiert."], 0.85, 0.85, 0.85, true)
+        if ns.HasModule("raid") then
+            GameTooltip:AddLine(L["Raid-Aufnahme"], 1, 0.82, 0)
+            GameTooltip:AddLine(ns.IsEnabled() and L["Aufnahme an: startet von selbst in einer Raidinstanz mit Raidgruppe."]
+                or L["Aufnahme pausiert."], 0.85, 0.85, 0.85, true)
+        end
         GameTooltip:AddLine(ns.IsOfficerView() and L["Ansicht: Offiziere"] or L["Ansicht: Raider"], 0.85, 0.85, 0.85)
         GameTooltip:AddLine(L["Klick: pausieren, fortsetzen oder die Ansicht wechseln."], 0.6, 0.6, 0.6, true)
         GameTooltip:Show()

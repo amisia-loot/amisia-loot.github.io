@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(import): pasting a text without a block of the site no longer gives a Lua error on TBC and Era (F-202)
+
+    On TBC Anniversary and Classic Era, a pasted text that held none of the site's blocks (Points page,
+    "Einfügen") ran into the guild wishes, which exist on WoW Forever only. Amisia now says "No block of the
+    site recognised." instead. Behind it, Amisia's parts were sorted into a core, a raid part and a gear and
+    dungeons part that only call each other after checking the other is there, the first step towards switching
+    them on and off one by one.
+
 - feat(map): a target window with a compass for your target and the client's map pin (F-203)
 
     The small arrow to a target is now a window: a compass that turns with you and points to the target, the

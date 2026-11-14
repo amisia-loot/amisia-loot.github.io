@@ -44,7 +44,8 @@ end
 
 -- When the character's raid ID of instance inst runs out (Raid/RaidIDs.lua), or nil.
 local function lockEnd(inst)
-    local me = ns.RaidIDOf and ns.UnitFullName and ns.UnitFullName("player")
+    if not ns.RaidIDOf then return nil end   -- the raid module's (F-202)
+    local me = ns.UnitFullName and ns.UnitFullName("player")
     if not me then return nil end
     local st, x = ns.RaidIDOf(me, inst)
     return st == "locked" and type(x) == "table" and tonumber(x.r) or nil

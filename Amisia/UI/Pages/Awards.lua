@@ -27,7 +27,7 @@ local query = ""
 ---------------------------------------------------------------------------
 -- Helpers
 ---------------------------------------------------------------------------
-local byId, ordered = W.RaidById, W.RaidsNewestFirst
+local byId, ordered = ns.RaidById, ns.RaidsNewestFirst
 
 -- "02.10." (English "Oct 2") from a raid's "2026-10-02".
 local shortDate = ns.SoftResShortDate

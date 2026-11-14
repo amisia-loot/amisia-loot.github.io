@@ -3441,3 +3441,46 @@ setzen; keine Liste mehrerer Wegpunkte (das sind die Routen, F-167).
 **Durchgesetzt durch:** `tests/test_map_arrow.lua` (Ring, Drehen, Zeit, Koordinaten, Kompakt, Menü, X),
 `tests/test_map_waypoint.lua` (Markierung des Clients, "auto", Vorrang des Amisia-Ziels, X, Ankommen, Kampf),
 `tests/test_map_data.lua` (Standards).
+
+## D-130 Module: Kern, Raid, Ausrüstung & Dungeons; der Kern ruft kein Modul, die Module sich nur geprüft
+
+**Datum:** 2026-11-14
+**Entscheidung:** Amisia besteht aus drei Teilen (F-202, Spec `docs/specs/2026-11-14-module.md`): dem Kern
+(`Amisia`), dem Raid-Modul (`Amisia_Raid`) und dem Modul "Ausrüstung & Dungeons" (`Amisia_Gear`). Welche Datei zu
+welchem Teil gehört, steht an einer Stelle, `tools/modules.py`:
+- **Ausrüstung & Dungeons:** jede Datei mit `[AllowLoadGameType camelot]`, außer `Raid/Handover.lua` und
+  `UI/Pages/Export.lua` (Raid-Funktionen nur auf Forever, sie gehören zum Raid und behalten ihre Markierung); dazu
+  `Gear/Module.lua`, `Core/SelfTestLayer.lua` (jetzt auch camelot) und `Locales/enUS_gear.lua`, `enUS_world.lua`.
+- **Raid:** `Raid/*` außer `Raid/Alts.lua` (Twinks sind Kern), die Raid-Seiten und -Fenster (`UI/Pages/Raids`,
+  `Lineup`, `RaidCheck`, `RaidLogRolls`, `RaidLog`, `Rolls`, `RaidNote`, `Awards`, `Stats`, `Points`, `SoftRes`, `Bank`,
+  `Members`, `Calendar`, `Export`), `UI/SoftResImport.lua`, `UI/Signup.lua`, `UI/RaidCalendar.lua`, `UI/Setup.lua`
+  (der Einrichtungsassistent stellt nur Raid-Einstellungen ein), `Core/SelfTestCalendar.lua`,
+  `Core/SelfTestCalendarWrite.lua`, `Core/SelfTestGroup.lua` (Selbsttests nur der Raid-Teile) und
+  `Locales/enUS_raid.lua`, `enUS_raid2.lua`, `enUS_raidcheck.lua`. Die Aufnahme (Sitzungen, Beute, Gildenbank,
+  Export) zieht aus `Core/Core.lua` nach `Raid/Record.lua`.
+- **Kern:** alles andere, auch `UI/LootToast.lua` (die Item-Anzeige gilt für jede Beute) und `Core/SelfTestData.lua`.
+
+Richtung: Ein Modul darf den Kern direkt aufrufen. Der Kern ruft ein Modul und die Module rufen sich gegenseitig
+nur geprüft auf (`if ns.X then`, `ns.X and ns.X.f()`, `if not ns.X then return end` oder `ns.HasModule("raid")`
+bzw. `"gear"`), sonst über die Registry (Seiten, Karten, Einstellungen, Befehle) und `ns.Fire`/`ns.Listen`/
+`ns.OnEvent`. Was beim Laden einer Datei läuft, nennt keinen Teil, der später lädt (Reihenfolge Kern, Raid,
+Ausrüstung). Hilfen, die mehrere Teile brauchen, liegen im Kern (`ns.CleanNote`, `ns.SoftResAge`,
+`ns.UpgradePctText`, `ns.UpgradeSortValue`). Ein Text, den der Kern oder beide Module brauchen, steht in
+`enUS_core.lua` (oder `enUS_selftest.lua`). Jedes Modul meldet sich in seiner ersten Datei (`Raid/Module.lua`,
+`Gear/Module.lua`: `ns.MODULES`). Einstellungen: `ns.ApplySettings` lässt jeden Schlüssel stehen, den kein geladener
+Teil anmeldet; nur die Schritte von `Core/Migrate.lua` entfernen alte Schlüssel.
+
+**Grund:** Spec F-202, Nutzer 2026-11-14: "Passt so" (drei Teile, Schritt für Schritt, jeder grün). Schritt 1
+stellt die Richtung her, solange noch alles in `Amisia/` liegt; Schritt 2 verschiebt die Dateien in die Ordner,
+Schritt 3 bringt Schalter, `/amisia module` und den Versionsruf.
+
+**Folge:** Ein fehlendes Modul heißt: seine Seiten, Karten, Einstellungen und Befehle gibt es nicht, alles andere läuft
+ohne Lua-Fehler weiter; ohne Raid zeichnet Amisia nichts auf. Ein neuer Aufruf über die Grenze braucht eine Prüfung,
+eine neue Datei einen Eintrag in `tools/modules.py` (sonst ist sie Kern), ein neues Seitenfenster in
+`tests/ui_scene.lua` sein Modul. Offen für Schritt 2: `name == ADDON` in Modul-Dateien und
+`Interface\AddOns\Amisia\` in Pfaden.
+
+**Durchgesetzt durch:** `tools/tests/test_module_deps.py` (Mitgliedschaft, keine ungeprüfte Verwendung, nichts
+Späteres beim Laden, Texte im richtigen Locale-File), `tests/test_without_raid.lua` und `tests/test_without_gear.lua`
+(jede Seite und jedes Fenster ohne das Modul, `tests/run.py` mit "--[[without raid]]"), `tests/test_registry.lua`
+(unbekannte Einstellungen bleiben).

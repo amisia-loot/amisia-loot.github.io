@@ -46,8 +46,9 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du es danach wieder anhakst und einloggst, dann sind Planer-Ziele, Routen, Bestzeiten und deren Einstellungen unverändert da.
 - Prüfung: Wenn du "Amisia: Raid" abhakst, dann laufen Planer, Dungeons und Karte ohne Lua-Fehler, und im Raid zeichnet Amisia nichts auf.
 - Prüfung: Wenn du in den Einstellungen unter "Module" ein Modul ausschaltest und "Neu laden" klickst, dann ist es danach in der AddOn-Liste abgehakt.
-- Prüfung: Wenn du auf TBC Anniversary einloggst, dann lädt der Raid-Teil wie bisher, und "Ausrüstung & Dungeons" fehlt ohne Fehler.
+- Prüfung: Wenn du auf TBC Anniversary einloggst, dann lädt der Raid-Teil wie bisher, "Ausrüstung & Dungeons" fehlt ohne Fehler, und ein Text ohne Block der Website auf der Seite Punkte unter "Einfügen" meldet "Kein Block der Website erkannt." statt eines Lua-Fehlers.
 - Notiz: Spec `docs/specs/2026-11-14-module.md`; erst nach F-199. Am PC einmal neue Verknüpfungen (Skript kommt mit).
+- Notiz: Schritt 1 von 3 (D-130): noch ein Ordner; die Aufnahme liegt in `Raid/Record.lua`, Kern und Module rufen sich nur geprüft auf (`tools/modules.py`, `tools/tests/test_module_deps.py`, `tests/test_without_raid.lua`, `tests/test_without_gear.lua`).
 
 ### F-199 Sprache wählen: Deutsch oder Englisch, Standard die Clientsprache
 - Version: -

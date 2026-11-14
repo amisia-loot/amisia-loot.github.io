@@ -1074,27 +1074,8 @@ function ns.BisStatsChange(outS, inS, place, opts)
     return mc and mc.total, score
 end
 
--- "+1,6 %", "-0,4 %", "+12 %" (whole numbers from 10 on).
-local function pctText(x)
-    local a = math.abs(x)
-    return (x < 0 and "-" or "+") .. Gear.Num(a, a < 10 and 1 or 0) .. " %"
-end
-ns.UpgradePct = pctText
-
--- The percent of an upgrade as shown everywhere: { total } (the whole output), else { pct } (the
--- slot's score, an answer of an older Amisia: alt), 999 or nothing: "neu".
-function ns.UpgradePctText(e)
-    if type(e) ~= "table" then return L["neu"] end
-    if type(e.total) == "number" then return pctText(e.total) end
-    if type(e.pct) ~= "number" or e.pct == 999 then return L["neu"] end
-    return ("%+d %%"):format(e.pct) .. (e.alt and L[" (alt)"] or "")
-end
--- The order of such entries: whole-output percents first, then old slot percents.
-function ns.UpgradeSortValue(e)
-    if type(e.total) == "number" then return e.total end
-    if e.pct == 999 then return 1e6 end
-    return -1e6 + (tonumber(e.pct) or 0)
-end
+-- "+1,6 %", "-0,4 %", "+12 %": the core's, with the upgrade texts every part shows (Core/Core.lua)
+local pctText = ns.UpgradePct
 
 -- The spec of an upgrade as the tooltip names it: "Verstärkung" or "Verstärkung, geraten".
 local function specText(u)

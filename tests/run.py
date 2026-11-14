@@ -30,6 +30,9 @@ the addon, ADDON_LOADED). The test text itself runs in a director runtime of its
   BUS.count(filter)    sent messages matching filter (prefix, kind, chan, sender, target, from, to
                        (stub clock), or a function)
 
+Modules (F-202, D-130): a test file with a line "--[[without raid]]" or "--[[without gear]]" in its first
+lines runs without the files of that module (tools/modules.py), as a client where it is switched off.
+
 Clients: a test file with a line "--[[game tbc]]" or "--[[game era]]" in its first lines runs as that
 client: only the TOC files whose load condition lets it load them, WOW_PROJECT_ID of that client,
 STUB.toc its interface number and STUB.classicTabs the classic tab template (D-57).
@@ -53,6 +56,8 @@ from lupa.lua51 import LuaRuntime
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import textwidth  # noqa: E402 - the shared text width estimate
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'tools'))
+import modules  # noqa: E402 - which file belongs to which module (F-202, D-130)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ADDON = os.path.join(ROOT, 'Amisia')
@@ -154,6 +159,16 @@ if C_TooltipInfo then C_TooltipInfo.GetBagItem, C_TooltipInfo.GetInventoryItem =
 def file_game(source):
     m = GAME_LINE.search(source[:2000])
     return m.group(1) if m else None
+
+
+# "--[[without raid]]" (or gear) in the first lines: the module is not installed or switched off (F-202,
+# D-130); the runtime loads none of its files (tools/modules.py says which)
+WITHOUT_LINE = re.compile(r'^--\[\[without (raid|gear)\]\]\s*$', re.M)
+
+
+def file_without(source):
+    m = WITHOUT_LINE.search(source[:2000])
+    return m.group(1) if m else None
 CLIENTS = re.compile(r'\A--\[\[clients ([^\]\n]*)\]\]\n?')
 
 
@@ -190,7 +205,10 @@ def fresh(source='', player=None, setup=None, locale=None):
     lua.globals().ADDON_DIR = ADDON
     ns = lua.eval('{}')
     loader = lua.eval('function(src, name) return assert(loadstring(src, "@" .. name)) end')
+    without = file_without(source)
     for name in toc_files(game):
+        if without and modules.module_of(name.replace(os.sep, '/')) == without:
+            continue
         path = os.path.join(ADDON, name)
         if not os.path.exists(path):
             continue

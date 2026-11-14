@@ -430,7 +430,7 @@ local function buildBox(r, w)
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     b:SetScript("OnClick", function(self, button)
         local e, p = self:GetParent().item, self.prof
-        if button ~= "RightButton" and e and recipesOpen(p) then
+        if button ~= "RightButton" and e and recipesOpen(p) and ns.ShowMemberRecipes then
             ns.ShowMemberRecipes(e.name, p.skill)
             return
         end

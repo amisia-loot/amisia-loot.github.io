@@ -267,7 +267,8 @@ end
 local ownList, ownAt
 local function ownProfessions()
     if not ownAt or GetTime() - ownAt > 10 then
-        ownList, ownAt = ns.Prof.Own and ns.Prof.Own() or {}, GetTime()
+        local Pr = ns.Prof
+        ownList, ownAt = Pr and Pr.Own and Pr.Own() or {}, GetTime()
     end
     return ownList
 end
@@ -327,10 +328,10 @@ end
 
 -- The icons in a row ("|T...:14:14|t ..."), nil without any.
 function UI.ProfIcons(name)
-    local keys = UI.Professions(name)
-    if not keys then return nil end
+    local keys, Pr = UI.Professions(name), ns.Prof
+    if not keys or not Pr then return nil end
     local parts = {}
-    for i, key in ipairs(keys) do parts[i] = ("|T%s:%d:%d|t"):format(ns.Prof.ICONS[key], S.ICON, S.ICON) end
+    for i, key in ipairs(keys) do parts[i] = ("|T%s:%d:%d|t"):format(Pr.ICONS[key], S.ICON, S.ICON) end
     return table.concat(parts, " ")
 end
 

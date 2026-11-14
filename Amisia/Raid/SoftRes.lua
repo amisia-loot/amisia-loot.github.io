@@ -725,14 +725,7 @@ function ns.SoftResShortDate(iso)
     return ns.FmtDay(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 }))
 end
 
--- Whole days since the list was loaded, or nil without a list or date.
-function ns.SoftResAge(sr)
-    sr = sr or (AmisiaDB and AmisiaDB.softres)
-    local y, m, d = tostring(sr and sr.date or ""):match("^(%d+)-(%d+)-(%d+)$")
-    if not y then return nil end
-    local t = time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 })
-    return t and math.max(0, math.floor((time() - t) / 86400)) or nil
-end
+-- ns.SoftResAge (whole days since the list was loaded) is the core's (Core/Registry.lua, F-202).
 
 ---------------------------------------------------------------------------
 -- Tooltip

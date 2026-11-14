@@ -189,7 +189,8 @@ local function upgradeInfo(r)
     local need = ns.NeedOf and ns.NeedOf(r.item)
     info.need = need
     local me = ns.UnitFullName("player")
-    local own = ns.UpgradeOf(r.link or r.item)
+    -- the own comparison is the gear module's (Gear/Bis.lua, F-202)
+    local own = ns.UpgradeOf and ns.UpgradeOf(r.link or r.item)
     info.own = own
     for _, e in ipairs(need and need.up or {}) do
         info.up[#info.up + 1] = { name = e.name, pct = e.pct, total = e.total, alt = e.alt }
@@ -217,7 +218,7 @@ local function rollerText(info, name)
     for _, n in ipairs(info.wish) do
         if ns.SameName(n, name) then return UP_BLUE .. "W|r" end
     end
-    if info.own and ns.SameName(name, ns.UnitFullName("player")) then
+    if info.own and ns.UpgradeShort and ns.SameName(name, ns.UnitFullName("player")) then
         local short = ns.UpgradeShort(info.own)
         if short then return (info.own.later and UP_ORANGE or GREY) .. short .. "|r" end
     end

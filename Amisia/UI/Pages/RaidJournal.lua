@@ -31,7 +31,7 @@ end
 
 -- The own raid ID of a raid: "locked" and the ID, or nil.
 local function ownID(e)
-    if not (e.inst and ns.RaidIDOf and ns.UnitFullName) then return nil end
+    if not ns.RaidIDOf or not (e.inst and ns.UnitFullName) then return nil end   -- the raid module's (F-202)
     local me = ns.UnitFullName("player")
     if not me then return nil end
     local st, x = ns.RaidIDOf(me, e.inst)
@@ -77,7 +77,7 @@ local function raidTip(self)
             0.6, 0.6, 0.6)
     end
     local x = ownID(e)
-    if x then GameTooltip:AddLine(L["Deine Raid-ID: %s"]:format(ns.RaidIDText(x)), 1, 0.5, 0.25) end
+    if x and ns.RaidIDText then GameTooltip:AddLine(L["Deine Raid-ID: %s"]:format(ns.RaidIDText(x)), 1, 0.5, 0.25) end
     GameTooltip:Show()
 end
 

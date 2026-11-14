@@ -235,11 +235,13 @@ end
 function ns.ImportSiteText(text)
     local blocks = ns.SiteBlocks(text)
     if not blocks.wl and not blocks.alts and not blocks.lc and not blocks.pts and not blocks.raid then
+        -- the wishes are the gear module's (F-202): without it (and on TBC and Era) nothing reads them
+        if not ns.SetGuildWishes then return L["Kein Block der Website erkannt."], false end
         local _, why = ns.SetGuildWishes(text)
         return why, false
     end
     local parts, ok = {}, false
-    if blocks.wl then
+    if blocks.wl and ns.SetGuildWishes then
         local res, why = ns.SetGuildWishes(blocks.wl)
         if res then
             ok = true
@@ -259,7 +261,7 @@ function ns.ImportSiteText(text)
             parts[#parts + 1] = why
         end
     end
-    if blocks.lc then
+    if blocks.lc and ns.SetLootPrio then
         local res, why = ns.SetLootPrio(blocks.lc)
         if res then
             ok = true
@@ -269,7 +271,7 @@ function ns.ImportSiteText(text)
             parts[#parts + 1] = why
         end
     end
-    if blocks.pts and ns.SetPointsSite then
+    if blocks.pts and ns.SetPointsSite and ns.PointsSystemName then
         local res, why = ns.SetPointsSite(blocks.pts)
         if res then
             ok = true

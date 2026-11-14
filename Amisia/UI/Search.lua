@@ -194,6 +194,7 @@ local function recipeHits(q)
     end
     table.sort(found, byStart(q))
     local Pr, out = ns.Prof, {}
+    if not Pr then return out end
     for i = 1, math.min(#found, M.RES_MAX) do
         local e = found[i]
         out[i] = { text = e.name,

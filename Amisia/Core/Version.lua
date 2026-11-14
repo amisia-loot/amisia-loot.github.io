@@ -67,7 +67,7 @@ end
 
 local function ownKey()
     local s = ns.Active and ns.Active()
-    return (s and ns.RaidKey) and ns.RaidKey(s) or "-"
+    return s and ns.RaidKey and ns.RaidKey(s) or "-"
 end
 
 local function hello(chan, target, opts)
