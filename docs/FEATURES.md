@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-204 Fenster Layer zu einer kleinen Leiste einklappen
-- Version: -
-- Status: geplant
+- Version: 2.86.0
+- Status: gebaut
 - Prüfung: Wenn du im Fenster Layer (`/amisia layer`) oben rechts neben dem x auf das rote "-" klickst, dann wird es zu einer kleinen Leiste mit dem Layer-Symbol, groß "Layer B" (oder "Layer ?") und grau darunter der Zone (ohne bekannten Layer "Ziele einen NPC an."); ein Klick auf die Leiste öffnet das Fenster wieder an derselben Stelle.
 - Prüfung: Wenn die Leiste steht und du `/reload` machst, dann ist sie danach wieder da; in einem Dungeon verschwindet sie und draußen kommt sie wieder; ihr x schließt sie, bis du das Fenster wieder öffnest und einklappst.
 - Notiz: Nutzer 2026-11-14: "können wir das große Fenster einklappen lassen und dann so aussehen wie das zweite Bild". Wartende Antworten auf "Gilde fragen" stehen grün als "Antworten: 2" in der grauen Zeile.
@@ -69,7 +69,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-11-14-sprache-waehlen.md`; DECISIONS D-08, D-128. Namen aus dem Spiel (Gegenstände, Zonen) bleiben in der Sprache des Clients.
 
 ### F-197 [Einladen] hinter "ist jetzt online"
-- Version: 2.84.0
+- Version: 2.86.0
 - Status: gebaut
 - Prüfung: Wenn ein Gildenmitglied oder Freund online kommt, dann steht hinter "<Name> ist jetzt online." ein blaues [Einladen]; ein Klick darauf lädt ihn ein und der Chat sagt "Eingeladen: <Name>".
 - Prüfung: Wenn du in einer Gruppe bist, aber nicht Gruppenleiter (im Raid auch nicht Assistent), dann steht kein [Einladen] da; für jemanden, der schon in deiner Gruppe ist, auch nicht.
@@ -461,7 +461,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: D-82. Je Charakter gespeichert; Herstellen selbst geht nur im Berufsfenster des Spiels.
 
 ### F-152 Anzeige erhaltener Items beim Looten und bei Questbelohnungen
-- Version: 2.67.0
+- Version: 2.86.0
 - Status: gebaut
 - Prüfung: Wenn du Amisia neu hast oder "Erhaltene Items anzeigen" nie umgestellt hast, dann erscheint beim Looten kein "+Name" und kein "+92" mit Münzen mehr: die Anzeige ist ab Werk aus (Einstellungen, Item-Anzeige).
 - Prüfung: Wenn du dort "Erhaltene Items anzeigen" einschaltest und etwas lootest oder eine Quest mit Belohnung abgibst, dann steht kurz "+Name" mit dem Symbol des Items in seiner Qualitätsfarbe links über der Bildschirmmitte und blendet aus.
@@ -765,7 +765,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Erweitert F-196; keine neue Nachricht, kein neuer gespeicherter Schlüssel. Ohne Spec (kleine Ergänzung der Seite).
 
 ### F-196 Raid-Notiz für Cooldowns und Einteilungen
-- Version: 2.84.0
+- Version: 2.86.0
 - Status: gebaut
 - Braucht: Raid
 - Prüfung: Wenn ein Offizier im Raid unter Raid-Notiz Text mit `{totenkopf} Tank: Name` schreibt und "An Raid senden" klickt, dann sehen die anderen mit Amisia binnen Sekunden die Chatzeile und im Fenster den Totenkopf und den Namen in Klassenfarbe; ihre eigenen Zeilen sind gelb.
@@ -1469,7 +1469,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: 2.57.0: Seite Karte öffnet auf "Alle Zonen" (nach Zonen, nächste zuerst), Chip "Quests" (nächster Questweg-Schritt, auch als "!" auf der Weltkarte, Einstellung `map.pinsQuests`), Ansicht "Ohne Ort", Zielkarte mit Richtung und Pfeil, Knopf "Karte" je Zeile, deutsche Namen aus eigener Beobachtung.
 
 ### F-203 Zielfenster mit Kompass für Kartenmarkierung und Ziel
-- Version: 2.85.0
+- Version: 2.86.0
 - Status: gebaut
 - Prüfung: Wenn du mit Strg auf die Weltkarte klickst, dann erscheint das Fenster "Ziel" mit "Kartenmarkierung", einem Pfeil im Kompass, der beim Drehen der Figur mitdreht, der Entfernung und den Koordinaten mit Zone; beim Hinlaufen steht neben der Entfernung eine Zeit in Sekunden, die kleiner wird.
 - Prüfung: Wenn du auf "Kompakt" klickst, dann bleiben nur Kompass und Entfernung; nach `/reload` ist es weiter kompakt und an derselben Stelle.
