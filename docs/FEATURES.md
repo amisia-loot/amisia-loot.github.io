@@ -39,6 +39,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-199 Sprache wählen: Deutsch oder Englisch, Standard die Clientsprache
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du auf einem deutschen Client in den Einstellungen (Allgemein, Oberfläche) bei "Sprache" "English" wählst und "Neu laden" klickst, dann ist Amisia ganz auf Englisch: Seitenleiste, Seiten, Einstellungen, Tooltips, Chatmeldungen, Datumsangaben.
+- Prüfung: Wenn du danach `/amisia language auto` eingibst und `/reload` machst, dann ist alles wieder Deutsch; `/amisia sprache en` stellt es wieder auf Englisch.
+- Prüfung: Wenn du die Sprache nie gewählt hast, dann ist Amisia wie bisher in der Sprache des Clients.
+- Prüfung: Wenn du nach dem Wechsel einloggst, `/reload` machst oder in einen Raid kommst, dann gibt es keine Lua-Fehler, und Minimap-Symbol, Addon-Menü und Tastenbelegungen funktionieren wie vorher.
+- Notiz: Spec `docs/specs/2026-11-14-sprache-waehlen.md`; DECISIONS D-08, D-128. Namen aus dem Spiel (Gegenstände, Zonen) bleiben in der Sprache des Clients.
+
 ### F-197 [Einladen] hinter "ist jetzt online"
 - Version: 2.84.0
 - Status: gebaut
