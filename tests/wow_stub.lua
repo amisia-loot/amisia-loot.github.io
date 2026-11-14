@@ -1345,6 +1345,8 @@ function _G.CreateFrame(kind, name, parent, template)
         self.text = t
     end
     f.GetText = function(self) return self.text end
+    -- Insert puts the text at the cursor; the stub has no cursor and appends it (within the max letters)
+    f.Insert = function(self, t) self:SetText((self.text or "") .. (t or "")) end
     f.CreateFontString = function(self, _, layer, template) return region(self, "FontString", layer, template) end
     f.CreateTexture = function(self, _, layer) return region(self, "Texture", layer) end
     f.CreateMaskTexture = function(self, _, layer) return region(self, "MaskTexture", layer) end

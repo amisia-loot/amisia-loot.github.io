@@ -104,6 +104,27 @@ local p = NS.PageFrame("raidnote")
 assert(p and p:IsShown() and not p.send:IsShown() and p.readOnly, "read only")
 assert(has(p.own.box:GetText(), "Meine Zeile"))
 assert(p.note.box:GetText() == "||cffff0000rot||r", p.note.box:GetText())
+-- the raid marks (F-198): read only, a mark goes into the own note
+assert(#p.marks == 8 and p.marks[1].word == "totenkopf" and p.marks[8].word == "stern")
+p.marks[1]:Click()
+assert(p.note.box:GetText() == "||cffff0000rot||r", "the read-only field keeps its text")
+assert(p.own.box:GetText():sub(-11) == "{totenkopf}" and NS.RaidNote.Own():sub(-11) == "{totenkopf}", p.own.box:GetText())
+-- with the right: into the note's draft, unless the own note was written in last
+local canSend = NS.RaidNote.CanSend
+NS.RaidNote.CanSend = function() return true end
+AmisiaDB.raidNote.draft = "Tank: "
+p.markBox = nil
+NS.Refresh()
+assert(not p.readOnly, "the officer may edit")
+p.marks[2]:Click()
+assert(p.note.box:GetText() == "Tank: {kreuz}" and NS.RaidNote.Draft() == "Tank: {kreuz}", p.note.box:GetText())
+assert(NS.RaidNote.Render(NS.RaidNote.Draft()):find("UI-RaidTargetingIcon_7", 1, true), "the inserted word renders as the mark")
+p.own.box:SetFocus()
+p.marks[8]:Click()
+assert(NS.RaidNote.Own():sub(-7) == "{stern}" and NS.RaidNote.Draft() == "Tank: {kreuz}", "the field written in last")
+p.own.box:ClearFocus()
+NS.RaidNote.CanSend = canSend
+NS.Refresh()
 -- the settings section and the minimap menu entry
 local all = ""
 for _, e in ipairs(NS.MinimapMenuEntries()) do all = all .. e[1] .. "|" end

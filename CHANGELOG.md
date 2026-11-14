@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(raid): click a raid mark to put it into the raid note (F-198)
+
+    Raid > Raid note has a row of the eight raid marks above the note. A click puts {skull}, {cross} ... at the
+    cursor of the field you wrote in last, so you no longer have to type the codes; without the right to send the
+    raid note the mark goes into your own note.
+
 ## [v2.84.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.84.0) (2026-11-13)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.83.0...v2.84.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

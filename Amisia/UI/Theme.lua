@@ -495,10 +495,11 @@ T.QUESTITEMS = { W = 460, PAD = 12, TOP = 30, HEAD_H = 24, LIST_GAP = 6, ROWS = 
 -- "von ..." TOP under the window's top, FROM_H high, the note under it, PAD from the edges and BAR room
 -- for its scroll bar; the lock LOCK square, LOCK_GAP left of the close button. The page "Raid-Notiz"
 -- (UI/Pages/RaidNote.lua): the note's field EDIT_H high, the own note's OWN_H, GAP between the parts;
--- the template picker SET_W, the name field NAME_W, the counter COUNT_W.
+-- the template picker SET_W, the name field NAME_W, the counter COUNT_W; the row of raid marks over the
+-- note's field (F-198): each MARK square, MARK_GAP apart.
 T.RAIDNOTE = { W = 300, H = 220, EDGE_X = 220, MIN_W = 180, MIN_H = 90, MAX_W = 900, MAX_H = 800, GRIP = 16,
     TOP = 24, FROM_H = 16, PAD = 10, BAR = 10, LOCK = 16, LOCK_GAP = 2,
-    EDIT_H = 196, OWN_H = 64, GAP = 6, SET_W = 150, NAME_W = 120, COUNT_W = 140 }
+    EDIT_H = 174, OWN_H = 64, GAP = 6, SET_W = 150, NAME_W = 120, COUNT_W = 140, MARK = 20, MARK_GAP = 4 }
 
 -- The window of an item that starts a quest (F-181, Gear/QuestStart.lua, AmisiaQuestStart): W wide; the
 -- item's name in the title; TOP under the window's top the item's icon ICON square in the middle, in

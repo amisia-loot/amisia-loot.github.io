@@ -720,6 +720,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Raid und Loot
 
+### F-198 Raid-Notiz: Zielmarkierungen per Klick einfügen
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du unter Raid-Notiz in die Notiz klickst und dann in der Zeile "Markierung einfügen:" auf den Totenkopf klickst, dann steht `{totenkopf}` (englischer Client: `{skull}`) an der Schreibmarke, der Zähler geht mit, und nach "An Raid senden" zeigt das Fenster an der Stelle das Totenkopf-Symbol.
+- Prüfung: Wenn du zuletzt in "Eigene Notiz" geschrieben hast oder die Raid-Notiz nicht senden darfst, dann landet die Markierung in deiner eigenen Notiz; der Tooltip jeder Markierung nennt ihren Namen.
+- Notiz: Erweitert F-196; keine neue Nachricht, kein neuer gespeicherter Schlüssel. Ohne Spec (kleine Ergänzung der Seite).
+
 ### F-196 Raid-Notiz für Cooldowns und Einteilungen
 - Version: 2.84.0
 - Status: gebaut

@@ -2,7 +2,9 @@
 -- own note. Officers, the raid leader and assistants (guild members in the own raid) edit and send it;
 -- everyone else sees the note received there, read only. The own note below is everyone's and never
 -- travels. The head row: the template picker, the name field, "Speichern", "Löschen"; at the right
--- "Fenster zeigen". Under the note's field the counter and the red "An Raid senden".
+-- "Fenster zeigen". Over the note's field the eight raid marks (F-198): a click puts "{totenkopf}" ...
+-- (the client's language) at the cursor of the field written in last (the own note for who may not
+-- send). Under the note's field the counter and the red "An Raid senden".
 local ADDON, ns = ...
 local L = ns.L
 local W, T = ns.W, ns.Theme
@@ -58,7 +60,32 @@ local function send(f)
     ns.Refresh()
 end
 
-local function counter(f)
+-- the raid marks of the row, as the client's raid menu lists them (skull first); the word is the one
+-- RN.Render reads in the client's language
+local MARK_ROW = {
+    { 8, L["Totenkopf"], L["totenkopf##Markierung"] }, { 7, L["Kreuz"], L["kreuz##Markierung"] },
+    { 6, L["Quadrat"], L["quadrat##Markierung"] }, { 5, L["Mond"], L["mond##Markierung"] },
+    { 4, L["Dreieck"], L["dreieck##Markierung"] }, { 3, L["Diamant"], L["diamant##Markierung"] },
+    { 2, L["Kreis"], L["kreis##Markierung"] }, { 1, L["Stern"], L["stern##Markierung"] },
+}
+
+-- the field a mark goes into: the one written in last, the note's only while it may be edited
+local function markTarget(f)
+    if f.markBox == f.own.box or f.readOnly then return f.own.box, RN.SetOwn end
+    return f.note.box, RN.SetDraft
+end
+
+local counter
+
+local function insertMark(f, word)
+    local box, save = markTarget(f)
+    box:SetFocus()
+    box:Insert("{" .. word .. "}")
+    save(box:GetText() or "")
+    counter(f)
+end
+
+function counter(f)
     local text = f.note.box:GetText() or ""
     f.count:SetText(L["%d/%d Zeichen · %d/%d Zeilen"]:format(#text, RN.MAX_CHARS, RN.LineCount(text), RN.MAX_LINES))
 end
@@ -66,7 +93,7 @@ end
 ns.RegisterPanel{ key = "raidnote", label = L["Raid-Notiz"], sub = L["Cooldowns und Einteilungen für den Raid, auch im Kampf zu sehen."], icon = "Interface\\Icons\\INV_Misc_Note_02", order = 18, group = "raid",
     create = function(parent)
         local f = W.Page(parent)
-        f:Bands({ "row", "line" })
+        f:Bands({ "row", "line", "row" })
         f.sets = W.Picker(f, S.SET_W, function(v)
             local text = RN.SetText(v)
             if not text then return end
@@ -88,12 +115,28 @@ ns.RegisterPanel{ key = "raidnote", label = L["Raid-Notiz"], sub = L["Cooldowns 
         for _, b in ipairs({ f.save, f.del, f.show }) do W.FitChip(b) end
         f:Place(1, { f.sets, f.name, f.save, f.del }, { f.show })
         f.status = f:Line(2)
+        -- the raid marks (F-198)
+        f.markLabel = W.Text(f, T.FONT.hint)
+        f.markLabel:SetText(L["Markierung einfügen:"])
+        f.marks = {}
+        local row = { f.markLabel }
+        for i, m in ipairs(MARK_ROW) do
+            local b = W.IconButton(f, S.MARK, { file = "Interface\\TargetingFrame\\UI-RaidTargetingIcon_" .. m[1] }, function()
+                insertMark(f, m[3])
+            end, tostring(m[1]))
+            W.Tooltip(b, m[2], L["Setzt %s an die Schreibmarke im Feld, in dem du zuletzt geschrieben hast."]:format("{" .. m[3] .. "}"))
+            b.word = m[3]
+            f.marks[i] = b
+            row[#row + 1] = { b, gap = i == 1 and nil or S.MARK_GAP }
+        end
+        f:Place(3, row)
         local y = f.top
         f.note = W.EditArea(f)
         f.note:SetPoint("TOPLEFT", 0, y)
         f.note:SetPoint("TOPRIGHT", 0, y)
         f.note:SetHeight(S.EDIT_H)
         f.note.box:SetMaxLetters(RN.MAX_CHARS)
+        f.note.box:HookScript("OnEditFocusGained", function(self) f.markBox = self end)
         if f.note.box.SetMaxBytes then f.note.box:SetMaxBytes(RN.MAX_CHARS + 1) end
         f.note.box:HookScript("OnTextChanged", function(self, userInput)
             if self.setting then return end
@@ -127,6 +170,7 @@ ns.RegisterPanel{ key = "raidnote", label = L["Raid-Notiz"], sub = L["Cooldowns 
         f.own:SetPoint("TOPRIGHT", 0, y)
         f.own:SetHeight(S.OWN_H)
         f.own.box:SetMaxLetters(RN.MAX_OWN)
+        f.own.box:HookScript("OnEditFocusGained", function(self) f.markBox = self end)
         if f.own.box.SetMaxBytes then f.own.box:SetMaxBytes(RN.MAX_OWN + 1) end
         f.own.box:HookScript("OnTextChanged", function(self, userInput)
             if userInput and not self.setting then RN.SetOwn(self:GetText()) end
