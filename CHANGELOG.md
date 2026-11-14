@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.86.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.86.0) (2026-11-14)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.85.0...v2.86.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(invites): the name in "has come online" shows in its class colour (F-197)
 
     When a guild member or a friend comes online, their name in the game's line "<Name> has come online." now

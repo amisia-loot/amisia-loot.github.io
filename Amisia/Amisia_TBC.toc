@@ -3,7 +3,7 @@
 ## Notes: Raid loot, rolls and gear for your guild. This is Amisia's core: window, settings, overview and guild sync. The raid tools come with Amisia: Raid, the gear, dungeon and map pages with Amisia: Gear & Dungeons (WoW Forever only); all three folders belong together.
 ## Notes-deDE: Raid-Loot, Rolls und Ausrüstung für deine Gilde. Das ist der Kern von Amisia: Fenster, Einstellungen, Übersicht und Gildenabgleich. Die Raid-Werkzeuge bringt Amisia: Raid, Ausrüstung, Dungeons und Karte bringt Amisia: Ausrüstung & Dungeons (nur WoW Forever); alle drei Ordner gehören zusammen.
 ## Author: mrvulo
-## Version: 2.85.0
+## Version: 2.86.0
 ## Category: VuloUI
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia
 ## SavedVariables: AmisiaDB
