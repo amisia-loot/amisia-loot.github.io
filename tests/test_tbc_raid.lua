@@ -103,6 +103,7 @@ end
 -- the settings: the stepper's arrows draw the classic textures, the reset button stands right of its control
 NS.Dispatch("einstellungen")
 assert(NS.CurrentPage() == "settings")
+NS.ShowSettingsSection("record")
 NS.Set("record.enabled", false)
 NS.Refresh()
 local rows = NS.SettingsRows()

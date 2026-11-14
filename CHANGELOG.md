@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(settings): the tabs under Settings in A to Z order (F-200)
+
+    The list under Settings in the side bar now goes by name: Dungeons & Raids, Gear, General, Guild,
+    Professions, Raid (in German Allgemein, Ausrüstung, Berufe, Dungeons & Raids, Gilde, Raid). The tabs at the
+    top of the window keep their order.
+
 - fix(sync): no more Lua error "attempt to index local 'p'" after a long fight or dungeon (F-037, F-036)
 
     When a guild member's announcement had grown too old while nothing could be asked (in a fight or an instance)

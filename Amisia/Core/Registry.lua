@@ -295,7 +295,7 @@ end
 
 function ns.SettingItem(path) return items[path] end
 
--- The visible sections, by their tab (ns.PANEL_GROUPS order), then their order: { { key, label,
+-- The visible sections, by their tab (its shown name, A to Z), then their order: { { key, label,
 -- sections = { section, ... } }, ... }; a tab without a visible section is left out. Kept while every
 -- section stays as visible as before (the view, expert mode, data there) and none is registered;
 -- the list is shared, callers only read it.
@@ -328,6 +328,12 @@ function ns.SettingsGroups()
             shown[#shown + 1] = e
         end
     end
+    -- the tabs by their shown name, A to Z, in either language
+    table.sort(shown, function(a, b)
+        local la, lb = tostring(a.label):lower(), tostring(b.label):lower()
+        if la ~= lb then return la < lb end
+        return a.key < b.key
+    end)
     groupsKept, keptN = shown, #ns.schema
     return shown
 end

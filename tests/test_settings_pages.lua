@@ -43,7 +43,8 @@ local chosen, set = NS.SettingsChosen()
 assert(chosen == nil and set.rolls and set.need and set.loot and set.lootrules and set.prio and set.rollwin, "the sections of Rolls")
 assert(page.back:IsShown() and page.back:GetText() == "Zurück zu Rolls", tostring(page.back:GetText()))
 assert(NS.SettingsRows()["rolls.seconds"]:IsShown() and NS.SettingsRows()["need.share"]:IsShown())
-assert(has(navShown(), "-rolls -rollwin -need -loot -lootrules -prio"), navShown())
+-- (Raid is the last tab, A to Z: the side bar scrolls, "-prio" may sit below its end)
+assert(has(navShown(), "-rolls -rollwin -need -loot -lootrules"), navShown())
 page.back:Click()
 assert(NS.CurrentPage() == "rolls", "back to the page")
 -- coming back to the settings shows the chosen section again, not the page's
@@ -51,9 +52,10 @@ NS.ShowSettingsSection("map")
 assert(NS.SettingsChosen() == "map" and not page.back:IsShown())
 assert(AmisiaDB.settings.window.section == "map", "remembered")
 
--- the side bar under "Einstellungen": the tabs, the chosen one open (the map's section in Dungeons & Raids since D-73)
+-- the side bar under "Einstellungen": the tabs A to Z by name (F-200), the chosen one open (the map's
+-- section in Dungeons & Raids since D-73)
 local nav = navShown()
-assert(has(nav, "settings gear dungeons -drops -map -quests -collect -runtimes -dungeonbar -questitems prof raid guild amisia"), nav)
+assert(has(nav, "settings amisia gear prof dungeons -drops -map -quests -collect -runtimes -dungeonbar -questitems guild raid"), nav)
 for _, e in ipairs(F.navOrder) do
     if e.entry.kind == "group" and e.entry.key == "guild" then e.button:Click() break end
 end
@@ -73,7 +75,7 @@ local function navRow(kind, key)
 end
 navRow("group", "guild"):Click()
 assert(NS.SettingsChosen() == "mats", "folding keeps the section")
-assert(has(navShown(), "settings gear dungeons prof raid guild amisia") and not has(navShown(), "-mats"), "the tab folded: " .. navShown())
+assert(has(navShown(), "settings amisia gear prof dungeons guild raid") and not has(navShown(), "-mats"), "the tab folded: " .. navShown())
 navRow("group", "guild"):Click()
 assert(has(navShown(), "guild -signup") and has(navShown(), "-mats"), "unfolded: " .. navShown())
 navRow("group", "guild"):Click()

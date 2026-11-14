@@ -737,6 +737,12 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du als Raider (Ansicht "Raider") die Einstellungen öffnest, dann fehlen die Offiziersabschnitte, und auf einer Seite ohne eigene Einstellungen (z. B. Talente) fehlt der Knopf; die Einstellungen der Seite Rolls zeigen auch Raidern "Wer braucht das?" und "Loot-Prio".
 - Notiz: Spec `docs/specs/2026-10-13-dungeons-einstellungen.md`, Teil B, D-49.
 
+### F-200 Einstellungen: Reiter in der Seitenleiste alphabetisch
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du Einstellungen öffnest, dann stehen darunter Allgemein, Ausrüstung, Berufe, Dungeons & Raids, Gilde, Raid in dieser Reihenfolge (englischer Client: Dungeons & Raids, Gear, General, Guild, Professions, Raid), und ohne gemerkten Abschnitt ist der erste Abschnitt von Allgemein offen.
+- Notiz: Nur die Liste unter Einstellungen; die Reiter oben im Fenster bleiben, wie sie sind. Ohne Spec (kleine Änderung).
+
 ## Addon: Raid und Loot
 
 ### F-198 Raid-Notiz: Zielmarkierungen per Klick einfügen

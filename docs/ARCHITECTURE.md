@@ -550,7 +550,7 @@ the loot rules' editor), it stores nothing through `ns.Set`. `ns.Get(path)` retu
 the start of the name, folded), for `/amisia einstellungen <word>` (it opens that section; another word is
 searched). Each section names its tab (`group`, a key of `ns.PANEL_GROUPS`; "amisia" reads "Allgemein") and the
 pages whose head button "Einstellungen" opens it (`pages`), D-49 (`tests/test_settings_pages.lua`):
-`ns.SettingsGroups()` (the visible sections by tab), `ns.SettingsSectionsOf(page)`, `ns.SectionChanged(sec)`,
+`ns.SettingsGroups()` (the visible sections by tab, the tabs A to Z by their shown name), `ns.SettingsSectionsOf(page)`, `ns.SectionChanged(sec)`,
 `ns.ResetSections(list)` ("Zurücksetzen" of the page, `ui.resetAll` for every section after `W.Confirm`). The
 settings page (UI/Pages/Settings.lua) shows the chosen section (`ns.ShowSettingsSection(key)`, remembered in
 `settings.window.section`), the sections of a page (`ns.ShowSettingsFor(page)`, with "Zurück zu <Seite>") or,
