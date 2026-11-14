@@ -127,7 +127,7 @@ local mapSrc = readFile(ADDON_DIR .. "/Data/MapData.lua")
 assert(not mapSrc:find("then return end", 1, true) and not mapSrc:find("quartermaster", 1, true), "no guard, no quartermaster list")
 for key in pairs(NS.MAP.P) do assert(not key:find("^F:"), "no reputation key: " .. key) end
 assert(NS.MapKeyOf({ "F", "Thrallmar", 5, 947, "H" }) == nil, "no key for a reputation source")
-assert(NS.SettingItem("map.arrow").tip == "Automatisch: nur wenn der Client den Wegpunkt nicht setzen kann.")
+assert(NS.SettingItem("map.arrow").tip == "Ein kleines Fenster mit Kompass, Entfernung, Zeit und Koordinaten für dein Ziel und die Kartenmarkierung des Clients (Strg + Klick auf die Weltkarte). Nur ohne Pfeil des Clients: nur für Ziele, die der Client nicht selbst anzeigen kann.")
 for _, name in ipairs({ "Gear/Map.lua", "Gear/MapPins.lua", "UI/Pages/Map.lua" }) do
     local src = readFile(ADDON_DIR .. "/" .. name)
     assert(not src:find("TBC", 1, true) and not src:find("both clients", 1, true), name .. " still names a second client")

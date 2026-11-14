@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(map): a target window with a compass for your target and the client's map pin (F-203)
+
+    The small arrow to a target is now a window: a compass that turns with you and points to the target, the
+    distance, the time to get there while you walk towards it, the target's coordinates and zone and your own.
+    It also shows the client's own map pin (Ctrl + click on the world map). The button at its top right makes it
+    compact (only compass and distance), the X clears the target or pin. Settings > Map and waypoint can limit it
+    to targets the client cannot show itself, or switch it off.
+
 - feat(settings): the tabs under Settings in A to Z order (F-200)
 
     The list under Settings in the side bar now goes by name: Dungeons & Raids, Gear, General, Guild,

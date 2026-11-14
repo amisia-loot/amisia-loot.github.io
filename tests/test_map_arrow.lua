@@ -45,7 +45,8 @@ assert(t and t.ours == false, "no waypoint functions: Amisia's own target")
 local a = _G.AmisiaArrow
 assert(a and a:IsShown(), "the arrow shows with a target")
 assert(a.icon and a.icon.texture == "Interface\\AddOns\\Amisia\\Media\\Icons\\arrow", tostring(a.icon and a.icon.texture))
-assert(a.strata == "MEDIUM" and a._w == 96 and a._h == 84, "96 x 84, MEDIUM")
+assert(a.strata == "MEDIUM" and a._w == 250 and a._h == 84, "250 x 84, MEDIUM (F-203)")
+assert(a.ring and a.ring.texture == "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\compass_ring", tostring(a.ring and a.ring.texture))
 local p = a.points and a.points.TOP
 assert(p and p.y == -120 and p.x == 0, "top middle at y -120 to start")
 assert(a.label:GetText() == "Gorn One Eye", a.label:GetText())
@@ -55,9 +56,25 @@ local bearing = math.atan2(372, -231)
 a.scripts.OnUpdate(a, 0.1)
 assert(a.dist:GetText() == "438 m", tostring(a.dist:GetText()))
 assert(a.icon:IsShown() and near(a.icon.rotation, -bearing), "turned towards the target: " .. tostring(a.icon.rotation))
+-- the target's coordinates and zone, the player's own (F-203); no time before he moves
+assert(a.where:GetText() == "47,2 · 33,1  Durotar", tostring(a.where:GetText()))
+assert(a.me:GetText() == "Du 10,0 · 10,0", tostring(a.me:GetText()))
+assert(a.eta:GetText() == "", "no time standing still")
+assert(near(a.ring.rotation or 0, 0), "facing north: the ring's north at the top")
 STUB.facing = 1
 a.scripts.OnUpdate(a, 0.1)
 assert(near(a.icon.rotation, -(bearing + 1)), "facing taken off")
+assert(near(a.ring.rotation, -1), "the ring turns with the facing")
+-- walking towards the target: a time that gets smaller
+local etas = {}
+for i = 1, 4 do
+    STUB.map.pos = { x = 0.1 + 0.01 * i, y = 0.1 + 0.006 * i }
+    a.scripts.OnUpdate(a, 1)
+    etas[i] = a.eta:GetText()
+end
+assert(etas[4]:match("^%d+ s$") and tonumber(etas[4]:match("%d+")) < tonumber(etas[2]:match("%d+")), table.concat(etas, ","))
+STUB.map.pos = { x = 0.1, y = 0.1 }
+a.scripts.OnUpdate(a, 0.1)
 
 -- at most ten times a second
 STUB.map.pos = { x = 0.2, y = 0.1 }
@@ -142,19 +159,29 @@ local labels = {}
 for i, b in ipairs(menu.buttons) do
     if b:IsShown() then labels[#labels + 1] = b.label:GetText() end
 end
-assert(table.concat(labels, ",") == "Ziel löschen,Auf der Weltkarte zeigen,Pfeil ausblenden", table.concat(labels, ","))
+assert(table.concat(labels, ",") == "Ziel löschen,Auf der Weltkarte zeigen,Kompakt,Zielfenster ausblenden", table.concat(labels, ","))
 WorldMapFrame:Hide()
 menu.buttons[2]:Click()
 assert(WorldMapFrame:IsShown() and WorldMapFrame:GetMapID() == 1411, "the world map on the target's zone")
 WorldMapFrame:Hide()
+-- compact by the menu: only the compass and the distance, and back by the switch
 a.scripts.OnClick(a, "RightButton")
 menu.buttons[3]:Click()
+assert(NS.Get("map.compact") == true and a._w == 190 and not a.label:IsShown() and not a.where:IsShown() and a.dist:IsShown(), "compact")
+a.size:Click()
+assert(NS.Get("map.compact") == false and a._w == 250 and a.label:IsShown(), "detailed again")
+a.scripts.OnClick(a, "RightButton")
+menu.buttons[4]:Click()
 assert(NS.Get("map.arrow") == "off" and not a:IsShown(), "arrow hidden by the menu")
 NS.Dispatch("karte pfeil")
 assert(NS.Get("map.arrow") == "auto" and a:IsShown(), "and back by the command")
 a.scripts.OnClick(a, "RightButton")
 menu.buttons[1]:Click()
 assert(NS.MapTarget() == nil and not a:IsShown(), "target cleared by the menu")
+-- the X clears it too
+assert(NS.MapSetTarget(100) and a:IsShown())
+a.close:Click()
+assert(NS.MapTarget() == nil and not a:IsShown(), "target cleared by the X")
 a.scripts.OnClick(a, "LeftButton")
 
 -- dragging: the position is kept in the settings and can be reset

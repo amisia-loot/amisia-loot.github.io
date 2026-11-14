@@ -204,14 +204,14 @@ STUB.faction = "Alliance"
 -- settings: the section and its defaults
 ---------------------------------------------------------------------------
 local defaults = { ["map.pins"] = true, ["map.pinsTargets"] = true, ["map.pinsWishes"] = true, ["map.pinsContinent"] = true,
-    ["map.pinScale"] = 100, ["map.arrow"] = "auto", ["map.autoClear"] = true, ["map.tooltip"] = true }
+    ["map.pinScale"] = 100, ["map.arrow"] = "on", ["map.compact"] = false, ["map.autoClear"] = true, ["map.tooltip"] = true }
 for path, v in pairs(defaults) do
     assert(NS.SettingItem(path), "setting " .. path)
     assert(NS.Get(path) == v, path .. " defaults to " .. tostring(v))
 end
 assert(NS.SettingItem("map.pinScale").expert and NS.SettingItem("map.resetArrow").expert)
 assert(NS.SettingItem("map.resetHidden").type == "button")
-assert(NS.SettingItem("map.arrow").tip == "Automatisch: nur wenn der Client den Wegpunkt nicht setzen kann.", NS.SettingItem("map.arrow").tip)
+assert(NS.SettingItem("map.arrow").tip == "Ein kleines Fenster mit Kompass, Entfernung, Zeit und Koordinaten für dein Ziel und die Kartenmarkierung des Clients (Strg + Klick auf die Weltkarte). Nur ohne Pfeil des Clients: nur für Ziele, die der Client nicht selbst anzeigen kann.", NS.SettingItem("map.arrow").tip)
 local section
 for _, s in ipairs(NS.schema) do if s.key == "map" then section = s end end
 assert(section and section.label == "Karte und Wegpunkt" and section.order == 48)

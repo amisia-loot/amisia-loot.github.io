@@ -7,7 +7,8 @@ thicker stroke, coloured with a gold gradient (light at the top, deep at the bot
 rim so it reads on the dark hub, scaled down to SIZE and written to
 Amisia/Media/Icons/ui/<key>.tga. The keys are those of ns.Theme.NAV_ICONS and T.TAB_ICONS
 ("tab_<group>" for a tab). Also Amisia's own shapes of the item slots: slot_ring (a thin rounded
-frame, white, coloured by the addon) and slot_mask (the rounded icon inside it).
+frame, white, coloured by the addon) and slot_mask (the rounded icon inside it); boss_ring and the
+target window's dial compass_ring (F-203).
 
     python tools/make_ui_icons.py [--preview DIR] [--offline]
 
@@ -135,10 +136,40 @@ def circle_ring(stroke):
 BOSS_RING_STROKE = 4                    # at SIZE px
 
 
+def compass_ring():
+    """The dial of the target window (F-203): a round ring (white, coloured by the addon) with a short
+    tick at east, south and west and a triangle at north pointing inward; the addon turns it with the
+    player's facing, so the triangle points to the world's north."""
+    from PIL import ImageDraw
+    big = SIZE * SHAPE_SCALE
+    img = Image.new('RGBA', (big, big), (255, 255, 255, 0))
+    d = ImageDraw.Draw(img)
+    s = SHAPE_SCALE
+    white = (255, 255, 255, 255)
+    stroke = COMPASS_STROKE * s
+    d.ellipse([stroke // 2, stroke // 2, big - 1 - stroke // 2, big - 1 - stroke // 2], outline=white, width=stroke)
+    c = big / 2
+    r = c - stroke
+    tick = COMPASS_TICK * s
+    w = 2 * s
+    # east, south, west: short bars from the ring inward
+    d.rectangle([c + r - tick, c - w, c + r, c + w], fill=white)
+    d.rectangle([c - w, c + r - tick, c + w, c + r], fill=white)
+    d.rectangle([c - r, c - w, c - r + tick, c + w], fill=white)
+    # north: a triangle from the ring inward
+    tri = COMPASS_NORTH * s
+    d.polygon([(c - tri * 0.6, c - r), (c + tri * 0.6, c - r), (c, c - r + tri)], fill=white)
+    return img.resize((SIZE, SIZE), Image.LANCZOS)
+
+
+COMPASS_STROKE, COMPASS_TICK, COMPASS_NORTH = 3, 6, 9    # at SIZE px
+
+
 SHAPES = {
     'slot_ring': lambda: rounded(False, 0, RING_RADIUS, RING_STROKE),
     'slot_mask': lambda: rounded(True, MASK_INSET, MASK_RADIUS),
     'boss_ring': lambda: circle_ring(BOSS_RING_STROKE),
+    'compass_ring': compass_ring,
 }
 
 

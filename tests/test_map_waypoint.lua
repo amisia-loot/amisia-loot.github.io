@@ -197,7 +197,7 @@ assert(NS.Get("map.pins") == true and has(lastMsg(), "Pins auf der Weltkarte an.
 NS.Dispatch("karte pfeil")
 assert(NS.Get("map.arrow") == "off" and has(lastMsg(), "Pfeil zum Ziel aus."))
 NS.Dispatch("karte pfeil")
-assert(NS.Get("map.arrow") == "auto" and has(lastMsg(), "Pfeil zum Ziel an."))
+assert(NS.Get("map.arrow") == "on" and has(lastMsg(), "Pfeil zum Ziel an."))
 NS.Set("map.arrow", "on")
 NS.Dispatch("karte pfeil")
 assert(NS.Get("map.arrow") == "off")
@@ -231,6 +231,45 @@ NS.Set("map.arrow", "auto")
 wp.blocked[1411] = nil
 NS.MapClearTarget()
 assert(not AmisiaArrow:IsShown(), "no target, no arrow")
+
+-- the client's own map pin (F-203): "on" shows it as "Kartenmarkierung", "auto" leaves it to the
+-- client's guide; arriving says so once; the X removes the client's pin
+NS.Set("map.arrow", "on")
+C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(1411, 0.472, 0.331))
+assert(NS.MapTarget() == nil and AmisiaArrow:IsShown(), "the client's pin shows the window")
+AmisiaArrow.scripts.OnUpdate(AmisiaArrow, 0.1)
+assert(AmisiaArrow.label:GetText() == "Kartenmarkierung" and AmisiaArrow.dist:GetText() == "438 m", tostring(AmisiaArrow.dist:GetText()))
+assert(AmisiaArrow.where:GetText() == "47,2 · 33,1  Durotar", tostring(AmisiaArrow.where:GetText()))
+NS.Set("map.arrow", "auto")
+assert(not AmisiaArrow:IsShown(), "auto: the client's own guide carries its pin")
+NS.Set("map.arrow", "on")
+-- an Amisia target goes first; cleared, the window falls back to nothing (its waypoint was the pin's place)
+assert(NS.MapSetTarget(100) and AmisiaArrow:IsShown())
+AmisiaArrow.scripts.OnUpdate(AmisiaArrow, 0.1)
+assert(AmisiaArrow.label:GetText() == "Gorn One Eye")
+NS.MapClearTarget()
+-- the X: the client's pin goes
+C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(1411, 0.3, 0.3))
+assert(AmisiaArrow:IsShown())
+AmisiaArrow.close:Click()
+assert(wp.point == nil and not AmisiaArrow:IsShown(), "the X removed the client's pin")
+-- arriving at the pin: the line once, and with map.autoClear the pin goes
+local before = #STUB.messages
+C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(1411, 0.1, 0.105))
+AmisiaArrow.scripts.OnUpdate(AmisiaArrow, 0.1)
+assert(has(lastMsg(), "Ziel erreicht (Kartenmarkierung).") and #STUB.messages == before + 1, tostring(#STUB.messages - before))
+assert(wp.point == nil and not AmisiaArrow:IsShown(), "arrived: the pin went")
+-- in a fight the X keeps the client's pin until after it
+C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(1411, 0.3, 0.3))
+STUB.combat = true
+AmisiaArrow.close:Click()
+assert(wp.point ~= nil, "not touched in a fight")
+STUB.combat = false
+STUB.fire("PLAYER_REGEN_ENABLED")
+assert(wp.point == nil, "gone after the fight")
+
+C_Map.ClearUserWaypoint()
+NS.Set("map.arrow", "auto")
 
 -- every line Amisia wrote, and the file, stay within Latin-1
 for _, m in ipairs(STUB.messages) do

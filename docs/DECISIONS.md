@@ -3417,3 +3417,27 @@ das Laden von `AmisiaDB` und die Inhalte der Dateien.
 **Durchgesetzt durch:** `tools/tests/test_load_order.py` (jede Datei mit dem Rahmen, `Locales/Locale.lua` zuerst,
 was sofort lädt, ohne Texte), `tests/test_language.lua` (deutscher Client, Englisch gewählt: Texte, Zahlen, Daten,
 Befehl, Frage zum Neuladen, kaputte Wahl), `tests/test_language_de.lua` (englischer Client, Deutsch gewählt).
+
+## D-129 Zielfenster mit Kompass: auch die Kartenmarkierung des Clients, ersetzt den Pfeil
+
+**Datum:** 2026-11-14
+**Entscheidung:** Das Fenster "Ziel" (F-203, `AmisiaArrow` in `Gear/Map.lua`) ersetzt Amisias kleinen Pfeil: ein dunkles
+Kärtchen mit goldenem Rand, links ein Kompassring (eigene Form `compass_ring`, dreht sich mit der Blickrichtung, das
+Dreieck zeigt nach Norden) mit dem Pfeil zum Ziel, rechts Name, Entfernung, die Zeit aus der Geschwindigkeit, mit der man
+sich nähert (über etwa eine Sekunde geglättet, unter 1 Yard je Sekunde keine), Koordinaten mit Zone und die eigenen;
+kompakt nur Kompass und Entfernung (`map.compact`). Es zeigt Amisias Ziel, sonst die Kartenmarkierung des Clients
+(Strg + Klick auf die Weltkarte, `C_Map.GetUserWaypoint`). `map.arrow` hat jetzt den Standard "on" (jedes Ziel);
+"auto" heißt "Nur ohne Pfeil des Clients". Das X löscht Amisias Ziel, sonst die Markierung des Clients; im Kampf, in
+einer Instanz oder in der Kampfsperre erst danach (D-62). Ankommen an der Markierung: eine Chatzeile, mit
+`map.autoClear` geht die Markierung.
+
+**Grund:** Nutzer 2026-11-14 mit Bildschirmfoto eines anderen Addons: "können wir die mappin funktion von ...
+übernehmen". Eigene Umsetzung, kein Code, keine Bilder und kein Name des anderen Addons (D-03, D-04). Antworten zur
+Spec `docs/specs/2026-11-14-zielfenster.md`: "Ja, beides", "Ersetzen, immer zeigen", "Passt, bauen".
+
+**Folge:** Nur Forever (die Karte und die Markierung des Clients gibt es nur dort). Keine eigene Art, Markierungen zu
+setzen; keine Liste mehrerer Wegpunkte (das sind die Routen, F-167).
+
+**Durchgesetzt durch:** `tests/test_map_arrow.lua` (Ring, Drehen, Zeit, Koordinaten, Kompakt, Menü, X),
+`tests/test_map_waypoint.lua` (Markierung des Clients, "auto", Vorrang des Amisia-Ziels, X, Ankommen, Kampf),
+`tests/test_map_data.lua` (Standards).

@@ -491,6 +491,15 @@ T.RUNTIMER = { W = 300, PAD = 14, TOP = 30, COL_W = { 84, 80, 108 }, LABEL_H = 1
 T.QUESTITEMS = { W = 460, PAD = 12, TOP = 30, HEAD_H = 24, LIST_GAP = 6, ROWS = 10, ROW_H = 34, ICON = 24, ICON_X = 4,
     TEXT_X = 34, LINK_W = 70, SCROLL = 16, BOTTOM_H = 30, SET_W = 100 }
 
+-- The target window (F-203, Gear/Map.lua, AmisiaArrow): W x H (compact COMPACT_W wide) on a dark ground
+-- (SHADE) with a gold edge; the compass ring RING square PAD from the left, centred, the arrow ARROW
+-- square in its middle; GAP right of the ring the text: the name TOP under the top, the distance and the
+-- lines under it LINE_GAP apart, the time ETA_GAP right of the distance (compact: the distance cut to the
+-- card, not wrapped); top right the X and left of it the
+-- compact switch, each BTN square, BTN_GAP apart.
+T.TARGETWIN = { W = 250, H = 84, COMPACT_W = 190, SHADE = 0.78, RING = 64, ARROW = 36, PAD = 10, GAP = 10,
+    TOP = 8, LINE_GAP = 2, ETA_GAP = 6, BTN = 16, BTN_GAP = 2 }
+
 -- The window "Raid-Notiz" (F-196, Raid/RaidNoteWindow.lua, AmisiaRaidNote): W x H at first, EDGE_X from the
 -- screen's right edge; sized by the grip (GRIP square) between MIN_W x MIN_H and MAX_W x MAX_H; the line
 -- "von ..." TOP under the window's top, FROM_H high, the note under it, PAD from the edges and BAR room

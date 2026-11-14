@@ -721,22 +721,65 @@ function Map.DirectionWord(bearing)
 end
 
 ---------------------------------------------------------------------------
--- The arrow (AmisiaArrow): Amisia's own pointer to the target where the client's guide cannot carry it
+-- The target window (AmisiaArrow, F-203, tokens T.TARGETWIN): a dark card with a compass at the left (a
+-- ring that turns with the player's facing, its triangle at the world's north, and the arrow to the
+-- target), at the right the target's name, the distance with the time to it, the target's coordinates
+-- and zone and the player's own; compact only the compass and the distance. It shows Amisia's target,
+-- else the client's map pin (Ctrl + click on the world map, C_Map.GetUserWaypoint). Drag moves it (not
+-- in a fight), the X clears the target (and the client's pin with it), right click: a menu. No
+-- protected frame: it shows and turns in a fight too.
 ---------------------------------------------------------------------------
 
 local ARROW_TEX = "Interface\\AddOns\\Amisia\\Media\\Icons\\arrow"
-local TICK = 0.1                  -- seconds between two updates of the arrow
+local RING_TEX = "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\compass_ring"
+local TICK = 0.1                  -- seconds between two updates of the window
+local SLOW = 1                    -- yards a second: slower than this, no time to the target
+local SMOOTH = 1                  -- seconds: the speed follows the last second or so
+local JUMP = 60                   -- yards a second: faster than any mount, a jump
 local arrow                       -- the frame, made the first time it is needed
 
--- Whether the arrow should show: map.arrow "on", or "auto" while the client's own guide does not
--- carry the target (its waypoint could not be set); only with a target,
--- outside instances and with a readable position. Returns the position (Map.PlayerPosition) or nil.
+-- The client's map pin as a target ({ map, x, y, label, pin = true }), one table kept and updated,
+-- or nil; its arrival is remembered per place.
+local pin = { label = "", pin = true }
+local pinArrivedAt
+local function clientPin()
+    if not Map.ClientWaypoints() then return nil end
+    local ok, point = pcall(C_Map.GetUserWaypoint)
+    if not ok or type(point) ~= "table" or type(point.position) ~= "table" then return nil end
+    local map = ns.Plain(point.uiMapID)
+    local x, y = ns.Plain(point.position.x), ns.Plain(point.position.y)
+    if type(map) ~= "number" or not inRange(x) or not inRange(y) then return nil end
+    -- Amisia's own waypoint that is to go once that is safe (D-62) is no pin of the player's
+    local p = pendingClear
+    if p and p.map == map and math.abs(p.x - x) <= SAME and math.abs(p.y - y) <= SAME then return nil end
+    pin.map, pin.x, pin.y, pin.label = map, x, y, L["Kartenmarkierung"]
+    pin.arrived = pinArrivedAt == ("%d:%.4f:%.4f"):format(map, x, y) or nil
+    return pin
+end
+
+-- What the window shows: Amisia's target, else the client's map pin; nil for none.
+function Map.Shown()
+    return ns.MapTarget() or clientPin()
+end
+
+-- Whether the window should show, and for what: map.arrow "on" for every target, "auto" only for
+-- Amisia's target while the client's own guide does not carry it; outside instances and with a
+-- readable position. Returns the position (Map.PlayerPosition) and the target, or nil.
 local function arrowWanted()
-    local t = ns.MapTarget()
-    if not t then return nil end
     local mode = ns.Get("map.arrow")
-    if mode == "off" or (mode ~= "on" and t.ours) then return nil end
-    return Map.PlayerPosition()
+    if mode == "off" then return nil end
+    local t = ns.MapTarget()
+    if t then
+        if mode ~= "on" and t.ours then return nil end
+    else
+        -- the client's own pin has the client's guide: only with "on"
+        if mode ~= "on" then return nil end
+        t = clientPin()
+        if not t then return nil end
+    end
+    local me = Map.PlayerPosition()
+    if not me then return nil end
+    return me, t
 end
 
 local function arrowPlace(f)
@@ -750,7 +793,7 @@ local function arrowPlace(f)
     end
 end
 
--- Whether the client can turn the arrow: GetPlayerFacing gives a number and the texture turns.
+-- Whether the client can turn the textures: GetPlayerFacing gives a number and the texture turns.
 local function facing(icon)
     if not (GetPlayerFacing and icon.SetRotation) then return nil end
     local ok, f = pcall(GetPlayerFacing)
@@ -758,32 +801,121 @@ local function facing(icon)
     return type(f) == "number" and f or nil
 end
 
-local function arrowUpdate(f)
-    local t = ns.MapTarget()
-    local me = arrowWanted()
+-- "55,2 · 53,8" (in English "55.2 · 53.8")
+local function xyText(x, y)
+    return ("%s · %s"):format(ns.Num(x * 100, 1), ns.Num(y * 100, 1))
+end
+Map.XYText = xyText
+
+-- "438 m", from 1000 on "1,2k m" (in English yards)
+local function distText(d)
+    if d < 1000 then return (L["%d m"]):format(math.floor(d + 0.5)) end
+    return (L["%sk m"]):format(ns.Num(d / 1000, 1))
+end
+Map.DistText = distText
+
+-- "39 s", from a minute on "2 min"
+local function etaText(sec)
+    if sec < 60 then return (L["%d s"]):format(math.max(1, math.floor(sec + 0.5))) end
+    return (L["%d min"]):format(math.floor(sec / 60 + 0.5))
+end
+Map.EtaText = etaText
+
+local function compact() return ns.Get("map.compact") and true or false end
+
+-- The time right behind the distance's text (the distance's box is wider than its text).
+local function placeEta(f)
+    local S = ns.Theme.TARGETWIN
+    local w = f.dist.GetStringWidth and f.dist:GetStringWidth() or 0
+    f.eta:ClearAllPoints()
+    f.eta:SetPoint("BOTTOMLEFT", f.dist, "BOTTOMLEFT", math.floor((tonumber(w) or 0) + 0.5) + S.ETA_GAP, 1)
+end
+
+-- The layout of the card, detailed or compact.
+local function layout(f)
+    local S = ns.Theme.TARGETWIN
+    local small = compact()
+    f:SetSize(small and S.COMPACT_W or S.W, S.H)
+    for _, fs in ipairs({ f.label, f.eta, f.where, f.me }) do fs:SetShown(not small) end
+    f.dist:ClearAllPoints()
+    -- cut to the card, never wrapped; the time stands right behind the text (placeEta)
+    f.dist:SetWidth((small and S.COMPACT_W or S.W) - S.PAD - S.RING - S.GAP - S.PAD)
+    if f.dist.SetWordWrap then f.dist:SetWordWrap(false) end
+    if small then
+        f.dist:SetPoint("LEFT", f.ring, "RIGHT", S.GAP, 0)
+    else
+        f.dist:SetPoint("TOPLEFT", f.label, "BOTTOMLEFT", 0, -S.LINE_GAP)
+    end
+    f.size:SetNormalTexture(small and "Interface\\Buttons\\UI-Panel-BiggerButton-Up" or "Interface\\Buttons\\UI-Panel-SmallerButton-Up")
+    f.size:SetPushedTexture(small and "Interface\\Buttons\\UI-Panel-BiggerButton-Down" or "Interface\\Buttons\\UI-Panel-SmallerButton-Down")
+    placeEta(f)
+end
+
+-- The pin's or Amisia's arrival: the line once, and with map.autoClear the target goes (the client's
+-- pin only where Amisia may touch it, D-62).
+local function pinArrived(t)
+    if t.arrived then return end
+    pinArrivedAt = ("%d:%.4f:%.4f"):format(t.map, t.x, t.y)
+    t.arrived = true
+    ns.msg((L["Ziel erreicht (%s)."]):format(t.label))
+    if not ns.Get("map.autoClear") then return end
+    if Map.ClientSafe() then
+        clearWaypoint()
+    else
+        pendingClear = { map = t.map, x = t.x, y = t.y }
+    end
+end
+
+local function arrowUpdate(f, dt)
+    local me, t = arrowWanted()
     if not t or not me then
         f:Hide()
         return
     end
-    local d = Map.Distance(t, me)
+    -- a new target: the speed starts again
+    local key = ("%d:%.4f:%.4f"):format(t.map, t.x, t.y)
+    if f.key ~= key then f.key, f.lastD, f.speed = key, nil, nil end
     f.label:SetText(t.label or "?")
+    f.where:SetText(("%s  %s"):format(xyText(t.x, t.y), zoneName(t.map)))
+    f.me:SetText(me.x and (L["Du %s"]):format(xyText(me.x, me.y)) or "")
+    local face = facing(f.icon)
+    if f.ring.SetRotation then f.ring:SetRotation(face and -face or 0) end
+    local d = Map.Distance(t, me)
     if not d then
         f.icon:Hide()
+        f.eta:SetText("")
+        f.lastD, f.speed = nil, nil
         f.dist:SetText(L["Anderer Kontinent"])
         f.dist:SetTextColor(0.6, 0.6, 0.6)
         return
     end
     if d < ARRIVE then
-        ns.MapCheckArrival()
-        if ns.MapTarget() ~= t then return end      -- cleared: MAP_TARGET hid the arrow
+        if t.pin then
+            pinArrived(t)
+            if not clientPin() and not ns.MapTarget() then return f:Hide() end
+        else
+            ns.MapCheckArrival()
+            if ns.MapTarget() ~= t then return end      -- cleared: MAP_TARGET hid the window
+        end
         f.icon:Hide()
+        f.eta:SetText("")
         f.dist:SetText(L["Angekommen"])
         f.dist:SetTextColor(0.3, 0.9, 0.3)
         return
     end
-    local text = (L["%d m"]):format(math.floor(d + 0.5))
+    -- the time to the target: the speed of getting closer, smoothed over about a second
+    if f.lastD and dt and dt > 0 then
+        local v = (f.lastD - d) / dt
+        -- a jump (a teleport, a death) is no speed
+        if math.abs(v) <= JUMP then
+            local w = math.min(1, dt / SMOOTH)
+            f.speed = f.speed and (f.speed * (1 - w) + v * w) or v
+        end
+    end
+    f.lastD = d
+    f.eta:SetText(f.speed and f.speed > SLOW and etaText(d / f.speed) or "")
+    local text = distText(d)
     local bearing = Map.Bearing(t, me)
-    local face = facing(f.icon)
     if bearing and face then
         f.icon:SetRotation(-(bearing + face))
         f.icon:Show()
@@ -794,27 +926,43 @@ local function arrowUpdate(f)
     end
     f.dist:SetText(text)
     f.dist:SetTextColor(1, 0.82, 0)
+    placeEta(f)
+end
+
+-- The X and "Ziel löschen": Amisia's target, and the client's pin with it (once that is safe, D-62).
+local function clearShown()
+    if ns.MapTarget() then
+        ns.MapClearTarget()
+    elseif clientPin() then
+        if Map.ClientSafe() then clearWaypoint() else pendingClear = { map = pin.map, x = pin.x, y = pin.y } end
+    end
+    Map.UpdateArrow()
+end
+
+local function toggleCompact()
+    ns.Set("map.compact", not compact())
 end
 
 local function arrowMenu(f)
     ns.W.Menu(f, {
-        { L["Ziel löschen"], function() ns.MapClearTarget() end },
+        { L["Ziel löschen"], clearShown },
         { L["Auf der Weltkarte zeigen"], function()
-            local t = ns.MapTarget()
+            local t = Map.Shown()
             if t then ns.MapShowOnWorldMap(t) end
         end },
-        { L["Pfeil ausblenden"], function()
+        { compact() and L["Ausführlich"] or L["Kompakt"], toggleCompact },
+        { L["Zielfenster ausblenden"], function()
             local m = db()
             local now = ns.Get("map.arrow")
             if m and now ~= "off" then m.arrowBefore = now end
             ns.Set("map.arrow", "off")
-            ns.msg(L["Pfeil aus. Wieder an: /amisia karte pfeil oder in den Einstellungen."])
+            ns.msg(L["Zielfenster aus. Wieder an: /amisia karte pfeil oder in den Einstellungen."])
         end },
     })
 end
 
 local function arrowTooltip(f)
-    local t = ns.MapTarget()
+    local t = Map.Shown()
     if not t then return end
     GameTooltip:SetOwner(f, "ANCHOR_BOTTOM")
     GameTooltip:AddLine(t.label or "?", 1, 0.82, 0)
@@ -826,33 +974,63 @@ local function arrowTooltip(f)
 end
 
 local function makeArrow()
+    local W, T = ns.W, ns.Theme
+    local S = T.TARGETWIN
     local f = CreateFrame("Button", "AmisiaArrow", UIParent)
-    f:SetSize(96, 84)
+    f:SetSize(S.W, S.H)
     f:SetFrameStrata("MEDIUM")
     f:SetClampedToScreen(true)
     f:SetMovable(true)
     f:EnableMouse(true)
     f:RegisterForDrag("LeftButton")
     f:RegisterForClicks("RightButtonUp")
-    f.icon = f:CreateTexture(nil, "ARTWORK")
-    f.icon:SetSize(56, 56)
-    f.icon:SetPoint("TOP", 0, 0)
+    W.Flat(f, 0, 0, 0, S.SHADE)
+    W.Border(f, T.GOLD[1], T.GOLD[2], T.GOLD[3], 0.5)
+    f.ring = f:CreateTexture(nil, "ARTWORK")
+    f.ring:SetSize(S.RING, S.RING)
+    f.ring:SetPoint("LEFT", S.PAD, 0)
+    f.ring:SetTexture(RING_TEX)
+    f.ring:SetVertexColor(T.GOLD[1], T.GOLD[2], T.GOLD[3])
+    f.icon = f:CreateTexture(nil, "OVERLAY")
+    f.icon:SetSize(S.ARROW, S.ARROW)
+    f.icon:SetPoint("CENTER", f.ring, "CENTER", 0, 0)
     f.icon:SetTexture(ARROW_TEX)
-    f.icon:SetVertexColor(ns.W.GOLD[1], ns.W.GOLD[2], ns.W.GOLD[3])
-    f.label = ns.W.Text(f, "GameFontHighlightSmall", 90)
-    f.label:SetPoint("TOP", f.icon, "BOTTOM", 0, -1)
-    f.label:SetJustifyH("CENTER")
-    f.dist = ns.W.Text(f, "GameFontNormalSmall", 96)
-    f.dist:SetPoint("TOP", f.label, "BOTTOM", 0, -1)
-    f.dist:SetJustifyH("CENTER")
+    f.icon:SetVertexColor(W.GOLD[1], W.GOLD[2], W.GOLD[3])
+    local textW = S.W - S.PAD - S.RING - S.GAP - S.PAD
+    f.label = W.Text(f, T.FONT.head, textW - 2 * (S.BTN + S.BTN_GAP))
+    f.label:SetPoint("TOPLEFT", S.PAD + S.RING + S.GAP, -S.TOP)
+    f.dist = W.Text(f, T.FONT.big)
+    f.eta = W.Text(f, T.FONT.hint)
+    f.where = W.Text(f, T.FONT.hint, textW)
+    f.where:SetPoint("TOPLEFT", f.dist, "BOTTOMLEFT", 0, -S.LINE_GAP)
+    f.me = W.Text(f, T.FONT.hint, textW)
+    f.me:SetPoint("TOPLEFT", f.where, "BOTTOMLEFT", 0, -1)
+    -- the X: clears the target; left of it the compact switch
+    local ok, close = pcall(CreateFrame, "Button", nil, f, "UIPanelCloseButton")
+    if not ok or not close then close = CreateFrame("Button", nil, f) end
+    close:SetSize(S.BTN + 4, S.BTN + 4)
+    close:SetPoint("TOPRIGHT", 0, 0)
+    close:SetScript("OnClick", clearShown)
+    W.Tooltip(close, L["Ziel löschen"], L["Löscht Amisias Ziel, sonst die Kartenmarkierung des Clients."])
+    f.close = close
+    f.size = CreateFrame("Button", nil, f)
+    f.size:SetSize(S.BTN, S.BTN)
+    f.size:SetPoint("RIGHT", close, "LEFT", -S.BTN_GAP, 0)
+    f.size:SetHighlightTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Highlight", "ADD")
+    f.size:SetScript("OnClick", toggleCompact)
+    W.Tooltip(f.size, L["Kompakt"], L["Nur Kompass und Entfernung, oder wieder alles."])
     f.wait = 0
     f:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate Map arrow", function(self, elapsed)
         self.wait = self.wait + (elapsed or 0)
         if self.wait < TICK - 1e-9 then return end
+        local dt = self.wait
         self.wait = 0
-        arrowUpdate(self)
+        arrowUpdate(self, dt)
     end))
-    f:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    f:SetScript("OnDragStart", function(self)
+        if InCombatLockdown and InCombatLockdown() then return end
+        self:StartMoving()
+    end)
     f:SetScript("OnDragStop", function(self)
         self:StopMovingOrSizing()
         local point, _, relPoint, x, y = self:GetPoint()
@@ -868,11 +1046,12 @@ local function makeArrow()
     f:SetScript("OnEnter", arrowTooltip)
     f:SetScript("OnLeave", function() GameTooltip:Hide() end)
     f:Hide()
+    layout(f)
     arrowPlace(f)
     return f
 end
 
--- Shows or hides the arrow for the current target and setting; the tick runs only while it shows.
+-- Shows or hides the window for the current target and setting; the tick runs only while it shows.
 function Map.UpdateArrow()
     if not arrowWanted() then
         if arrow then arrow:Hide() end
@@ -880,22 +1059,31 @@ function Map.UpdateArrow()
     end
     arrow = arrow or makeArrow()
     arrow.wait = 0
-    arrowUpdate(arrow)
-    if ns.MapTarget() and arrowWanted() then arrow:Show() end
+    if not arrow:IsShown() then arrow.lastD, arrow.speed = nil, nil end
+    arrowUpdate(arrow, nil)
+    if arrowWanted() then arrow:Show() end
 end
 
--- Puts the arrow back to its start (the saved position is gone already).
+-- Puts the window back to its start (the saved position is gone already).
 function ns.MapResetArrow()
     if arrow then arrowPlace(arrow) end
 end
 
 ns.Listen("MAP_TARGET", Map.UpdateArrow)
 ns.Listen("SETTING", function(path)
-    if path == "map.arrow" or path == nil then Map.UpdateArrow() end
+    if path == "map.compact" and arrow then layout(arrow) end
+    if path == "map.arrow" or path == "map.compact" or path == nil then Map.UpdateArrow() end
 end)
 ns.OnEvent("PLAYER_ENTERING_WORLD", Map.UpdateArrow)
 ns.OnEvent("ZONE_CHANGED_NEW_AREA", Map.UpdateArrow)
 ns.OnEvent("ZONE_CHANGED", Map.UpdateArrow)
+-- the client's map pin set or removed (Ctrl + click on the world map, its X)
+ns.OnEvent("USER_WAYPOINT_UPDATED", function()
+    -- Amisia setting or clearing it: the event comes inside the call, MAP_TARGET follows
+    if busy then return end
+    pinArrivedAt = nil
+    Map.UpdateArrow()
+end)
 
 ---------------------------------------------------------------------------
 -- Tooltip line
@@ -957,9 +1145,12 @@ ns.RegisterSettings{ key = "map", label = L["Karte und Wegpunkt"], order = 48, g
     { key = "map.transports", type = "toggle", label = L["Zeppeline und Schiffe auf der Karte"], default = false,
       tip = L["Die Weltkarte zeigt, wo Zeppeline und Schiffe ablegen und wohin sie fahren."] },
     { key = "map.pinScale", type = "slider", label = L["Pin-Größe (%)"], default = 100, min = 60, max = 160, step = 10, expert = true, tip = L["Größe der Pins auf der Karte in Prozent."] },
-    { key = "map.arrow", type = "choice", label = L["Pfeil zum Ziel"], default = "auto",
-      values = { { "auto", L["Automatisch"] }, { "on", L["Immer"] }, { "off", L["Aus"] } },
-      tip = L["Automatisch: nur wenn der Client den Wegpunkt nicht setzen kann."] },
+    -- the target window (F-203): every target, or only where the client's guide cannot carry it
+    { key = "map.arrow", type = "choice", label = L["Zielfenster mit Kompass"], default = "on",
+      values = { { "on", L["Immer"] }, { "auto", L["Nur ohne Pfeil des Clients"] }, { "off", L["Aus"] } },
+      tip = L["Ein kleines Fenster mit Kompass, Entfernung, Zeit und Koordinaten für dein Ziel und die Kartenmarkierung des Clients (Strg + Klick auf die Weltkarte). Nur ohne Pfeil des Clients: nur für Ziele, die der Client nicht selbst anzeigen kann."] },
+    { key = "map.compact", type = "toggle", label = L["Zielfenster kompakt"], default = false,
+      tip = L["Nur Kompass und Entfernung. Auch mit dem Knopf oben rechts im Fenster."] },
     { key = "map.autoClear", type = "toggle", label = L["Ziel beim Ankommen löschen"], default = true, tip = L["Bist du am Ziel angekommen, verschwinden Ziel und Pfeil."] },
     { key = "map.tooltip", type = "toggle", label = L["Fundort im Tooltip (mit Shift)"], default = true, tip = L["Mit gedrückter Shift-Taste nennt der Item-Tooltip, wo das Item zu finden ist."] },
     -- the own routes (F-167, Gear/Routes.lua, Gear/RouteMap.lua)
@@ -1015,7 +1206,7 @@ ns.RegisterSlash("karte", { en = "map", args = L["[<Link> | aus | pins | pfeil]"
             local m = db()
             local now = ns.Get("map.arrow")
             if now == "off" then
-                ns.Set("map.arrow", m and m.arrowBefore or "auto")
+                ns.Set("map.arrow", m and m.arrowBefore or "on")
                 ns.msg(L["Pfeil zum Ziel an."])
             else
                 if m then m.arrowBefore = now end

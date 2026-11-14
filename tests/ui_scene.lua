@@ -562,6 +562,25 @@ function S.layer(chip)
     return AmisiaLayerFrame
 end
 
+-- The target window (F-203): the client's map pin in Durotar, the player walking towards it; compact
+-- with true.
+function S.targetWindow(compact)
+    STUB.instance = { name = "Durotar", type = "none", id = 0 }
+    STUB.maps[1411] = { name = "Durotar", mapType = 3, world = { 1, 0, 0, 1000, 1000 } }
+    STUB.place.map = 1411
+    STUB.map.pos = { x = 0.1, y = 0.1 }
+    STUB.facing = 0.4
+    NS.Set("map.arrow", "on")
+    NS.Set("map.compact", compact and true or false)
+    if NS.MapTarget() then NS.MapClearTarget() end
+    C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(1411, 0.552, 0.538))
+    local f = _G.AmisiaArrow
+    f.scripts.OnUpdate(f, 0.1)
+    STUB.map.pos = { x = 0.11, y = 0.105 }
+    f.scripts.OnUpdate(f, 1)
+    return f
+end
+
 -- Further states of pages, shot after the pages themselves (in every view the page shows in):
 -- { page, name, open = fn() } opens the page in that state through its public entry point.
 S.STATES = {
@@ -1155,6 +1174,9 @@ S.WINDOWS = {
     { key = "questitems", view = "raider", open = function() return S.questItems() end },
     -- the window of an item that starts a quest (F-181)
     { key = "queststart", view = "raider", open = function() return S.questStart() end },
+    -- the target window with its compass (F-203), detailed and compact
+    { key = "targetwin", view = "raider", open = function() return S.targetWindow() end },
+    { key = "targetwin-compact", view = "raider", open = function() return S.targetWindow(true) end },
     -- the window "Layer" and the layer chip (F-185)
     { key = "layer", view = "raider", open = function() return S.layer() end },
     { key = "layer-chip", view = "raider", open = function() return S.layer(true) end },

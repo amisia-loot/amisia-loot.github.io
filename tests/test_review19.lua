@@ -184,10 +184,10 @@ local a = _G.AmisiaArrow
 assert(a, "the arrow")
 a.scripts.OnClick(a, "RightButton")
 for _, b in ipairs(AmisiaMenu.buttons) do
-    if b:IsShown() and b.label:GetText() == "Pfeil ausblenden" then b:Click() break end
+    if b:IsShown() and b.label:GetText() == "Zielfenster ausblenden" then b:Click() break end
 end
 assert(NS.Get("map.arrow") == "off", "hidden")
-assert(has(lastMsg(), "Pfeil aus. Wieder an: /amisia karte pfeil oder in den Einstellungen."), lastMsg())
+assert(has(lastMsg(), "Zielfenster aus. Wieder an: /amisia karte pfeil oder in den Einstellungen."), lastMsg())
 NS.MapClearTarget()
 
 ---------------------------------------------------------------------------
