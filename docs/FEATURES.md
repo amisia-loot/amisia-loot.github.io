@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-202 Module: Kern, Raid und Ausrüstung & Dungeons als eigene Addons
-- Version: -
-- Status: geplant
+- Version: 2.85.0
+- Status: gebaut
 - Prüfung: Wenn du in der AddOn-Liste "Amisia: Ausrüstung & Dungeons" abhakst und einloggst, dann gibt es keine Lua-Fehler, die Seitenleiste zeigt nur Kern- und Raid-Seiten, und Rolls, Vergaben und Aufstellung gehen.
 - Prüfung: Wenn du es danach wieder anhakst und einloggst, dann sind Planer-Ziele, Routen, Bestzeiten und deren Einstellungen unverändert da.
 - Prüfung: Wenn du "Amisia: Raid" abhakst, dann laufen Planer, Dungeons und Karte ohne Lua-Fehler, und im Raid zeichnet Amisia nichts auf.
@@ -53,8 +53,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Schritt 3 von 3 (D-130): Abschnitt "Module" (Allgemein; Haken aus der AddOn-Liste des Clients, nicht aus `AmisiaDB`), `/amisia module` (`modules`), Hinweis einmal pro Login bei abweichender Modul-Version oder fehlendem Modul-Ordner, Feld `m` im Versionsruf (Raid-Check und Versionsliste: "ohne Raid"), eigene Symbole der Module, `tools/install_junctions.ps1` für den PC. Noch nicht released; nach dem ersten Release mit drei Ordnern einmal das Skript als Administrator am PC und WoW ganz neu starten.
 
 ### F-199 Sprache wählen: Deutsch oder Englisch, Standard die Clientsprache
-- Version: -
-- Status: geplant
+- Version: 2.85.0
+- Status: gebaut
 - Prüfung: Wenn du auf einem deutschen Client in den Einstellungen (Allgemein, Oberfläche) bei "Sprache" "English" wählst und "Neu laden" klickst, dann ist Amisia ganz auf Englisch: Seitenleiste, Seiten, Einstellungen, Tooltips, Chatmeldungen, Datumsangaben.
 - Prüfung: Wenn du danach `/amisia language auto` eingibst und `/reload` machst, dann ist alles wieder Deutsch; `/amisia sprache en` stellt es wieder auf Englisch.
 - Prüfung: Wenn du die Sprache nie gewählt hast, dann ist Amisia wie bisher in der Sprache des Clients.
@@ -741,16 +741,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-10-13-dungeons-einstellungen.md`, Teil B, D-49.
 
 ### F-200 Einstellungen: Reiter in der Seitenleiste alphabetisch
-- Version: -
-- Status: geplant
+- Version: 2.85.0
+- Status: gebaut
 - Prüfung: Wenn du Einstellungen öffnest, dann stehen darunter Allgemein, Ausrüstung, Berufe, Dungeons & Raids, Gilde, Raid in dieser Reihenfolge (englischer Client: Dungeons & Raids, Gear, General, Guild, Professions, Raid), und ohne gemerkten Abschnitt ist der erste Abschnitt von Allgemein offen.
 - Notiz: Nur die Liste unter Einstellungen; die Reiter oben im Fenster bleiben, wie sie sind. Ohne Spec (kleine Änderung).
 
 ## Addon: Raid und Loot
 
 ### F-198 Raid-Notiz: Zielmarkierungen per Klick einfügen
-- Version: -
-- Status: geplant
+- Version: 2.85.0
+- Status: gebaut
 - Prüfung: Wenn du unter Raid-Notiz in die Notiz klickst und dann in der Zeile "Markierung einfügen:" auf den Totenkopf klickst, dann steht `{totenkopf}` (englischer Client: `{skull}`) an der Schreibmarke, der Zähler geht mit, und nach "An Raid senden" zeigt das Fenster an der Stelle das Totenkopf-Symbol.
 - Prüfung: Wenn du zuletzt in "Eigene Notiz" geschrieben hast oder die Raid-Notiz nicht senden darfst, dann landet die Markierung in deiner eigenen Notiz; der Tooltip jeder Markierung nennt ihren Namen.
 - Notiz: Erweitert F-196; keine neue Nachricht, kein neuer gespeicherter Schlüssel. Ohne Spec (kleine Ergänzung der Seite).
@@ -1460,8 +1460,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: 2.57.0: Seite Karte öffnet auf "Alle Zonen" (nach Zonen, nächste zuerst), Chip "Quests" (nächster Questweg-Schritt, auch als "!" auf der Weltkarte, Einstellung `map.pinsQuests`), Ansicht "Ohne Ort", Zielkarte mit Richtung und Pfeil, Knopf "Karte" je Zeile, deutsche Namen aus eigener Beobachtung.
 
 ### F-203 Zielfenster mit Kompass für Kartenmarkierung und Ziel
-- Version: -
-- Status: geplant
+- Version: 2.85.0
+- Status: gebaut
 - Prüfung: Wenn du mit Strg auf die Weltkarte klickst, dann erscheint das Fenster "Ziel" mit "Kartenmarkierung", einem Pfeil im Kompass, der beim Drehen der Figur mitdreht, der Entfernung und den Koordinaten mit Zone; beim Hinlaufen steht neben der Entfernung eine Zeit in Sekunden, die kleiner wird.
 - Prüfung: Wenn du auf "Kompakt" klickst, dann bleiben nur Kompass und Entfernung; nach `/reload` ist es weiter kompakt und an derselben Stelle.
 - Prüfung: Wenn du auf das X klickst, dann sind Fenster und Markierung weg (auch die gelbe Markierung des Clients auf der Karte).
