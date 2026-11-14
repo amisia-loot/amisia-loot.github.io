@@ -1292,12 +1292,22 @@ function W.EditArea(parent)
     box:SetWidth(500)
     box:SetHeight(200)
     box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    box:SetScript("OnEditFocusGained", function(self) if bg.locked then self:ClearFocus() end end)
     sf:SetScrollChild(box)
     bg:EnableMouse(true)
-    bg:SetScript("OnMouseDown", function() box:SetFocus() end)
+    bg:SetScript("OnMouseDown", function() if not bg.locked then box:SetFocus() end end)
     bg:SetScript("OnSizeChanged", function(_, w) box:SetWidth(math.max(100, (w or 500) - 28)) end)
     bg.box, bg.scroll = box, sf
     bg.bar = W.Scroll(sf, bg)
+    -- Locked: no cursor, no typing, the text grey; the scroll bar still works.
+    function bg:SetLocked(on)
+        on = on and true or false
+        if self.locked == on then return end
+        self.locked = on
+        box:EnableMouse(not on)
+        if on and box:HasFocus() then box:ClearFocus() end
+        box:SetTextColor(unpack(on and T.TEXT_OFF or { 1, 1, 1 }))
+    end
     return bg
 end
 

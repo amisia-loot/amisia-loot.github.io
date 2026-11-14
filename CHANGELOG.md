@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(raidnote): officers can write the raid note and its templates outside a raid (F-196)
+
+    Outside a raid the raid note's field took the cursor but threw every keystroke away. Officers can now write
+    the note and save templates before the raid, one per boss for example; "Send to raid" stays off until you
+    are in your raid. Who may not write the note sees a grey field without a cursor and the reason above it.
+
 ## [v2.85.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.85.0) (2026-11-14)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.84.0...v2.85.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

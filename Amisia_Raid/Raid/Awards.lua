@@ -516,7 +516,7 @@ local function keeperPlus(scope)
     if type(p) ~= "table" or type(p.n) ~= "table" then return nil end
     if scope ~= nil and scope ~= p.s then return nil end
     if ns.SyncIsKeeper and ns.SyncIsKeeper() then return nil end
-    if ns.IsOfficerView() and ns.SelfIsOfficer and ns.SelfIsOfficer(true) then return nil end
+    if ns.IsOfficerView() and ns.SelfMayOfficer(true) then return nil end
     return p
 end
 

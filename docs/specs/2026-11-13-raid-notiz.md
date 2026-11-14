@@ -15,7 +15,8 @@ wenn niemand mehr im Bosskampf in den Discord schauen muss, um seine Aufgabe zu 
 - **Seite "Raid-Notiz"** im Reiter Raid (alle). Oben "Raid-Notiz" mit einem großen Textfeld, "An Raid senden",
   "Vorlagen" (speichern, laden, löschen; z. B. eine je Boss, bis zu 30) und "Fenster zeigen"; diesen Teil
   bearbeiten und senden nur Offiziere sowie Raidleiter und Assistenten des eigenen Raids, die anderen sehen
-  dort die empfangene Notiz. Darunter "Eigene Notiz": ein kleineres Feld nur für dich, nie gesendet.
+  dort die empfangene Notiz (gesperrt und grau, ohne Schreibmarke). Offiziere schreiben Notiz und Vorlagen auch
+  außerhalb eines Raids; senden geht erst im Raid (Nachtrag 2026-11-14, D-126). Darunter "Eigene Notiz": ein kleineres Feld nur für dich, nie gesendet.
   Eine Hilfezeile: `{stern}` ... `{totenkopf}` (auch `{star}` ... `{skull}`, `{rt1}` ... `{rt8}`) werden zu
   Zielmarkierungen; Namen von Raidmitgliedern erscheinen in Klassenfarbe; die Zeilen mit dem eigenen Namen
   hebt jeder Empfänger selbst gelb hervor.
@@ -121,3 +122,4 @@ Keine mehr.
   Raid-Notiz.
 - 2026-11-13 (Vorschlag, nicht gefragt): nur im Raid, nicht in einer Fünfergruppe.
 - 2026-11-13: Freigabe: "Passt, bauen".
+- 2026-11-14: Offiziere (und der Charakter des Autors) schreiben Notiz und Vorlagen auch außerhalb eines Raids, senden nur im Raid; das gesperrte Feld ist grau: "Ja, umbauen".

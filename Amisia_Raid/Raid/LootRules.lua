@@ -328,7 +328,7 @@ local function whyNot()
     if not master then return L["Kein Master Loot: Lootregeln wirken nur unter Master Loot."] end
     if not mine then return L["Du bist nicht der Plündermeister."] end
     if not ns.IsOfficerView() then return L["Lootregeln nur in der Offiziersansicht."] end
-    if not ns.SelfIsOfficer() then return L["Lootregeln nur mit Offiziersrang."] end
+    if not ns.SelfMayOfficer() then return L["Lootregeln nur mit Offiziersrang."] end
     if not ns.Active() then return L["Keine Aufnahme: Vergaben werden nur in einer Raidinstanz mit Raidgruppe gespeichert."] end
     if type(GiveMasterLoot) ~= "function" or type(GetMasterLootCandidate) ~= "function" then
         return L["Master Loot ist auf diesem Client nicht verfügbar."]

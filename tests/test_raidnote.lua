@@ -71,6 +71,7 @@ assert(RN.Current() == nil and #RN.Sets() == RN.MAX_SETS - 1)
 local ok, reason = RN.CanSend()
 assert(not ok and has(reason, "Raid"), tostring(reason))
 assert(RN.Send("x") == nil)
+assert(RN.CanEdit() == false, "a raider outside a raid does not write it")
 
 -- the window: shown, the note and the own note, place and size kept, the lock
 RN.Window.Show()
@@ -104,6 +105,11 @@ local p = NS.PageFrame("raidnote")
 assert(p and p:IsShown() and not p.send:IsShown() and p.readOnly, "read only")
 assert(has(p.own.box:GetText(), "Meine Zeile"))
 assert(p.note.box:GetText() == "||cffff0000rot||r", p.note.box:GetText())
+-- read only shows: grey, no cursor (a click does not focus it)
+assert(p.note.locked and p.note.box.mouseEnabled == false, "locked")
+p.note.scripts.OnMouseDown(p.note)
+p.note.box:SetFocus()
+assert(not p.note.box:HasFocus(), "no cursor in the locked field")
 -- the raid marks (F-198): read only, a mark goes into the own note
 assert(#p.marks == 8 and p.marks[1].word == "totenkopf" and p.marks[8].word == "stern")
 p.marks[1]:Click()
@@ -124,7 +130,19 @@ p.marks[8]:Click()
 assert(NS.RaidNote.Own():sub(-7) == "{stern}" and NS.RaidNote.Draft() == "Tank: {kreuz}", "the field written in last")
 p.own.box:ClearFocus()
 NS.RaidNote.CanSend = canSend
+-- an officer (or the author's character) outside a raid: writes and keeps templates, sends in the raid
+local mayOfficer = NS.SelfMayOfficer
+NS.SelfMayOfficer = function() return true end
 NS.Refresh()
+assert(not p.readOnly and not p.note.locked and p.sets:IsShown(), "the officer writes outside a raid")
+assert(p.send:IsShown() and not p.send:IsEnabled(), "sending waits for the raid")
+assert(has(p.status:GetText(), "senden erst im Raid"), p.status:GetText())
+p.note.box:SetFocus()
+assert(p.note.box:HasFocus(), "the cursor is back")
+p.note.box:ClearFocus()
+NS.SelfMayOfficer = mayOfficer
+NS.Refresh()
+assert(p.readOnly and p.note.locked, "locked again")
 -- the settings section and the minimap menu entry
 local all = ""
 for _, e in ipairs(NS.MinimapMenuEntries()) do all = all .. e[1] .. "|" end

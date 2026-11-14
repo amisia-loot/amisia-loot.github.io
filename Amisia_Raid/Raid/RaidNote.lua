@@ -193,6 +193,16 @@ function RN.CanSend()
     return true
 end
 
+-- Whether this client may write the note and its templates: whoever may send, and an officer (or the
+-- author's character, ns.SelfMayOfficer) anywhere, to prepare them before the raid. true, or false;
+-- the second value: why it may not send now (nil when it may).
+function RN.CanEdit()
+    local ok, why = RN.CanSend()
+    if ok then return true end
+    if ns.SelfMayOfficer and ns.SelfMayOfficer(true) then return true, why end
+    return false, why
+end
+
 -- Whether sending is held now (a fight, the lockdown): the reason, or nil.
 function RN.SendHeld()
     if InCombatLockdown() then return L["Nicht im Kampf."] end

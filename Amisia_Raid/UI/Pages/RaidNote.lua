@@ -1,6 +1,7 @@
 -- Raid-Notiz (F-196, D-126, Raid/RaidNote.lua): the raid note to write and send, its templates and the
 -- own note. Officers, the raid leader and assistants (guild members in the own raid) edit and send it;
--- everyone else sees the note received there, read only. The own note below is everyone's and never
+-- officers (and the author's character) also write it and its templates outside a raid, sending waits
+-- for the raid (RN.CanEdit). Everyone else sees the note received there, read only and grey. The own note below is everyone's and never
 -- travels. The head row: the template picker, the name field, "Speichern", "Löschen"; at the right
 -- "Fenster zeigen". Over the note's field the eight raid marks (F-198): a click puts "{totenkopf}" ...
 -- (the client's language) at the cursor of the field written in last (the own note for who may not
@@ -16,7 +17,7 @@ local RN = ns.RaidNote
 local GREY, ORANGE = "|cff8f86a3", "|cffe0a344"
 local chosen          -- the template picked in this session
 
-local function mayEdit() return (RN.CanSend()) end
+local function mayEdit() return (RN.CanEdit()) end
 
 -- a received note in an edit box: its codes as text (the box would show colours, textures and links)
 local function plainText(c) return c and (c.text:gsub("|", "||")) or "" end
@@ -181,9 +182,11 @@ ns.RegisterPanel{ key = "raidnote", label = L["Raid-Notiz"], sub = L["Cooldowns 
         return f
     end,
     refresh = function(f)
-        local may, why = RN.CanSend()
+        local may = RN.CanEdit()
+        local canSend, why = RN.CanSend()
         local c = RN.Current()
         f.readOnly = not may
+        f.note:SetLocked(not may)
         -- the templates
         local values = {}
         for _, s in ipairs(RN.Sets()) do values[#values + 1] = { value = s.name, text = s.name } end
@@ -202,13 +205,15 @@ ns.RegisterPanel{ key = "raidnote", label = L["Raid-Notiz"], sub = L["Cooldowns 
             end
         end
         counter(f)
-        local held = may and RN.SendHeld()
+        local held = canSend and RN.SendHeld()
         f.send:SetShown(may)
-        f.send:SetEnabled(may and not held)
+        f.send:SetEnabled(canSend and not held)
         local from = c and L["Aktuelle Notiz von %s, %s."]:format(c.by, date("%H:%M", c.at)) or L["Noch keine Raid-Notiz."]
-        if may then
+        if canSend then
             f.status:SetText(from .. (held and (" " .. ORANGE .. held .. "|r") or ""))
         else
+            -- an officer outside a raid writes now and sends there
+            if may and why == L["Nur im Raid."] then why = L["Schreiben geht jetzt, senden erst im Raid."] end
             f.status:SetText(from .. " " .. GREY .. (why or "") .. "|r")
         end
         if not f.own.box:HasFocus() then setBox(f.own.box, RN.Own()) end

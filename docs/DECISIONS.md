@@ -2184,6 +2184,11 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 
 **Datum:** 2026-11-10
 **Entscheidung:** Die beiden Seiten, die Amisia auf dem eigenen Client nur mit Offiziersrang zeigt, gehen für den Charakter des Autors Vulo Vultrox (`ns.Feedback.IsAuthor`) auch ohne Rang und ohne Gilde auf: "Aufstellung" mit ihrem Einstellungsabschnitt (`ns.LineupAllowed`) und "Raid-Check" (`ns.RaidCheckAllowed`). Beide fragen `ns.SelfMayOfficer` (Offiziersrang oder Autor). Die Offiziersansicht selbst hatte er schon (D-87).
+- Nachtrag 2026-11-14 ("gib mir Vulo Vultrox immer auch alle Offi rechte"): `ns.SelfMayOfficer` gilt auch beim
+  Schreiben der Raid-Notiz und ihrer Vorlagen außerhalb eines Raids (D-126), bei den Lootregeln unter eigenem Master Loot
+  (`whyNot` in `Raid/LootRules.lua`, alles auf dem eigenen Client) und bei der Zahl in den Vergaben (der Autor folgt
+  nicht der Zahl des Halters, `keeperPlus` in `Raid/Awards.lua`). Senden der Raid-Notiz bleibt beim Rang: Empfänger
+  prüfen den Absender (Offizier, Raidleiter oder Assistent).
 - Das gilt nur für die Oberfläche des eigenen Clients. Was ein anderer Client von einem Absender annimmt (Abgleich, Vergaben, Punkte, Lootregeln, Raid-Check-Fragen, Bankbedarf), entscheidet dort weiter der Rang des Absenders in der Gilde (D-18, D-41). Der Autor ohne Offiziersrang bekommt also weiter DENIED, und Raider antworten nicht auf sein "Prüfen".
 - Kein fester Name bekommt Rechte auf fremden Clients: das Addon ist öffentlich, und ein gleichnamiger Charakter in einer anderen Gilde oder auf einem anderen Realm hätte sie sonst auch.
 
@@ -3351,6 +3356,10 @@ Einteilungen auf der Seite Raid > Raid-Notiz (alle sehen sie) und im Fenster "Ra
 - **Senden** dürfen Offiziere (Rang-Flag 22) sowie Raidleiter und Assistenten des eigenen Raids, solange sie
   Gildenmitglieder sind (Datenblöcke nimmt Amisia nur aus der Gilde, D-12); geprüft beim Empfänger mit seiner
   eigenen Raidliste. Nur im eigenen Raid, nie im Kampf oder in der Kampfsperre, eine Notiz je 10 s.
+- **Schreiben** (Feld und Vorlagen, `RN.CanEdit`): wer senden darf, und ein Offizier (oder der Charakter des Autors,
+  `ns.SelfMayOfficer`, D-92) auch außerhalb eines Raids, um Notizen und Vorlagen vorzubereiten; "An Raid senden" ist
+  dann sichtbar, aber aus, bis er im Raid ist (Nachtrag 2026-11-14). Für alle anderen ist das Feld gesperrt und grau,
+  ohne Schreibmarke (`W.EditArea`: `SetLocked`).
 - **Weg:** die erste Sendung als Blob `RN` in den Raid; danach kündigt der Absender sie an (`NV`, alle 240 s, bald
   nach einem Beitritt), wer sie nicht hat, fragt (`NQ`) und bekommt sie geflüstert. Ein ungefragter Blob im
   Flüstern wird verworfen; der Text ganz geprüft (4000 Bytes, 120 Zeilen, keine Steuerzeichen); eine Notiz älter als
@@ -3369,6 +3378,9 @@ Einteilungen auf der Seite Raid > Raid-Notiz (alle sehen sie) und im Fenster "Ra
 **Grund:** Nutzer 2026-11-13: "eine notiz machen wie bei methodraid cool für cds und einteilungen die man infight
 öffnen kann und auf eine bestimmte posi machen kann"; Antworten zur Spec: Offiziere + Raidleiter/Assist,
 Vorlagen ja (30), Fenster öffnet sich selbst (abschaltbar), eigene Notiz gleich mit bauen; "Passt, bauen".
+Nachtrag 2026-11-14 nach dem ersten Test: "kann in dem fenster nichts eingeben" (außerhalb eines Raids nahm das Feld
+die Schreibmarke an und verwarf dann still jede Eingabe); auf den Vorschlag "Offiziere schreiben und speichern
+Vorlagen auch außerhalb, senden nur im Raid, gesperrtes Feld grau": "Ja, umbauen".
 
 **Folge:** Keine Timer und keine Ansagen im Kampf (kein Boss-Mod). Ein Gast-Raidleiter außerhalb der Gilde kann
 nicht senden; die Seite sagt es. Wer eine Notiz gesendet hat, kündigt sie an; verlässt er den Raid, bekommen
