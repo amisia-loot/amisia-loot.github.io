@@ -1477,8 +1477,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: 2.57.0: Seite Karte öffnet auf "Alle Zonen" (nach Zonen, nächste zuerst), Chip "Quests" (nächster Questweg-Schritt, auch als "!" auf der Weltkarte, Einstellung `map.pinsQuests`), Ansicht "Ohne Ort", Zielkarte mit Richtung und Pfeil, Knopf "Karte" je Zeile, deutsche Namen aus eigener Beobachtung.
 
 ### F-206 Lichtsäule über der Kartenmarkierung
-- Version: -
-- Status: geplant
+- Version: 2.88.0
+- Status: gebaut
 - Prüfung: Wenn du mit Strg + Klick auf die Weltkarte eine Markierung setzt und die Karte schließt, dann steht über dem Ort eine goldene Lichtsäule mit leuchtendem Ring am Boden und darüber ein Kästchen "Kartenmarkierung" mit der Entfernung, die beim Laufen kleiner wird (nach dem Update einmal das Spiel ganz neu starten, sonst fehlt die Textur).
 - Prüfung: Wenn du dich so drehst, dass der Ort hinter dir liegt, dann ist die Säule weg und kommt wieder, sobald er im Bild ist; mit einem Ziel von Amisia (z. B. "Ziel setzen" im Planer) steht dessen Name im Kästchen.
 - Prüfung: Wenn du unter Einstellungen > Karte und Wegpunkt "Lichtsäule an der Kartenmarkierung" ausschaltest, dann ist die Säule sofort weg; Markierung und Zielfenster bleiben.
