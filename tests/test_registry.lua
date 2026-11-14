@@ -50,6 +50,13 @@ assert(s.t.n == nil, "an invalid stored value falls back to the default")
 NS.ApplySettings(root)
 assert(s.rolls.seconds == 30, "a second run changes nothing")
 
+-- F-202 (D-130): a setting no loaded part registers (its module is switched off) stays as it was, in a
+-- section of its own and beside known settings; only the migration steps (Core/Migrate.lua) remove keys
+local kept = { settings = { version = 2, offmodule = { keep = 3, mode = "auto" }, ui = { goneField = "x" } } }
+NS.ApplySettings(kept)
+assert(kept.settings.offmodule.keep == 3 and kept.settings.offmodule.mode == "auto", "an unknown section stays")
+assert(kept.settings.ui.goneField == "x", "an unknown key of a known section stays")
+
 -- slash commands, help, unknown word
 local got
 NS.RegisterSlash("testcmd", { aliases = { "tc" }, args = "<x>", desc = "Testbefehl", run = function(rest) got = rest end })

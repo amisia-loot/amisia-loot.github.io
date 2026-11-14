@@ -1,6 +1,8 @@
 -- The version of the saved data as a whole (AmisiaDB.schema) and the ordered steps that bring an
 -- older file up to it (D-48). Core runs ns.Migrate on ADDON_LOADED before the settings are checked
--- (ns.ApplySettings), so a step can move a setting to its new place before an unknown one is dropped.
+-- (ns.ApplySettings), so a step can move a setting to its new place before it is checked there. Only
+-- these steps remove a stored key: the settings check keeps every key it does not know (a switched-off
+-- module's, F-202, D-130).
 -- Each step runs once, in order; a step that fails stops the chain (the next login tries again from
 -- there) and is reported like any Lua error. A file saved by a newer Amisia is left as it is.
 -- The parts' own marks (settings.version, awardsVersion, softres.version, the v fields) stay theirs:
