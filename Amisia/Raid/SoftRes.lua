@@ -1,6 +1,7 @@
 -- Amisia soft-reserves: a pasted list (softres.it CSV or "Name [item]" lines), shown in item
 -- tooltips and on the loot window, and ranked first in roll rounds.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local GetItemInfo = C_Item.GetItemInfo
@@ -1436,3 +1437,4 @@ ns.RegisterSlash("sr", { args = SR_ARGS, desc = L["Soft-Reserves anzeigen"], run
         ns.ToggleSoftResFrame()
     end
 end })
+end)

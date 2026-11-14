@@ -15,6 +15,7 @@
 -- The pasted text is untrusted: colour codes and bars stripped, each line cut to 200 bytes, at most
 -- 2000 lines read and 80 sign-ups taken, names without digits or control characters, 48 at most.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local MAX_LINES = 2000      -- lines read
@@ -1941,3 +1942,4 @@ ns.RegisterSlash("aufstellung", { en = "lineup", officer = true, args = L["[einl
 -- for the tests
 ns._lineup = { oneOff = oneOff, norm = norm, cleanLine = cleanLine, lineWords = lineWords, MAX_SIGNUPS = MAX_SIGNUPS,
                MAX_NIGHTS = MAX_NIGHTS, statementOf = statementOf, SAME_CLICK = SAME_CLICK }
+end)

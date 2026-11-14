@@ -10,6 +10,7 @@
 -- { key, from, at, hash, lv, sys, cfg, list = { [lower] = { name, a, b } } }); officers also take
 -- the costs into their raid. Nothing goes out while the guild rolls or points.share is off.
 local ADDON, ns = ...
+ns.Load(function()
 
 local KV_EVERY = 240           -- the keeper repeats its state this often
 local KV_GAP = 10              -- and not more often than this after a change
@@ -380,4 +381,5 @@ ns.Listen("POINTS", function()
 end)
 ns.Listen("DATA_CHANGED", function()
     if lastKV then lastKV.h = nil end
+end)
 end)

@@ -3,6 +3,7 @@
 -- items and where they come from (tools/build_gear.py), GearWeights.lua the stat weights per class,
 -- spec and level. The stats themselves come from the client, because Forever changed many items.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local Gear = {}
@@ -1759,3 +1760,4 @@ function Gear.SourceText(rec, short)
     end
     return tostring(k)
 end
+end)

@@ -8,6 +8,7 @@
 -- tools/quest_tag_archive.json and writes the types into the gear data (QT), so the file may forget.
 -- Recorded only while the quests are recorded (the switch collect.quests).
 local ADDON, ns = ...
+ns.Load(function()
 
 local QT = {}
 ns.QuestTags = QT
@@ -137,4 +138,5 @@ ns.OnEvent("QUEST_ACCEPTED", soon)
 ns.OnEvent("QUEST_LOG_UPDATE", soon)
 ns.OnEvent("ADDON_LOADED", function(name)
     if name == ADDON and AmisiaDB then QT.Loaded(AmisiaDB) end
+end)
 end)

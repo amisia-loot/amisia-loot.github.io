@@ -12,6 +12,7 @@
 -- Never for an event the player created, never in combat, never while the client's calendar window
 -- is shown. The report goes into the self-test window.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local ST = ns.SelfTest
@@ -466,3 +467,4 @@ end
 
 -- for the tests
 WP._run = function() return run end
+end)

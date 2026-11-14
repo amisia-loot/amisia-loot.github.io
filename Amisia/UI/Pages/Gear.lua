@@ -7,6 +7,7 @@
 -- Everything shown comes from the caches of Bis.lua; a refresh never computes the targets again
 -- unless something they depend on changed.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local Gear = ns.Gear
@@ -1481,3 +1482,4 @@ ns.RegisterCard{ key = "gear", order = 30, available = function() return Gear.Av
     end
     c:SetAction(L["Öffnen"], function() ns.ShowGear("goals") end)
 end }
+end)

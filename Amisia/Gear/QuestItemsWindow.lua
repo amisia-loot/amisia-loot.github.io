@@ -8,6 +8,7 @@
 -- and the lockdown only "Im Kampf nicht verfügbar". Movable, its place in settings.questItemsWindow
 -- (reset with the other windows); /amisia questgegenstaende (en questitems) and the page Quests open it.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local S = T.QUESTITEMS
@@ -251,4 +252,5 @@ end
 
 ns.Listen("QUEST_ITEMS", function()
     if QW.Shown() then refresh() end
+end)
 end)

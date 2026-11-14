@@ -17,6 +17,7 @@
 -- secret: no answer. The chat line "Amisia Raid-Check: Es fehlt: ..." goes only on the officer's
 -- click, with raidcheck.chat on, never in the lockdown, two lines at most, names of the raid only.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local RR = ns.RaidRead
 
@@ -577,3 +578,4 @@ end })
 -- for the tests
 ns._raidcheck = { answers = function() return answers end,
                   reset = function() answers, lastAnswer, lastAsk, lastRows = {}, -1e9, -1e9, nil end }
+end)

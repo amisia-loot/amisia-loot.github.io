@@ -197,6 +197,9 @@ def fresh(source='', player=None, setup=None, locale=None):
         with open(path, encoding='utf-8') as fh:
             chunk = loader(fh.read(), name)
         chunk('Amisia', ns)
+    # the files' bodies wait for ADDON_LOADED (Locales/Locale.lua, D-128): run them here, so the
+    # patch below finds ns.Data; the event then only starts the core (ns.CoreLoaded)
+    lua.eval('function(ns) ns.RunLoad() end')(ns)
     # The shipped scan names (Data/ScanNames.lua: the titles and names the user's client gave the quest
     # and NPC scans) change with every scan and would replace the names tests make up. A test sees none
     # unless it sets STUB.scanNames (a table shaped as the file's) or STUB.shippedScanNames = true.

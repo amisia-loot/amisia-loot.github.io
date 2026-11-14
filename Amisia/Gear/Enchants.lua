@@ -5,6 +5,7 @@
 -- or a scroll), reagents and the guild's crafters (ns.Prof, ns.Crafters). Only the worn item, no
 -- temporary enchantments, nothing is sent or saved. The goals window and the slot card show it.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local Gear = ns.Gear
 
@@ -356,3 +357,4 @@ function E.CardLine(slotKey)
     end
     return L["Verzauberung: %s"]:format(now)
 end
+end)

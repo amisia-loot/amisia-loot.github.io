@@ -26,6 +26,7 @@
 -- (tools/build_questitems.py joins them into tools/quest_item_archive.json and the data as kind O) and the
 -- items marked "Behalten".
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local QI = {}
@@ -833,3 +834,4 @@ ns.RegisterSettings{ key = "questitems", label = L["Questgegenstände"], order =
       tip = L["Landet ein Gegenstand in deinen Taschen, der eine Quest startet, die du weder im Log noch abgeschlossen hast, zeigt ein kleines Fenster ihn; ein Klick auf sein Symbol startet die Quest. Nie im Kampf oder Bosskampf."],
       onChange = function(v) if ns.QuestStart then ns.QuestStart.SettingChanged(v) end end },
 } }
+end)

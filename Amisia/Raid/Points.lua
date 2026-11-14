@@ -13,6 +13,7 @@
 -- shared = (PointsSync.lua) }; a raid keeps s.points = { sys, cfg, off, charges = { [awardId] = { p, n, at, by } } }.
 -- Pools: "D" DKP, "E" EP, "G" GP. Every pasted or typed text is untrusted.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local HEAD_FAIL = L["Das ist kein Punktestand der Amisia-Seite."]
@@ -1069,3 +1070,4 @@ ns.RegisterSlash("korrektur", { en = "adjust", officer = true, args = L["<Name> 
     run = adjustCommand })
 ns.RegisterSlash("punkteraid", { en = "raidpoints", officer = true, args = L["an|aus"], desc = L["Laufenden Raid für Punkte zählen oder nicht"],
     run = raidCommand })
+end)

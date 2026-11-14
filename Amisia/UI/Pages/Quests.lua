@@ -3,6 +3,7 @@
 -- chain progress and the best reward's upgrade mark per row, a click opening the chain and the
 -- rewards below the quest, and a button that sets the waypoint to the quest giver.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, Q, T = ns.W, ns.Quests, ns.Theme
 local GOLD_TEXT = T.GOLD_TEXT
@@ -395,3 +396,4 @@ end)
 
 -- Item names the client did not have at the last fill: the rows again once the answers are in.
 W.RefreshOnItemNames(function() return nameMissing end, shown)
+end)

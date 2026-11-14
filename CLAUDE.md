@@ -20,6 +20,9 @@
   `NODE_PATH=~/addons/VuloForeverUI/tools/node_modules node tests/syntax.cjs` (Node in `~/.local/node/bin`).
 - New user-visible text: German inside `L["…"]`, English in `Amisia/Locales/enUS_<area>.lua`;
   `python3 tools/l10n.py check` stays clean.
+- Every addon file but `Locales/Locale.lua` and the generated `Data/*` puts its body in `ns.Load(function()`
+  ... `end)` right after `local ADDON, ns = ...`: the bodies run on ADDON_LOADED, once the chosen language
+  (`ui.language`) is known (D-128, `tools/tests/test_load_order.py`).
 - UI: sizes, fonts, colours and allowed atlases from `UI/Theme.lua`; rows with `W.Row`/`W.Column`/`W.Grid`,
   chips with `W.FitChip`. Before and after a UI refactor: `build.py snapshots --out A`, then `--out B --compare A`.
 - Lazy data: read generated tables with `ns.Data("GEAR")` etc., check with `ns.HasData`/`ns.DataSize`.

@@ -27,6 +27,7 @@
 -- tooltip's lines (GQ.TipLines), "N teilen" in the dungeon bar (GQ.ShareCount), and GQ.Share: the
 -- client's quest share of a quest in the own log, only on a click and never in combat.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local GQ = {}
@@ -758,3 +759,4 @@ function GQ._reset()
     logReady = false
 end
 function GQ._state() return { members = members, pending = pending, askWant = askWant, watched = watched, lastSent = lastSent } end
+end)

@@ -11,6 +11,7 @@
 -- filled with the bid or the cost of the item's points round, else the GP formula (PointsRounds.lua);
 -- the rows below move down by PTS_DY. Rolling guilds see the dialog as before.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 
@@ -553,3 +554,4 @@ if type(HandleModifiedItemClick) == "function" then
         if ns.ItemID(link) then ns.ShowAwardDialog(link) end
     end))
 end
+end)

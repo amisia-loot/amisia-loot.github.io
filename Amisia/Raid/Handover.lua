@@ -10,6 +10,7 @@
 -- only on this client). Copies are followed by their item GUID (a move between bags keeps the entry),
 -- else by item id. Nothing is sent, nothing is automatic, nothing replaces master loot.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 
@@ -904,3 +905,4 @@ ns.RegisterSlash("uebergabe", { en = "handover", desc = L["Items, die du noch ü
     for _, e in ipairs(list) do say(e) end
     if ns.ShowHandover then ns.ShowHandover() end
 end })
+end)

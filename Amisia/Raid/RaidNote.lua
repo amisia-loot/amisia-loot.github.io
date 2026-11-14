@@ -9,6 +9,7 @@
 -- Saved: AmisiaDB.raidNote = { v = 1, sets = { { name, text, at } } (30), cur = { id, at, by, text, h },
 -- draft, own } (the own note never travels).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local RN = {}
@@ -512,3 +513,4 @@ ns.RegisterSettings{ key = "raidnote", label = L["Raid-Notiz"], order = 17, grou
       tip = L["Setzt Stelle, Größe und Schloss des Fensters Raid-Notiz zurück."],
       run = function() if ns.ResetRaidNotePosition then ns.ResetRaidNotePosition() end end },
 } }
+end)

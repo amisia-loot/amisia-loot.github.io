@@ -1,5 +1,6 @@
 -- English texts, part raidcheck (the raid check and raid IDs, F-098/F-099).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.NewLocale("enUS")
 if not L then return end
 
@@ -118,3 +119,4 @@ L["nur Stufe 60"] = "only level 60"
 L["nur frei"] = "only free"
 L["tot"] = "dead"
 L["vor %d Min."] = "%d min ago"
+end)

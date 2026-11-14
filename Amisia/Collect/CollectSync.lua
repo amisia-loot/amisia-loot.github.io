@@ -23,6 +23,7 @@
 -- layout (ns.CollectWireBody), so old and new clients holding the same records agree. A blob of
 -- version 3 (quests in the collector's version 3 layout) is read too, its two texts left out.
 local ADDON, ns = ...
+ns.Load(function()
 
 ns.COLLECT_PROTO = 2
 ns.COLLECT_BLOB_V = 2
@@ -893,3 +894,4 @@ end
 function ns.CollectSyncState()
     return { pulling = pull and pull.name or nil, waiting = #peers, serving = #serve }
 end
+end)

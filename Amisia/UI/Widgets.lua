@@ -4,6 +4,7 @@
 -- (a patch renamed it), each widget falls back to the flat look of before (dark, gold) and stays
 -- usable; nothing is reported.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local T = ns.Theme
@@ -2469,3 +2470,4 @@ function W.Page(parent, opts)
     end
     return p
 end
+end)

@@ -15,6 +15,7 @@
 -- AmisiaDB.probe (Collect/ScanById.lua) for the scans and the N100. Only reads, every call protected,
 -- never in combat or an encounter lockdown; nothing goes to chat or other players.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local ST = ns.SelfTest
@@ -797,3 +798,4 @@ function DT.Start()
     ns.msg(L["Datenprüfung läuft (etwa %d s) ..."]:format(math.ceil(math.max(DT.QUEST_WAIT, DT.TIMES[#DT.TIMES] + 1.3))))
     plan(P)
 end
+end)

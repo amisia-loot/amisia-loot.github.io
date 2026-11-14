@@ -9,6 +9,7 @@
 -- a profession's tooltip: skill, recipes, how old. A click on a row: Flüstern, Einladen. Everyone sees
 -- it; without a guild it says so. The filters stay in settings.window.members.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local M = T.MEMBERS
@@ -684,3 +685,4 @@ for _, event in ipairs({ "GUILD_ROSTER_UPDATE", "PLAYER_GUILD_UPDATE", "CLUB_MEM
 end
 ns.Listen("CRAFTERS_CHANGED", function() bump() if shown() then ns.RefreshSoon() end end)
 ns.Listen("ALTS", function() bump() if shown() then ns.RefreshSoon() end end)
+end)

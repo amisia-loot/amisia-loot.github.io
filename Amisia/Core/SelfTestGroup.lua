@@ -13,6 +13,7 @@
 -- The readers (auras, durability, item level, enchants, talent points, saved instances) are the raid
 -- check's (Raid/RaidCheckRead.lua, ns.RaidRead); this file only reports what they read.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local ST = ns.SelfTest
@@ -547,3 +548,4 @@ function GT.Start()
         C_Timer.After(GT.WAIT, function() finishProbe(P) end)
     end)
 end
+end)

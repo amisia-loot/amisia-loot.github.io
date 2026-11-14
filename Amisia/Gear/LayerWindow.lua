@@ -10,6 +10,7 @@
 -- The chip: a small box "Layer B" ("Layer ?"), movable (settings.layerChip), a click opens the window;
 -- hidden in instances. A plain frame, nothing protected.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local S = T.LAYER
@@ -297,3 +298,4 @@ ns.OnEvent("ZONE_CHANGED_NEW_AREA", world)
 
 ns.RegisterSlash("layer", { desc = L["Fenster Layer: dein Layer in dieser Zone, Wechsel in der Gilde und im Kanal"], forever = true,
     run = function() LW.Toggle() end })
+end)

@@ -6,6 +6,7 @@
 -- waypoint where a place is known (the librarian, an own drop position). The rules live in
 -- Gear/MageScrolls.lua.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, MS, T = ns.W, ns.MageScrolls, ns.Theme
 local GREY, GREEN, LABEL = T.GREY, T.GREEN, T.LABEL
@@ -402,3 +403,4 @@ ns.OnEvent("SKILL_LINES_CHANGED", schedule)
 ns.OnEvent("QUEST_TURNED_IN", schedule)
 ns.Listen("PROF_SPELL_LOADED", schedule)
 ns.OnEvent("GET_ITEM_INFO_RECEIVED", function() if nameMissing then schedule() end end)
+end)

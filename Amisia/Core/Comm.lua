@@ -3,6 +3,7 @@
 -- chunking and reassembly, a send queue with its own throttle per prefix that waits in the chat
 -- lockdown and reads every send result, no sending in battlegrounds, receive limits per sender.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 ns.SYNC_PROTO = 1        -- protocol of this client
@@ -1168,4 +1169,5 @@ ns.RegisterSyncCommand("debug", function()
     local on = not ns.Get("sync.debug")
     ns.Set("sync.debug", on)
     ns.msg(on and L["Sync-Fehlersuche an."] or L["Sync-Fehlersuche aus."])
+end)
 end)

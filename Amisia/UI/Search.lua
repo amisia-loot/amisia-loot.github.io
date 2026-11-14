@@ -10,6 +10,7 @@
 -- items): the search never asks the server for an item. Players only in the officer view (D-36: the
 -- numbers per player are the officers').
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local T = ns.Theme
 local M = T.MAIN
@@ -419,3 +420,4 @@ end
 function Search._reset() items, itemsAt, itemsGear, players, playersAt, recipes, recipesData = nil, nil, nil, nil, nil, nil, nil end
 
 ns.Listen("DATA_CHANGED", function() players = nil end)
+end)

@@ -16,6 +16,7 @@
 --   creature dead: the target or the mouseover dead (UnitIsDead) with its NPC id in the GUID, or a loot
 --   window from its corpse (GetLootSourceInfo). A rare never seen dead stays grey.
 local ADDON, ns = ...
+ns.Load(function()
 
 local RG = {}
 ns.RunGains = RG
@@ -250,3 +251,4 @@ end)
 RG._reset = function()
     bar, purse, owe, recent, busy = nil, nil, {}, {}, {}
 end
+end)

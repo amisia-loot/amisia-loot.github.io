@@ -7,6 +7,7 @@
 -- boss with the rates, the sharing switch, "Wer teilt" (F-189, D-121: the members heard this session, in
 -- place of the list), "Jetzt abgleichen" and the text "Drops für die Website" (in place of the list).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local page
@@ -587,3 +588,4 @@ local function refreshSoon()
 end
 ns.Listen("DROPS_CHANGED", refreshSoon)
 ns.Listen("DROPSYNC_CHANGED", refreshSoon)
+end)

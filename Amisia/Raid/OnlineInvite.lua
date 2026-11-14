@@ -6,6 +6,7 @@
 -- group or while this client is in a group it may not invite to; a secret line (the chat lockdown) stays
 -- as it is. Sends nothing; nothing is saved.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local OI = {}
@@ -110,3 +111,4 @@ do
         pcall(add, "CHAT_MSG_SYSTEM", function(...) return pass(pcall(OI.Filter, ...)) end)
     end
 end
+end)

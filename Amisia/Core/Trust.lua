@@ -4,6 +4,7 @@
 -- fallback and a setting). The guild roster comes from C_Club (secret in the chat lockdown, so it
 -- is only read outside of it), else from the classic guild roster functions.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local N_ = ns.N_
 
@@ -502,4 +503,5 @@ ns.RegisterSyncCommand("raenge", function()
         DEFAULT_CHAT_FRAME:AddMessage(L["  Rang %d · %s · %d %s · %s"]:format(r.rank, r.name, r.members,
             r.members == 1 and L["Mitglied"] or L["Mitglieder"], r.officer and L["Offiziersrang"] or L["kein Offiziersrang"]))
     end
+end)
 end)

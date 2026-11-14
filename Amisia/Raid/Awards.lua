@@ -12,6 +12,7 @@
 -- hand-out, so a second one before the first is confirmed does not push the first out. A hand-out
 -- to the bank or disenchant character of the settings is written with to = "bank" or "de".
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local GetItemInfo = C_Item.GetItemInfo
@@ -895,3 +896,4 @@ ns.RegisterSlash("rueckgaengig", { en = "undo", officer = true, desc = L["letzte
     local text = ns.UndoAward()
     ns.msg(text and L["Rückgängig: %s."]:format(text) or L["Nichts rückgängig zu machen."])
 end })
+end)

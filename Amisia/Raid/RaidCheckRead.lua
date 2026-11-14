@@ -5,6 +5,7 @@
 -- function that is missing raises { missing = path } (the probe shows it as FEHLT, the raid check
 -- calls them protected).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local RR = {}
@@ -150,3 +151,4 @@ function RR.Saved(i)
     return { name = name, id = id, reset = reset, difficulty = difficulty, locked = locked, extended = extended, isRaid = isRaid,
              maxPlayers = maxPlayers, diffName = diffName, encounters = encounters, progress = progress, mapID = mapID }
 end
+end)

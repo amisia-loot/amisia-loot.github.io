@@ -13,6 +13,7 @@
 -- unlocks the holder to drag it (its place in settings.toast.point). A secret chat line (Forever's
 -- encounter lockdown) shows nothing. Nothing is sent.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local LT = T.LOOTTOAST
@@ -422,3 +423,4 @@ ns.RegisterSettings{ key = "toast", label = L["Item-Anzeige"], order = 88, group
       run = function() preview() end,
       tip = L["Zeigt ein Beispiel, so wie es beim Looten erscheint."] },
 } }
+end)

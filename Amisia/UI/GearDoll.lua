@@ -6,6 +6,7 @@
 -- of the goals list by section with the targets got, the raid check's enchant test, the weapon plan's
 -- text. Everything comes from ns.BisTargets; nothing is sent or saved here.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local PL = T.PLANNER
@@ -493,3 +494,4 @@ ns.GoalsKit = {
     iconOf = iconOf, qualityOf = qualityOf, ownMark = ownMark, pctText = pctText, setTip = setTip,
     unenchanted = unenchanted, goalItems = goalItems, planText = planText, QUESTION = QUESTION,
 }
+end)

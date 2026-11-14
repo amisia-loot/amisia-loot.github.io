@@ -1,6 +1,7 @@
 -- Raid-Archiv (key "raids"): the recorded sessions, a selection for the export, and the details of
 -- one session. Not the gear tab's raid journal "Raids" (key "raidjournal").
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local ROWS, ROW_H = 8, 22
@@ -257,3 +258,4 @@ ns.RegisterCard{ key = "raid", order = 10, fill = function(c)
     if ns.IsOfficerView() then c:SetAction(L["Öffnen"], function() ns.ShowPage("raids") end)
     else c:SetAction(L["Öffnen"], function() ns.ShowPage("raidlog") end) end
 end }
+end)

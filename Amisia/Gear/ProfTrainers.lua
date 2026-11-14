@@ -9,6 +9,7 @@
 -- rank, the trainer token N<npc>, L the learning costs, TD the readings it holds); a reading the data
 -- holds is dropped here once the data is in use (no load at login, D-28).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local Pr = ns.Prof
 
@@ -269,3 +270,4 @@ ns.RegisterSlash("lehrer", { en = "trainers", desc = L["Stand der gelesenen Beru
     local t, o = Tr.Counts()
     ns.msg(L["Lehrer: %d gelesen, %d Angebote (noch nicht in den Daten)."]:format(t, o))
 end })
+end)

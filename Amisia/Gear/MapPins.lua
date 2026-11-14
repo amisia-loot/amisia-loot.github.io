@@ -10,6 +10,7 @@
 -- client's quest icon, and so do the next steps of the open dungeon quests (ns.DungeonQuestSteps,
 -- map.pinsQuests).
 local ADDON, ns = ...
+ns.Load(function()
 local Gear, Map, W = ns.Gear, ns.Map, ns.W
 local L = ns.L
 
@@ -713,3 +714,4 @@ end)
 ns.BisOnOwned(scheduleOwned)
 -- a quest taken, handed in or dropped moves the quest steps
 for _, event in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED" }) do ns.OnEvent(event, schedule) end
+end)

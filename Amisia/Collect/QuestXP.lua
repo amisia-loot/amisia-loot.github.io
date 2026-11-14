@@ -12,6 +12,7 @@
 -- less per level, 10 % from ten levels above, rounded to 5, 10, 25 or 50. Whether Forever does
 -- exactly this is not checked: a scaled value is an estimate.
 local ADDON, ns = ...
+ns.Load(function()
 
 local QX = {}
 ns.QuestXP = QX
@@ -157,4 +158,5 @@ ns.OnEvent("QUEST_COMPLETE", safe(onWindow))
 ns.OnEvent("QUEST_TURNED_IN", safe(onTurnedIn))
 ns.OnEvent("ADDON_LOADED", function(name)
     if name == ADDON and AmisiaDB then QX.Migrate(AmisiaDB) end
+end)
 end)

@@ -11,6 +11,7 @@
 -- quests shown. The switch quests.enabled turns the page off; off at login, the data is dropped at
 -- once so its strings are collected.
 local ADDON, ns = ...
+ns.Load(function()
 local Gear = ns.Gear
 local L, N_ = ns.L, ns.N_
 
@@ -41,10 +42,18 @@ local SKILL_NAMES = {
     [165] = N_("Lederverarbeitung"), [186] = N_("Bergbau"), [393] = N_("Kürschnerei"), [197] = N_("Schneiderei"),
     [755] = N_("Juwelierskunst"), [633] = N_("Schlossknacken"), [40] = N_("Gifte"),
 }
+-- the client's names: German and English as they stand (Amisia's language may differ from the
+-- client's, F-199, so L[name] alone would miss them)
+local SKILL_EN = {
+    [171] = "Alchemy", [164] = "Blacksmithing", [185] = "Cooking", [333] = "Enchanting", [202] = "Engineering",
+    [129] = "First Aid", [356] = "Fishing", [182] = "Herbalism", [165] = "Leatherworking", [186] = "Mining",
+    [393] = "Skinning", [197] = "Tailoring", [755] = "Jewelcrafting", [633] = "Lockpicking", [40] = "Poisons",
+}
 local SKILL_BY_NAME = {}
 for id, name in pairs(SKILL_NAMES) do
     SKILL_BY_NAME[name:lower()] = id
     SKILL_BY_NAME[L[name]:lower()] = id
+    if SKILL_EN[id] then SKILL_BY_NAME[SKILL_EN[id]:lower()] = id end
 end
 local STATUS_RANK = { active = 1, open = 2, locked = 3, done = 4 }
 local STATUS_OF = { a = "active", o = "open", l = "locked", d = "done" }
@@ -934,3 +943,4 @@ ns.RegisterSlash("quests", { aliases = { "quest" }, args = L["[suche]"], desc = 
         end
         if ns.ShowPage then ns.ShowPage("quests") end
     end })
+end)

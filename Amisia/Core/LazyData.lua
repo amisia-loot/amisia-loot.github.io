@@ -90,6 +90,9 @@ local function addonKB()
     return GetAddOnMemoryUsage(ADDON)
 end
 
+-- The memory report and its command use other files (ns.Count, ns.RegisterSlash): they wait for
+-- ADDON_LOADED like those (D-128); the data functions above load at once, as the Data files call them.
+ns.Load(function()
 local function mb(kb) return ("%.1f MB"):format(kb / 1024) end
 
 local countKeys = ns.Count
@@ -129,6 +132,7 @@ if ns.RegisterSlash then
         for _, line in ipairs(ns.MemoryReport()) do ns.msg(line) end
     end })
 end
+end)
 
 -- ns.KEY reads go through ns.Data too; an assignment to a key that still waits replaces it.
 setmetatable(ns, {

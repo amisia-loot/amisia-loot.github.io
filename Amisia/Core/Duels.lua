@@ -13,6 +13,7 @@
 -- zones = { names }, cls = { [name] = class token }, spec = { [name] = tree 1-3 },
 -- tour = { n = last tournament, on = its start } }.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local D = {}
@@ -1064,3 +1065,4 @@ ns.RegisterSlash("duelle", { en = "duels", args = L["[leeren]"], desc = L["Duell
     end
     if ns.ShowDuels then ns.ShowDuels() end
 end })
+end)

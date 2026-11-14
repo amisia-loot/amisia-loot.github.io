@@ -21,6 +21,7 @@
 -- F-165 (D-95): the view "Rollen" (the link "Rollen" in the head row; Raid/LineupRoles.lua): main tanks, assistants and master looters as
 -- lists of names with their switches, the loot threshold, "Automatisch setzen"; "Rollen jetzt setzen".
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local GREY, ORANGE, RED, GREEN = T.GREY, T.ORANGE, T.RED, T.GREEN
@@ -1745,3 +1746,4 @@ local function later()
 end
 ns.OnEvent("GUILD_ROSTER_UPDATE", later)
 ns.OnEvent("GROUP_ROSTER_UPDATE", later)
+end)

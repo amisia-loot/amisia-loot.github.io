@@ -13,6 +13,7 @@
 -- last (Locales/Locale.lua stamps ns.PERF_T0) and the time of the bus handlers (ns.OnEvent, ns.Fire)
 -- until the first PLAYER_ENTERING_WORLD after loading ("boot"): two clock reads per handler.
 local _, ns = ...
+ns.Load(function()
 
 -- the clock in milliseconds: debugprofilestop, else GetTimePreciseSec, else none (no measurement)
 local profile = type(debugprofilestop) == "function" and debugprofilestop or nil
@@ -199,3 +200,4 @@ function P.Since()
 end
 
 P.Clock = clock
+end)

@@ -7,6 +7,7 @@
 -- Typing two characters into the search box turns the side bar into the results (UI/Search.lua).
 -- Pages are built the first time they are opened and refreshed only while shown.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local W, T = ns.W, ns.Theme
@@ -1497,3 +1498,4 @@ ns.RegisterSlash("einstellungen", { en = "settings", aliases = { "optionen", "co
         local sec = ns.SettingsSection(rest)
         if sec then ns.ShowSettingsSection(sec.key) elseif ns.ShowSettings then ns.ShowSettings(rest) end
     end })
+end)

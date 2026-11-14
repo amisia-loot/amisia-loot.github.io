@@ -37,6 +37,7 @@
 -- SW.Trace(): what this session's invites, accepts and leaves did (tried, blocked by the client, joined)
 -- and how the swaps ended, for /amisia selbsttest layer (Core/SelfTestLayer.lua).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local SW = {}
@@ -663,3 +664,4 @@ function SW._reset(st)
     req, pending, swap, answered, invited, offered, chatAt = st.req, st.pending, st.swap, {}, {}, {}, st.chatAt
     chatAll, othersAt, lastCall, trace = st.chatAll, nil, nil, newTrace()
 end
+end)

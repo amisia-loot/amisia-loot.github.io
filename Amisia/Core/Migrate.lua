@@ -6,6 +6,7 @@
 -- The parts' own marks (settings.version, awardsVersion, softres.version, the v fields) stay theirs:
 -- a step here is for what crosses parts, a setting moved to another section first of all.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 -- Moves a stored setting from one path to another ("sync.shareUpgrades" -> "need.share"), when the
@@ -191,4 +192,5 @@ ns.OnEvent("PLAYER_LOGIN", function()
     if newer then
         ns.msg(L["Die gespeicherten Daten stammen von einer neueren Amisia-Version (Stand %d, diese kennt %d). Bitte Amisia aktualisieren."]:format(newer, #ns.MIGRATIONS))
     end
+end)
 end)

@@ -7,6 +7,7 @@
 -- in memory (D-80). The level sets are no item sets: per range of ten levels the best item of
 -- every slot for the own spec at the range's top (the simulation's calculation, ns.BisFor).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local Gear = ns.Gear
 
@@ -267,3 +268,4 @@ end
 
 -- Test hook: forget the set list.
 function C._reset() all, allKey, levelAll, levelKey = nil, nil, nil, nil end
+end)

@@ -11,6 +11,7 @@
 -- At login (tools.scanAutotrim, default on) the work starts a few seconds late and runs in small
 -- steps on timers, so the login has no hitch; /amisia scan aufräumen does it at once.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local MOD = 1000000007   -- the hash of tools/build_scan_archive.py: h = (h * 31 + byte) % MOD
@@ -354,4 +355,5 @@ ns.OnEvent("PLAYER_LOGIN", function()
             ns.ScanTrimStart()
         end
     end)
+end)
 end)

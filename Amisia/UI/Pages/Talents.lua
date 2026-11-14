@@ -17,6 +17,7 @@
 -- window is moved and scaled on its own (settings talentWindow and ui.talentScale, Ctrl + mouse
 -- wheel over it).
 local ADDON, ns = ...
+ns.Load(function()
 local W, T, Theme = ns.W, ns.Talents, ns.Theme
 local L = ns.L
 local F = T.F
@@ -911,3 +912,4 @@ local function changed()
 end
 ns.OnEvent("PLAYER_TALENT_UPDATE", changed)
 ns.OnEvent("TRAIT_CONFIG_UPDATED", changed)
+end)

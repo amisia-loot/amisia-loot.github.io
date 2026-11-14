@@ -6,6 +6,7 @@
 -- (30 minutes) and shown to officers: the award dialog, the winner picker and a tooltip line.
 -- Nothing of it ever goes into the raid chat.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local KEEP = 1800             -- seconds a question and its answers are kept
@@ -557,3 +558,4 @@ ns.RegisterSlash("wer", { en = "upgrade", args = L["<Item-Link>"], officer = tru
         ns.msg(L["Gefragt, wer %s braucht. Antworten in %d s."]:format(label, WER_WAIT))
         C_Timer.After(WER_WAIT, tell)
     end })
+end)

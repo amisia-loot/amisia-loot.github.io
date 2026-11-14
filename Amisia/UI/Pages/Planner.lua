@@ -22,6 +22,7 @@
 -- settings.bis (planSlot, planTab, planLo, planHi, planFilter, planWorn); the set category, the open
 -- set and the search text only in memory. Nothing is sent.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local PL = T.PLANNER
@@ -1321,4 +1322,5 @@ ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()
         memo.key = nil
         if onPage() then ns.Refresh() end
     end)
+end)
 end)

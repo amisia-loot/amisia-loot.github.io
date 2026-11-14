@@ -1,5 +1,6 @@
 -- Export: the text block for the ledger's Import tab, of the new and changed raids or the selected ones.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 
@@ -125,3 +126,4 @@ ns.RegisterCard{ key = "export", order = 60, officer = true, fill = function(c)
     c.line2:SetText(ns.BankPending() and L["Die Gildenbank-Zählung ist auch neu."] or "")
     if pending > 0 or ns.BankPending() then c:SetAction(L["Exportieren"], function() wipe(ns.RaidSelection); ns.ShowExport(false) end) end
 end }
+end)

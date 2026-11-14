@@ -19,6 +19,7 @@
 --
 -- Kept: entries younger than bank.logDays (90 by default), at most 1000 (the oldest go first).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local CAP = 1000
@@ -373,3 +374,4 @@ end
 function ns.MarkBankLogExported()
     for _, e in ipairs(log().list) do e.x = 1 end
 end
+end)

@@ -5,6 +5,7 @@
 -- Abmelden. Raiders see only their own sign-ups (and those of their other characters); the list
 -- of who signed up is the officers' lineup.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local S = T.SIGNUP
@@ -267,3 +268,4 @@ end)
 
 -- for the tests
 ns._signupUI = { frame = function() return F end }
+end)

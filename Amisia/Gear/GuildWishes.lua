@@ -6,6 +6,7 @@
 -- The pasted text is untrusted: escape codes and bars are stripped, every field is checked and
 -- capped, and no link is ever built from it.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local HEAD_FAIL = L["Das ist keine Wunschliste der Amisia-Seite."]
@@ -403,3 +404,4 @@ ns.RegisterSettings{ key = "wishes", label = L["Gildenwünsche"], order = 46, gr
       officer = true, tip = L["Gewünschte Items tragen im Lootfenster und an den Würfelfenstern ein \"W\"."] },
     { key = "wishes.award", type = "toggle", label = L["Wünschende zuerst im Vergabe-Dialog"], default = true, officer = true, tip = L["Im Vergabe-Dialog stehen die Raider, die sich das Item wünschen, oben."] },
 }}
+end)

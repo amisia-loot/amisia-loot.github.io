@@ -13,6 +13,7 @@
 -- by reading the scroll container's place each frame (no anchor on a frame of the map), shown while
 -- the map shows and "Routen-Leiste auf der Weltkarte zeigen" is on.
 local ADDON, ns = ...
+ns.Load(function()
 local W, T = ns.W, ns.Theme
 local L = ns.L
 local R = ns.Routes
@@ -589,3 +590,4 @@ function RM.ShownLines()
     end
     return out
 end
+end)

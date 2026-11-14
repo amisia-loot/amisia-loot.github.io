@@ -3,6 +3,7 @@
 -- Everyone sees the timeline and the bench; entering bosses, editing the bench and the Discord text
 -- are for officers.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local LOG_ROWS, BENCH_ROWS, ROW_H = 12, 10, 22
@@ -781,3 +782,4 @@ StaticPopupDialogs["AMISIA_RAIDLOG_DELETE"] = {
     hideOnEscape = true,
     preferredIndex = 3,
 }
+end)

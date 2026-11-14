@@ -23,6 +23,7 @@
 -- Stored in AmisiaDB.lootRules = { v = 1, rev, by, at, sent, seen, list = { rule... },
 -- offer = { from, rev, at, list } }.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 
@@ -1297,3 +1298,4 @@ ns.RegisterSlash("regeln", { en = "rules", officer = true, args = L["[pause|weit
             ns.ShowSettings(L["Lootregeln"])
         end
     end })
+end)

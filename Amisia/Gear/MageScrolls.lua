@@ -7,6 +7,7 @@
 -- book quests are turned in (C_QuestLog) and which spells are known (IsPlayerSpell); names and
 -- texts come from the client in its language, the data's English is the fallback.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local MS = {}
@@ -258,3 +259,4 @@ function MS.BookZones(b)
     for _, m in ipairs(b.maps or {}) do names[#names + 1] = zoneName(m) or ("Zone " .. tostring(m)) end
     return names
 end
+end)

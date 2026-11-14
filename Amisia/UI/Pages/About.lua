@@ -1,6 +1,7 @@
 -- About: the version, who runs which Amisia version in raid and guild, and every command, generated
 -- from the registry.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 
@@ -199,3 +200,4 @@ local function soon()
 end
 ns.Listen("SYNC_VERSIONS", soon)
 ns.Listen("SYNC_STATE", soon)
+end)

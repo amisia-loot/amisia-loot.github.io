@@ -13,6 +13,7 @@
 -- inbox = { { id, from, kind, text, meta, at, done, new } }, day = { date, n }, recv = { date, n = { [lower
 -- name] = n } }, blocked = { [lower name] = true }, err = { m, at } }; meta = { v, g, loc, cls, lvl, page, err }.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local Fb = {}
@@ -785,3 +786,4 @@ end)
 ns.RegisterSlash("feedback", { desc = L["Bug oder Wunsch an den Autor schicken"], run = function()
     if ns.ShowFeedback then ns.ShowFeedback() end
 end })
+end)

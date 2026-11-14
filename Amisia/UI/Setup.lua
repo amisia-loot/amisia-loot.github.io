@@ -11,6 +11,7 @@
 -- A change writes at once through ns.Set (the normal onChange paths run); "Weiter", "Überspringen"
 -- and "Zurück" write nothing. Saved: AmisiaDB.setup = { done = epoch, never = epoch }.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local S = T.SETUP
@@ -559,3 +560,4 @@ ns._setup = {
     addPreset = addPreset,
     showOffer = showOffer,
 }
+end)

@@ -1,5 +1,6 @@
 -- English texts, part raid2 (merged into enUS.lua when the translation is complete).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.NewLocale("enUS")
 if not L then return end
 
@@ -1564,3 +1565,4 @@ L["%s ist schon in deiner Gruppe."] = "%s is already in your group."
 L["Eingeladen: %s"] = "Invited: %s"
 L["[Einladen] bei \"ist jetzt online\""] = "[Invite] on \"has come online\""
 L["Kommt jemand aus Gilde oder Freundesliste online, steht hinter der Zeile im Chat ein [Einladen]; ein Klick lädt ihn ein. Nicht, wenn er schon in deiner Gruppe ist oder du in der Gruppe nicht einladen darfst."] = "When someone from your guild or friend list comes online, an [Invite] follows the chat line; a click invites them. Not when they are already in your group or you may not invite in your group."
+end)

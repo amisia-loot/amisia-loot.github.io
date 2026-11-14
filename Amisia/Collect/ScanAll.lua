@@ -17,6 +17,7 @@
 -- finished under another one) one chat line at login tells expert-mode users there is something new
 -- to scan (setting tools.scanNotice); nothing starts by itself.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local SB = ns.ScanById
 
@@ -319,4 +320,5 @@ end
 ns.OnEvent("PLAYER_LOGIN", function()
     SA.Adopt()
     C_Timer.After(SA.NOTICE_DELAY, SA.Notice)
+end)
 end)

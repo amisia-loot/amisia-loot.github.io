@@ -6,6 +6,7 @@
 -- With need.ask it then asks the raid clients who needs the items (Need.lua).
 -- Every client marks reserved items on the roll frames with "SR".
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local LM = Enum and Enum.LootMethod or {}
@@ -389,3 +390,4 @@ ns.RegisterSettings{ key = "loot", label = L["Loot-Ansage"], order = 23, group =
 ns.RegisterSlash("ansage", { en = "announce", officer = true, desc = L["offenes Lootfenster erneut ansagen"],
 
     run = function() announceAgain() end })
+end)

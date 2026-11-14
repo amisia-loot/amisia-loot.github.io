@@ -12,6 +12,7 @@
 -- in settings.bis (dungeon, dsort, dpart); the view and the open quest path only in memory (the first
 -- open of a session shows the table, a /reload starts there again).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local K = ns.GearPageKit
@@ -2858,3 +2859,4 @@ ns.RegisterPanel{ key = "dungeons", label = "Dungeons", sub = L["Was dir jeder D
     -- the level ranges of the table in the side bar while the start shows (D-74)
     jumps = function(B) return B.table and B.table:IsShown() and B.table.groups or {} end,
     jump = function(B, key) if B.table then B.table:JumpTo(key) end end }
+end)

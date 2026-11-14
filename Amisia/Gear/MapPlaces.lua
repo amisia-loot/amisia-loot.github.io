@@ -10,6 +10,7 @@
 -- takes them into tools/entrance_archive.json and the shipped data with the next build.py data
 -- (D-50). Nothing is sent to anybody.
 local ADDON, ns = ...
+ns.Load(function()
 local Map, W = ns.Map, ns.W
 local L = ns.L
 
@@ -579,3 +580,4 @@ ns.OnEvent("LOADING_SCREEN_ENABLED", function() Map.SamplePlace() end)
 ns.OnEvent("PLAYER_LEAVING_WORLD", function() Map.SamplePlace() end)
 ns.OnEvent("CONFIRM_SUMMON", function() summonedAt = GetTime() end)
 ns.OnEvent("PLAYER_ENTERING_WORLD", function() Map.LearnEntrance() end)
+end)

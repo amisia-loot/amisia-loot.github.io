@@ -1,5 +1,6 @@
 -- Overview: one card per registered feature, each with its state and at most one button.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 -- two insets side by side fill the 602 px of the content exactly: 2 x 295 + 12; four rows of 110
@@ -47,3 +48,4 @@ ns.RegisterPanel{ key = "overview", label = L["Übersicht"], sub = L["Was gerade
         for i = n + 1, SLOTS do f.cards[i]:Hide() end
         f.empty:SetShown(n == 0)
     end }
+end)

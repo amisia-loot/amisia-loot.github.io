@@ -7,6 +7,7 @@
 -- functions the later checks 23 to 25 need are only looked up, never called. Every call is
 -- protected; a missing function is FEHLT, never an error.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local ST = ns.SelfTest
@@ -463,3 +464,4 @@ function CT.Start()
         return ok
     end, function(complete, got) readList(P, nil, complete, got) end)
 end
+end)

@@ -19,6 +19,7 @@
 -- shared = { from, at, hash, list } }; entry = { at, by, note, prio = { { k = "p"|"c"|"o", name,
 -- class, label } } }. Every pasted or received text is untrusted: codes stripped, fields checked.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local N_ = ns.N_
 local W, T = ns.W, ns.Theme
@@ -861,3 +862,4 @@ ns.RegisterSlash("prio", { officer = true, args = L["[Item-Link|löschen]"], des
         end
         ns.msg(L["Prioliste vom %s: %d Items, %d eigene Änderungen, %d vom Raid."]:format(info.date or "-", info.n, info.edits, info.shared))
     end })
+end)

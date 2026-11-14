@@ -7,6 +7,7 @@
 --   Protokoll the saved guild bank log (BankLog.lua) with filters by tab, kind and a search
 --   Text      the shortfalls as text for the guild chat or Discord, to copy
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 
@@ -490,3 +491,4 @@ ns.RegisterSlash("bank", { aliases = { "gildenbank" }, args = L["[bedarf|protoko
         local map = { bedarf = "bedarf", needs = "bedarf", protokoll = "log", log = "log", text = "text", bestand = "bestand", stock = "bestand" } -- l10n-ok: typed sub-words
         ns.ShowBank(map[word] or nil)
     end })
+end)

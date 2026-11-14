@@ -5,6 +5,7 @@
 -- there ("Punkte entfernen", after a question, 2.27.4). While the guild rolls, officers see a
 -- hint how to switch and raiders do not see the page at all.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 
@@ -245,4 +246,5 @@ ns.RegisterPanel{ key = "points", label = L["Punkte"], sub = L["Der Punktestand 
 
 ns.Listen("POINTS", function()
     if ns.CurrentPage and ns.CurrentPage() == "points" and ns.Refresh then ns.Refresh() end
+end)
 end)

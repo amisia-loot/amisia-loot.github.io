@@ -5,6 +5,7 @@
 -- frame: it opens, closes and scrolls in a fight; moving and sizing wait until after it. Escape does not
 -- close it. Place and size in settings.raidNoteWindow = { point, x, y, w, h, locked }.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local S = T.RAIDNOTE
@@ -191,3 +192,4 @@ end
 
 ns.Listen("RAIDNOTE", refresh)
 ns.OnEvent("GROUP_ROSTER_UPDATE", function() if RW.Shown() then refresh() end end)
+end)

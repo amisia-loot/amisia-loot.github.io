@@ -1,23 +1,33 @@
--- Amisia's languages: German and English, the client's locale decides (deDE: German, every other
--- locale: English). German is the source text in the code: every text for the screen or the chat
--- goes through L["German text"], and Locales/enUS.lua gives its English. A key without an entry
+-- Amisia's languages: German and English. The player picks one in the settings (ui.language: "auto",
+-- "deDE", "enUS"; F-199, D-128); "auto" (the default) follows the client's locale (deDE: German, every
+-- other locale: English, D-08). German is the source text in the code: every text for the screen or the
+-- chat goes through L["German text"], and Locales/enUS_*.lua gives its English. A key without an entry
 -- shows as it stands (German). A key may carry a context after "##" ("Aus##Ansage") when one German
 -- text needs two English ones; the German text is the part before "##".
--- Loaded first (before the registry), so every file can use ns.L while it loads.
+--
+-- Loading (D-128): the client runs an addon's files first and loads its SavedVariables after them, but
+-- most files translate texts while they load. So this file, the first of the TOC, runs at once; every
+-- other file puts its body in ns.Load(function() ... end), and this file runs those bodies in TOC order
+-- on Amisia's ADDON_LOADED, once AmisiaDB (and with it the chosen language) is there; then the core's
+-- own ADDON_LOADED (ns.CoreLoaded). A body that fails stops only itself, as a failing file did.
 local ADDON, ns = ...
 -- the start of loading Amisia's files, for /amisia leistung (Core/Perf.lua, F-184): this is the first file
 ns.PERF_T0 = (type(debugprofilestop) == "function" and debugprofilestop())
     or (type(GetTimePreciseSec) == "function" and GetTimePreciseSec() * 1000) or nil
 
--- AMISIA_LOCALE is the tests' hook to force a locale (the client never sets it).
+-- AMISIA_LOCALE is the tests' hook to force the client's locale (the client never sets it).
 local locale = (type(AMISIA_LOCALE) == "string" and AMISIA_LOCALE) or (GetLocale and GetLocale()) or "deDE"
+-- the client's locale (the language of the game's own texts: items, zones, tooltips, chat lines)
 ns.LOCALE = locale
-ns.GERMAN = locale == "deDE"
--- the language of the texts: deDE, or enUS for every other locale
-ns.LANG = ns.GERMAN and "deDE" or "enUS"
+-- the language Amisia speaks: set by ns.RunLoad from the setting, until then the client's
+ns.CLIENT_LANG = locale == "deDE" and "deDE" or "enUS"
+ns.LANG = ns.CLIENT_LANG
+ns.GERMAN = ns.LANG == "deDE"
+ns.LANGUAGES = { auto = true, deDE = true, enUS = true }
 
 local strings = {}   -- the active language's texts: German key -> text (true: the key itself)
 local missing = {}   -- keys asked for in English without an entry (the tests read them)
+local settled = false   -- the language is chosen (ns.RunLoad); before it nothing is kept
 
 local function plainKey(k)
     return (k:gsub("##.*$", ""))
@@ -29,15 +39,65 @@ ns.L = setmetatable({}, { __index = function(t, k)
     if v == true or (v == nil and ns.GERMAN) then
         v = plainKey(k)
     elseif v == nil then
-        missing[k] = true
+        if settled then missing[k] = true end
         v = plainKey(k)
     end
-    rawset(t, k, v)
+    if settled then rawset(t, k, v) end
     return v
 end })
 
--- The table a locale file fills, or nil when that language is not the client's (the file returns
--- then, so a German client keeps no English texts in memory).
+-- The saved choice ("auto", "deDE", "enUS"); anything else counts as "auto".
+function ns.LanguageChoice(db)
+    db = db or AmisiaDB
+    local ui = type(db) == "table" and type(db.settings) == "table" and db.settings.ui
+    local v = type(ui) == "table" and ui.language
+    return (type(v) == "string" and ns.LANGUAGES[v]) and v or "auto"
+end
+
+-- The files' bodies, in TOC order, until ns.RunLoad runs them; after it a body runs at once (a test
+-- that loads one file again).
+local bodies, ran = {}, false
+function ns.Load(fn)
+    if ran then
+        fn()
+    else
+        bodies[#bodies + 1] = fn
+    end
+end
+
+-- Chooses the language from AmisiaDB and runs the files' bodies (once). Each runs protected: its error
+-- goes to the client's error handler and the next body runs.
+function ns.RunLoad()
+    if ran then return end
+    ran = true
+    local choice = ns.LanguageChoice()
+    ns.LANG = choice == "auto" and ns.CLIENT_LANG or choice
+    ns.GERMAN = ns.LANG == "deDE"
+    settled = true
+    local list = bodies
+    bodies = nil
+    -- xpcall: the error handler sees the failing body's stack (and its locals), as for a failing file
+    local handler = type(geterrorhandler) == "function" and geterrorhandler() or nil
+    local function report(err)
+        if handler then pcall(handler, err) end
+        return err
+    end
+    for _, fn in ipairs(list) do xpcall(fn, report) end
+end
+
+do
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("ADDON_LOADED")
+    f:SetScript("OnEvent", function(self, _, name)
+        if name ~= ADDON then return end
+        self:UnregisterEvent("ADDON_LOADED")
+        ns.RunLoad()
+        if ns.CoreLoaded then ns.CoreLoaded() end
+    end)
+end
+
+-- The table a locale file fills, or nil when that language is not the chosen one (the file returns
+-- then, so a German Amisia keeps no English texts in memory).
 function ns.NewLocale(lang)
     if lang ~= ns.LANG or lang == "deDE" then return nil end
     return strings

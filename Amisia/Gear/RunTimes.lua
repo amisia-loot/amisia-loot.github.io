@@ -19,6 +19,7 @@
 -- key alone: this client has one difficulty per instance and the raids a fixed size (D-96).
 -- Fires "RUNTIMES" (what changed) for the window (Gear/RunTimer.lua) and the part Zeiten of the pages.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local RT = {}
@@ -624,3 +625,4 @@ RT._reset = function()
     RT.lastDone = nil
     entryFight, doneEntry = nil, nil
 end
+end)

@@ -6,6 +6,7 @@
 --
 -- The pasted text is untrusted: escape codes and bars are stripped, every name is checked.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local HEAD_FAIL = L["Das ist keine Twink-Liste der Amisia-Seite."]
@@ -317,3 +318,4 @@ ns.RegisterSlash("twinks", { en = "alts", args = L["[Name|löschen]"], desc = L[
         end
         ns.msg(L["Twink-Liste vom %s: %d %s."]:format(info.date, info.n, info.n == 1 and L["Twink"] or L["Twinks"]))
     end })
+end)

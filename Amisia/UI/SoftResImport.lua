@@ -6,6 +6,7 @@
 -- icons in their quality colour. Nothing is stored before "Übernehmen". With an empty text the
 -- loaded list is shown (a list shared by another officer has no text).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local S = T.SRIMPORT
@@ -380,3 +381,4 @@ local function later()
 end
 ns.OnEvent("GROUP_ROSTER_UPDATE", later)
 ns.SoftResImportChanged = later
+end)

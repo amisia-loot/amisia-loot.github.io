@@ -1,6 +1,7 @@
 -- Amisia gear window (/amisia gear): class, spec and source switches, an overview with the best item
 -- per slot for every level range, and a list of one range with names, sources and alternatives.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local Gear = ns.Gear
@@ -833,3 +834,4 @@ ns.RegisterSlash("gear", { args = L["[item <Link>]"], desc = L["Ausrüstungstabe
         local sub, arg = rest:match("^(%S+)%s*(.*)$")
         if sub and sub:lower() == "item" then ns.GearDebug(arg) else ns.ToggleGearFrame() end
     end })
+end)

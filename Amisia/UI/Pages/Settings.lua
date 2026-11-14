@@ -3,6 +3,7 @@
 -- is open: UI/MainFrame.lua), the sections of a page (its head button "Einstellungen", with "Zurück zu
 -- <Seite>"), or, while the search box holds text, the hits of every section (D-49).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local GOLD = W.GOLD
@@ -394,3 +395,4 @@ ns.RegisterPanel{ key = "settings", label = L["Einstellungen"], sub = L["Alles, 
         end
         restore()
     end }
+end)

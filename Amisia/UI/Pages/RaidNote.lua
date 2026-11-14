@@ -6,6 +6,7 @@
 -- (the client's language) at the cursor of the field written in last (the own note for who may not
 -- send). Under the note's field the counter and the red "An Raid senden".
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local S = T.RAIDNOTE
@@ -221,3 +222,4 @@ ns.Listen("RAIDNOTE", again)
 ns.OnEvent("GROUP_ROSTER_UPDATE", again)
 ns.OnEvent("PLAYER_REGEN_DISABLED", again)
 ns.OnEvent("PLAYER_REGEN_ENABLED", again)
+end)

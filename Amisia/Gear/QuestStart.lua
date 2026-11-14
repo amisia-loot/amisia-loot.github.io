@@ -33,6 +33,7 @@
 -- while it is only on the cursor). The bags are read after BAG_UPDATE_DELAYED, at most every THROTTLE
 -- seconds, never per frame. Setting quests.startPopup (on); its place in settings.questStartWindow.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local S = T.QUESTSTART
@@ -523,3 +524,4 @@ ns.OnEvent("PLAYER_REGEN_ENABLED", safe(resume))
 ns.OnEvent("ADDON_RESTRICTION_STATE_CHANGED", safe(resume))
 ns.OnEvent("ADDON_ACTION_FORBIDDEN", onRefused)
 ns.OnEvent("ADDON_ACTION_BLOCKED", onRefused)
+end)

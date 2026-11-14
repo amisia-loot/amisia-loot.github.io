@@ -13,6 +13,7 @@
 -- session: it is not tried again, the chat says it once, the view shows a grey line. Nothing is sent
 -- to other clients.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local RO = {}
@@ -523,3 +524,4 @@ end
 RO._reset = function()
     refused, handled, cur, during, tankAt = {}, {}, nil, nil, nil
 end
+end)

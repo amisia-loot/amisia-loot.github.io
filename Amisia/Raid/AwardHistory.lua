@@ -11,6 +11,7 @@
 -- in the raid chat and a raider sees every award of the synced raid on the page Vergaben. The
 -- per-player numbers (the roll window) stay with the officers, as on the page Statistik.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local DAY = 86400
@@ -168,3 +169,4 @@ function ns.AwardHistoryLines(name, now)
     end
     return out
 end
+end)

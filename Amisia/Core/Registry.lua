@@ -2,6 +2,7 @@
 -- slash commands here; the main window, the settings page and the command help are built from
 -- what is registered. Loaded first, so every other file can register while it loads.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 ns.panels, ns.cards, ns.schema, ns.slash = {}, {}, {}, {}
@@ -551,7 +552,50 @@ ns.RegisterSlash("hilfe", { en = "help", aliases = { "?" }, desc = L["alle Befeh
 ---------------------------------------------------------------------------
 -- Interface settings that belong to no single feature
 ---------------------------------------------------------------------------
+-- The language (F-199, D-128): Locales/Locale.lua reads ui.language when Amisia loads, so a new choice
+-- holds after a /reload. "Deutsch" and "English" stand in their own language.
+local LANG_NAME = { deDE = L["Deutsch##Sprache"], enUS = L["English##Sprache"] }
+local LANG_WORDS = { de = "deDE", deutsch = "deDE", german = "deDE", en = "enUS", english = "enUS",
+    englisch = "enUS", auto = "auto", client = "auto" }
+local languageQuiet   -- the command says it in the chat; no question then
+
+-- The language a choice gives ("auto": the client's).
+local function languageOf(choice) return choice == "auto" and ns.CLIENT_LANG or choice end
+
+local function languageChanged(v)
+    if languageQuiet or languageOf(v) == ns.LANG then return end
+    ns.W.Confirm(L["Sprache"], L["Die Sprache wechselt nach dem Neuladen. Jetzt neu laden?"], L["Neu laden"], function()
+        if type(ReloadUI) == "function" then ReloadUI() end
+    end)
+end
+
+ns.RegisterSlash("sprache", { en = "language", args = L["[de|en|auto]"],
+    desc = L["Sprache von Amisia: Deutsch, Englisch oder wie der Client (gilt nach /reload)"],
+    run = function(rest)
+        local word = (rest or ""):lower():match("^%s*(%S*)")
+        local v = LANG_WORDS[word]
+        if not v then
+            ns.msg(L["Sprache: %s (Einstellung: %s). Ändern: /amisia sprache de, en oder auto."]:format(LANG_NAME[ns.LANG],
+                ns.LanguageChoice() == "auto" and L["wie der Client"] or LANG_NAME[ns.LanguageChoice()]))
+            return
+        end
+        languageQuiet = true
+        local ok, err = pcall(ns.Set, "ui.language", v)
+        languageQuiet = nil
+        if not ok then return ns.ReportError(err) end
+        if languageOf(v) == ns.LANG then
+            ns.msg(L["Sprache: %s."]:format(LANG_NAME[ns.LANG]))
+        else
+            ns.msg(L["Sprache: %s, nach /reload."]:format(LANG_NAME[languageOf(v)]))
+        end
+    end })
+
 ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, group = "amisia", pages = { "about" }, items = {
+    { key = "ui.language", type = "choice", label = L["Sprache (Language)"], default = "auto",
+      values = { { "auto", L["Wie der Client (%s)"]:format(LANG_NAME[ns.CLIENT_LANG] or LANG_NAME.enUS) }, { "deDE", LANG_NAME.deDE },
+          { "enUS", LANG_NAME.enUS } },
+      tip = L["Die Sprache von Amisia; Namen aus dem Spiel (Gegenstände, Zonen) bleiben in der Sprache des Clients. Gilt nach dem Neuladen."],
+      onChange = languageChanged },
     { key = "ui.minimap", type = "toggle", label = L["Minimap-Button"], default = true,
       tip = L["Der runde Amisia-Button am Rand der Minimap."],
       onChange = function(v) if ns.ShowMinimapButton then ns.ShowMinimapButton(v) end end },
@@ -585,3 +629,4 @@ ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, group = "
               end)
       end },
 }}
+end)

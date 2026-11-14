@@ -7,6 +7,7 @@
 -- (XQ), "Im Raid-Chat sagen" (raidcheck.chat) says what is missing, "Raid-IDs abfragen" asks the
 -- guild (IQ). The logic lives in Raid/RaidCheck.lua and Raid/RaidIDs.lua; this page only shows it.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local GREY, ORANGE, RED, GREEN = T.GREY, T.ORANGE, T.RED, T.GREEN
@@ -400,4 +401,5 @@ ns.OnEvent("GROUP_ROSTER_UPDATE", function()
         rosterPending = false
         again()
     end)
+end)
 end)

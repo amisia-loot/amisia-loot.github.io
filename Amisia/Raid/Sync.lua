@@ -12,6 +12,7 @@
 -- the sender (NW), who gathers again. A keeper's own changes stay in a journal until a later
 -- keeper's snapshot shows (by its lineage) that it has them; what it lacks goes as wishes.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local CLAIM_KEEP = 900        -- seconds a claim of the keeper role holds (outside the lockdown)
@@ -2352,4 +2353,5 @@ ns.RegisterSyncCommand("selbsttest", function()
     ns.msg(L["Selbsttest: Abbild gepackt und entpackt, %s. Öffentlicher Teil %d Zeichen in %d Teilen, Offiziersteil %d Zeichen in %d Teilen%s."]:format(
         same and L["gleich"] or L["NICHT gleich"], #pp, np, #po, no,
         same and not valid and L[", aber ungültig (%s)"]:format(whyText(why)) or ""))
+end)
 end)

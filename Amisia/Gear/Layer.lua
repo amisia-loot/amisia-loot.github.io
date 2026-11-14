@@ -16,6 +16,7 @@
 -- Other layer addons run beside it untouched: no prefix, no hidden message, no frame of theirs; their plain
 -- chat convention ("inv layer") is understood by Gear/LayerChange.lua (D-117).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local LY = {}
@@ -406,3 +407,4 @@ function LY._reset()
     maps, cur, zoneMap, lastAt, sweptAt = {}, nil, nil, {}, 0
     stats, history = { read = {}, ok = {}, secret = 0 }, {}
 end
+end)

@@ -4,6 +4,7 @@
 -- enter names (suggested from the group outside, the guild and friends); raiders without the addon
 -- sign up with !bench, which only the loot lead answers, by whisper.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local NOTE_MAX = 40
@@ -526,3 +527,4 @@ ns.RegisterSlash("ersatz", { en = "bench", officer = true, args = L["[Name] [Not
         end
         ns.msg(L["%s steht auf der Ersatzbank (%s)%s."]:format(key, label, e.note and L[", Notiz: %s"]:format(e.note) or ""))
     end })
+end)

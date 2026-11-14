@@ -21,6 +21,7 @@
 -- request and answers busy with DW): clients of protocol 1 and 2 ignore each other's DV, so they
 -- never pull from each other.
 local ADDON, ns = ...
+ns.Load(function()
 
 ns.DROP_PROTO = 2
 
@@ -1147,3 +1148,4 @@ function ns.DropSyncAskerBytes(name)
     local a = type(name) == "string" and askers[name:lower()]
     return a and a.bytes or 0
 end
+end)

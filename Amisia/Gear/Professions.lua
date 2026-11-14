@@ -7,6 +7,7 @@
 --
 -- AmisiaDB.prof = { chars = { [name] = { [skillLine] = { rank, max, day, known = { [spell] = true } } } } }
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local Pr = {}
@@ -1151,3 +1152,4 @@ function Pr.HasWrit(r)
     local d = data()
     return r.item > 0 and d and d.FAVOR and d.FAVOR.writ and d.FAVOR.writ[r.item] ~= nil or false
 end
+end)

@@ -11,6 +11,7 @@
 -- with each dungeon's own encounters; run.here names the dungeon of the last kill since the character
 -- entered (R.Here: sure from the first kill on, a guess before).
 local ADDON, ns = ...
+ns.Load(function()
 
 local R = {}
 ns.Runs = R
@@ -355,3 +356,4 @@ ns.OnEvent("CHAT_MSG_SYSTEM", function(text)
     if name then R.Reset(name) end
 end)
 ns.OnEvent("PLAYER_LEAVING_WORLD", function() R.Leave() end)
+end)

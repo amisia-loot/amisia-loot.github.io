@@ -4,6 +4,7 @@
 -- the challenger; a line in the tooltip of a player of the duels (duels.tooltip). Reads only what
 -- Core/Duels.lua recorded, sends nothing.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local T = ns.Theme
 local S = T.DUELS
@@ -193,3 +194,4 @@ if type(TooltipDataProcessor) == "table" and type(TooltipDataProcessor.AddToolti
         if not ok then geterrorhandler()(err) end
     end))
 end
+end)

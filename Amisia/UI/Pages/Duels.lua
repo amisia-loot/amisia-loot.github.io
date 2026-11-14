@@ -11,6 +11,7 @@
 -- class row chooses the class. View, class, time, sort, spec and "Nur Turnier" stay in
 -- settings.window.duels.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local S = T.DUELS
@@ -462,3 +463,4 @@ function ns.ShowDuels() ns.ShowPage("duels") end
 
 local function shown() return page ~= nil and page:IsVisible() and ns.CurrentPage and ns.CurrentPage() == "duels" end
 ns.Listen("DUELS", function() if shown() then ns.RefreshSoon() end end)
+end)

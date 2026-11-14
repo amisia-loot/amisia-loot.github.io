@@ -7,6 +7,7 @@
 -- a click shows the whole text and its details beside the list with "Erledigt" and "Löschen", a right
 -- click also "Absender blockieren". The logic is Core/Feedback.lua; nothing here is saved but there.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local S = T.FEEDBACK
@@ -369,4 +370,5 @@ local function shown() return page ~= nil and page:IsVisible() and ns.CurrentPag
 ns.Listen("FEEDBACK", function()
     if ns.Feedback then ns.Feedback.UpdateLabel() end
     if shown() then ns.RefreshSoon() end
+end)
 end)

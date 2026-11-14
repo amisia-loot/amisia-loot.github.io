@@ -14,6 +14,7 @@
 -- They apply to the own options only (ns.BisOpts: targets, goals window, map pins, "Hier", the slot
 -- card); the gear table's other columns, the simulation and the dungeon pages plan without them.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local Gear = ns.Gear
 
@@ -424,3 +425,4 @@ end
 ns.RegisterSlash("spielstil", { en = "playstyle", args = L["[keine-dungeons|solo|kaufbar|jetzt|zone|aus]"],
     desc = L["Spielstil der Ausrüstungsziele zeigen oder umschalten"],
     run = function(rest) PS.Command(rest) end })
+end)

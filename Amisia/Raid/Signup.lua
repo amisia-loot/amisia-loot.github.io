@@ -21,6 +21,7 @@
 -- a write that fails or is blocked turns to "Bitte auch im Kalender eintragen." with "Kalender
 -- öffnen" and says why once. The re-send after the login and the answers to AQ never write.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local MAX_NIGHTS = 4       -- sign-ups kept per character (the soonest); nights per sender at the officer
@@ -588,3 +589,4 @@ ns.RegisterSlash("abmelden", { en = "signoff", desc = L["Vom nächsten Termin au
 -- for the tests
 ns._signup = { termOf = termOf, reset = function() resent, asked, answered, terms, loading, lastSent = false, false, {}, nil, false, {} end,
                MAX_NIGHTS = MAX_NIGHTS, SEEN_MAX = SEEN_MAX, keepSeen = keepSeen }
+end)

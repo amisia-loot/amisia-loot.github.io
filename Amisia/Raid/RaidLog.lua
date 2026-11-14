@@ -6,6 +6,7 @@
 -- a kill are read once the encounter restriction has lifted (with a fallback to the roster
 -- snapshots of the recording after 60 s).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local RESTRICTION_ENCOUNTER = 1   -- Enum.AddOnRestrictionType.Encounter
@@ -556,3 +557,4 @@ ns.RegisterSlash("boss", { aliases = { "kill" }, officer = true, args = L["<Name
         ns.msg(L["%s eingetragen: %s (%s, %s)."]:format(wipe and "Wipe" or "Kill", k.name, s.zone or "?", s.date or "?"))
 
     end })
+end)

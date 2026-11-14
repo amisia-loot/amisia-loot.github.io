@@ -12,6 +12,7 @@
 -- PULLTIMER) and its menu offers start and cancel. Nothing is saved; a /reload ends it here (the
 -- client's countdown runs on).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local PULL_MIN, PULL_MAX = 3, 60       -- seconds of a pull timer
@@ -261,3 +262,4 @@ PT._reset = function()
     cur = nil
     stopTicker()
 end
+end)

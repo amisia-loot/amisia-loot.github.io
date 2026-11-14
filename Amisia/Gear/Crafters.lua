@@ -23,6 +23,7 @@
 --   p = { [skill] = { r = rank, m = max, h = index checksum, b = bitset hex | l = "spell,spell,..." } } } } }
 -- AmisiaDB.prof.guild = { [own character] = guild name } (which guild an own character's recipes go to)
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local Cr = {}
@@ -1312,3 +1313,4 @@ ns.RegisterSlash("hersteller", { en = "crafters", desc = L["Stand des Rezept-Aus
     ns.msg(L["Hersteller: %d eigene, %d aus der Gilde. Gelernt %d, gesendet %d Bytes. Teilen %s."]:format(#Cr.Own(), n,
         st.crafters, st.bytes, ns.Get("crafters.share") and L["an"] or L["aus"]))
 end })
+end)

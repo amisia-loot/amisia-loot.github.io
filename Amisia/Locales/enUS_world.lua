@@ -1,5 +1,6 @@
 -- English texts, part world (merged into enUS.lua when the translation is complete).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.NewLocale("enUS")
 if not L then return end
 
@@ -1222,3 +1223,4 @@ L["Layer wechseln"] = "Change layer"
 L["Mit \"Auch Spielern außerhalb der Gilde helfen\": bittet ein Fremder im Kanal deiner Zone (Allgemein), lädt Amisia ihn sofort ein. Bitten per Flüstern und in anderen Kanälen fragen dich weiter, weil die Zone des Spielers unbekannt ist."] = "With \"Also help players outside the guild\": when a stranger asks in your zone's channel (General), Amisia invites them at once. Requests by whisper and in other channels still ask you, because the player's zone is unknown."
 L["Schreibt ein Gildenmitglied eine kurze Bitte wie \"inv layer\" in den Gildenchat oder flüstert sie dir (so fragen andere Layer-Addons), behandelt Amisia sie wie eine Bitte aus Amisia: dieselbe Frage oder Einladung, dieselben Grenzen. Nur wenn die Gildenliste dieselbe Zone nennt, lädt Amisia ohne Frage ein. Öffentliche Kanäle liest Amisia nur mit \"Auch Spielern außerhalb der Gilde helfen\"."] = "When a guild member writes a short request such as \"inv layer\" in guild chat or whispers it to you (the way other layer addons ask), Amisia treats it like a request from Amisia: the same question or invite, the same limits. Amisia invites without asking only when the guild roster names the same zone. Amisia reads public channels only with \"Also help players outside the guild\"."
 L["Öffnet den Chatkanal aus den Einstellungen (Layer: Kanal, sonst 1, meist Allgemein) mit deiner Bitte; du schickst sie mit Enter ab. So erreichst du alle Spieler der Zone, mit und ohne Layer-Addon. Eine Minute lang nimmt Amisia dann die nächste Einladung an, egal von wem."] = "Opens the chat channel of the settings (Layer: channel, else 1, mostly General) with your request; you send it with Enter. That reaches every player of the zone, with and without a layer addon. For one minute Amisia then accepts the next invite, whoever sends it."
+end)

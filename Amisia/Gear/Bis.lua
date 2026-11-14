@@ -4,6 +4,7 @@
 -- still offers. Everything per character in AmisiaDB.bis. Nothing here reads combat data: only the
 -- item stats the client shows in every tooltip, the own bags, bank, talents and professions.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local Gear = ns.Gear
 
@@ -2948,3 +2949,4 @@ ns.RegisterSlash("bis", { aliases = { "ziele", "ausruestung" },   -- l10n-ok: co
             ns.msg(L["Aufruf: /amisia bis [hier | item <Link> | aus <Link> | zurueck | vergleich <Link> <Link> | gewichte | plan <auto|2h|dw|schild> | sim | gross]"])
         end
     end })
+end)

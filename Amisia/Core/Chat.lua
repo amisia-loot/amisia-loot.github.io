@@ -4,6 +4,7 @@
 -- got through; the queue is released when the restriction ends. Incoming "!word" commands from
 -- raiders without the addon are dispatched to registered handlers.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local BURST = 2000        -- bytes that may go out at once
@@ -337,3 +338,4 @@ function ns.ReplyGate(word, key)
     keep[#keep + 1] = t
     return true
 end
+end)

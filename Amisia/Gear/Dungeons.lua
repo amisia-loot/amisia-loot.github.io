@@ -15,6 +15,7 @@
 -- tools/build_dungeonquests.py) joined with the item data's quests: pre-quests, where a quest starts
 -- (the quest giver's waypoint), level, done or in the log, rewards with the upgrade mark.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local Gear = ns.Gear
 
@@ -1285,7 +1286,7 @@ local function numOr(v) return type(v) == "number" and v or 0 end
 -- objective, dungeon, scanXP (the XP the quest scan saw), scanned (placed by the quest scan's text
 -- alone, D-109) }; the item data's map points and giver stand in where the quest data has none.
 -- Fields an older data file lacks stay nil (or 0).
--- The spots of field 22 (hand-kept hints, D-65) in the client's language: { text, ... } or nil.
+-- The spots of field 22 (hand-kept hints, D-65) in Amisia's language: { text, ... } or nil.
 local function spotsOf(v)
     if type(v) ~= "table" then return nil end
     local out = {}
@@ -2708,3 +2709,4 @@ ns.RegisterSlash("dungeon", { aliases = { "dungeons", "journal" }, args = L["[na
         end
         ns.ShowPage("dungeons")
     end })
+end)

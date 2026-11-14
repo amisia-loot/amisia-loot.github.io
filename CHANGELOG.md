@@ -11,6 +11,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
     Professions, Raid (in German Allgemein, Ausrüstung, Berufe, Dungeons & Raids, Gilde, Raid). The tabs at the
     top of the window keep their order.
 
+- feat(ui): choose Amisia's language, German or English; the client's language by default (F-199)
+
+    Settings > General > Interface > "Language (Sprache)": like the client (as before), Deutsch or English, or
+    /amisia language de, en or auto. Every text of Amisia follows the choice after a reload: pages, settings,
+    tooltips, chat lines, numbers and dates. Names from the game (items, zones, bosses) stay in the client's
+    language.
+
 - fix(sync): no more Lua error "attempt to index local 'p'" after a long fight or dungeon (F-037, F-036)
 
     When a guild member's announcement had grown too old while nothing could be asked (in a fight or an instance)

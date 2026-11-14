@@ -5,6 +5,7 @@
 -- with its state and the quests that lead to it). The run comes from Gear/Runs.lua, the floors and
 -- the keys from the facts (DungeonData.lua: maps, keys).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local K = ns.GearPageKit
@@ -562,3 +563,4 @@ function P.FillTimes(B, e, on)
     end
     B.clearTimes:SetShown(on and #rows > 0 or false)
 end
+end)

@@ -8,6 +8,7 @@
 -- tools/tests/test_upgrade_model.py holds the two equal. DECISIONS D-54, spec
 -- docs/specs/2026-10-17-upgrade-genau.md.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local Gear = ns.Gear
 
@@ -664,3 +665,4 @@ if f then
         Model.MarkDirty()
     end)
 end
+end)

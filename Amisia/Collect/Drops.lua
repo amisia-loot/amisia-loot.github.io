@@ -12,6 +12,7 @@
 -- that merge the same records always reach the same items, and a heard record can never blow up an
 -- own one.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local EPOCH = 1767225600      -- 2026-01-01 00:00 UTC: day 0 of the records
@@ -1164,3 +1165,4 @@ ns.RegisterSlash("drops", { args = "[export|sync]", desc = L["Stand der Drop-Dat
         s.heardAt and ns.FmtDayTime(s.heardAt) or L["noch nie"], ns.DropSyncInfo().members,
         ns.Get("drops.record") and L["an"] or L["aus"], ns.Get("drops.share") and L["an"] or L["aus"]))
 end })
+end)

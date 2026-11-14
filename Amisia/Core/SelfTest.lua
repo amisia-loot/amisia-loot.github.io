@@ -6,6 +6,7 @@
 -- a map waypoint. Every check runs protected; a failing check reports its error text instead of
 -- raising.
 local ADDON, ns = ...
+ns.Load(function()
 local L, N_ = ns.L, ns.N_
 
 local ST = {}
@@ -1720,3 +1721,4 @@ ns.RegisterSlash("selbsttest", { en = "selftest", args = L["[kurz] [wegpunkt] [k
     if calendar and ST.Calendar then return ST.Calendar.Start() end
     if short then ST.Short(opts) else ST.Show(opts) end
 end })
+end)

@@ -1,6 +1,7 @@
 -- Amisia item scan: asks the client for every item id in a range, throttled, and keeps what
 -- exists. The result feeds tools/build_scan.py, which reads the SavedVariables file.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local MAX_PENDING = 200
@@ -386,3 +387,4 @@ ns.RegisterSettings{ key = "tools", label = L["Werkzeuge"], order = 95, group = 
 ns.RegisterSlash("scan", { args = L["[von bis] | gear | quests | npcs | all | retry | aufräumen | stop | status | rate <n>"], desc = L["Item-Scan, Quest-Scan, NPC-Scan"], run = function(rest)
     ns.ScanCommand(rest)
 end })
+end)

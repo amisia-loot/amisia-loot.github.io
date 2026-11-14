@@ -2,6 +2,7 @@
 -- attendance, late, bench, loot per boss with winner and MS/OS/SR, bank and disenchant), in the
 -- client's language, cut into parts Discord accepts. Pure computation: no frames, no chat.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local LIMIT = 1900   -- characters per part; Discord takes 2000
@@ -408,3 +409,4 @@ ns.RegisterSlash("discord", { officer = true, desc = L["Discord-Text des Raids z
     local parts, total = ns.RaidSummary(s)
     ns.msg(L["Discord-Text für %s (%s): %d Zeichen in %d Teil(en)."]:format(s.zone or "?", s.date or "?", total, #parts))
 end })
+end)

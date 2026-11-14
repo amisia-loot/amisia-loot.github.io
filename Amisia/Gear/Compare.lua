@@ -5,6 +5,7 @@
 -- quest log, map details). Only hooks (HookScript, hooksecurefunc), nothing of the client's code is
 -- replaced; an error goes to the error handler. Switch: bis.compare.
 local ADDON, ns = ...
+ns.Load(function()
 
 local RETRY_WAIT = 0.5          -- seconds between two tries while the item's stats load
 local RETRIES = 5
@@ -145,3 +146,4 @@ function ns.UpgradeMarkText(owner)
     local m = marks[owner]
     return (m and m:IsShown()) and m:GetText() or nil
 end
+end)

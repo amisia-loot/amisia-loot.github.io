@@ -1,5 +1,6 @@
 -- Rolls: the running round and the last rounds of this session; the floating roll window stays.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 -- rows of 22 down to the footer (two hint lines): 44 + 18 x 22 = 440 of the 438 the content leaves
@@ -58,3 +59,4 @@ ns.RegisterPanel{ key = "rolls", label = "Rolls", sub = L["Die laufende Würfelr
         f.empty:Set(L["Noch keine Runde"], L["Die Runden dieser Sitzung stehen hier, sobald eine gewürfelt wurde."])
         f.empty:SetShown(#list == 0)
     end }
+end)

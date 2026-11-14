@@ -8,6 +8,7 @@
 -- B1) is only watched (r.foreign = the starter): no announcement, no WS, no result; whoever starts
 -- decides. With rolls.announceEnglish a German client adds the announcement in English (B4).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local KEEP = 10 * 60   -- a finished round answers ns.RollKind for this long
@@ -598,3 +599,4 @@ ns.RegisterSlash("rollzeit", { en = "rolltime", officer = true, args = "<5-120>"
     local ok = ns.Set("rolls.seconds", tonumber(rest))
     ns.msg(ok and L["Roll-Dauer: %d Sekunden."]:format(ns.Get("rolls.seconds")) or L["Aufruf: /amisia rollzeit <5-120>"])
 end })
+end)

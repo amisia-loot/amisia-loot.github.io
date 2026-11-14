@@ -31,6 +31,7 @@
 -- data is built anyway (the page, the route): the events count only that list and never build the
 -- data (D-28). Nothing is sent.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local Pr = ns.Prof
 
@@ -1194,3 +1195,4 @@ function R.ShoppingFor(need, skill)
     end)
     return out
 end
+end)

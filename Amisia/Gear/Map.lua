@@ -5,6 +5,7 @@
 -- Only fixed places from the data are shown; nothing here reads other units or works inside
 -- instances.
 local ADDON, ns = ...
+ns.Load(function()
 local Gear = ns.Gear
 local L, N_ = ns.L, ns.N_
 
@@ -1031,3 +1032,4 @@ ns.RegisterSlash("karte", { en = "map", args = L["[<Link> | aus | pins | pfeil]"
             if not ok then ns.msg(why) end
         end
     end })
+end)

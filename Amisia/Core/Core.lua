@@ -2,6 +2,7 @@
 -- were looted and what lay in opened loot windows, and exports it as text for the Import tab
 -- of the Amisia loot ledger.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 -- The version stands only in the TOC (## Version), read once at load.
@@ -1146,12 +1147,14 @@ end
 events = CreateFrame("Frame")
 events:RegisterEvent("ADDON_LOADED")
 for ev in pairs(extra) do pcall(events.RegisterEvent, events, ev) end
-events:SetScript("OnEvent", function(self, event, arg1, ...)
+local function onEvent(self, event, arg1, ...)
     -- /amisia leistung: the core's own part of an event is timed as "Core EVENT" (F-184)
     local p0, p1, p2, p3
     if (perf.on or perf.boot) and (event ~= "ADDON_LOADED" or arg1 == ADDON) then p0, p1, p2, p3 = perf.Begin() end
     if event == "ADDON_LOADED" then
-        if arg1 ~= ADDON then return end
+        -- once: Locales/Locale.lua hands the event on (ns.CoreLoaded) and the client may deliver it
+        -- too; the first run unregisters it
+        if arg1 ~= ADDON or (self.IsEventRegistered and not self:IsEventRegistered("ADDON_LOADED")) then return end
         AmisiaDB = AmisiaDB or {}
         DB = AmisiaDB
         DB.sessions = DB.sessions or {}
@@ -1297,7 +1300,11 @@ events:SetScript("OnEvent", function(self, event, arg1, ...)
     end
     -- the login's steps end with the first PLAYER_ENTERING_WORLD after loading
     if perf.boot and event == "PLAYER_ENTERING_WORLD" then perf.BootDone() end
-end)
+end
+events:SetScript("OnEvent", onEvent)
+-- the files' bodies run on ADDON_LOADED (D-128): this frame registers during that event, so
+-- Locales/Locale.lua hands it on once every body ran
+function ns.CoreLoaded() onEvent(events, "ADDON_LOADED", ADDON) end
 
 ---------------------------------------------------------------------------
 -- Slash command
@@ -1346,3 +1353,4 @@ end })
 ns.RegisterSlash("export", { officer = true, forever = true, desc = L["den neuesten Raid exportieren"], run = function()
     if ns.ShowExport then ns.ShowExport(true) end
 end })
+end)

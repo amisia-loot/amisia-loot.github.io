@@ -18,6 +18,7 @@
 -- No names of players, characters or realms: labels are fixed words, event names, page keys and
 -- "File:line" of Amisia's own code.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local P = ns.Perf
 
@@ -341,3 +342,4 @@ ns.OnEvent("ZONE_CHANGED_NEW_AREA", noteWhere)
 
 -- the last file of the TOC: every file of Amisia has loaded
 P.loadMs = P.Since()
+end)

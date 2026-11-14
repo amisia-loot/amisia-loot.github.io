@@ -13,6 +13,7 @@
 -- always CloseEvent). Months go back to the first recorded raid and forward to the last day read.
 -- Nothing here writes into the calendar.
 local ADDON, ns = ...
+ns.Load(function()
 local L, N_ = ns.L, ns.N_
 local W, T = ns.W, ns.Theme
 local C = T.CALPAGE
@@ -524,3 +525,4 @@ for _, msg in ipairs({ "RAIDCAL", "SIGNUP", "SIGNUP_SEEN" }) do
         if page and page:IsShown() and ns.CurrentPage() == "calendar" then ns.Refresh() end
     end)
 end
+end)

@@ -33,6 +33,7 @@
 -- join that gives the same result in any order (see merge): own values beat heard ones, so a guild
 -- member cannot overwrite what a client saw itself.
 local ADDON, ns = ...
+ns.Load(function()
 
 -- caps; a table so a test can lower one
 local L = {
@@ -1095,3 +1096,4 @@ ns.RegisterSlash("quellen", { en = "sources", desc = ns.L["Stand des Quellen-Sam
         counts.q, counts.s, counts.w, math.floor(bytes / 1024 + 0.5), s.new or 0, s.bytes or 0,
         ns.Get("collect.share") and ns.L["an"] or ns.L["aus"]))
 end })
+end)

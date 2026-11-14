@@ -13,6 +13,7 @@
 -- camp and favor as cards; the side bar lists the same views as marks (Übersicht, each profession
 -- with its icon, Lager, Händlergunst with the own favor).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, Pr, T, Cr, Route = ns.W, ns.Prof, ns.Theme, ns.Crafters, ns.ProfRoute
 local P = T.PROFPAGE
@@ -2128,4 +2129,5 @@ ns.OnEvent("PLAYER_REGEN_ENABLED", schedule)
 ns.OnEvent("ADDON_RESTRICTION_STATE_CHANGED", schedule)
 ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()
     if nameMissing then schedule() end
+end)
 end)

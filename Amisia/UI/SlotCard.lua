@@ -8,6 +8,7 @@
 -- item with a use effect): on such an item a plain right-click is left to the game, Alt + right-click
 -- opens the card on every slot. Nothing is equipped, nothing is sent. Setting bis.slotClick.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local Gear = ns.Gear
@@ -264,3 +265,4 @@ local function fillSoon()
 end
 ns.Listen("BIS_CHANGED", fillSoon)
 ns.OnEvent("PLAYER_EQUIPMENT_CHANGED", fillSoon)
+end)

@@ -17,6 +17,7 @@
 -- Gargul's defaults); "Passen" only closes it (nothing is sent, as in Gargul); the starter's
 -- "Stop your rolls!" ends it. An Amisia round goes first.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 
@@ -947,3 +948,4 @@ ns.RegisterSlash("wuerfeln", { en = "rolltest", args = L["[test [Item-Link] [dkp
             ns.ShowSettings(L["Würfel-Fenster"])
         end
     end })
+end)

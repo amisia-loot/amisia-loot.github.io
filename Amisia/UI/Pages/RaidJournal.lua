@@ -9,6 +9,7 @@
 -- of a session shows the table). Key "raidjournal": the officers' page "raids" (the recorded raids, tab
 -- Raid) has the key "raids".
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local K = ns.GearPageKit
@@ -324,3 +325,4 @@ ns.RegisterSlash("raids", { desc = L["Raids: Bosse, Beute und Upgrades der Raids
     end
     ns.ShowPage("raidjournal")
 end })
+end)

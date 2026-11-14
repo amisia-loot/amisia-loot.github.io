@@ -3,6 +3,7 @@
 -- here changes every place that uses it; a page's own column positions stay in the page.
 -- The layout rules of tools/ui_layout.py check the pages against these (padding, atlases).
 local ADDON, ns = ...
+ns.Load(function()
 
 local T = {}
 ns.Theme = T
@@ -1045,3 +1046,4 @@ T.ATLASES = {
     "groupfinder-icon-class-rogue", "groupfinder-icon-class-priest", "groupfinder-icon-class-shaman",
     "groupfinder-icon-class-mage", "groupfinder-icon-class-warlock", "groupfinder-icon-class-druid",
 }
+end)

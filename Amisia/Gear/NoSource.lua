@@ -8,6 +8,7 @@
 -- Gear.ScanIcon find its rows too (nothing else builds it). An item that gets a source later is a
 -- normal entry of the gear data: the build never puts an id into both files. Nothing is sent.
 local ADDON, ns = ...
+ns.Load(function()
 local Gear = ns.Gear
 
 local NSR = {}
@@ -146,3 +147,4 @@ function NSR.Merge(sourced, extra)
 end
 
 function NSR.Reset() memo = {} end
+end)

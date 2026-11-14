@@ -33,7 +33,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 
 | File | Purpose | Owns (AmisiaDB keys) | Uses |
 |---|---|---|---|
-| `Locales/Locale.lua` | `ns.L`, `ns.N_`, `ns.GERMAN`; `ns.PERF_T0` (the start of loading, for `/amisia leistung`); deDE shows the German key, every other locale the enUS entry `ns.LongDate(iso)` (a day in the long form, next to `FmtDate`). | - | - |
+| `Locales/Locale.lua` | `ns.L`, `ns.N_`, `ns.GERMAN`, `ns.LANG` (the language Amisia speaks), `ns.CLIENT_LANG`, `ns.LOCALE` (the client's), `ns.LanguageChoice` (`ui.language`, F-199); `ns.Load(fn)` and `ns.RunLoad` (every other file's body runs on Amisia's `ADDON_LOADED`, after the language is chosen, then `ns.CoreLoaded`; D-128); `ns.PERF_T0` (the start of loading, for `/amisia leistung`); deDE shows the German key, every other locale the enUS entry `ns.LongDate(iso)` (a day in the long form, next to `FmtDate`). | - | - |
 | `Locales/enUS_core.lua` | English of Core/UI | - | Locale |
 | `Locales/enUS_raid.lua` | English of Raid (1) | - | Locale |
 | `Locales/enUS_raid2.lua` | English of Raid (2), bank | - | Locale |
@@ -41,7 +41,7 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Locales/enUS_world.lua` | English of Collect, map, quests, crafters | - | Locale |
 | `Locales/enUS_selftest.lua` | English of the self-test | - | Locale |
 | `Locales/enUS_raidcheck.lua` | English of the raid check and the raid IDs | - | Locale |
-| `Core/Registry.lua` | The client `ns.GAME` ("forever", "tbc", "era"; `WOW_PROJECT_ID`, `WOW_PROJECT_CAMELOT` first, else the build's interface number), `ns.FOREVER`, `ns.GAME_NAMES` (D-57); pages, cards, settings schema (`ns.Get/Set`), slash words, `ns.Listen/Fire`; `ns.Visible` hides a spec with `forever = true` off Forever (pages, cards, sections, items, slash words); `ns.MayOfficerView` (officer note right, the author's character, an officer rank by `ns.SelfIsOfficer`) and `ns.IsOfficerView` (allowed and `ui.view` not "raider"; D-87) Shared helpers: `ns.ReportError(err)` (the error handler, if any), `ns.StripCodes(s, rep)` (colour incl. `|cn<name>:`, link, texture and atlas codes), `ns.Int`, `ns.SortedKeys`, `ns.Count`, `ns.FireSoon(event)`. | `settings` (via `ns.ApplySettings`) | MainFrame, Minimap (late) |
+| `Core/Registry.lua` | The client `ns.GAME` ("forever", "tbc", "era"; `WOW_PROJECT_ID`, `WOW_PROJECT_CAMELOT` first, else the build's interface number), `ns.FOREVER`, `ns.GAME_NAMES` (D-57); pages, cards, settings schema (`ns.Get/Set`), slash words, `ns.Listen/Fire`; `ns.Visible` hides a spec with `forever = true` off Forever (pages, cards, sections, items, slash words); `ns.MayOfficerView` (officer note right, the author's character, an officer rank by `ns.SelfIsOfficer`) and `ns.IsOfficerView` (allowed and `ui.view` not "raider"; D-87) Shared helpers: `ns.ReportError(err)` (the error handler, if any), `ns.StripCodes(s, rep)` (colour incl. `|cn<name>:`, link, texture and atlas codes), `ns.Int`, `ns.SortedKeys`, `ns.Count`, `ns.FireSoon(event)`. The language setting `ui.language` and `/amisia sprache` (`language`; F-199: a new choice asks to reload). | `settings` (via `ns.ApplySettings`) | MainFrame, Minimap (late) |
 | `Core/Perf.lua` | The timing of `/amisia leistung` (F-184, D-116, `ns.Perf`): `P.Wrap(label, fn)` (off: one upvalue checked, fn tail-called; on: calls, own time, longest call, calls over `P.SPIKE` = 5 ms, own garbage per label), `P.PCall(label, fn, ...)` (the bus and `ns.Fire`), `P.Begin`/`P.End` (a stretch: the core's own part of an event, a data build), `P.Label`, `P.Where(level)` ("File:line" from `debugstack` at a registration), `P.HandlerLabel`, `P.Start`/`P.Stop`/`P.Running`, `P.Frame` (frames, combat seconds), the login's steps `P.BootRows` (always: every bus and `ns.Fire` handler until the first `PLAYER_ENTERING_WORLD`), `P.Since` (ms since `ns.PERF_T0`, stamped at the top of `Locales/Locale.lua`); clock `debugprofilestop`, else `GetTimePreciseSec`, else none (`P.Wrap` gives fn back) | - | - |
 | `Core/LazyData.lua` | `ns.LazyData`, `ns.Data`, `ns.HasData`, `ns.DataLoaded` (built already, without building), `ns.DataSize`: generated tables built on first use; `/amisia speicher` (memory before/after a full collection, data built) | - | - |
 | `Core/Core.lua` | Recording (sessions, members, loot, drops), guild bank count, export text, event frame, `ns.OnEvent` (each handler with its label "Event NAME File:line", timed while `/amisia leistung` measures and during the login's steps; the core's own part as "Core NAME"), item shim; item tooltip parts (`ns.OnItemTooltip`: the tooltip data processor, on TBC and Era also `OnTooltipSetItem`, one line per part and item) `ns.Spread(n, name)` (a per-player delay for answers). | `sessions`, `itemNames`, `exported`, `exportedBank`, `bank` | Awards, Mats, Bench, RaidLog, Points, BankNeeds, BankLog, LootPrio, GroupRolls (export hooks) |
@@ -199,6 +199,12 @@ Other folders: `Media/Icons` (TGA, made by `tools/make_icons.py`; the map pins `
 
 - The TOC lists every `.lua`/`.xml` exactly once (`build.py check`: TOC against the folder, which also fails while
   `Amisia_TBC.toc` or `Amisia_Vanilla.toc` differ from `Amisia.toc` without its camelot lines; `build.py tocs` writes them).
+- Every file but `Locales/Locale.lua`, `Core/LazyData.lua` (its data functions) and the generated `Data/*`
+  puts its body in `ns.Load(function() ... end)` right after `local ADDON, ns = ...` and ends with `end)`.
+  The client loads `AmisiaDB` only after all files ran; `Locales/Locale.lua` (first in every TOC) runs the
+  bodies in TOC order on Amisia's `ADDON_LOADED`, once it has read the language (`ui.language`, F-199), and
+  then hands the event to the core (`ns.CoreLoaded`, which unregisters it so a second delivery does nothing).
+  A failing body stops only itself (the client's error handler). `tools/tests/test_load_order.py`; D-128.
 - `Locales/Locale.lua` and the `enUS_*` parts first, then `Core/Registry.lua` (everyone registers
   while loading), `Core/Perf.lua` (the wrappers of `/amisia leistung`, before everything they measure),
   `Core/LazyData.lua`, `Core/Core.lua`, then the rest in dependency order; `Core/PerfReport.lua` last (its
@@ -647,8 +653,10 @@ The loot toast's settings (F-152) were `ui.lootToast*` until 2.71.0; since then 
 
 ## Locales
 
-- German is the source text and the key: `L["Vergaben"]`. deDE shows the key, every other client
-  the entry of `Locales/enUS_<area>.lua` (one key in exactly one part file). Context after `##`
+- German is the source text and the key: `L["Vergaben"]`. German shows the key, English the entry of
+  `Locales/enUS_<area>.lua` (one key in exactly one part file). The language is the player's choice
+  (`ui.language`: "auto", "deDE", "enUS"; F-199), "auto" the client's (deDE German, every other English);
+  it holds from the next load on (D-128). Names from the game stay in the client's language (`ns.LOCALE`). Context after `##`
   (`L["Aus##Ansage"]`). `ns.N_("...")` marks German kept as data and shown later through `L[var]`.
 - Numbers and dates through `ns.Num`, `ns.FmtDay`, `ns.FmtDate`, `ns.FmtDayTime`.
 - Machine formats never translate: export lines, addon messages, `AMISIA-WERTE`, talent codes, saved

@@ -9,6 +9,7 @@
 -- of the counting group (the rows above). pre: 0 or node ids; a positive id is "sufficient" (one
 -- full source of these is enough), a negative one "required" (that node must be full).
 local ADDON, ns = ...
+ns.Load(function()
 local L, N_ = ns.L, ns.N_
 
 local T = {}
@@ -544,3 +545,4 @@ function T.LoadPlan(cls, slot)
     if plan and plan.class == cls then return plan, true end
     return T.NewPlan(cls), false
 end
+end)

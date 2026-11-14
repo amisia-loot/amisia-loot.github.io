@@ -5,6 +5,7 @@
 -- scale from the screen's bottom left; a plain drag puts it back on the edge); /amisia minimap hides
 -- or shows it.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local ICON = "Interface\\AddOns\\Amisia\\Media\\Icons\\Amisia"
@@ -215,4 +216,4 @@ end })
 function Amisia_OnAddonCompartmentClick(_, mouse) click(mouse) end
 function Amisia_OnAddonCompartmentEnter(_, frame) tooltip(frame, "ANCHOR_LEFT") end
 function Amisia_OnAddonCompartmentLeave() GameTooltip:Hide() end
-
+end)

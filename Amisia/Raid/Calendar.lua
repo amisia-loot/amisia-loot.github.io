@@ -10,6 +10,7 @@
 -- Nothing here signs up, invites, creates, changes or removes anything in the calendar; Cal.Open
 -- only holds an event open for the write module (Raid/CalendarWrite.lua, part H3).
 local ADDON, ns = ...
+ns.Load(function()
 local L, N_ = ns.L, ns.N_
 
 local Cal = {}
@@ -110,10 +111,10 @@ function Cal.PickTarget(list)
     return any
 end
 
--- The short weekday (1 Sunday .. 7 Saturday, as date("*t").wday) in the client's language.
+-- The short weekday (1 Sunday .. 7 Saturday, as date("*t").wday) in Amisia's language.
 function Cal.WeekdayShort(wday) return L[WEEKDAY[wday] or WEEKDAY[1]] end
 
--- "Fr 20:00" (the weekday short in the client's language).
+-- "Fr 20:00" (the weekday short in Amisia's language).
 function Cal.When(at)
     if type(at) ~= "number" then return "?" end
     local d = date("*t", at)
@@ -429,3 +430,4 @@ function Cal.Why(why) return L[WHY[why] or WHY.off] end
 
 -- for the tests
 Cal._reset = function() waiter, busy, busyAt, quietUntil, held = nil, false, 0, 0, false end
+end)

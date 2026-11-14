@@ -16,6 +16,7 @@
 -- Stored in AmisiaDB.bankNeeds = { rev, by, list = { [id] = { min, target } } } and
 -- AmisiaDB.bankPledges = { { name, item, count, t } }.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local MAX_NEEDS = 40          -- materials with a need at most (the size of the material list)
@@ -493,3 +494,4 @@ function ns.MarkBankNeedsExported()
 end
 -- The setting bank.pledgeDays (how long a pledge counts, on this client) is in the "bank" section
 -- of Core.lua.
+end)

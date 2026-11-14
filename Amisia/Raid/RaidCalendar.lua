@@ -12,6 +12,7 @@
 -- lineup, else the class, guessed "?"). Nothing here writes into the calendar; AQ stays the
 -- officers' (no new message kind). UI/RaidCalendar.lua shows it.
 local ADDON, ns = ...
+ns.Load(function()
 local L, N_ = ns.L, ns.N_
 
 local RC = {}
@@ -184,3 +185,4 @@ end
 
 -- for the tests
 RC._reset = function() state, latest = {}, {} end
+end)

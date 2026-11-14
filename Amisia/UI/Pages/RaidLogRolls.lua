@@ -3,6 +3,7 @@
 -- passed, open) and the number of choices; below, every choice of the chosen roll, the winner
 -- first. Built and filled by UI/Pages/RaidLog.lua (ns.RaidLogRolls.Build / Refresh).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local GR = ns.GroupRolls
@@ -196,3 +197,4 @@ function R.Refresh(view, s)
     V.title:SetText(found and (itemText(found.e.item) .. GREY .. "  " .. hm(found.e.t) .. "|r") or "")
     V.detail:SetText(n > 0 and detail(found) or "")
 end
+end)

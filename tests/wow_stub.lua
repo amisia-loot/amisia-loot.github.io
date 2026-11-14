@@ -1322,6 +1322,7 @@ function _G.CreateFrame(kind, name, parent, template)
     end
     f.RegisterEvent = function(self, e) self.events[e] = true; STUB.frames[self] = true end
     f.UnregisterEvent = function(self, e) self.events[e] = nil end
+    f.IsEventRegistered = function(self, e) return self.events[e] == true end
     -- a frame starts hidden here (tests ask IsShown), but the client shows a new frame until it is hidden:
     -- vis keeps what the addon did (nil: never shown or hidden), for the layout tools
     f.Show = function(self) self.shown = true; self.vis = true; if self.scripts.OnShow then self.scripts.OnShow(self) end end

@@ -20,6 +20,7 @@
 -- protected calls, built the first time it shows (also in a fight after a /reload). Its place in
 -- settings.dungeonBar, reset by "Fensterposition zurücksetzen".
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local S = T.DUNGEONBAR
@@ -574,3 +575,4 @@ function DBar._reset()
     override, open, dirty, cands = nil, nil, false, nil
     if list then list:Hide() end
 end
+end)

@@ -170,8 +170,9 @@ U+2026, Pfeile, U+2022, U+25CF). Symbole sind Texturen.
 
 ## D-08 Deutsch und Englisch, die Client-Sprache entscheidet
 
-**Datum:** 2026-10-06
-**Entscheidung:** deDE-Clients sehen Deutsch, alle anderen Englisch. Deutsch ist Quelltext und
+**Datum:** 2026-10-06 (ergänzt 2026-11-14, D-128)
+**Entscheidung:** deDE-Clients sehen Deutsch, alle anderen Englisch. Seit F-199 (D-128) kann der Spieler
+Deutsch oder Englisch selbst wählen (`ui.language`); ohne Wahl gilt weiter die Client-Sprache. Deutsch ist Quelltext und
 Schlüssel (`L["..."]`), Englisch steht in `Amisia/Locales/enUS_*.lua`.
 Maschinenformate (Export, Nachrichten, gespeicherte Schlüssel) übersetzt man nie.
 **Grund:** Wahl des Nutzers aus dem Dungeon-Journal-Vergleich; umgesetzt in 2.9.0.
@@ -3387,3 +3388,32 @@ gefragt): an als Standard, auch für Freunde, keine Nachfrage vor dem Einladen.
 
 **Durchgesetzt durch:** `tests/test_online_invite.lua` (deutsche und englische Zeile, Felder nach dem Namen, andere
 Zeilen, sich selbst, geheime Zeile, Schalter, ohne Einladerecht, Leiter, schon in der Gruppe, Klick, fremde Links).
+
+## D-128 Sprache wählen: jede Datei wartet auf ADDON_LOADED (`ns.Load`)
+
+**Datum:** 2026-11-14
+**Entscheidung:** Der Spieler wählt die Sprache von Amisia (F-199): Einstellungen, Allgemein, Oberfläche,
+"Sprache (Language)" mit "Wie der Client (...)" (Standard), "Deutsch", "English"; dazu `/amisia sprache de|en|auto`
+(englisch `language`). Gespeichert als `ui.language` ("auto", "deDE", "enUS"; alles andere zählt als "auto"). Die
+Wahl gilt nach dem Neuladen; die Einstellung fragt "Jetzt neu laden?", der Befehl sagt es im Chat. Weil der Client
+`AmisiaDB` erst nach allen Dateien lädt und rund 1.700 Texte schon beim Laden übersetzt werden, legt jede Datei
+außer `Locales/Locale.lua`, den erzeugten `Data/*` und dem Datenteil von `Core/LazyData.lua` ihren Inhalt in
+`ns.Load(function() ... end)`; `Locales/Locale.lua` liest bei `ADDON_LOADED` von Amisia die Wahl, führt die Inhalte
+in TOC-Reihenfolge aus (ein Fehler hält nur seine Datei an) und gibt das Ereignis an den Kern weiter
+(`ns.CoreLoaded`). `ns.LOCALE` bleibt die Sprache des Clients (Spieldaten, Scans), `ns.LANG`/`ns.GERMAN` die
+gewählte.
+
+**Grund:** Nutzer 2026-11-14: "Amisia soll komplett in deutsch und englisch sein je nach auswahl aber als standart
+client sprache wählen". Weg A der Spec `docs/specs/2026-11-14-sprache-waehlen.md` ("Dateien warten") statt eines
+zweiten Addons oder des Umbaus jeder einzelnen Stelle.
+
+**Folge:** Eine neue Datei beginnt mit `local ADDON, ns = ...`, dann `ns.Load(function()`, und endet mit `end)`.
+Die Datenbauer (`tools/build_*.py`) schreiben `Data/*` wie bisher. Tests, die eine Datei mit eigenem `ns` laden,
+geben ihm `Load = function(fn) fn() end`. Namen aus dem Spiel übersetzt Amisia nie. Offen, nicht geprüft: Blizzards eigene TOCs
+kennen `## LoadSavedVariablesFirst: 1` auf allen drei Clients; ob ein fremdes Addon das darf, ist im Spiel nicht
+geprüft. Falls ja, ginge es ohne den Rahmen; bis dahin bleibt er. `/amisia leistung` zählt unter "Dateien" jetzt auch
+das Laden von `AmisiaDB` und die Inhalte der Dateien.
+
+**Durchgesetzt durch:** `tools/tests/test_load_order.py` (jede Datei mit dem Rahmen, `Locales/Locale.lua` zuerst,
+was sofort lädt, ohne Texte), `tests/test_language.lua` (deutscher Client, Englisch gewählt: Texte, Zahlen, Daten,
+Befehl, Frage zum Neuladen, kaputte Wahl), `tests/test_language_de.lua` (englischer Client, Deutsch gewählt).

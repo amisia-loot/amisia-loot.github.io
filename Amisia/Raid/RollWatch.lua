@@ -12,6 +12,7 @@
 -- 5 s for the roster check falls. A secret line (the chat lockdown of a boss fight) cannot be read:
 -- no window then. Both languages are read whatever the own client's language.
 local ADDON, ns = ...
+ns.Load(function()
 
 local GAP = 1                  -- one start per sender and second
 local START_TTL = 5            -- a start held by the roster check falls after this
@@ -130,3 +131,4 @@ for _, event in ipairs({ "CHAT_MSG_RAID_WARNING", "CHAT_MSG_RAID", "CHAT_MSG_RAI
         if not ok then ns.ReportError(err) end
     end)
 end
+end)

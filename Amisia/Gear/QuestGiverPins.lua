@@ -17,6 +17,7 @@
 -- giver's point, so a quest mark of the client or of another addon at the same giver stays readable.
 -- Setting map.questGivers ("Dungeonquest-Geber auf der Karte", on).
 local ADDON, ns = ...
+ns.Load(function()
 local Map, W, D = ns.Map, ns.W, ns.Dungeons
 local L = ns.L
 local T = ns.Theme.GIVER_PIN
@@ -372,3 +373,4 @@ end
 if Map.RegisterPinKind then
     Map.RegisterPinKind("giver", { setup = setupPin, show = showPin, click = click, enter = enter, list = G.Pins })
 end
+end)

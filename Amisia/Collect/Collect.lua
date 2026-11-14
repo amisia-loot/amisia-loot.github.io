@@ -9,6 +9,7 @@
 --   "Auktionshaus"
 -- Older notes have only the name; every part after it is optional.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local MAX_SOURCES = 6
@@ -325,3 +326,4 @@ ns.RegisterSlash("sammeln", { en = "collect", desc = L["Item-Sammler an oder aus
     ns.msg(ns.Get("tools.collect") and L["Item-Sammler an: Taschen, Händler, Quests, Auktionshaus, Tooltips und Loot werden aufgenommen."]
         or L["Item-Sammler aus."])
 end })
+end)

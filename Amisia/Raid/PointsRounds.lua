@@ -9,6 +9,7 @@
 -- need/greed { name, kind = "MS"|"OS", value, a, b, pr, low, t, class, manual }.
 -- Only the client that runs the round reads the chat; every chat text is untrusted.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local KEEP = 10 * 60          -- a finished round names the cost of an award for this long
@@ -458,3 +459,4 @@ for _, w in ipairs({ "bid", "gebot" }) do ns.RegisterChatCommand(w, onBid) end -
 for _, w in ipairs({ "need", "bedarf", "ms" }) do ns.RegisterChatCommand(w, needWord("MS")) end -- l10n-ok: chat words
 for _, w in ipairs({ "greed", "gier", "os" }) do ns.RegisterChatCommand(w, needWord("OS")) end -- l10n-ok: chat words
 for _, w in ipairs({ "pass", "passe" }) do ns.RegisterChatCommand(w, needWord(nil)) end -- l10n-ok: chat words
+end)

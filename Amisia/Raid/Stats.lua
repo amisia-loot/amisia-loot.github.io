@@ -5,6 +5,7 @@
 -- item, bosses seen, the longest streak and items per week; the hall of fame picks the best of each.
 -- Only numbers the recordings hold: no upgrade sizes, the addon does not know them for the past.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local DAY = 86400
@@ -321,3 +322,4 @@ function ns.StatsFame(res)
     end
     return out
 end
+end)

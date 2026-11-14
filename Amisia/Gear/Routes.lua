@@ -14,6 +14,7 @@
 -- 30 s (Comm's gap), 3 offers waiting, 10 minutes, nothing saved: nothing shows before "annehmen".
 -- Fires "ROUTES" (what changed) for the map layer and the bar.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local Map = ns.Map
 
@@ -998,3 +999,4 @@ function R._reset()
     offers, points, pending = {}, {}, {}
     lastShare, lastPoint = nil, nil
 end
+end)

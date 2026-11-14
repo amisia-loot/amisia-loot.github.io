@@ -6,6 +6,7 @@
 -- question; a secret or unreadable sender does nothing. While the roster is not read yet the answer
 -- waits for it (ns.TrustWait, 60 s at most). Sends nothing.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local SAME_GAP = 2         -- one invite event of a sender within this many seconds counts once
@@ -85,3 +86,4 @@ ns.RegisterSettings{ key = "invites", label = L["Gruppeneinladungen"], order = 1
 
 -- for the tests
 GA._reset = function() lastName, lastAt = nil, nil end
+end)

@@ -1,5 +1,6 @@
 -- English texts, part selftest (merged into enUS.lua when the translation is complete).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.NewLocale("enUS")
 if not L then return end
 
@@ -561,3 +562,4 @@ L["unbekannt: einen NPC ins Ziel nehmen oder die Namensplaketten einschalten"] =
 L["unklar: die Kennung sprang %d-mal hin und her, ohne Gruppe"] = "unclear: the id jumped back and forth %d times, without a group"
 L["vom Spiel gesperrt: %s"] = "blocked by the game: %s"
 L["zu wenige Kreaturen in Sicht (%d): mit Namensplaketten (Taste V) in einer belebten Gegend neu prüfen"] = "too few creatures in sight (%d): check again with name plates (key V) in a busy place"
+end)

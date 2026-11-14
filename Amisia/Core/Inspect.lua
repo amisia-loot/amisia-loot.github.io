@@ -10,6 +10,7 @@
 -- with In.Clear when it is done. Reads and sends nothing else; the talent reader of an answer is
 -- Gear/Talents.lua (T.InspectTrees).
 local ADDON, ns = ...
+ns.Load(function()
 
 local In = {}
 ns.Inspect = In
@@ -113,4 +114,5 @@ ns.OnEvent("INSPECT_READY", function(guid)
         keep = ok and res == true
     end
     if not keep then In.Clear() end
+end)
 end)

@@ -13,6 +13,7 @@
 -- tools/build_scan_archive.py keeps it in tools/scan_archive.json (per language);
 -- Collect/ScanTrim.lua takes out what the archive holds.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local SB = ns.ScanById
 
@@ -435,3 +436,4 @@ function NS_.Command(rest)
         if not ok and why then ns.msg(why) end
     end
 end
+end)

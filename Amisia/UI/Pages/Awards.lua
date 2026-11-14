@@ -1,6 +1,7 @@
 -- Awards: every hand-out of a raid for officers, to look through, change, delete and take back;
 -- raiders see their own items. Changes apply on the click and land on the undo stack.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local GOLD = W.GOLD
@@ -1077,4 +1078,4 @@ ns.RegisterCard{ key = "awards", order = 40, fill = function(c)
 end }
 
 ns.RegisterSlash("vergaben", { en = "awards", desc = L["Seite Vergaben öffnen"], run = function() ns.ShowPage("awards") end })
-
+end)

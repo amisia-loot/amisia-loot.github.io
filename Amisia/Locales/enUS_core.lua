@@ -1,5 +1,6 @@
 -- English texts, part core (merged into enUS.lua when the translation is complete).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.NewLocale("enUS")
 if not L then return end
 
@@ -758,3 +759,19 @@ L["Leistung: Die nächste Anmeldung oder /reload wird %d s lang gemessen."] = "P
 L["Aufruf: /amisia leistung [an|aus|bericht|login|<Minuten>]"] = "Usage: /amisia performance [on|off|report|login|<minutes>]"
 L["[an|aus|bericht|login|<Minuten>]"] = "[on|off|report|login|<minutes>]"
 L["Amisias Rechenzeit messen, Bericht im Chat"] = "measure Amisia's CPU time, report in the chat"
+-- the language (F-199, Core/Registry.lua)
+L["Deutsch##Sprache"] = "Deutsch"
+L["English##Sprache"] = "English"
+L["Sprache"] = "Language"
+L["Sprache (Language)"] = "Language (Sprache)"
+L["Wie der Client (%s)"] = "Like the client (%s)"
+L["wie der Client"] = "like the client"
+L["Die Sprache wechselt nach dem Neuladen. Jetzt neu laden?"] = "The language changes after a reload. Reload now?"
+L["Neu laden"] = "Reload"
+L["[de|en|auto]"] = "[de|en|auto]"
+L["Sprache von Amisia: Deutsch, Englisch oder wie der Client (gilt nach /reload)"] = "Amisia's language: German, English or like the client (after /reload)"
+L["Sprache: %s (Einstellung: %s). Ändern: /amisia sprache de, en oder auto."] = "Language: %s (setting: %s). Change: /amisia language de, en or auto."
+L["Sprache: %s."] = "Language: %s."
+L["Sprache: %s, nach /reload."] = "Language: %s, after /reload."
+L["Die Sprache von Amisia; Namen aus dem Spiel (Gegenstände, Zonen) bleiben in der Sprache des Clients. Gilt nach dem Neuladen."] = "Amisia's language; names from the game (items, zones) stay in the client's language. Takes effect after a reload."
+end)

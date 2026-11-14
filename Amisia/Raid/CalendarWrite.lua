@@ -17,6 +17,7 @@
 -- The calendar probe /amisia selbsttest kalender schreiben (Core/SelfTestCalendarWrite.lua) tries
 -- every one of these calls on its own and reports which work; CW.PLAN is the place to change them.
 local ADDON, ns = ...
+ns.Load(function()
 local L, N_ = ns.L, ns.N_
 
 local CW = {}
@@ -300,3 +301,4 @@ end
 
 -- for the tests
 CW._reset = function() job = nil if watcher then listen(false) end end
+end)

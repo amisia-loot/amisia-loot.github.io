@@ -15,6 +15,7 @@
 -- combat, a chat lockdown or an instance. The report goes into the self-test window and ends with the
 -- verdicts in plain words and how to check a real change.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local ST = ns.SelfTest
@@ -474,3 +475,4 @@ function LT.Start()
 end
 
 function LT.Running() return run ~= nil and not run.finished end
+end)

@@ -11,6 +11,7 @@
 -- raid's spelling must be the roster's, a first name alone is not enough) once per raid, out of
 -- combat and the lockdown.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local MAX_STEPS = 60
@@ -283,3 +284,4 @@ ns.OnEvent("ADDON_RESTRICTION_STATE_CHANGED", assistLater)
 SO._reset = function()
     sort, paused, promoted = nil, nil, {}
 end
+end)

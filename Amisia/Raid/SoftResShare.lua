@@ -10,6 +10,7 @@
 -- and takes it with "Liste übernehmen" on the page. The newest import wins (equal: the smaller name).
 -- "SV <epoch> - 0" after clearing: who holds that officer's list of that epoch clears it too.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local SV_EVERY = 240           -- an officer repeats his state this often
@@ -406,3 +407,4 @@ C_Timer.NewTicker(5, ns.Perf.Wrap("Ticker SoftResShare", function()
     local ok, err = pcall(sendSV)
     if not ok then report(err) end
 end))
+end)

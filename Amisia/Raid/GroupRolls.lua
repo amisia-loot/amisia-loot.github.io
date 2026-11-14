@@ -14,6 +14,7 @@
 --           all = everyone passed, wait = a secret value waits, by = { [name] = { c = N|O|T|G|D|P, r = number, cls } } }
 -- run   = { id, zone, instanceID, start, last, rolls = { entry ... } }
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local GR = {}
@@ -454,3 +455,4 @@ ns.RaidLogSettings.items[#ns.RaidLogSettings.items + 1] = { key = "raidlog.group
     label = L["Würfe bei Gruppenloot aufzeichnen"], default = true,
     tip = L["Bedarf, Gier, Entzaubern und Passen jedes Spielers mit Zahl und Gewinner, im Raid oder im Dungeon."] }
 ns.RegisterSettings(ns.RaidLogSettings)
+end)

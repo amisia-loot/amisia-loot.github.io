@@ -18,6 +18,7 @@
 -- date is read again after a change in the calendar (at most every 5 s) and every 30 s. Nothing
 -- here writes into the calendar.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local R = T.RAIDCAL
@@ -653,3 +654,4 @@ ns.RaidCalView = { Reader = Reader, BuildRow = buildRow, FillRow = fillRow, Tool
 
 -- for the tests
 ns._raidCalUI = { frame = function() return F end }
+end)

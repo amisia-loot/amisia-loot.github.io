@@ -15,6 +15,7 @@
 -- (EP/GP beside it); the entry row then takes a bid, or need (MS) and greed (OS) without a number.
 -- A row's tooltip names what its roller already got (AwardHistory.lua), for officers.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 
@@ -581,3 +582,4 @@ if type(HandleModifiedItemClick) == "function" then
 end
 
 ns.RegisterSlash("rolls", { officer = true, desc = L["Roll-Fenster öffnen oder schließen"], run = function() ns.ToggleRollFrame() end })
+end)

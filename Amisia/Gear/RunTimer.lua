@@ -20,6 +20,7 @@
 -- place in settings.runTimerWindow; the grip in the lower right corner scales it (its scale there
 -- too); Escape leaves it open.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local S = T.RUNTIMER
@@ -410,3 +411,4 @@ local function world()
 end
 ns.OnEvent("PLAYER_ENTERING_WORLD", world)
 ns.OnEvent("ZONE_CHANGED_NEW_AREA", world)
+end)

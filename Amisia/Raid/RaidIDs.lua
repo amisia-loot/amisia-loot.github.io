@@ -17,6 +17,7 @@
 -- than the sender's is dropped, any other one of another sender shows grey "laut <sender>"; 12
 -- characters per sender, 300 in all. IQ is answered only for a verified officer (rank flag 22).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local RR = ns.RaidRead
 
@@ -619,3 +620,4 @@ function ns.RaidIDsOwnLines()
     if #out == 0 then out[1] = L["Raid-IDs: noch keine gelesen (nach dem Login oder einem Boss-Kill)."] end
     return out
 end
+end)

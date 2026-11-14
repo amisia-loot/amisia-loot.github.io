@@ -2,6 +2,7 @@
 -- dash). Everything that compares names goes through FullName and SameName, and the export writes
 -- "_" for the space (no WoW name holds an underscore), so its fields stay space-separated.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 -- One spelling of a name: trimmed, single spaces, and the surname added when it comes separately
@@ -276,3 +277,4 @@ ns.RegisterSlash("namen", { en = "names", desc = L["zeigt, wie Amisia Namen lies
         ns.msg(L["Gruppe %d: Raidliste = \"%s\" -> %s"]:format(i, tostring(rn), tostring(ns.FullName(rn))))
     end
 end })
+end)

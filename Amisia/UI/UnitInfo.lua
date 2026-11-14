@@ -10,6 +10,7 @@
 -- while waiting). Items the client does not hold yet are asked for and counted when they arrive
 -- (the value is provisional until then). Sends nothing, saves nothing.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local T = ns.Theme
 local S = T.UNITINFO
@@ -370,3 +371,4 @@ elseif GameTooltip and type(GameTooltip.HookScript) == "function" and type(GameT
     -- a client without the data processor: the tooltip's own script
     GameTooltip:HookScript("OnTooltipSetUnit", safe)
 end
+end)

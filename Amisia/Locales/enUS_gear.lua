@@ -1,5 +1,6 @@
 -- English texts, part gear (merged into enUS.lua when the translation is complete).
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.NewLocale("enUS")
 if not L then return end
 
@@ -1004,3 +1005,4 @@ L["Rechts je Mitglied ein Zeichen (Maus auf die Zeile: wer was hat; grau mit \"?
 L["In einer Gruppe: \"2 teilen\" sind Quests aus deinem Log, die anderen mit Amisia fehlen (\"fehlt 2\" in der Liste)."] = "In a party: \"2 to share\" are quests of your log that others with Amisia lack (\"2 lack it\" in the list)."
 L["fehlt %d##Gruppe"] = "%d lack it"
 L["· %d teilen"] = "· %d to share"
+end)

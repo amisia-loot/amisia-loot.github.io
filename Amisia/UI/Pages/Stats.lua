@@ -3,6 +3,7 @@
 -- page Vergaben. The hall of fame is for everyone. Sortable columns, the range (4 weeks, phase,
 -- all), class and role, a row's tooltip with the split per character, the weeks of the chosen player.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local ROWS, ROW_H = 9, 22
@@ -338,3 +339,4 @@ ns.RegisterPanel{ key = "stats", label = L["Statistik"], sub = L["Teilnahme und 
     refresh = function(f) refresh(f) end }
 
 ns.RegisterSlash("statistik", { en = "stats", desc = L["Seite Statistik öffnen"], run = function() ns.ShowStats() end })
+end)

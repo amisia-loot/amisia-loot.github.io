@@ -1,6 +1,7 @@
 -- Soft-reserves: the loaded list in three views (items, raiders, the check against the raid),
 -- name fixes with one click, importing and clearing for officers, and the overview card.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 -- rows of 22 from the column heads (90) to the footer (458): 16
@@ -458,3 +459,4 @@ ns.RegisterCard{ key = "softres", order = 20, fill = function(c)
 
     end
 end }
+end)

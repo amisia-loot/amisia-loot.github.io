@@ -5,7 +5,7 @@ local function gameWith(id, camelot, toc)
     local keepId, keepCamelot, keepBuild, keepSlash = WOW_PROJECT_ID, WOW_PROJECT_CAMELOT, GetBuildInfo, SlashCmdList.AMISIA
     WOW_PROJECT_ID, WOW_PROJECT_CAMELOT = id, camelot
     GetBuildInfo = toc and function() return "x", "1", "d", toc end or nil
-    local ns = { L = NS.L }
+    local ns = { L = NS.L, Load = function(fn) fn() end }
     assert(loadfile(ADDON_DIR .. "/Core/Registry.lua"))("Amisia", ns)
     WOW_PROJECT_ID, WOW_PROJECT_CAMELOT, GetBuildInfo, SlashCmdList.AMISIA = keepId, keepCamelot, keepBuild, keepSlash
     return ns.GAME, ns.FOREVER

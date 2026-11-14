@@ -6,6 +6,7 @@
 -- verdicts (AmisiaDB.probe), ranges of ids as text, and the generated id lists (Data/ScanLists.lua).
 -- Only reads: nothing is sent to chat or other players.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local SB = {}
@@ -428,3 +429,4 @@ function ns.ScannedNpcName(npc)
     local t = p and type(p.N) == "table" and p.N[npc]
     return type(t) == "string" and t ~= "" and t or nil
 end
+end)

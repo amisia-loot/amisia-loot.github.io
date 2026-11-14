@@ -22,6 +22,7 @@
 -- invites by = "inv") and the page lists them with their status.
 -- The states live in memory only (D-41: never saved); a /reload rebuilds them from the roster.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local GAP = 0.5            -- seconds between two invites
@@ -800,3 +801,4 @@ IV._set = function(night, name, st, tries, by)
     r.st, r.tries, r.at, r.by = st, tries or r.tries, GetTime(), by or r.by
 end
 IV._run = function() return run end
+end)

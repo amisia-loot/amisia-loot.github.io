@@ -4,6 +4,7 @@
 -- guild count. A newer version is pointed out once per version, and only when an officer or two
 -- members run it.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local GUILD_HELLO_AFTER, GUILD_HELLO_SPREAD = 20, 40   -- seconds after the login: 20 to 60
@@ -421,3 +422,4 @@ ns.RegisterSlash("version", { aliases = { "versionen" }, desc = L["Amisia-Versio
         or L["Frage die Gilde nach Amisia-Versionen. Die Liste folgt in 10 Sekunden."])
     C_Timer.After(NO_ANSWER_AFTER + 0.1, printList)
 end })
+end)

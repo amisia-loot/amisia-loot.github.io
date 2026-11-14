@@ -8,6 +8,7 @@
 -- of what it depends on; a refresh only picks the view, and the sorted list is kept until the target,
 -- the hidden places or the player's cell change.
 local ADDON, ns = ...
+ns.Load(function()
 local W, Gear, Map, T = ns.W, ns.Gear, ns.Map, ns.Theme
 local L = ns.L
 local GOLD = W.GOLD
@@ -823,3 +824,4 @@ for _, event in ipairs({ "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED" })
 -- Item names the client did not have at the last fill: once item data arrives the shown rows are
 -- filled again, once for a burst of answers.
 W.RefreshOnItemNames(function() return nameMissing end, shown)
+end)

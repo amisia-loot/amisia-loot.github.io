@@ -6,6 +6,7 @@
 -- read it as before. An officer takes a material out (it stays remembered as hidden, so it is not
 -- learned again) or adds one by link.
 local ADDON, ns = ...
+ns.Load(function()
 local L = ns.L
 
 local CAP = 40            -- materials in the list at most
@@ -272,3 +273,4 @@ ns.RegisterSlash("mats", { aliases = { "materialien" }, args = L["[add|weg <Link
         if add then _, text = ns.AddMat(arg) else _, text = ns.RemoveMat(arg) end
         msg(text)
     end })
+end)
