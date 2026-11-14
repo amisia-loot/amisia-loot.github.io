@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.88.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.88.0) (2026-11-15)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.87.0...v2.88.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(map): a column of light over the map pin (F-206)
 
     While you follow a map pin (Ctrl + click on the world map, or an Amisia target), a golden column of
