@@ -306,8 +306,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: DECISIONS D-99. Keine Spec (keine neue Nachricht, kein gespeicherter Schlüssel, keine Seite, kein neuer Abschnitt). Gearscore ist Amisias eigene Rechnung (Summe aus Itemstufe mal Gewicht des Platzes), nicht die Zahl eines anderen Addons. Gearscore-Zeile auch auf TBC und Era, die Berufe nur auf Forever. Ob Forever `GetInventoryItemID`, `CheckInteractDistance` und `C_Item.GetDetailedItemLevelInfo` hat, sagt `/amisia selbsttest`.
 
 ### F-205 Bosse und Zeit im Dungeon anderen Addons überlassen
-- Version: -
-- Status: geplant
+- Version: 2.87.0
+- Status: gebaut
 - Prüfung: Wenn eines der Dungeon-Addons mit eigener Boss- und Zeitanzeige geladen ist und du einen Dungeon betrittst, dann zeigt die Dungeon-Leiste keine "Bosse" und beim ersten Kampf keine "Zeit"; "Quests" stehen weiter da, und das Fenster "Lauf-Zeiten" öffnet sich nicht von selbst.
 - Prüfung: Wenn du danach in den Einstellungen (Dungeon-Leiste) "Bosse und Zeit anderen Addons überlassen" ausschaltest, dann sind "Bosse" und "Zeit" sofort wieder in der Leiste; ein Klick auf "Zeit" öffnet "Lauf-Zeiten".
 - Prüfung: Wenn du das andere Addon in der AddOn-Liste abhakst und neu lädst, dann zeigt Amisia Bosse, Zeit und das Fenster wie vorher.
