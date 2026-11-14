@@ -52,34 +52,45 @@ def bad(body, path='Core/Test.lua', module='core'):
 
 def test_every_file_has_a_part():
     by = modules.files_by_module()
-    assert sum(len(v) for v in by.values()) == sum(1 for n, _ in modules.toc_entries() if n.endswith('.lua'))
+    assert sum(len(v) for v in by.values()) == sum(1 for n, _, _ in modules.toc_entries() if n.endswith('.lua'))
     assert len(by['core']) > 25 and len(by['raid']) > 50 and len(by['gear']) > 80
+    # a path stands in one folder only (module_of and the tests' ADDON_FILE find a file by it)
+    seen = {}
+    for name, _, module in modules.toc_entries():
+        assert name not in seen, '%s in %s and %s' % (name, seen[name], module)
+        seen[name] = module
+        assert modules.module_of(name) == module, name
 
 
 def test_the_membership():
-    toc = dict(modules.toc_entries())
-    # the gear module is the Forever part: its files carry the camelot mark, and every camelot file is
-    # the gear module's but the two raid features Forever has alone
-    for name, camelot in toc.items():
-        part = modules.module_of(name)
-        if camelot and name not in ('Raid/Handover.lua', 'UI/Pages/Export.lua'):
-            assert part == 'gear', name
-        if part == 'gear' and name.endswith('.lua') and not name.startswith('Locales/'):
-            assert camelot, 'a gear file without the camelot mark: ' + name
+    # the gear module is the Forever part: a folder of its own whose TOC targets Forever only, so its
+    # files carry no camelot mark; the raid module marks its two Forever-only features; the core none
+    entries = modules.toc_entries()
+    camelot = sorted(name for name, mark, _ in entries if mark)
+    assert camelot == ['Raid/Handover.lua', 'UI/Pages/Export.lua'], camelot
+    assert all(module == 'raid' for name, mark, module in entries if mark)
     assert modules.module_of('Raid/Handover.lua') == 'raid' and modules.module_of('UI/Pages/Export.lua') == 'raid'
     assert modules.module_of('Raid/Alts.lua') == 'core'
     assert modules.module_of('Raid/Record.lua') == 'raid' and modules.module_of('Core/Core.lua') == 'core'
     assert modules.module_of('Raid/Module.lua') == 'raid' and modules.module_of('Gear/Module.lua') == 'gear'
+    assert modules.module_of('Amisia_Gear/Data/GearData.lua') == 'gear'
+    for name in ('Data/GearData.lua', 'Core/Duels.lua', 'Core/SelfTestLayer.lua', 'Collect/Scan.lua', 'UI/Pages/Planner.lua'):
+        assert modules.module_of(name) == 'gear', name
+    for name in ('UI/Setup.lua', 'Core/SelfTestCalendar.lua', 'Locales/enUS_raid.lua', 'UI/Pages/Raids.lua'):
+        assert modules.module_of(name) == 'raid', name
     for name in ('Core/Registry.lua', 'Core/Comm.lua', 'Core/SelfTest.lua', 'UI/MainFrame.lua', 'UI/Pages/Overview.lua',
                  'UI/Pages/Settings.lua', 'UI/LootToast.lua', 'Locales/Locale.lua'):
         assert modules.module_of(name) == 'core', name
 
 
 def test_each_module_marks_itself_first():
-    # Raid/Module.lua and Gear/Module.lua (ns.HasModule) come before every other file of their part
+    # Raid/Module.lua and Gear/Module.lua (the shared namespace, ns.HasModule) are the first file of their
+    # TOC, the core's Locales/Locale.lua (_G.AmisiaCore) the first of the core's; the raid recording's
+    # handlers come first among the raid module's (Raid/Record.lua after the module's texts)
     by = modules.files_by_module()
-    assert [n for n in by['raid'] if not n.startswith('Locales/')][0] == 'Raid/Module.lua'
-    assert [n for n in by['gear'] if not n.startswith('Locales/')][0] == 'Gear/Module.lua'
+    assert by['core'][0] == 'Locales/Locale.lua'
+    assert by['raid'][0] == 'Raid/Module.lua' and by['gear'][0] == 'Gear/Module.lua'
+    assert [n for n in by['raid'][1:] if not n.startswith('Locales/')][0] == 'Raid/Record.lua'
 
 
 def test_no_forbidden_reference():
@@ -144,12 +155,11 @@ def test_each_text_stands_where_its_users_load():
     used, data = l10n.used_keys(), l10n.data_keys()
     wrong = []
     for path in l10n.enus_files():
-        part = modules.module_of('Locales/' + os.path.basename(path))
+        part = modules.module_of(os.path.relpath(path, l10n.ROOT))
         if part == 'core':
             continue
         for key, _ in l10n.file_entries(path):
-            users = {modules.module_of(os.path.relpath(os.path.join(l10n.ROOT, f), l10n.ADDON).replace(os.sep, '/'))
-                     for f, _ in used.get(key, [])}
+            users = {modules.module_of(f) for f, _ in used.get(key, [])}
             if key in data:
                 users.add('gear')
             if not users <= {part}:

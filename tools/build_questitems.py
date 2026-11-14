@@ -1,4 +1,4 @@
-"""Builds Amisia/Data/QuestItemData.lua (WoW Forever): per quest item the quests that use it, for the
+"""Builds Amisia_Gear/Data/QuestItemData.lua (WoW Forever): per quest item the quests that use it, for the
 window "Questgegenstände aufräumen" and the quest item line in the item tooltip (F-173, D-105). Runs
 without a WoW install (on the N100).
 
@@ -37,7 +37,7 @@ sys.path.insert(0, HERE)
 import att_data  # noqa: E402  (the AllTheThings reader)
 import lua_data  # noqa: E402  (the lazy form of the data file)
 
-OUT = os.path.join(ROOT, 'Amisia', 'Data', 'QuestItemData.lua')
+OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'QuestItemData.lua')
 ARCHIVE = os.path.join(HERE, 'quest_item_archive.json')
 QUEST_CLASS = 12
 KINDS = 'SOD'              # the order of strength

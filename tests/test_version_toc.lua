@@ -11,7 +11,7 @@ local version = toc:match("## Version:%s*([^\r\n]+)")
 assert(version and version:match("^%d+%.%d+%.%d+$"), "a version X.Y.Z in the TOC: " .. tostring(version))
 assert(NS.VERSION == version, "the fallback reads the TOC too: " .. tostring(NS.VERSION))
 
-fh = assert(io.open(ADDON_DIR .. "/Core/Core.lua", "rb"))
+fh = assert(io.open(ADDON_FILE("Core/Core.lua"), "rb"))
 local core = fh:read("*a")
 fh:close()
 assert(not core:find('ns%.VERSION%s*=%s*"'), "no version literal in Core.lua")

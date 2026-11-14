@@ -3,6 +3,9 @@
     python3 tools/curseforge.py versions             the CurseForge game versions of the TOC's clients
     python3 tools/curseforge.py upload [--dry-run]   Amisia-Website/Amisia.zip as the TOC's version
 
+The zip holds the core and its modules, one top folder each (Amisia/, Amisia_Raid/, Amisia_Gear/, F-202); the
+CurseForge app installs all three, the gear module loads on WoW Forever only (its classic TOCs list no file).
+
 `build.py release` calls upload() after a successful push; this script is for a first try and for a
 retry after a failed upload. The project is `## X-Curse-Project-ID` in Amisia/Amisia.toc, the token
 comes from ~/.config/amisia/curseforge.token (or $CURSEFORGE_TOKEN) and never from the repository.

@@ -1,6 +1,6 @@
 """tools/build_raidcheck.py: the raid check's lists (flasks, elixirs, food, class buffs, enchanted
 slots) from the client tables (hand-made fixture CSVs in tests/fixtures/wago_raidcheck, not real
-data), the fallback without SpellEquippedItems, and the generated Amisia/Data/RaidCheckData.lua
+data), the fallback without SpellEquippedItems, and the generated Amisia_Gear/Data/RaidCheckData.lua
 (valid Lua, lazy, in the TOC before the raid check)."""
 import os
 import re
@@ -12,7 +12,7 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
 ROOT = os.path.dirname(TOOLS)
-ADDON = os.path.join(ROOT, 'Amisia')
+ADDON = os.path.join(ROOT, 'Amisia_Gear')   # the gear module holds the data (F-202)
 sys.path.insert(0, TOOLS)
 import build_raidcheck  # noqa: E402
 import lua_data  # noqa: E402
@@ -104,10 +104,12 @@ def test_export_script_asks_for_spell_equipped_items():
 
 
 def test_shipped_data_file_in_toc_and_valid():
-    with open(os.path.join(ADDON, 'Amisia.toc'), encoding='utf-8') as fh:
+    with open(os.path.join(ADDON, 'Amisia_Gear.toc'), encoding='utf-8') as fh:
         toc = fh.read()
-    assert 'Data\\RaidCheckData.lua [AllowLoadGameType camelot]' in toc
-    assert toc.index('Data\\RaidCheckData.lua') < toc.index('Raid\\RaidCheck.lua')
+    assert 'Data\\RaidCheckData.lua' in toc
+    # the raid module reads it only through ns.Data, when it is there (the gear module loads after it, F-202)
+    with open(os.path.join(ROOT, 'Amisia_Raid', 'Amisia_Raid.toc'), encoding='utf-8') as fh:
+        assert 'Raid\\RaidCheck.lua' in fh.read()
     with open(OUT, encoding='utf-8') as fh:
         src = fh.read()
     lupa = pytest.importorskip('lupa.lua51')

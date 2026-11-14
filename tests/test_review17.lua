@@ -182,7 +182,7 @@ end)
 ---------------------------------------------------------------------------
 check("6 no comparison of raw values", function()
     for _, file in ipairs({ "Raid/RaidLog.lua", "Core/Core.lua", "Raid/Bench.lua" }) do
-        local src = assert(io.open(ADDON_DIR .. "/" .. file, "rb")):read("*a")
+        local src = assert(io.open(ADDON_FILE(file), "rb")):read("*a")
         for _, v in ipairs({ "name", "zone", "online", "class" }) do
             assert(not src:find("%f[%w_]" .. v .. " [~=]= nil"), file .. ": " .. v .. " compared with nil")
         end

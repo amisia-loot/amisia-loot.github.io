@@ -30,7 +30,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import client_tables  # noqa: E402
 
-QUEST_DATA = os.path.join(ROOT, 'Amisia', 'Data', 'QuestData.lua')
+QUEST_DATA = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'QuestData.lua')
 REL_TOL, ABS_TOL = 1e-5, 1e-6
 TOP = 25                    # entries listed per section; the rest only counted
 SHORT = 8                   # lines of the short head
@@ -442,7 +442,7 @@ def report(old_build, new_build, srcs=None, quest_name_map=None):
 def main_build():
     """The build main's data was made from (tools/auto_data.py's reading of Data/TalentData.lua)."""
     import auto_data
-    return auto_data.data_build(auto_data.git('show', 'main:Amisia/Data/TalentData.lua', check=False))
+    return auto_data.data_build(auto_data.git('show', 'main:Amisia_Gear/Data/TalentData.lua', check=False))
 
 
 def main(argv=None):

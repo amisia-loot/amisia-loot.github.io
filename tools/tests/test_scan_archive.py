@@ -16,7 +16,7 @@ import build_scan_archive as sa  # noqa: E402
 import build_scan  # noqa: E402
 
 REAL_ARCHIVE = os.path.join(ROOT, 'tools', 'scan_archive.json')
-REAL_MARKER = os.path.join(ROOT, 'Amisia', 'Data', 'ScanDone.lua')
+REAL_MARKER = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'ScanDone.lua')
 
 
 def sv(items=None, sources=None, suffix=None, **rest):
@@ -162,9 +162,9 @@ def test_the_committed_marker_is_current():
 
 
 def test_the_marker_is_in_the_toc_after_the_other_data():
-    with open(os.path.join(ROOT, 'Amisia', 'Amisia.toc'), encoding='utf-8') as fh:
+    with open(os.path.join(ROOT, 'Amisia_Gear', 'Amisia_Gear.toc'), encoding='utf-8') as fh:
         toc = [ln.strip() for ln in fh if ln.strip() and not ln.startswith('#')]
-    assert 'Data\\ScanDone.lua [AllowLoadGameType camelot]' in toc and 'Collect\\ScanTrim.lua [AllowLoadGameType camelot]' in toc
+    assert 'Data\\ScanDone.lua' in toc and 'Collect\\ScanTrim.lua' in toc
 
 
 # ---------------------------------------------------------------- the round trip with the real files
@@ -228,7 +228,7 @@ def test_a_build_after_the_trim_gives_the_same_data(tmp_path):
         # test run, and the release then refused the changed tree, 2026-11-11)
         assert (tmp_path / 'GearNoSource.lua').exists()
         now = open(build_gear.NOSRC_OUT, 'rb').read() if os.path.exists(build_gear.NOSRC_OUT) else None
-        assert now == shipped, 'a trial build replaced Amisia/Data/GearNoSource.lua'
+        assert now == shipped, 'a trial build replaced Amisia_Gear/Data/GearNoSource.lua'
 
     # data/forever.js, built by build_scan.py from each (no icons; the drop archive a copy)
     outs = []

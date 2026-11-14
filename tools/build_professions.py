@@ -1,4 +1,4 @@
-"""Builds Amisia/Data/ProfessionData.lua (WoW Forever): every recipe of every profession for the
+"""Builds Amisia_Gear/Data/ProfessionData.lua (WoW Forever): every recipe of every profession for the
 addon's professions page - what it makes, its difficulty, how it is learned (trainer, with the
 profession, a recipe item and where that item comes from), the reagents when the client table is
 there, Forever's camp objects and Merchant's Favor. Runs without a WoW install (on the N100).
@@ -50,7 +50,7 @@ import build_scan  # noqa: E402  (parse_note: the collector's merchant notes)
 import build_scan_archive  # noqa: E402  (the scan archive: those notes for good)
 import lua_data  # noqa: E402  (the lazy form of the data file)
 
-OUT = os.path.join(ROOT, 'Amisia', 'Data', 'ProfessionData.lua')
+OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'ProfessionData.lua')
 TRAINERS = os.path.join(HERE, 'trainer_archive.json')
 MAX_TRAINER_TOKENS = 3   # trainers per recipe (N), the newest readings first
 WAGO = os.path.expanduser('~/addons/_wago')

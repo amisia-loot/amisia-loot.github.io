@@ -23,7 +23,7 @@ python3 tools/build.py perf [--sv FILE] [--rows N]
   `build_map.py`, `build_dungeonquests.py`, `build_quests.py`, `build_questitems.py`, `build_professions.py`,
   `build_talents.py`, `build_magescrolls.py`, `build_raidcheck.py`, `build_enchants.py`, `build_dungeonart.py --wago`, `build_site_drops.py` (F-187, below), `build_bis.py`,
   `build_scan_lists.py` (last: it reads the NPC ids of the files before it). It stops at the first build
-  that fails and ends with `git diff --stat` of `Amisia/Data`, `tools`, `Amisia-Website/data` and `Amisia-Website/index.html`. Without `--wago` it first
+  that fails and ends with `git diff --stat` of `Amisia_Gear/Data`, `tools`, `Amisia-Website/data` and `Amisia-Website/index.html`. Without `--wago` it first
   chooses the newest, fullest copy of every client table (`client_tables.py`, below) and prints per table
   the file it took (version, rows, source); `--wago DIR` reads only that folder instead. Professions, talents, mage scrolls and the raid check are skipped with a
   note naming the missing tables (`build.py tables`, or export them on the PC with `tools/export_db2.ps1 -Tables ...`),
@@ -49,21 +49,24 @@ python3 tools/build.py perf [--sv FILE] [--rows N]
   `docs/ARCHITECTURE.md` (message kinds, blob arts, export lines, paste-in blocks, saved keys,
   settings sections, module map) and `docs/DECISIONS.md` against the code. One line per step; the exit code is 1 when one fails. A missing
   node/luaparse or luacheck is reported as `skip`.
-- `tocs` writes `Amisia/Amisia_TBC.toc` (20506) and `Amisia/Amisia_Vanilla.toc` (11509): `Amisia.toc` without the
-  lines tagged `[AllowLoadGameType camelot]`, because TBC Anniversary loads those anyway (D-57). The classic clients
+- `tocs` writes the core's `## Version` into `Amisia_Raid/Amisia_Raid.toc` and `Amisia_Gear/Amisia_Gear.toc`
+  (D-16, D-130) and, for each of the three folders, `<folder>_TBC.toc` (20506) and `<folder>_Vanilla.toc` (11509): the
+  folder's TOC without the lines tagged `[AllowLoadGameType camelot]`, because TBC Anniversary loads those anyway
+  (D-57), and without any file when the folder's `## Interface` does not name that client (`Amisia_Gear`, Forever
+  only). The classic clients
   load their suffixed TOC instead of `Amisia.toc`. `check` (TOC against the folder) fails while they differ; edit only
   `Amisia.toc`, then run `tocs`. `release` writes them with the new version.
 - `release X.Y.Z` refuses a dirty tree (and untracked addon files), a version that is not newer and,
   unless `--no-push`, a branch other than main. It sets `## Version:` in the TOC (the only place the
   version stands; `Core/Core.lua` reads it with `C_AddOns.GetAddOnMetadata`), runs `check` and puts
-  everything back when it fails, builds `Amisia-Website/Amisia.zip` (tracked files under `Amisia/`, no
+  everything back when it fails, builds `Amisia-Website/Amisia.zip` (tracked files under `Amisia/`, `Amisia_Raid/` and `Amisia_Gear/`, one top folder each, no
   dotfiles), turns the English notes under `## Unreleased` in `CHANGELOG.md` into the version's
   section (D-60): heading `## [vX.Y.Z](<repo>/releases/tag/vX.Y.Z) (date)`, a line `[Full Changelog]`
   (compare with the last version) `[Previous Releases]`, then the notes; it stops before anything
   changes when there are none (the commit subjects are German). Then it commits `Amisia X.Y.Z:
   <summary>` (default summary: the commit subjects since the last `Amisia X.Y.Z:` commit), tags it
   `vX.Y.Z`, pushes `origin main` with the tag, makes the tag a GitHub release with the section (`gh`;
-  `build.py github-release X.Y.Z` retries) and runs `tools/release_addon.sh`. `--no-push` and
+  `build.py github-release X.Y.Z` retries) and runs `tools/release_addon.sh` (the three folders into `~/addons/_release/Amisia/<folder>/`, F-202). `--no-push` and
   `--no-copy` leave out the push (and tag push, GitHub release, upload) and the copy.
 - A note in `## Unreleased`, written with the change itself, in English: `- type(scope): summary (F-xxx)`
   (types feat, fix, perf, data, docs, chore), a blank line, then two spaces and a short paragraph of what
@@ -248,19 +251,31 @@ the comparison) and `tests/test_layout_helpers.lua`.
 
 ## Addon layout
 
-`Amisia/`: `Core/` (registry, lazy data, core, names, chat queue, comm, trust, version,
-minimap button, selftest), `Raid/` (alts, materials, awards, rolls, soft-reserves, loot lead, raid
-log, bench, sync, raid text, need), `Collect/` (item scan, collector, drops and their guild exchange,
-quest XP), `Gear/` (gear planner, BiS, dungeons, professions, quests, talents, guild wishes,
-comparison marks, map and map pins), `Data/` (only generated files, from the build scripts below),
-`UI/` (theme, widgets, main window) and `UI/Pages/`, plus `Media/` and `LICENSES/`. The TOC loads
-them in dependency order; `build.py check` fails when a file is missing from it.
+Three addon folders (F-202, D-130), each with its TOC `<folder>.toc` and the classic TOCs at its root:
+
+- `Amisia/`, the core: `Core/` (registry, lazy data, core, names, chat queue, comm, trust, version, minimap button,
+  selftest, performance), `Raid/Alts.lua`, `UI/` (theme, widgets, main window, search, loot toast) and the pages
+  overview, settings, about and feedback, `Locales/Locale.lua` with `enUS_core.lua` and `enUS_selftest.lua`, plus
+  `Media/` (every texture, also the modules') and `LICENSES/`.
+- `Amisia_Raid/`, the raid module "Amisia: Raid": `Raid/` (module, recording, materials, awards, rolls,
+  soft-reserves, loot lead, raid log, bench, sync, raid text, need, lineup, calendar, points, bank), the raid pages
+  and windows under `UI/`, the self-tests of calendar and group under `Core/`, `Locales/enUS_raid*.lua`.
+- `Amisia_Gear/`, the gear module "Amisia: Ausrüstung & Dungeons" (WoW Forever only): `Gear/` (module, gear
+  planner, BiS, dungeons, professions, quests, talents, guild wishes, comparison marks, map and map pins, layer),
+  `Collect/` (item scan, collector, drops and their guild exchange, quest XP), `Data/` (only generated files, from
+  the build scripts below), the gear pages and windows under `UI/`, `Core/Duels.lua`, `Core/SelfTestLayer.lua`,
+  `Locales/enUS_gear.lua` and `enUS_world.lua`.
+
+A path inside its folder is unique over the three ("Raid/Awards.lua" is one file). Each TOC loads its files in
+dependency order; `build.py check` fails when a file is missing from its TOC or stands in two folders. The client
+loads the core, then the raid module, then the gear module; the bodies run in that order once all are there (D-128).
 
 ### Modules (modules.py, F-202, D-130)
 
-Every addon file belongs to the core, the raid module or the gear module ("Ausrüstung & Dungeons");
-`tools/modules.py` holds the list and the check that the core calls no module and the modules call each
-other only guarded (the rule in `modules.check()`), run by `tools/tests/test_module_deps.py`.
+Every addon file belongs to the core, the raid module or the gear module ("Ausrüstung & Dungeons"), by the
+folder that holds it; `tools/modules.py` reads the three TOCs (`files`, `module_of`, `path_of`) and holds the check
+that the core calls no module and the modules call each other only guarded (the rule in `modules.check()`), run by
+`tools/tests/test_module_deps.py`.
 
 ```
 python3 tools/modules.py            every forbidden reference, one line each (exit code 1 if any)
@@ -268,9 +283,12 @@ python3 tools/modules.py files      the files of each part in TOC order
 python3 tools/modules.py symbols    the ns symbols each part defines
 ```
 
-A Lua test with a line `--[[without raid]]` or `--[[without gear]]` runs without that module's files
-(`tests/run.py`); `tests/test_without_raid.lua` and `tests/test_without_gear.lua` open every page and
-window that way (`tests/module_scene.lua`).
+`tests/run.py` loads the core's files, fires `ADDON_LOADED` "Amisia", then each module's files (in a namespace of
+its own, which its `Module.lua` points at the core's) and its `ADDON_LOADED`, as the client does; the stub's
+`C_AddOns` answers for the modules (`STUB.addons`). A Lua test with a line `--[[without raid]]` or
+`--[[without gear]]` runs without that module's folder; `tests/test_without_raid.lua` and
+`tests/test_without_gear.lua` open every page and window that way (`tests/module_scene.lua`). A test reads or loads
+an addon file by its path inside its folder with `ADDON_FILE("Gear/Map.lua")`; `ADDON_TOCS` lists the three TOCs.
 
 ### Lazy data
 
@@ -399,7 +417,7 @@ memory at every login, so it is kept here for good and the addon lets go of what
   and suffixes join, nothing is dropped. With `ItemSparse` in `--wago` the ids the client knows are
   kept too (ranges). `updated` changes only with the content. Committed (2.5 MB, about 480 KB in git):
   after the addon trimmed its file, the archive is the only copy, so commit and push it.
-- Then it writes `Amisia/Data/ScanDone.lua` (lazy `SCAN_DONE`, also `marker` alone): a stamp,
+- Then it writes `Amisia_Gear/Data/ScanDone.lua` (lazy `SCAN_DONE`, also `marker` alone): a stamp,
   `I` per archived item `<step>.<hash of the line>`, `S` per item with notes `<step>.<hash>...`, `C` the
   client's ids as `<step>.<length>` up to `cmax`; numbers base 36, hash
   `h = (h * 31 + byte) % 1000000007` over the UTF-8 bytes (the same in `Collect/ScanTrim.lua`).
@@ -437,13 +455,13 @@ with it costs 20 KB over the addon alone.
 python3 tools/build_scan_lists.py [--wago DIR] [--sv FILE...] [--scan-archive FILE] [--data DIR]
 ```
 
-- `Amisia/Data/ScanLists.lua` (lazy `SCAN_LISTS`): `Q` every quest id of the client table `QuestV2` (ranges
+- `Amisia_Gear/Data/ScanLists.lua` (lazy `SCAN_LISTS`): `Q` every quest id of the client table `QuestV2` (ranges
   `<step>.<length>`), `NA` phase A of the NPC scan: every NPC id the data files name (DungeonData, BisData,
   QuestData givers, GearData rares, mobs and vendors, MapData `U:` points; `<step>,<step>`), `NB` phase B: the
   ids from `FOREVER_MIN` (200000) up in clusters no more than `GAP` (1000) apart, each padded by `PAD` (250).
   For 1.60.1.70888: 6626 quests, 2133 NPCs (quest givers 1423, map points 357, bosses 269/231, mobs 191, rares
   155, vendors 110), phase B 11 ranges with 34814 ids.
-- `Amisia/Data/ScanNames.lua` (lazy `SCAN_NAMES`): `L = {deDE = {Q = {[quest] = title}, N = {[npc] = name}}}`,
+- `Amisia_Gear/Data/ScanNames.lua` (lazy `SCAN_NAMES`): `L = {deDE = {Q = {[quest] = title}, N = {[npc] = name}}}`,
   every language but English (the data has those); the addon shows them where the data has only the English
   name (`ns.ScannedQuestTitle`, `ns.ScannedNpcName`: quest titles the client has not loaded, boss names on the
   page Dungeons, quest givers). Empty until the first scan.
@@ -601,8 +619,8 @@ form) and `tools/tests/fixtures/att_new` (the form since 2026-11-05).
 
 ## build_gear.py
 
-Builds `Amisia/Data/GearData.lua` for the addon's gear window (`/amisia gear`, WoW Forever only):
-every item a levelling character can wear and where it comes from; and `Amisia/Data/GearNoSource.lua`, the
+Builds `Amisia_Gear/Data/GearData.lua` for the addon's gear window (`/amisia gear`, WoW Forever only):
+every item a levelling character can wear and where it comes from; and `Amisia_Gear/Data/GearNoSource.lua`, the
 scanned gear of unknown source (D-107). The stat weights
 (`GearWeights.lua`) are Amisia's own and come from `build_bis.py`.
 
@@ -673,7 +691,7 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
   `scan_quest_rewards`) become its quest source for each item no quest source names yet: AllTheThings'
   record of the quest where it has one, else the collector's, else the scan's title and level without a
   faction. Without such lines nothing changes (`test_an_empty_scan_part_changes_nothing`).
-- `Amisia/Data/GearNoSource.lua` (`--nosrc-out`, lazy `GEAR_NOSRC`, D-107): the scanned gear no source
+- `Amisia_Gear/Data/GearNoSource.lua` (`--nosrc-out`, lazy `GEAR_NOSRC`, D-107): the scanned gear no source
   names, for the planner's "+ N weitere ohne bekannte Quelle" (F-175). `no_source` leaves out an item any
   source names (also one left out of `GearData.lua` for its source), no gear, quality below uncommon, a test
   or placeholder name (`NOSRC_JUNK`, `is_junk`, `TEST_ITEMS`), Classic gear above item level 65 and an item
@@ -681,7 +699,7 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
   Class limits and weapon speeds come from the client's ItemSparse (`--wago`). The log line "without a known
   source" gives the count, the size and what each rule left out. An id is never in both files.
 - `GearData.lua` carries `game = "forever"`, `cap = 60`; it, `GearNoSource.lua` and `GearWeights.lua` are
-  loaded through the TOC condition `[AllowLoadGameType camelot]`.
+  loaded only on Forever (the gear module, D-130).
 
 Runs on the N100. On the PC it also takes the installed client's SavedVariables. `AMISIA_WOW_ROOT`
 overrides the WoW install path. Requires `lupa`.
@@ -695,7 +713,7 @@ data: it has no licence.
 
 ## build_map.py
 
-Builds `Amisia/Data/MapData.lua` (WoW Forever) for the map: where each source of the gear data
+Builds `Amisia_Gear/Data/MapData.lua` (WoW Forever) for the map: where each source of the gear data
 stands, as up to four points `uiMapID:x:y` (x, y in hundredths of a percent) under a stable key per
 source (`Q:<quest id>`, `V:`/`R:`/`W:<NPC name>`, `U:<NPC id>`, `I:<instance id>`,
 `N:<dungeon name>`).
@@ -744,7 +762,7 @@ python tools/build_map.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE...
   zone wins, names found in several zones are reported), raids and dungeons by instance id (matched
   through the `UiMapAssignment` table) or by name.
 - Several points: points within 2 % are one, then the four farthest apart are kept.
-- The file is loaded through the TOC condition `[AllowLoadGameType camelot]`. Keys are sorted, so a
+- The file is loaded only on Forever (the gear module, D-130). Keys are sorted, so a
   second build gives the same file.
 - The report lists per source kind how many have a place, ambiguous names, instance ids the data
   cannot place and quests without a place.
@@ -753,8 +771,8 @@ Runs on the N100 (no WoW install needed). Run it after every `build_gear.py`, th
 Requires `lupa`.
 ## build_dungeons.py
 
-Builds `Amisia/Data/DungeonData.lua` (`ns.DUNGEON_FACTS`, loaded through
-`[AllowLoadGameType camelot]`) from `tools/forever_dungeons.json`, the hand-kept facts of the dungeon
+Builds `Amisia_Gear/Data/DungeonData.lua` (`ns.DUNGEON_FACTS`, loaded through
+the gear module, Forever only) from `tools/forever_dungeons.json`, the hand-kept facts of the dungeon
 planner: every dungeon and raid of WoW Forever with its level range, size, bosses known so far,
 opening date and instance id where known. Facts only, never a loot table or a drop chance; every
 entry names its source in `src`, explained in the file's `sources` block with the date of the check.
@@ -806,8 +824,8 @@ Runs anywhere, no network. `tools/tests/test_build_dungeons.py` checks that the 
 
 ## build_bis.py
 
-Builds `Amisia/Data/GearWeights.lua` (Amisia's own weights, `ns.GEAR_WEIGHTS`) and
-`Amisia/Data/BisData.lua` (`ns.BIS`, `[AllowLoadGameType camelot]`). Runs on the N100, no WoW
+Builds `Amisia_Gear/Data/GearWeights.lua` (Amisia's own weights, `ns.GEAR_WEIGHTS`) and
+`Amisia_Gear/Data/BisData.lua` (`ns.BIS`, Forever only: the gear module). Runs on the N100, no WoW
 install, no network:
 
 ```
@@ -832,7 +850,7 @@ Inputs:
   runs from that file. Forever has no `ItemRandomProperties`, `ItemRandomSuffix` or `gt*` table, and
   its `Journal*` tables are empty (1.60.1.70235). `ContentTuning` is read through
   `build_dungeons.tuning_levels` (one reader for both builds).
-- `Amisia/Data/GearData.lua` (items, sources, scanned stats; read only), `tools/forever_dungeons.json`
+- `Amisia_Gear/Data/GearData.lua` (items, sources, scanned stats; read only), `tools/forever_dungeons.json`
   (with the client's level and instance id of `build_dungeons.client_facts`, from the CSVs of this
   build when they are there, else `tools/forever_dungeons_client.json`), AllTheThings' Forever data
   (`tools/att_data.py`, MIT) for the bosses' NPC ids per dungeon, `tools/drop_obs.json` for the drop
@@ -929,8 +947,8 @@ worn; while it is worn nothing else is an upgrade for that row). The setting `bi
 
 ## build_dungeonquests.py
 
-Builds `Amisia/Data/DungeonQuestData.lua` (`ns.DUNGEON_QUESTS`, loaded through
-`[AllowLoadGameType camelot]`) for the quest list and the quest path (F-135) of the dungeon planner:
+Builds `Amisia_Gear/Data/DungeonQuestData.lua` (`ns.DUNGEON_QUESTS`, loaded through
+the gear module, Forever only) for the quest list and the quest path (F-135) of the dungeon planner:
 per dungeon of `tools/forever_dungeons.json` its quests, and per quest the level, faction, races,
 profession, where it starts (quest giver with up to four map points, inside the dungeon, by an item
 with where that item drops, at a game object), where it is turned in, its pre-quests and breadcrumbs
@@ -998,7 +1016,7 @@ no real data) and hand-made collector records.
 
 ## build_questitems.py
 
-Builds `Amisia/Data/QuestItemData.lua` (lazy `QUEST_ITEMS`, F-173, D-105) for the window "Questgegenstände
+Builds `Amisia_Gear/Data/QuestItemData.lua` (lazy `QUEST_ITEMS`, F-173, D-105) for the window "Questgegenstände
 aufräumen" and the quest item line of the item tooltip: per quest item the quests that use it.
 
 ```
@@ -1023,8 +1041,8 @@ the kinds, the class filter, the file, the shipped one with TOC and licence).
 
 ## build_professions.py
 
-Builds `Amisia/Data/ProfessionData.lua` (`ns.PROFESSIONS`, loaded through
-`[AllowLoadGameType camelot]`) for the professions page (`/amisia berufe`): every recipe of every
+Builds `Amisia_Gear/Data/ProfessionData.lua` (`ns.PROFESSIONS`, loaded through
+the gear module, Forever only) for the professions page (`/amisia berufe`): every recipe of every
 profession with what it makes, its difficulty (`TrivialSkillLineRankLow` yellow,
 `TrivialSkillLineRankHigh` grey, green between), how it is learned (with the profession, trainer
 tier, recipe item) and where a recipe item comes from (vendor, Merchant's Favor with price and
@@ -1111,7 +1129,7 @@ a hand-made AllTheThings fixture (`tools/tests/fixtures/att_prof`) and hand-made
 
 ## build_talents.py
 
-Builds `Amisia/Data/TalentData.lua` (`ns.TALENTS`, loaded through `[AllowLoadGameType camelot]`)
+Builds `Amisia_Gear/Data/TalentData.lua` (`ns.TALENTS`, Forever only: the gear module)
 for the talent calculator (`/amisia talente`): per class its trait tree, the three trees (node group,
 name, icon), the row locks (counting groups) and the talents with row, column, ranks, prerequisites,
 name and text (enUS, placeholders resolved; what changes per rank as `{1}` with the values per rank).
@@ -1143,7 +1161,7 @@ Runs on the N100. Tests: `tools/tests/test_build_talents.py` on hand-made fixtur
 
 ## build_magescrolls.py
 
-Builds `Amisia/Data/MageScrollData.lua` (`ns.MAGESCROLLS`, lazy) for the scrolls page
+Builds `Amisia_Gear/Data/MageScrollData.lua` (`ns.MAGESCROLLS`, lazy) for the scrolls page
 (`/amisia schriftrollen`, under Ausrüstung for mages): WoW Forever's mage scrolls and the
 Comprehension skill line ("Arkanes Verständnis"). From the client tables (`--wago`, default
 the newest copy of each table, `client_tables.py`; ItemSparse, Item, SkillLine, SkillLineAbility, Spell, SpellName, SpellMisc,
@@ -1160,7 +1178,7 @@ after the talents (skipped without the tables).
 
 ## build_raidcheck.py
 
-Builds `Amisia/Data/RaidCheckData.lua` (`ns.RAIDCHECK`, lazy) for the raid check (F-098,
+Builds `Amisia_Gear/Data/RaidCheckData.lua` (`ns.RAIDCHECK`, lazy) for the raid check (F-098,
 `Raid/RaidCheck.lua`): which buff is a flask, an elixir or food and which spells are the class
 buffs, from the client tables only (`--wago`, default the newest copy of each table, `client_tables.py`; Item, ItemEffect,
 ItemXItemEffect, SpellEffect, SpellMisc, SpellDuration, SpellName; optional SpellEquippedItems with
@@ -1177,7 +1195,7 @@ SpellEquippedItems`) the fixed list back, chest, wrist, hands, feet, main hand, 
 
 ## build_enchants.py
 
-Builds `Amisia/Data/EnchantData.lua` (`ns.ENCHANT`, lazy) for the enchant suggestions (F-128,
+Builds `Amisia_Gear/Data/EnchantData.lua` (`ns.ENCHANT`, lazy) for the enchant suggestions (F-128,
 `Gear/Enchants.lua`) from the client tables only (`--wago`, default the newest copy of each table, `client_tables.py`; SpellEffect,
 SpellItemEnchantment, SpellEquippedItems, SkillLineAbility, ItemEffect, ItemXItemEffect, Item,
 ItemSparse). An enchantment is what a spell with effect 53 ("enchant item", permanent; 54, the

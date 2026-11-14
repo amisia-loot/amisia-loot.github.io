@@ -10,11 +10,18 @@ assert(has(lines[1], "Der Client nennt den Speicher der Addons nicht."), lines[1
 -- with it: 2048 KB before, 1024 KB after the collection -> 1 MB garbage
 local calls, value = 0, 2048
 UpdateAddOnMemoryUsage = function() calls = calls + 1 end
-GetAddOnMemoryUsage = function(name) assert(name == "Amisia", name); local v = value; value = 1024; return v end
+-- the client counts per addon: the core and its loaded modules are summed (F-202), here all in the core
+local asked = {}
+GetAddOnMemoryUsage = function(name)
+    asked[name] = true
+    if name ~= "Amisia" then assert(name == "Amisia_Raid" or name == "Amisia_Gear", name); return 0 end
+    local v = value; value = 1024; return v
+end
 NS.Data("MAGESCROLLS")
 AmisiaDB.scan = { items = { [1] = "a", [2] = "b" }, sources = { x = 1 } }
 lines = NS.MemoryReport()
 assert(calls == 2, "measured twice: " .. calls)
+assert(asked.Amisia and asked.Amisia_Raid and asked.Amisia_Gear, "the core and both modules")
 assert(has(lines[1], "Speicher: 2.0 MB, davon Müll 1.0 MB, echte Daten 1.0 MB."), lines[1])
 local text = table.concat(lines, "\n")
 assert(has(text, "Geladene Daten (beim Aufbau, mit Müll): ") and has(text, "MAGESCROLLS"), text)

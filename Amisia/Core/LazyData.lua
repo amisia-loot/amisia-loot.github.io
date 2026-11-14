@@ -29,7 +29,7 @@ local function build(key)
     local perf = ns.Perf
     local p0, p1, p2, p3
     if perf.on or perf.boot then p0, p1, p2, p3 = perf.Begin() end
-    local fn, err = loadstring(src, "@Amisia/Data/" .. key)
+    local fn, err = loadstring(src, "@Amisia_Gear/Data/" .. key)
     local ok, value = false, err
     if fn then ok, value = pcall(fn) end
     if p0 then perf.End(perf.Label("Data ", key), p0, p1, p2, p3) end
@@ -87,7 +87,10 @@ function ns.DataBuilt() return built end
 local function addonKB()
     if not (UpdateAddOnMemoryUsage and GetAddOnMemoryUsage) then return nil end
     UpdateAddOnMemoryUsage()
-    return GetAddOnMemoryUsage(ADDON)
+    -- the core and its loaded modules (F-202)
+    local kb = 0
+    for _, name in ipairs(ns.OwnAddons()) do kb = kb + (tonumber(GetAddOnMemoryUsage(name)) or 0) end
+    return kb
 end
 
 -- The memory report and its command use other files (ns.Count, ns.RegisterSlash): they wait for

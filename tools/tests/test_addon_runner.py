@@ -12,13 +12,17 @@ import run  # noqa: E402
 
 def test_toc_files_skip_xml():
     files = run.toc_files()
-    assert files, 'the TOC lists files'
-    assert not [f for f in files if f.lower().endswith('.xml')], files
-    assert all(f.endswith('.lua') for f in files), files
+    assert files, 'the TOCs list files'
+    assert not [f for _, f in files if f.lower().endswith('.xml')], files
+    assert all(f.endswith('.lua') for _, f in files), files
+    # the core's files first, then the raid module's, then the gear module's (F-202)
+    parts = [p for p, _ in files]
+    assert parts == sorted(parts, key=['core', 'raid', 'gear'].index)
+    assert [p for p, _ in run.toc_files('tbc')] and 'gear' not in {p for p, _ in run.toc_files('tbc')}
 
 
 def test_toc_loads_the_map_pins_without_a_template():
-    with open(os.path.join(ROOT, 'Amisia', 'Amisia.toc'), encoding='utf-8') as fh:
+    with open(os.path.join(ROOT, 'Amisia_Gear', 'Amisia_Gear.toc'), encoding='utf-8') as fh:
         # the load condition ([AllowLoadGameType camelot], D-57) stays out of the name
         lines = [re.sub(r'\s*\[[^\]]*\]', '', ln.strip()) for ln in fh if ln.strip() and not ln.startswith('#')]
     # the pins are Amisia's own buttons on its own layer of the world map: no XML template

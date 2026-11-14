@@ -312,6 +312,6 @@ local at = {}
 for i, k in ipairs(keys) do at[k] = i end
 assert(at["sync.enabled"] < at["sync.versionCheck"] and at["sync.versionCheck"] < at["sync.outdatedWarn"] and at["sync.outdatedWarn"] < at["sync.debug"])
 for _, file in ipairs({ "Core/Version.lua", "UI/Pages/About.lua" }) do
-    local src = assert(io.open(ADDON_DIR .. "/" .. file, "rb")):read("*a")
+    local src = assert(io.open(ADDON_FILE(file), "rb")):read("*a")
     for c in src:gmatch("[\196-\255][\128-\191]") do error(file .. ": character above Latin-1: " .. c) end
 end

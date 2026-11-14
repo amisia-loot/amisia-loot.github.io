@@ -1,6 +1,6 @@
 """tools/build_magescrolls.py: the mage scrolls (Comprehension) from the client tables (hand-made
 fixture CSVs in tests/fixtures/wago_magescrolls, not real data) and the AllTheThings fixture (the
-library books, a world drop), and the generated Amisia/Data/MageScrollData.lua (valid Lua,
+library books, a world drop), and the generated Amisia_Gear/Data/MageScrollData.lua (valid Lua,
 lazy, in the TOC before the scrolls page)."""
 import os
 import sys
@@ -10,7 +10,7 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
 ROOT = os.path.dirname(TOOLS)
-ADDON = os.path.join(ROOT, 'Amisia')
+ADDON = os.path.join(ROOT, 'Amisia_Gear')   # the gear module holds the data (F-202)
 sys.path.insert(0, TOOLS)
 import att_data  # noqa: E402
 import build_magescrolls  # noqa: E402
@@ -101,9 +101,9 @@ def test_empty_file_loads():
 
 
 def test_shipped_data_file_in_toc_and_valid():
-    with open(os.path.join(ADDON, 'Amisia.toc'), encoding='utf-8') as fh:
+    with open(os.path.join(ADDON, 'Amisia_Gear.toc'), encoding='utf-8') as fh:
         toc = fh.read()
-    assert 'Data\\MageScrollData.lua [AllowLoadGameType camelot]' in toc
+    assert 'Data\\MageScrollData.lua' in toc
     assert toc.index('Data\\MageScrollData.lua') < toc.index('Gear\\MageScrolls.lua') < toc.index('UI\\Pages\\MageScrolls.lua')
     with open(OUT, encoding='utf-8') as fh:
         src = fh.read()

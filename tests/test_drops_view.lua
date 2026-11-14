@@ -335,7 +335,7 @@ NS.Reset("ui.expert")
 
 -- Latin-1 only, in the files and in what the page showed
 for _, file in ipairs({ "Collect/Drops.lua", "UI/Pages/Tools.lua" }) do
-    local fh = assert(io.open(ADDON_DIR .. "/" .. file, "rb"))
+    local fh = assert(io.open(ADDON_FILE(file), "rb"))
     local src = fh:read("*a")
     fh:close()
     for lead in src:gmatch("[\192-\255]") do assert(lead:byte() <= 195, "beyond Latin-1 in " .. file) end

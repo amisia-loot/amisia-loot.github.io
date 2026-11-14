@@ -1,6 +1,6 @@
 """tools/build_enchants.py: the permanent enchantments of the enchant suggestions (F-128) from the
 client tables (hand-made fixture CSVs in tests/fixtures/wago_enchants, not real data), and the
-generated Amisia/Data/EnchantData.lua (valid Lua, lazy, Forever only, before Gear/Enchants.lua)."""
+generated Amisia_Gear/Data/EnchantData.lua (valid Lua, lazy, Forever only, before Gear/Enchants.lua)."""
 import os
 import re
 import sys
@@ -10,7 +10,7 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
 ROOT = os.path.dirname(TOOLS)
-ADDON = os.path.join(ROOT, 'Amisia')
+ADDON = os.path.join(ROOT, 'Amisia_Gear')   # the gear module holds the data (F-202)
 sys.path.insert(0, TOOLS)
 import build_enchants  # noqa: E402
 import lua_data  # noqa: E402
@@ -60,12 +60,12 @@ def test_render_is_lazy_lua(data):
 
 
 def test_shipped_data_file_in_toc_and_valid():
-    with open(os.path.join(ADDON, 'Amisia.toc'), encoding='utf-8') as fh:
+    with open(os.path.join(ADDON, 'Amisia_Gear.toc'), encoding='utf-8') as fh:
         toc = fh.read()
-    assert 'Data\\EnchantData.lua [AllowLoadGameType camelot]' in toc
-    assert 'Gear\\Enchants.lua [AllowLoadGameType camelot]' in toc
+    assert 'Data\\EnchantData.lua' in toc
+    assert 'Gear\\Enchants.lua' in toc
     assert toc.index('Data\\EnchantData.lua') < toc.index('Gear\\Enchants.lua')
-    for name in ('Amisia_TBC.toc', 'Amisia_Vanilla.toc'):
+    for name in ('Amisia_Gear_TBC.toc', 'Amisia_Gear_Vanilla.toc'):
         with open(os.path.join(ADDON, name), encoding='utf-8') as fh:
             assert 'Enchant' not in fh.read(), f'{name}: Forever only'
     with open(OUT, encoding='utf-8') as fh:

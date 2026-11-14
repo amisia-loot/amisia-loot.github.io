@@ -1,4 +1,4 @@
-"""Builds Amisia/Data/DungeonQuestData.lua (WoW Forever): the quests of every dungeon and raid of
+"""Builds Amisia_Gear/Data/DungeonQuestData.lua (WoW Forever): the quests of every dungeon and raid of
 tools/forever_dungeons.json for the addon's dungeon planner - where each quest starts (the quest
 giver with map points, inside the dungeon, by an item or at an object), where it is turned in, its
 level, faction, races, profession, pre-quests, breadcrumbs, gear rewards and objective. Runs without
@@ -53,7 +53,7 @@ import build_gear  # noqa: E402  (dungeon name keys, Lua strings)
 import build_scan  # noqa: E402  (the SavedVariables sandbox, the collector's field checks)
 
 FACTS = os.path.join(HERE, 'forever_dungeons.json')
-OUT = os.path.join(ROOT, 'Amisia', 'Data', 'DungeonQuestData.lua')
+OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'DungeonQuestData.lua')
 OBS_ARCHIVE = os.path.join(HERE, 'quest_obs.json')
 HINTS = os.path.join(HERE, 'quest_hints.json')
 ATT_CACHE = att_data.ATT_CACHE

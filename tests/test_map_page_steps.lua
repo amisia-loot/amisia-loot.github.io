@@ -197,7 +197,7 @@ assert(NS.CollectOwnName(492) == nil and Map.OwnName("U:492") == nil, "heard onl
 -- English: the step and the view's texts
 ---------------------------------------------------------------------------
 for _, name in ipairs({ "UI/Pages/Map.lua", "Gear/Dungeons.lua", "Gear/MapPins.lua", "Collect/Collector.lua" }) do
-    local fh = assert(io.open(ADDON_DIR .. "/" .. name, "rb"))
+    local fh = assert(io.open(ADDON_FILE(name), "rb"))
     local src = fh:read("*a")
     fh:close()
     for c in src:gmatch("[\196-\255][\128-\191]") do error(name .. ": character above Latin-1: " .. c) end

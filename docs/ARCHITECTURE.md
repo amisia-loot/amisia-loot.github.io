@@ -15,25 +15,28 @@ Three parts:
 
 | Part | Where | What |
 |---|---|---|
-| Addon | `Amisia/` | WoW Forever addon (TOC `## Interface: 16001, 20506, 11509`): raid recording, awards, rolls, DKP/EPGP, sync between Amisia clients, gear/BiS/map/quests/professions/talents, collectors. On TBC Anniversary (20506) and Classic Era (11509, with SoD and Hardcore) only the raid part loads, from their own `Amisia_TBC.toc` / `Amisia_Vanilla.toc` (Amisia.toc without the Forever parts, written by `build.py tocs`; D-01, D-57). |
+| Addon | `Amisia/`, `Amisia_Raid/`, `Amisia_Gear/` | WoW Forever addon in three addons (F-202, D-130): the core `Amisia` (TOC `## Interface: 16001, 20506, 11509`; main window, settings, sync between Amisia clients, overview), the raid module `Amisia_Raid` ("Amisia: Raid", same clients; raid recording, awards, rolls, DKP/EPGP, lineup, calendar) and the gear module `Amisia_Gear` ("Amisia: Ausrüstung & Dungeons", `## Interface: 16001`, Forever only; gear/BiS/map/quests/professions/talents, collectors, all `Data/*`). On TBC Anniversary (20506) and Classic Era (11509, with SoD and Hardcore) the core and the raid module load, from their own `<folder>_TBC.toc` / `<folder>_Vanilla.toc` (the folder's TOC without the Forever parts, the gear module's without any file; written by `build.py tocs`; D-01, D-57). |
 | Site | `Amisia-Website/index.html` (+ `Amisia-Website/data/*.js`) | The guild ledger on GitHub Pages; state in Supabase (`ledgers.main`). Reads the addon's export lines, writes the paste-in blocks for the addon. TBC is a read-only archive. |
-| Tools | `tools/` | Python builders of `Amisia/Data/*.lua` and `Amisia-Website/data/forever.js`, the build/check/release entry point `tools/build.py`, tests in `tools/tests` and `tests/` (the addon's Lua tests). |
+| Tools | `tools/` | Python builders of `Amisia_Gear/Data/*.lua` and `Amisia-Website/data/forever.js`, the build/check/release entry point `tools/build.py`, tests in `tools/tests` and `tests/` (the addon's Lua tests). |
 
-Folders: `Amisia/` is the addon and nothing else (exactly what `tools/release_addon.sh` copies to
-the game, TOC at its root); `Amisia-Website/` is the site (`index.html`, its images, `data/`, the
+Folders: `Amisia/` (the core), `Amisia_Raid/` and `Amisia_Gear/` (the modules) are the addon and nothing
+else (exactly what `tools/release_addon.sh` copies to the game, each with its TOC `<folder>.toc` at its
+root; a file's path inside its folder is unique over the three, so "Raid/Awards.lua" names one file); `Amisia-Website/` is the site (`index.html`, its images, `data/`, the
 download `Amisia.zip`, and `supabase/`, the database sources, which `.github/workflows/pages.yml`
 leaves out of the deploy); `tests/` holds the addon's Lua tests and stub, `tools/` the builders and
 tool tests, `docs/` the documents.
 
 ## Module map (checked)
 
-Every file the TOC loads, in load order. `ns` is the addon table. Every file also uses
+Every file the three TOCs load, in load order (core, raid module, gear module), each path relative to its
+addon folder (`tools/modules.py files` names the part). `ns` is the addon table: the core's, which the modules
+share (their `Module.lua`). Every file also uses
 `Locales/Locale.lua` (`ns.L`), `Core/Registry.lua`, `Core/Core.lua` and `Core/Names.lua`; the
 "Uses" column names the rest (by `ns.` calls; late calls are guarded, see load order).
 
 | File | Purpose | Owns (AmisiaDB keys) | Uses |
 |---|---|---|---|
-| `Locales/Locale.lua` | `ns.L`, `ns.N_`, `ns.GERMAN`, `ns.LANG` (the language Amisia speaks), `ns.CLIENT_LANG`, `ns.LOCALE` (the client's), `ns.LanguageChoice` (`ui.language`, F-199); `ns.Load(fn)` and `ns.RunLoad` (every other file's body runs on Amisia's `ADDON_LOADED`, after the language is chosen, then `ns.CoreLoaded`; D-128); `ns.PERF_T0` (the start of loading, for `/amisia leistung`); deDE shows the German key, every other locale the enUS entry `ns.LongDate(iso)` (a day in the long form, next to `FmtDate`). | - | - |
+| `Locales/Locale.lua` | `ns.L`, `ns.N_`, `ns.GERMAN`, `ns.LANG` (the language Amisia speaks), `ns.CLIENT_LANG`, `ns.LOCALE` (the client's), `ns.LanguageChoice` (`ui.language`, F-199); `ns.Load(fn)`, `ns.LoadPart(part, fn)` and `ns.RunLoad` (every other file's body waits for the `ADDON_LOADED` of the core and of every module that will load, then the bodies run core, raid, gear, after the language is chosen, then `ns.CoreLoaded`; PLAYER_LOGIN runs them if something still waits; D-128, D-130); the modules: `_G.AmisiaCore` (this ns), `ns.ADDON` ("Amisia"), `ns.MODULES`, `ns.MODULE_ADDONS`, `ns.OwnAddon(name)` (one of Amisia's addons, for `ADDON_ACTION_BLOCKED`), `ns.OwnAddons()` (the loaded ones, for the memory); `ns.PERF_T0` (the start of loading, for `/amisia leistung`); deDE shows the German key, every other locale the enUS entry `ns.LongDate(iso)` (a day in the long form, next to `FmtDate`). | - | - |
 | `Locales/enUS_core.lua` | English of Core/UI | - | Locale |
 | `Locales/enUS_raid.lua` | English of Raid (1) | - | Locale |
 | `Locales/enUS_raid2.lua` | English of Raid (2), bank | - | Locale |
@@ -41,12 +44,12 @@ Every file the TOC loads, in load order. `ns` is the addon table. Every file als
 | `Locales/enUS_world.lua` | English of Collect, map, quests, crafters | - | Locale |
 | `Locales/enUS_selftest.lua` | English of the self-test | - | Locale |
 | `Locales/enUS_raidcheck.lua` | English of the raid check and the raid IDs | - | Locale |
-| `Core/Registry.lua` | The modules `ns.MODULES`, `ns.HasModule("raid"/"gear")` (F-202, D-130); `ns.CleanNote`, `ns.SoftResAge` (shared by the modules); the client `ns.GAME` ("forever", "tbc", "era"; `WOW_PROJECT_ID`, `WOW_PROJECT_CAMELOT` first, else the build's interface number), `ns.FOREVER`, `ns.GAME_NAMES` (D-57); pages, cards, settings schema (`ns.Get/Set`), slash words, `ns.Listen/Fire`; `ns.Visible` hides a spec with `forever = true` off Forever (pages, cards, sections, items, slash words); `ns.MayOfficerView` (officer note right, the author's character, an officer rank by `ns.SelfIsOfficer`) and `ns.IsOfficerView` (allowed and `ui.view` not "raider"; D-87) Shared helpers: `ns.ReportError(err)` (the error handler, if any), `ns.StripCodes(s, rep)` (colour incl. `|cn<name>:`, link, texture and atlas codes), `ns.Int`, `ns.SortedKeys`, `ns.Count`, `ns.FireSoon(event)`. The language setting `ui.language` and `/amisia sprache` (`language`; F-199: a new choice asks to reload). | `settings` (via `ns.ApplySettings`) | MainFrame, Minimap (late) |
+| `Core/Registry.lua` | The modules: `ns.HasModule("raid"/"gear")` (F-202, D-130); `ns.CleanNote`, `ns.SoftResAge` (shared by the modules); the client `ns.GAME` ("forever", "tbc", "era"; `WOW_PROJECT_ID`, `WOW_PROJECT_CAMELOT` first, else the build's interface number), `ns.FOREVER`, `ns.GAME_NAMES` (D-57); pages, cards, settings schema (`ns.Get/Set`), slash words, `ns.Listen/Fire`; `ns.Visible` hides a spec with `forever = true` off Forever (pages, cards, sections, items, slash words); `ns.MayOfficerView` (officer note right, the author's character, an officer rank by `ns.SelfIsOfficer`) and `ns.IsOfficerView` (allowed and `ui.view` not "raider"; D-87) Shared helpers: `ns.ReportError(err)` (the error handler, if any), `ns.StripCodes(s, rep)` (colour incl. `|cn<name>:`, link, texture and atlas codes), `ns.Int`, `ns.SortedKeys`, `ns.Count`, `ns.FireSoon(event)`. The language setting `ui.language` and `/amisia sprache` (`language`; F-199: a new choice asks to reload). | `settings` (via `ns.ApplySettings`) | MainFrame, Minimap (late) |
 | `Core/Perf.lua` | The timing of `/amisia leistung` (F-184, D-116, `ns.Perf`): `P.Wrap(label, fn)` (off: one upvalue checked, fn tail-called; on: calls, own time, longest call, calls over `P.SPIKE` = 5 ms, own garbage per label), `P.PCall(label, fn, ...)` (the bus and `ns.Fire`), `P.Begin`/`P.End` (a stretch: the core's own part of an event, a data build), `P.Label`, `P.Where(level)` ("File:line" from `debugstack` at a registration), `P.HandlerLabel`, `P.Start`/`P.Stop`/`P.Running`, `P.Frame` (frames, combat seconds), the login's steps `P.BootRows` (always: every bus and `ns.Fire` handler until the first `PLAYER_ENTERING_WORLD`), `P.Since` (ms since `ns.PERF_T0`, stamped at the top of `Locales/Locale.lua`); clock `debugprofilestop`, else `GetTimePreciseSec`, else none (`P.Wrap` gives fn back) | - | - |
 | `Core/LazyData.lua` | `ns.LazyData`, `ns.Data`, `ns.HasData`, `ns.DataLoaded` (built already, without building), `ns.DataSize`: generated tables built on first use; `/amisia speicher` (memory before/after a full collection, data built) | - | - |
-| `Core/Core.lua` | The core's frame (F-202, D-130): the load of `AmisiaDB` (`ns.Migrate`, `ns.ApplySettings`, `ns.VersionLoaded`; the modules shape their own data in their `ADDON_LOADED` handlers), the event frame, `ns.OnEvent` (each handler with its label "Event NAME File:line", timed while `/amisia leistung` measures and during the login's steps; the core's own part as "Core NAME"), item shim, `ns.LinkQuality`, the loot line parser (`ns.BuildMatcher`, `ns.ParseLoot`, `ns.ParseLootLink`), `ns.NightOf`, `ns.Announce`, `ns.Checksum`; item tooltip parts (`ns.OnItemTooltip`: the tooltip data processor, on TBC and Era also `OnTooltipSetItem`, one line per part and item) `ns.Spread(n, name)` (a per-player delay for answers); the upgrade texts every part shows (`ns.UpgradePct`, `ns.UpgradePctText`, `ns.UpgradeSortValue`). | - | Perf, Migrate, Version |
-| `Raid/Module.lua` | The raid module's first file (F-202, D-130): `ns.MODULES.raid` (`ns.HasModule("raid")`) | - | Registry |
-| `Gear/Module.lua` | The gear module's first file (F-202, D-130, Forever only): `ns.MODULES.gear` (`ns.HasModule("gear")`) | - | Registry |
+| `Core/Core.lua` | The core's frame (F-202, D-130): `ns.CoreLoaded` (the core's `ADDON_LOADED` to every handler once all bodies ran), `ns.LateLoaded` (to the handlers of a module loaded late), `ns.LoginLoaded` (`PLAYER_LOGIN` once, when the bodies ran at login); the load of `AmisiaDB` (`ns.Migrate`, `ns.ApplySettings`, `ns.VersionLoaded`; the modules shape their own data in their `ADDON_LOADED` handlers), the event frame, `ns.OnEvent` (each handler with its label "Event NAME File:line", timed while `/amisia leistung` measures and during the login's steps; the core's own part as "Core NAME"), item shim, `ns.LinkQuality`, the loot line parser (`ns.BuildMatcher`, `ns.ParseLoot`, `ns.ParseLootLink`), `ns.NightOf`, `ns.Announce`, `ns.Checksum`; item tooltip parts (`ns.OnItemTooltip`: the tooltip data processor, on TBC and Era also `OnTooltipSetItem`, one line per part and item) `ns.Spread(n, name)` (a per-player delay for answers); the upgrade texts every part shows (`ns.UpgradePct`, `ns.UpgradePctText`, `ns.UpgradeSortValue`). | - | Perf, Migrate, Version |
+| `Raid/Module.lua` | The raid module's first file (`Amisia_Raid`, F-202, D-130), runs at once: its ns reads and writes the core's (`_G.AmisiaCore`, a metatable), its bodies queue as part "raid" (`ns.LoadPart`), `ns.MODULES.raid` (`ns.HasModule("raid")`) | - | Locale |
+| `Gear/Module.lua` | The gear module's first file (`Amisia_Gear`, F-202, D-130, Forever only), runs at once: its ns reads and writes the core's (`_G.AmisiaCore`; the generated `Data/*` after it too), its bodies queue as part "gear", `ns.MODULES.gear` (`ns.HasModule("gear")`) | - | Locale |
 | `Raid/Record.lua` | Recording (sessions, members, loot, drops), guild bank count, export text (split from `Core/Core.lua`, F-202): `ns.Sessions`, `ns.Active`, `ns.RaidById`, `ns.RaidsNewestFirst`, `ns.MATS`/`ns.MAT_ORDER`, `ns.ExportText`; its `ADDON_LOADED` handler (the first, right after the core's part) cleans the raids, the item names and the export marks; its event handlers come first, as the core's own part did; `/amisia pause`, `spaet`, `status`, `export`. | `sessions`, `itemNames`, `exported`, `exportedBank`, `bank` | Awards, Mats, Bench, RaidLog, Points, BankNeeds, BankLog, LootPrio, GroupRolls (export hooks) |
 | `Core/Names.lua` | `ns.FullName`, `ns.SameName(In)`, `ns.ExportName` ("_" for the space); the group index read once per frame (`ns.GroupIndex`, dropped on GROUP_ROSTER_UPDATE, the lockdown changing and an encounter) behind `ns.GroupRoster` (a fresh copy each call), `ns.InMyGroup`, `ns.InGroup`, `ns.SameNameInGroup` `ns.ClassColored(text, class)`, `ns.HomeGroup()` (an own party or raid, for PARTY, D-97), `ns.OwnFaction()`, `ns.LootMethod()`, `ns.HomeRaid()`, `ns.InGuild()`, `ns.InPvPInstance()`, `ns.InBattlefield()`. | - | - |
 | `Core/Migrate.lua` | The saved data's version (D-48): `ns.MIGRATIONS` (ordered steps, never reordered or removed), `ns.Migrate` (Core runs it on `ADDON_LOADED` before `ns.ApplySettings`; a failing step stops the chain and is tried again next load; a file of a newer Amisia stays untouched, one chat line at login), `ns.MigrateMoveSetting` (a stored setting to another path), `ns.MigrateSplitDungeon(db, old, part)` (step 6, D-106: what was saved under a dungeon key that became several dungeons of one map, `sm` of the Scarlet Monastery: `runTimes`, a running clock, `settings.bis.dungeon`, `map.quests`) | `schema` | Data/DungeonData |
@@ -200,41 +203,64 @@ Other folders: `Media/Icons` (TGA, made by `tools/make_icons.py`; the map pins `
 
 ### Load order rules
 
-- The TOC lists every `.lua`/`.xml` exactly once (`build.py check`: TOC against the folder, which also fails while
-  `Amisia_TBC.toc` or `Amisia_Vanilla.toc` differ from `Amisia.toc` without its camelot lines; `build.py tocs` writes them).
-- Every file but `Locales/Locale.lua`, `Core/LazyData.lua` (its data functions) and the generated `Data/*`
-  puts its body in `ns.Load(function() ... end)` right after `local ADDON, ns = ...` and ends with `end)`.
-  The client loads `AmisiaDB` only after all files ran; `Locales/Locale.lua` (first in every TOC) runs the
-  bodies in TOC order on Amisia's `ADDON_LOADED`, once it has read the language (`ui.language`, F-199), and
-  then hands the event to the core (`ns.CoreLoaded`, which unregisters it so a second delivery does nothing).
-  A failing body stops only itself (the client's error handler). `tools/tests/test_load_order.py`; D-128.
-- `Locales/Locale.lua` and the `enUS_*` parts first, then `Core/Registry.lua` (everyone registers
-  while loading), `Core/Perf.lua` (the wrappers of `/amisia leistung`, before everything they measure),
-  `Core/LazyData.lua`, `Core/Core.lua`, `Raid/Module.lua`, `Gear/Module.lua`, `Raid/Record.lua` (its event
-  handlers come first), then the rest in dependency order; `Core/PerfReport.lua` last (its
-  end stamps the load time of all files, D-116).
+- Three addons (F-202, D-130): the core `Amisia/Amisia.toc`, the raid module `Amisia_Raid/Amisia_Raid.toc` and the
+  gear module `Amisia_Gear/Amisia_Gear.toc`, both modules with `## Dependencies: Amisia`, the gear module with
+  `## OptionalDeps: Amisia_Raid` (the client loads it after the raid module) and `## Interface: 16001` (Forever
+  only). Each TOC lists every `.lua`/`.xml` of its folder exactly once, a path stands in one folder only, and the
+  modules carry the core's `## Version` (`build.py check`: TOC against the folder, which also fails while a
+  `<folder>_TBC.toc` or `<folder>_Vanilla.toc` differs from its folder's TOC without the camelot lines, the gear
+  module's without any file; `build.py tocs` writes them and the modules' version).
+- Every file but `Locales/Locale.lua`, `Core/LazyData.lua` (its data functions), the modules' `Module.lua` and
+  the generated `Data/*` puts its body in `ns.Load(function() ... end)` right after `local ADDON, ns = ...` and
+  ends with `end)`. The client loads `AmisiaDB` only after the core's files ran. `Locales/Locale.lua` (first in
+  the core's TOCs) notes on the core's `ADDON_LOADED` which modules will load (installed, on for this character,
+  loadable: `C_AddOns.GetAddOnInfo`/`IsAddOnLoadable`/`GetAddOnEnableState`/`IsAddOnLoadOnDemand`, the old
+  globals as fallback; the gear module only on Forever) and waits for their `ADDON_LOADED`; then it reads the
+  language (`ui.language`, F-199), runs the bodies, the core's, the raid module's, the gear module's, each in TOC
+  order, and hands the core's event to the handlers (`ns.CoreLoaded`, which unregisters it so a second delivery
+  does nothing). If something still waits at `PLAYER_LOGIN` (the client's answer was wrong), it runs them then
+  and hands `PLAYER_LOGIN` on once (`ns.LoginLoaded`); a module the client loads after that runs its bodies at
+  once and its `ADDON_LOADED` handlers get the core's event late (`ns.LateLoaded`). A failing body stops only
+  itself (the client's error handler). `tools/tests/test_load_order.py`; D-128, D-130.
+- A module's first file (`Raid/Module.lua`, `Gear/Module.lua`) runs at once: its `ns` (the client gives every
+  addon its own) gets a metatable onto the core's (`_G.AmisiaCore`, `__index` and `__newindex`), so `ns.X`
+  reads and writes the core's table in every file of the module; `rawget(ns, ...)` in a module sees nothing
+  (use `ns.DataLoaded`). Its `ns.Load` queues the bodies as that module's part.
+- A module compares the addon name of `ADDON_LOADED` with `ns.ADDON` (the core's: the handlers get the core's
+  event) and that of `ADDON_ACTION_BLOCKED`/`FORBIDDEN` with `ns.OwnAddon` (the client names the addon whose code
+  it refused, the core or a module); its own `ADDON` is its folder's name. Textures stay in the core's
+  `Media/` (`Interface\AddOns\Amisia\Media\...`), the licences in the core's `LICENSES/`.
+- In each part `Locales/` first; the core: `Locales/Locale.lua` and its `enUS_*`, `Core/Registry.lua` (everyone
+  registers while loading), `Core/Perf.lua` (the wrappers of `/amisia leistung`, before everything they
+  measure), `Core/LazyData.lua`, `Core/Core.lua`, then the rest in dependency order, `Core/PerfReport.lua` last
+  (its end stamps the load time of the core's files, D-116); the raid module: `Raid/Module.lua`, its
+  `enUS_raid*`, `Raid/Record.lua` (its event handlers come first among the raid module's); the gear module:
+  `Gear/Module.lua`, its `enUS_*`, the rest.
 - A file may call into a later file only at run time (events, timers, clicks), and then guarded:
   `if ns.X then ns.X() end`. At load time it only defines and registers.
-- `Data/*` carry `[AllowLoadGameType camelot]` (Forever only); they are generated, never edited.
-- The Forever parts carry `[AllowLoadGameType camelot]` too (D-57): `Collect/*`, `Gear/*`,
-  `Core/Duels.lua`, `Core/SelfTestLayer.lua`, `Raid/Handover.lua`, `UI/GearDoll.lua`, `UI/SlotCard.lua`,
-  `UI/DuelInfo.lua` and the pages Gear, Dungeons, RaidJournal, Map, Professions, Quests, Talents,
-  MageScrolls, Duels, Tools, Export. Every other file is the raid part and loads on TBC Anniversary and
-  Classic Era as well: it reaches a Forever part only at run time and guarded, never while loading
-  (`tests/test_tbc_raid.lua`, `tests/test_era_raid.lua` load it alone; `tests/run.py`, a "--[[game tbc]]" line).
+- `Data/*` stand in the gear module (`Amisia_Gear/Data`); they are generated, never edited.
+- The Forever parts (D-57) are the gear module, Forever only by its TOC (`## Interface: 16001`, its classic TOCs
+  list no file; no mark per file since F-202): `Data/*`, `Collect/*`, `Gear/*`, `Core/Duels.lua`,
+  `Core/SelfTestLayer.lua`, `UI/GearDoll.lua`, `UI/SlotCard.lua`, `UI/DuelInfo.lua` and the pages Gear, Dungeons,
+  RaidJournal, Map, Professions, Quests, Talents, MageScrolls, Duels, Tools; and two files of the raid module with
+  `[AllowLoadGameType camelot]`: `Raid/Handover.lua` and the page Export. Every other file (core and raid module)
+  loads on TBC Anniversary and Classic Era as well: it reaches a Forever part only at run time and guarded, never
+  while loading (`tests/test_tbc_raid.lua`, `tests/test_era_raid.lua` load it alone; `tests/run.py`, a "--[[game
+  tbc]]" line).
 - Modules (F-202, D-130): the files belong to the core (`Amisia`), the raid module (`Amisia_Raid`) or the gear
-  module "Ausrüstung & Dungeons" (`Amisia_Gear`); `tools/modules.py` holds the list (`python3 tools/modules.py
-  files`). The gear module is the camelot files but `Raid/Handover.lua` and `UI/Pages/Export.lua` (raid features
-  of Forever); the raid module is `Raid/*` but `Raid/Alts.lua` (core), the raid pages and windows, `UI/Setup.lua`,
-  `UI/RaidCalendar.lua`, `UI/Signup.lua`, `UI/SoftResImport.lua`, the self-tests of calendar and group, and
+  module "Ausrüstung & Dungeons" (`Amisia_Gear`), by the folder that holds them; `tools/modules.py` reads the three
+  TOCs (`python3 tools/modules.py files`). The gear module is the Forever parts above; the raid module is `Raid/*`
+  but `Raid/Alts.lua` (core), the raid pages and windows, `UI/Setup.lua`, `UI/RaidCalendar.lua`, `UI/Signup.lua`,
+  `UI/SoftResImport.lua`, the self-tests of calendar and group, `Raid/Handover.lua`, the page Export, and
   `Locales/enUS_raid*.lua`; the rest is the core. A module may call the core; the core calls a module, and the two
   modules each other, only guarded (`if ns.X then`, `ns.X and ns.X.f()`, `if not ns.X then return end`, or
   `ns.HasModule("raid")`), and else reaches them through the registry and `ns.Fire`/`ns.Listen`/`ns.OnEvent`.
-  Nothing that runs while a file loads names a later part (the bodies will run core, raid, gear). A text the core
+  Nothing that runs while a file loads names a later part (the bodies run core, raid, gear). A text the core
   or both modules use stands in `enUS_core.lua` or `enUS_selftest.lua`. Settings no loaded part registers stay
   in `AmisiaDB.settings`. `tools/tests/test_module_deps.py`; `tests/test_without_raid.lua`,
-  `tests/test_without_gear.lua` (`tests/run.py`, a "--[[without raid]]" line) open every page and window
-  without the module.
+  `tests/test_without_gear.lua` (`tests/run.py`, a "--[[without raid]]" line: the folder is not loaded and the
+  stub's `C_AddOns` says the module is off) open every page and window without the module. `tests/run.py` loads
+  each folder with a namespace of its own and fires `ADDON_LOADED` per addon, as the client does.
 - Saved data is shaped on `ADDON_LOADED` (Core calls the migrations, others listen); nothing is
   built at login (lazy data, see `tests/test_lazy_data.lua`, `tools/load_cost.py`).
 - A new client global goes into `read_globals` of `.luacheckrc`.
@@ -247,8 +273,8 @@ in game                                  N100 / tools                         si
 Scan/Collect/Collector/Drops/QuestXP ->  AmisiaDB (SavedVariables)
    (and /amisia selbsttest AMISIA-WERTE)    -> Syncthing (PC -> ~/addons/_SavedVariables/Amisia.lua)
                                             -> tools/build_scan_archive.py -> tools/scan_archive.json (all scan data
-                                               for good) + Amisia/Data/ScanDone.lua (marker)
-                                            -> tools/build_*.py (archive + file) -> Amisia/Data/*.lua (next release)
+                                               for good) + Amisia_Gear/Data/ScanDone.lua (marker)
+                                            -> tools/build_*.py (archive + file) -> Amisia_Gear/Data/*.lua (next release)
 ScanTrim.lua (login) <- Data/ScanDone.lua: takes what the archive holds out of AmisiaDB.scan
 ScanQuests/ScanNpcs.lua (by id, D-104) -> AmisiaDB.scan.quests/npcs -> scan archive (per language) -> build_gear/
                                             build_dungeonquests (levels, types; build_gear also the quest rewards
@@ -692,16 +718,17 @@ The loot toast's settings (F-152) were `ui.lootToast*` until 2.71.0; since then 
 | `data [--sv FILE] [--wago DIR] [--refresh-att]` | first, without `--wago`, the choice of the client tables (`tools/client_tables.py`, printed per table: build, rows, source); then every generator in order: scan archive (and its marker), dungeons, gear, map, dungeon quests, quests, professions, talents, mage scrolls, raid check, dungeon art, site drops (`tools/drop_obs.json`, `Amisia-Website/data/drops-forever.js`, BUILD_ID; D-119), BiS; a step without its client tables is skipped or uses its kept snapshot; ends with `git diff --stat`; no network |
 | `tables [--version V] [--tables T ...]` | the client tables from wago.tools' CSV exports for the newest `wowf` build (or V) into `~/addons/_cache/wago` (`tools/fetch_tables.py`, D-101); a table already there is never asked for again |
 | `diff [OLD NEW] [--out FILE]` | what a new client build brings (`tools/build_diff.py`, D-103): the tables of two builds on disk (default: the build of main's data against the newest on disk), new, removed and changed rows of items (quality, slot, the changed fields), quests (QuestV2), dungeons and bosses, flight points, the spells of talents and professions; floats compared as numbers; no network |
-| `check` | luaparse syntax, addon tests (deDE, then enUS), `tools/l10n.py check`, layout rules (`tools/ui_layout.py rules`, both locales), `pytest tools/tests` (incl. generated-file-current and `test_contracts.py`), UTF-8 without BOM, TOC against the folder, luacheck |
+| `check` | luaparse syntax, addon tests (deDE, then enUS), `tools/l10n.py check`, layout rules (`tools/ui_layout.py rules`, both locales), `pytest tools/tests` (incl. generated-file-current and `test_contracts.py`), UTF-8 without BOM, each TOC against its folder (and the modules' version), luacheck of the three folders |
 | `snapshots [--out DIR] [--compare DIR] [--locale enUS]` | PNG of every page and window from the test stub, an index.html contact sheet, changed layouts |
-| `tocs` | writes `Amisia_TBC.toc` and `Amisia_Vanilla.toc` from `Amisia.toc` (D-57) |
-| `release X.Y.Z [-m ...] [--no-push] [--no-copy] [--no-upload]` | warning with Amisia's game errors, clean tree, TOC version (and the classic TOCs), check (TOC restored on failure), `Amisia-Website/Amisia.zip`, CHANGELOG.md, commit `Amisia X.Y.Z: ...`, push main, `tools/release_addon.sh`, the zip to CurseForge (`tools/curseforge.py`, D-58; skipped without project id or token), then the test list of the version's features in `docs/FEATURES.md` (a warning when none carries it) |
+| `tocs` | writes the core's `## Version` into `Amisia_Raid.toc` and `Amisia_Gear.toc`, and every folder's `<folder>_TBC.toc` and `<folder>_Vanilla.toc` from its TOC (D-57, D-130) |
+| `release X.Y.Z [-m ...] [--no-push] [--no-copy] [--no-upload]` | warning with Amisia's game errors, clean tree, TOC version (the modules' and the classic TOCs too), check (TOCs restored on failure), `Amisia-Website/Amisia.zip` (three top folders), CHANGELOG.md, commit `Amisia X.Y.Z: ...`, push main, `tools/release_addon.sh`, the zip to CurseForge (`tools/curseforge.py`, D-58; skipped without project id or token), then the test list of the version's features in `docs/FEATURES.md` (a warning when none carries it) |
 | `testlist [--all] [--out FILE]` | the German check list of the features with status `gebaut` from `docs/FEATURES.md`, newest version first; `--all` adds those that need a group, guild or raid |
 | `tested F-001 [...] [--raid]` | sets their status in `docs/FEATURES.md` to `im Spiel geprüft (today)` (`im Raid bewährt`) |
 | `perf [--sv FILE] [--rows N]` | the measurements of `/amisia leistung` saved in `~/addons/_SavedVariables/Amisia.lua` (`AmisiaDB.perf`), newest first: per run a head (when, kind, duration, end, version, build, game, where, frames, fps, combat, Amisia's ms per second and per frame, calls, spikes, garbage, memory, load, data) and its rows by own time (`tools/perf_report.py`, F-184) |
 | `errors [--sv FILE] [--all]` | the Lua errors in `~/addons/_SavedVariables/!BugGrabber.lua` that name Amisia (`--all`: every addon's), via `tools/game_errors.py`; `check` adds a non-failing note "Fehler aus dem Spiel: N" |
 
-The version stands only in `## Version:` of `Amisia.toc` (`ns.VERSION` reads it at load). GitHub
+The version stands only in `## Version:` of `Amisia.toc` (`ns.VERSION` reads it at load); the modules' TOCs
+carry a copy that `build.py tocs`/`release` write and `check` compares (D-16, D-130). GitHub
 Actions (`.github/workflows/check.yml`) runs the checks on push.
 
 ## Machines: PC, N100, Syncthing
@@ -709,7 +736,7 @@ Actions (`.github/workflows/check.yml`) runs the checks on push.
 | Path | Role |
 |---|---|
 | `~/addons/Amisia` (N100) | the only working copy; commits and pushes happen here |
-| `~/addons/_release/Amisia` | committed HEAD of `Amisia/`, written only by `tools/release_addon.sh`; Syncthing folder `amisia` (send-only) -> `C:\Users\aobiw\VuloSync\Amisia` on the PC, junctioned into `_forever_\Interface\AddOns\Amisia` (Forever; until 2026-10-31 `_classic_beta_`) and, for the raid part (D-57), into `_anniversary_\Interface\AddOns\Amisia` (TBC Anniversary) and `_classic_era_\Interface\AddOns\Amisia` (Classic Era); only Forever's SavedVariables come back |
+| `~/addons/_release/Amisia` | committed HEAD of `Amisia/`, `Amisia_Raid/` and `Amisia_Gear/`, one subfolder each (`_release/Amisia/Amisia`, `.../Amisia_Raid`, `.../Amisia_Gear`, F-202), written only by `tools/release_addon.sh`; Syncthing folder `amisia` (send-only) -> `C:\Users\aobiw\VuloSync\Amisia` on the PC; each subfolder junctioned into `_forever_\Interface\AddOns\<folder>` (Forever; until 2026-10-31 `_classic_beta_`) and, the core and the raid module only (D-57), into `_anniversary_\Interface\AddOns\<folder>` (TBC Anniversary) and `_classic_era_\Interface\AddOns\<folder>` (Classic Era); until the first release with three folders one junction per client pointed at the whole folder (step 3 of F-202 brings the script for the new ones); only Forever's SavedVariables come back |
 | `~/addons/_SavedVariables/Amisia.lua` | receive-only copy of the PC's SavedVariables (folder `vfui-savedvariables`); read only; its scan part goes into `tools/scan_archive.json` with every `build.py data`, after which the addon trims it; its drop records (`drops.k`) into `tools/drop_obs.json` and `Amisia-Website/data/drops-forever.js` (D-119; nothing trimmed); after a logout `tools/auto_data.py` builds and checks it by itself on branch `auto/sv-<date>`, never on main (D-122) |
 | `~/.config/amisia/curseforge.token` | the CurseForge API token for `tools/curseforge.py` (D-58); only on the N100, never in the repository; the project is `## X-Curse-Project-ID` in `Amisia.toc` |
 | `~/addons/_SavedVariables/!BugGrabber.lua` | receive-only copy of the PC's error catcher SavedVariables (same Syncthing folder); read only by `build.py errors`, `check` and `release` |

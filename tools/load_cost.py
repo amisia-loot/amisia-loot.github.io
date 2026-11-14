@@ -70,7 +70,7 @@ def per_file(eager):
     out = []
     for key in LAZY:
         lua = LuaRuntime(unpack_returned_tuples=True)
-        with open(os.path.join(ROOT, 'Amisia', 'Data', FILES[key] + '.lua'), encoding='utf-8') as fh:
+        with open(os.path.join(ROOT, 'Amisia_Gear', 'Data', FILES[key] + '.lua'), encoding='utf-8') as fh:
             src = fh.read()
         ms, kb, _ = lua.execute(MEASURE)(src, FILES[key] + '.lua', eager)
         out.append((FILES[key], len(src.encode('utf-8')) // 1024, ms, kb))
@@ -139,10 +139,11 @@ def per_toc(locale='deDE'):
     ns = lua.eval('{}')
     loader = lua.eval('function(src, name) return assert(loadstring(src, "@" .. name)) end')
     rows, prev = [], gc()
-    for name in addon_run.toc_files():
-        with open(os.path.join(addon_run.ADDON, name), encoding='utf-8') as fh:
+    # the core and both modules in one namespace (a module's Module.lua shares the core's anyway, F-202)
+    for part, name in addon_run.toc_files():
+        with open(os.path.join(addon_run.modules.folder(part), name), encoding='utf-8') as fh:
             src = fh.read()
-        loader(src, name)('Amisia', ns)
+        loader(src, name)(addon_run.modules.FOLDERS[part], ns)
         now = gc()
         rows.append((now - prev, name.replace(os.sep, '/'), len(src.encode('utf-8')) / 1024, group_of(name, src)))
         prev = now

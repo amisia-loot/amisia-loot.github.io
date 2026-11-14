@@ -102,10 +102,30 @@ STUB.locale = "deDE"
 _G.GetLocale = function() return STUB.locale end
 -- The TOC's "## Field: value" lines (run.py fills them from Amisia/Amisia.toc).
 STUB.tocMeta = {}
+-- The addons the client knows besides Amisia: name -> { loadable = bool, enabled = bool } (run.py sets
+-- the modules Amisia_Raid and Amisia_Gear a test loads, F-202); a name not listed is not installed.
+STUB.addons = {}
 _G.C_AddOns = { GetAddOnMetadata = function(addon, field)
     if addon ~= "Amisia" then return nil end
     return STUB.tocMeta[field]
 end }
+-- name, title, notes, loadable, reason as the client answers (an unknown name: not loadable, "MISSING")
+C_AddOns.GetAddOnInfo = function(name)
+    if name == "Amisia" then return name, name, "", true, nil end
+    local a = STUB.addons[name]
+    if not a then return name, nil, nil, false, "MISSING" end
+    return name, name, "", a.loadable ~= false, a.loadable == false and "DISABLED" or nil
+end
+C_AddOns.IsAddOnLoadable = function(name)
+    local _, _, _, loadable, reason = C_AddOns.GetAddOnInfo(name)
+    return loadable, reason
+end
+-- 0 off, 2 on for every character (name first, the character second as in C_AddOns)
+C_AddOns.GetAddOnEnableState = function(name)
+    local a = name == "Amisia" and {} or STUB.addons[name]
+    return (a and a.enabled ~= false) and 2 or 0
+end
+C_AddOns.IsAddOnLoadOnDemand = function() return false end
 STUB.officer = true
 _G.C_GuildInfo = { CanEditOfficerNote = function() return STUB.officer end }
 _G.MouseIsOver = function() return false end
@@ -1491,7 +1511,11 @@ function _G.CreateFrame(kind, name, parent, template)
     return f
 end
 function STUB.fire(event, ...)
-    for f in pairs(STUB.frames) do
+    -- the frames registered when the event comes: one that registers while it is handed out (a file's
+    -- body run on ADDON_LOADED, D-128) does not get it, and the list does not change under the loop
+    local list = {}
+    for f in pairs(STUB.frames) do list[#list + 1] = f end
+    for _, f in ipairs(list) do
         if f.events[event] and f.scripts.OnEvent then f.scripts.OnEvent(f, event, ...) end
     end
 end

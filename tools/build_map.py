@@ -1,4 +1,4 @@
-"""Builds Amisia/Data/MapData.lua (WoW Forever): where the sources of the gear data stand on the
+"""Builds Amisia_Gear/Data/MapData.lua (WoW Forever): where the sources of the gear data stand on the
 world map. Quest givers and starts, vendors, rare and named mobs come from the coordinates the
 data gives them, raids and dungeons from their entrances. Runs without a WoW install (on the N100).
 
@@ -39,8 +39,8 @@ import att_data  # noqa: E402  (the AllTheThings reader)
 import lua_data  # noqa: E402  (the lazy form of the data files)
 import build_gear  # noqa: E402  (Lua strings, dungeon name keys, the dungeon facts)
 
-GEAR = os.path.join(ROOT, 'Amisia', 'Data', 'GearData.lua')
-OUT = os.path.join(ROOT, 'Amisia', 'Data', 'MapData.lua')
+GEAR = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'GearData.lua')
+OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'MapData.lua')
 MAX_POINTS = 4
 MERGE = 200          # points closer than 2 % (in hundredths of a percent) are one
 PLACEHOLDER = (5000, 5000)   # an entrance given as the middle of its zone: not measured yet

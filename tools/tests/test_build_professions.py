@@ -14,7 +14,7 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
 ROOT = os.path.dirname(TOOLS)
-ADDON = os.path.join(ROOT, 'Amisia')
+ADDON = os.path.join(ROOT, 'Amisia_Gear')   # the gear module holds the data (F-202)
 WAGO = os.path.join(HERE, 'fixtures', 'wago_prof')
 REAGENTS = os.path.join(WAGO, 'reagents')
 ATT = os.path.join(HERE, 'fixtures', 'att_prof')
@@ -210,10 +210,10 @@ def test_empty_file_is_valid():
 
 
 def test_shipped_file_is_in_the_toc_and_compact():
-    with open(os.path.join(ADDON, 'Amisia.toc'), encoding='utf-8') as fh:
+    with open(os.path.join(ADDON, 'Amisia_Gear.toc'), encoding='utf-8') as fh:
         toc = fh.read()
-    assert re.search(r'^Data\\ProfessionData\.lua \[AllowLoadGameType camelot\]$', toc, re.M)
-    assert toc.index('Data\\ProfessionData.lua') < toc.index('Gear\\Professions.lua [AllowLoadGameType camelot]\n') < toc.index('UI\\Pages\\Professions.lua')
+    assert re.search(r'^Data\\ProfessionData\.lua$', toc, re.M)
+    assert toc.index('Data\\ProfessionData.lua') < toc.index('Gear\\Professions.lua\n') < toc.index('UI\\Pages\\Professions.lua')
     path = os.path.join(ADDON, 'Data', 'ProfessionData.lua')
     with open(path, encoding='utf-8') as fh:
         text = fh.read()

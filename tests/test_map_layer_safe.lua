@@ -30,15 +30,17 @@ WorldMapFrame.testField = nil
 
 -- the source of every addon file
 local function read(name)
-    local fh = assert(io.open(ADDON_DIR .. "/" .. name, "rb"))
+    local fh = assert(io.open(ADDON_FILE(name), "rb"))
     local src = fh:read("*a")
     fh:close()
     return src
 end
 local files = {}
-for line in read("Amisia.toc"):gmatch("[^\r\n]+") do
-    local name = line:gsub("%s*%[[^%]]*%]", ""):gsub("\\", "/")
-    if name ~= "" and not name:find("^#") then files[#files + 1] = name end
+for _, toc in ipairs(ADDON_TOCS) do
+    for line in io.lines(toc) do
+        local name = line:gsub("%s*%[[^%]]*%]", ""):gsub("\\", "/")
+        if name ~= "" and not name:find("^#") then files[#files + 1] = name end
+    end
 end
 assert(#files > 50, "the TOC's files")
 local FORBIDDEN = {

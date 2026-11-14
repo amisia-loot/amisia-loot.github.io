@@ -211,7 +211,7 @@ STUB.map.pos = { x = 0.1, y = 0.1 }
 
 -- after /reload the target and the arrow come back
 assert(NS.MapSetTarget(100))
-local fh = assert(io.open(ADDON_DIR .. "/Gear/Map.lua", "rb"))
+local fh = assert(io.open(ADDON_FILE("Gear/Map.lua"), "rb"))
 local src = fh:read("*a")
 fh:close()
 assert(loadstring(src, "@Map.lua"))("Amisia", NS)

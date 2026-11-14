@@ -87,7 +87,7 @@ SV_GAP = 6 * 3600               # seconds between two runs of trigger C: one eve
 SV_KEEP = 5                     # auto/sv-* branches kept; older ones are deleted
 SV_BRANCH = 'auto/sv-'
 SV_HEAD = 'Spielstand vom '     # first line of the block in amisia-data.txt
-SV_PATHS = ('Amisia/Data', 'tools', 'Amisia-Website')   # what a data build may change
+SV_PATHS = ('Amisia_Gear/Data', 'tools', 'Amisia-Website')   # what a data build may change
 # what "new" counts: (archive, key, label); key "a/*" sums the dicts under a (one per locale)
 SV_COUNTS = (
     ('tools/scan_archive.json', 'items', 'Items'),
@@ -579,7 +579,7 @@ def take_over_sv(args, sv, on_main, now=None):
         news, files = archive_news(args.base, args.worktree), changed_files(args.worktree)
         if not news and not files:
             return 'nothing new', [f'{head}: nichts Neues gegenüber {args.base}.'], None, None
-        tables = data_build(read(os.path.join(args.worktree, 'Amisia', 'Data', 'TalentData.lua')))
+        tables = data_build(read(os.path.join(args.worktree, 'Amisia_Gear', 'Data', 'TalentData.lua')))
         rc, out = run([py, 'tools/build.py', 'check'], args.worktree)
         git('add', '-A', *present(args.worktree, SV_PATHS), cwd=args.worktree)
         msg = (f'Spielstand vom {stamp(os.path.getmtime(sv))} übernommen (automatisch gebaut, Prüfung '
@@ -695,7 +695,7 @@ def main(argv=None):
         print('another run is busy')
         return 0
 
-    on_main = data_build(git('show', f'{args.base}:Amisia/Data/TalentData.lua', check=False))
+    on_main = data_build(git('show', f'{args.base}:Amisia_Gear/Data/TalentData.lua', check=False))
     state = load_state(os.path.join(args.state_dir, 'amisia-data.json'))
     settle_stale(args, on_main, state)
     builds = complete_builds(args.wago)

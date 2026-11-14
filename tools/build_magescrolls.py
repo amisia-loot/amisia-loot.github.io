@@ -21,7 +21,7 @@ books found in the world that a librarian (Stormwind, Undercity) takes for a Com
 and the "Friend of the Library" quests for N books.
 
 Reads <Table>.csv or <Table>.<build>.csv from the folders given with --wago (default: the newest copy
-of each table, tools/client_tables.py). Writes Amisia/Data/MageScrollData.lua (ns.MAGESCROLLS, lazy).
+of each table, tools/client_tables.py). Writes Amisia_Gear/Data/MageScrollData.lua (ns.MAGESCROLLS, lazy).
 """
 import argparse
 import csv
@@ -37,7 +37,7 @@ import att_data  # noqa: E402
 import build_talents  # noqa: E402  (the spell text resolver)
 import lua_data  # noqa: E402
 
-OUT = os.path.join(ROOT, 'Amisia', 'Data', 'MageScrollData.lua')
+OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'MageScrollData.lua')
 WAGO = os.path.expanduser('~/addons/_wago')
 
 REQUIRED = ['ItemSparse', 'Item', 'SkillLine', 'SkillLineAbility', 'Spell', 'SpellName', 'SpellMisc', 'SpellEffect',

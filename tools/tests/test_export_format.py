@@ -16,8 +16,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 ADDON_TESTS = os.path.join(ROOT, 'tests')
 DRIVER = os.path.join(ROOT, 'tools', 'tests', 'site_parser.cjs')
 CORE = os.path.join(ROOT, 'Amisia', 'Core', 'Core.lua')
-PRIO = os.path.join(ROOT, 'Amisia', 'Raid', 'LootPrio.lua')
-POINTS = os.path.join(ROOT, 'Amisia', 'Raid', 'Points.lua')
+PRIO = os.path.join(ROOT, 'Amisia_Raid', 'Raid', 'LootPrio.lua')
+RECORD = os.path.join(ROOT, 'Amisia_Raid', 'Raid', 'Record.lua')
+POINTS = os.path.join(ROOT, 'Amisia_Raid', 'Raid', 'Points.lua')
 
 sys.path.insert(0, ADDON_TESTS)
 
@@ -85,7 +86,7 @@ def test_every_line_the_addon_writes_is_read(parsed):
     text, out = parsed
     import re
     written = set()
-    for path in (CORE, PRIO, POINTS):
+    for path in (CORE, RECORD, PRIO, POINTS):
         written |= set(re.findall(r'^\s*lines\[#lines \+ 1\] = \("([A-Z]{1,2})', open(path, encoding='utf-8').read(), re.M))
     assert 'LC' in written, 'the loot prio lines are found in LootPrio.lua'
     assert {'PS', 'PE', 'PA', 'PX'} <= written, 'the DKP/EPGP lines are found in Points.lua'
@@ -348,7 +349,7 @@ def test_strange_log_lines_are_ignored():
     assert s['bench'] == [], 'a BN without a name or its fields is dropped'
 
 
-BIS = os.path.join(ROOT, 'Amisia', 'Gear', 'Bis.lua')
+BIS = os.path.join(ROOT, 'Amisia_Gear', 'Gear', 'Bis.lua')
 
 
 def export_wishes_from_addon():
@@ -412,7 +413,7 @@ def test_the_raid_export_is_the_same_with_and_without_wishes(wishes):
     assert '\nWL ' not in after
 
 
-DROPS = os.path.join(ROOT, 'Amisia', 'Collect', 'Drops.lua')
+DROPS = os.path.join(ROOT, 'Amisia_Gear', 'Collect', 'Drops.lua')
 PAGE = os.path.join(ROOT, 'Amisia-Website', 'index.html')
 
 

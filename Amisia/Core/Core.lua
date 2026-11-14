@@ -308,7 +308,12 @@ end
 events = CreateFrame("Frame")
 events:RegisterEvent("ADDON_LOADED")
 for ev in pairs(extra) do pcall(events.RegisterEvent, events, ev) end
+local loginHandedOn = false   -- ns.LoginLoaded ran the PLAYER_LOGIN the client may still deliver
 local function onEvent(self, event, arg1, ...)
+    if event == "PLAYER_LOGIN" and loginHandedOn and self == events then
+        loginHandedOn = false
+        return
+    end
     -- /amisia leistung: the core's own part of an event is timed as "Core EVENT" (F-184)
     local p0, p1, p2, p3
     if (perf.on or perf.boot) and (event ~= "ADDON_LOADED" or arg1 == ADDON) then p0, p1, p2, p3 = perf.Begin() end
@@ -354,8 +359,32 @@ local function onEvent(self, event, arg1, ...)
     if perf.boot and event == "PLAYER_ENTERING_WORLD" then perf.BootDone() end
 end
 events:SetScript("OnEvent", onEvent)
--- the files' bodies run on ADDON_LOADED (D-128): this frame registers during that event, so
--- Locales/Locale.lua hands it on once every body ran
-function ns.CoreLoaded() onEvent(events, "ADDON_LOADED", ADDON) end
+-- the files' bodies run on ADDON_LOADED (D-128, D-130): this frame registers during that event, so
+-- Locales/Locale.lua hands it on once every body of the core and the modules ran
+local replayed = 0   -- the ADDON_LOADED handlers that had their event
+function ns.CoreLoaded()
+    onEvent(events, "ADDON_LOADED", ADDON)
+    replayed = extra.ADDON_LOADED and #extra.ADDON_LOADED or 0
+end
+
+-- A module the client loaded after the core started (Locales/Locale.lua): the ADDON_LOADED handlers
+-- its bodies added since get the core's event now, each protected.
+function ns.LateLoaded()
+    local list = extra.ADDON_LOADED
+    if not list then return end
+    for i = replayed + 1, #list do
+        local ok, err = pcall(list[i], ADDON)
+        if not ok then ns.ReportError(err) end
+    end
+    replayed = #list
+end
+
+-- The bodies ran at PLAYER_LOGIN (a module the core waited for did not come): the handlers registered
+-- during that event get it now, once (the client may deliver it to the new frame as well: dropped).
+function ns.LoginLoaded()
+    onEvent(nil, "PLAYER_LOGIN")
+    loginHandedOn = true
+    if C_Timer and C_Timer.After then C_Timer.After(0, function() loginHandedOn = false end) end
+end
 
 end)

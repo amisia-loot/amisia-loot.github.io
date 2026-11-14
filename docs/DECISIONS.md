@@ -265,8 +265,12 @@ Neustart. Ingame-Tests macht der Nutzer.
 beim Laden. Releases nur über `python3 tools/build.py release X.Y.Z`.
 **Grund:** Zwei Stellen liefen auseinander.
 **Folge:** Keine Versions-Literale im Lua.
+**Nachtrag 2026-11-14 (F-202, D-130):** Die Quelle bleibt `## Version:` in `Amisia/Amisia.toc`. Die Module
+(`Amisia_Raid/Amisia_Raid.toc`, `Amisia_Gear/Amisia_Gear.toc`) tragen dieselbe Version als Kopie: `build.py tocs` und
+`release` schreiben sie hinein, `check` (TOC gegen den Ordner) schlägt fehl, solange eine abweicht.
+
 **Durchgesetzt durch:** `tools/tests/test_contracts.py::test_the_version_stands_only_in_the_toc`,
-`tools/tests/test_build_tool.py::test_the_repo_toc_has_the_version_and_matches_the_folder`, `tests/test_version_toc.lua`.
+`tools/tests/test_build_tool.py::test_the_repo_toc_has_the_version_and_matches_the_folder`, `tests/test_version_toc.lua`, `tools/tests/test_build_tool.py::test_check_toc_wants_the_core_version_in_the_modules`.
 
 ## D-17 Exportregel: Bestehendes bleibt Byte für Byte
 
@@ -1311,10 +1315,19 @@ und Export-Erinnerung aus, Gilde bleibt, Handel-Helfer aus, Raid-Check-Buffs aus
 **Folge:** Eine neue Datei gehört entweder zum Raid-Teil (lädt überall, kein Forever-Global beim Laden) oder trägt den
 camelot-Tag und steht in den Listen der beiden Tests. Ein Export von TBC/Era kann nicht im Forever-Ledger landen.
 SavedVariables von TBC/Era kommen nicht auf den N100 zurück; Spiel-Tests dort macht der Nutzer.
+**Nachtrag 2026-11-14 (F-202, D-130):** Der Forever-Teil ist jetzt ein Ordner, das Modul `Amisia_Gear`, statt einer
+Markierung je Datei: `Amisia_Gear.toc` hat `## Interface: 16001`, seine Dateien tragen keine camelot-Markierung mehr,
+und seine `Amisia_Gear_TBC.toc`/`Amisia_Gear_Vanilla.toc` listen keine Datei (lädt jemand das Modul auf TBC oder Era,
+etwa aus der CurseForge-Zip, kommt nichts davon in den Speicher; mit "Veraltete AddOns laden" sonst doch). Kern
+(`Amisia`) und Raid-Modul (`Amisia_Raid`) laden auf allen drei Clients, jeder Ordner hat seine `<Ordner>_TBC.toc` und
+`<Ordner>_Vanilla.toc` (die TOC des Ordners ohne die camelot-Zeilen, `build.py tocs`). Nur das Raid-Modul behält zwei
+Forever-Dateien mit Markierung: `Raid/Handover.lua` und `UI/Pages/Export.lua`. Die Tests für TBC/Era laden Kern und
+Raid-Modul aus deren TBC- bzw. Vanilla-TOC.
+
 **Durchgesetzt durch:** `tests/test_forever_only.lua`, `tests/test_tbc_raid.lua`, `tests/test_era_raid.lua`,
 `tests/test_game_switch.lua`, `tools/tests/test_contracts.py::test_the_toc_loads_the_forever_parts_on_forever_only`,
 `tools/tests/test_contracts.py::test_the_classic_clients_have_their_own_toc_without_the_forever_parts`, `build.py check`
-(TOC against the folder).
+(TOC against the folder), `tools/tests/test_load_order.py::test_each_part_starts_with_its_first_file`.
 
 ## D-58 Releases auch auf CurseForge: Upload aus dem Release, Token nur auf dem N100
 
@@ -3118,7 +3131,7 @@ Spielstand mit den Drop-Daten liegt ohnehin auf dem N100, das Kopieren und Einf�
 (CurseForge): ein Satz "deine Kills kommen von selbst" im Spiel stimmte nur für den Seitenbesitzer.
 **Folge:** Live geht es mit dem Push eines Datenbaus, nicht mit einem Addon-Release. Weil `tools/build_bis.py` dasselbe
 Archiv als Grundbestand der Dropraten liest (`ns.BIS.O`), ändert ein Datenbau mit neuen Kills auch
-`Amisia/Data/BisData.lua`. `tools/build_scan.py` (voller Bau, `obsBosses` in `data/forever.js`) bleibt; beide lesen
+`Amisia_Gear/Data/BisData.lua`. `tools/build_scan.py` (voller Bau, `obsBosses` in `data/forever.js`) bleibt; beide lesen
 dasselbe Archiv. Annahmen (nicht gefragt): kein zweites Archiv; einzelne Kills statt Summen; leere Datei statt keiner.
 **Durchgesetzt durch:** `tools/tests/test_build_site_drops.py` (Inhalt ohne Namen und Herkunft, gleiche Bytes,
 Archiv behält Kills, ohne SavedVariables, kaputte Datei, BUILD_ID, Datei passt zum Archiv),
@@ -3414,9 +3427,19 @@ kennen `## LoadSavedVariablesFirst: 1` auf allen drei Clients; ob ein fremdes Ad
 geprüft. Falls ja, ginge es ohne den Rahmen; bis dahin bleibt er. `/amisia leistung` zählt unter "Dateien" jetzt auch
 das Laden von `AmisiaDB` und die Inhalte der Dateien.
 
+**Nachtrag 2026-11-14 (F-202, D-130):** Die Inhalte laufen nicht mehr beim `ADDON_LOADED` des Kerns, sondern erst,
+wenn auch jedes Modul, das laden wird, sein `ADDON_LOADED` hatte: zuerst die des Kerns, dann die des Raid-Moduls,
+dann die des Ausrüstungs-Moduls, je in TOC-Reihenfolge, danach einmal `ns.CoreLoaded`. Welche Module laden werden,
+fragt `Locales/Locale.lua` beim `ADDON_LOADED` des Kerns den Client (`C_AddOns.GetAddOnInfo`, `IsAddOnLoadable`,
+`GetAddOnEnableState`, `IsAddOnLoadOnDemand`, ersatzweise die alten globalen Funktionen; das Ausrüstungs-Modul nur
+auf Forever). Wartet bei `PLAYER_LOGIN` noch etwas, laufen die Inhalte dann (und `PLAYER_LOGIN` geht einmal an die
+Handler, `ns.LoginLoaded`); ein Modul, das der Client danach noch lädt, führt seine Inhalte sofort aus und seine
+`ADDON_LOADED`-Handler bekommen das Ereignis des Kerns nachgereicht (`ns.LateLoaded`). Die erste Datei eines Moduls
+(`Raid/Module.lua`, `Gear/Module.lua`) läuft sofort, ohne `ns.Load`.
+
 **Durchgesetzt durch:** `tools/tests/test_load_order.py` (jede Datei mit dem Rahmen, `Locales/Locale.lua` zuerst,
 was sofort lädt, ohne Texte), `tests/test_language.lua` (deutscher Client, Englisch gewählt: Texte, Zahlen, Daten,
-Befehl, Frage zum Neuladen, kaputte Wahl), `tests/test_language_de.lua` (englischer Client, Deutsch gewählt).
+Befehl, Frage zum Neuladen, kaputte Wahl), `tests/test_language_de.lua` (englischer Client, Deutsch gewählt), `tests/test_module_load.lua`.
 
 ## D-129 Zielfenster mit Kompass: auch die Kartenmarkierung des Clients, ersetzt den Pfeil
 
@@ -3476,11 +3499,30 @@ Schritt 3 bringt Schalter, `/amisia module` und den Versionsruf.
 
 **Folge:** Ein fehlendes Modul heißt: seine Seiten, Karten, Einstellungen und Befehle gibt es nicht, alles andere läuft
 ohne Lua-Fehler weiter; ohne Raid zeichnet Amisia nichts auf. Ein neuer Aufruf über die Grenze braucht eine Prüfung,
-eine neue Datei einen Eintrag in `tools/modules.py` (sonst ist sie Kern), ein neues Seitenfenster in
-`tests/ui_scene.lua` sein Modul. Offen für Schritt 2: `name == ADDON` in Modul-Dateien und
-`Interface\AddOns\Amisia\` in Pfaden.
+eine neue Datei ihren Ordner (seit Schritt 2; vorher einen Eintrag in `tools/modules.py`), ein neues
+Seitenfenster in `tests/ui_scene.lua` sein Modul. Schritt 2 hat `name == ADDON` in den Modul-Dateien ersetzt (siehe
+Nachtrag); die Pfade `Interface\AddOns\Amisia\` zeigen alle auf `Media/` im Kern.
+
+**Nachtrag 2026-11-14 (Schritt 2):** Die drei Teile sind jetzt drei Ordner und drei Addons: `Amisia/` (Kern),
+`Amisia_Raid/` ("Amisia: Raid") und `Amisia_Gear/` ("Amisia: Ausrüstung & Dungeons", englisch "Amisia: Gear &
+Dungeons"), jede Datei mit ihrem Pfad im Ordner (`Amisia_Raid/Raid/Awards.lua`, `Amisia_Gear/Data/GearData.lua`);
+ein Pfad steht nur in einem Ordner. Zu welchem Teil eine Datei gehört, sagt jetzt der Ordner, der sie hält
+(`tools/modules.py` liest die drei TOCs). Die Module haben `## Dependencies: Amisia`, das Ausrüstungs-Modul dazu
+`## OptionalDeps: Amisia_Raid` (der Client lädt es nach dem Raid-Modul). Ein Namensraum: Der Kern bietet seinen `ns`
+als `_G.AmisiaCore` an (`Locales/Locale.lua`); die erste Datei eines Moduls (`Module.lua`) läuft sofort und lenkt den
+eigenen `ns` mit einer Metatabelle (`__index`, `__newindex`) auf den des Kerns, ihr `ns.Load` reiht die Inhalte als
+Teil des Moduls ein, und sie setzt `ns.MODULES.raid`/`gear`. Ohne Kern tut sie nichts. `rawget(ns, ...)` sieht in einem
+Modul nichts (`ns.DataLoaded` statt dessen). Vergleiche mit dem eigenen Addon-Namen: `ADDON_LOADED` mit `ns.ADDON`
+(dem Kern, die Handler bekommen sein Ereignis), `ADDON_ACTION_BLOCKED`/`FORBIDDEN` mit `ns.OwnAddon` (Kern oder ein
+Modul). `/amisia speicher` und `/amisia leistung` zählen den Speicher von Kern und geladenen Modulen zusammen
+(`ns.OwnAddons`). `Media/` und `LICENSES/` bleiben im Kern (die Pfade `Interface\AddOns\Amisia\Media\...` gelten
+weiter). Die Datenbauer schreiben nach `Amisia_Gear/Data/`. `tools/release_addon.sh` legt die drei Ordner unter
+`~/addons/_release/Amisia/<Ordner>/` ab, `build.py release` packt sie in eine Zip mit drei Ordnern (Website und
+CurseForge). Am PC zeigen die Verknüpfungen bis zum Skript aus Schritt 3 noch auf den ganzen Release-Ordner und
+müssen dann neu angelegt werden. Die Tests laden jeden Ordner mit eigenem `ns` und feuern `ADDON_LOADED` je Addon wie
+der Client; "--[[without raid]]" lässt den ganzen Ordner weg, und der `C_AddOns` des Stubs meldet das Modul als aus.
 
 **Durchgesetzt durch:** `tools/tests/test_module_deps.py` (Mitgliedschaft, keine ungeprüfte Verwendung, nichts
 Späteres beim Laden, Texte im richtigen Locale-File), `tests/test_without_raid.lua` und `tests/test_without_gear.lua`
 (jede Seite und jedes Fenster ohne das Modul, `tests/run.py` mit "--[[without raid]]"), `tests/test_registry.lua`
-(unbekannte Einstellungen bleiben).
+(unbekannte Einstellungen bleiben), `tests/test_module_load.lua` (geteilter Namensraum, Reihenfolge, Warten, PLAYER_LOGIN, spät geladenes Modul), `tools/tests/test_load_order.py::test_a_module_shares_the_core_namespace`, `build.py check` (jede TOC gegen ihren Ordner).

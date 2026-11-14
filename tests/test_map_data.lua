@@ -40,7 +40,7 @@ assert(givers > 100, "quest givers: " .. givers)
 
 -- the file again by hand: no guard, it loads into any namespace
 local function readFile(name)
-    local fh = assert(io.open(ADDON_DIR .. "/" .. name, "rb"))
+    local fh = assert(io.open(ADDON_FILE(name), "rb"))
     local src = fh:read("*a")
     fh:close()
     return src

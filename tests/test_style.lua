@@ -739,7 +739,7 @@ assert(GF.colHeads[1].mark.atlas == "Professions_Recipe_Active", "the own level 
 GL.column("gear overview", GF.viewButtons.overview, GF.colHeads[1], GF.statusText)
 -- the own copies of the widgets are gone
 do
-    local fh2 = assert(io.open(ADDON_DIR .. "/Gear/GearFrame.lua", "rb"))
+    local fh2 = assert(io.open(ADDON_FILE("Gear/GearFrame.lua"), "rb"))
     local gsrc = fh2:read("*a")
     fh2:close()
     for _, fn in ipairs({ "text", "flat", "border", "setBorderColor", "chip" }) do
@@ -829,17 +829,17 @@ toast.scripts.OnClick(toast, "RightButton")
 NS.Reset("ui.view")
 
 -- the new texts are Latin-1
-local MainFrameFile = ADDON_DIR .. "/UI/MainFrame.lua"
-for _, file in ipairs({ MainFrameFile, ADDON_DIR .. "/Gear/GearFrame.lua", ADDON_DIR .. "/Raid/RollFrame.lua", ADDON_DIR .. "/Raid/AwardDialog.lua",
-                        ADDON_DIR .. "/Raid/SoftRes.lua", ADDON_DIR .. "/Gear/Bis.lua", ADDON_DIR .. "/UI/Pages/Settings.lua",
-                        ADDON_DIR .. "/UI/Pages/Gear.lua", ADDON_DIR .. "/UI/Pages/Map.lua", ADDON_DIR .. "/UI/Pages/Bank.lua",
-                        ADDON_DIR .. "/UI/Pages/About.lua", ADDON_DIR .. "/UI/Pages/Export.lua", ADDON_DIR .. "/UI/Pages/Tools.lua" }) do
+local MainFrameFile = ADDON_FILE("UI/MainFrame.lua")
+for _, file in ipairs({ MainFrameFile, ADDON_FILE("Gear/GearFrame.lua"), ADDON_FILE("Raid/RollFrame.lua"), ADDON_FILE("Raid/AwardDialog.lua"),
+                        ADDON_FILE("Raid/SoftRes.lua"), ADDON_FILE("Gear/Bis.lua"), ADDON_FILE("UI/Pages/Settings.lua"),
+                        ADDON_FILE("UI/Pages/Gear.lua"), ADDON_FILE("UI/Pages/Map.lua"), ADDON_FILE("UI/Pages/Bank.lua"),
+                        ADDON_FILE("UI/Pages/About.lua"), ADDON_FILE("UI/Pages/Export.lua"), ADDON_FILE("UI/Pages/Tools.lua") }) do
     local fh2 = assert(io.open(file, "rb"))
     local s = fh2:read("*a")
     fh2:close()
     for lead in s:gmatch("[\192-\255]") do assert(lead:byte() <= 195, "beyond Latin-1 in " .. file) end
 end
-local rfh = assert(io.open(ADDON_DIR .. "/Core/Registry.lua", "rb"))
+local rfh = assert(io.open(ADDON_FILE("Core/Registry.lua"), "rb"))
 local rsrc = rfh:read("*a")
 rfh:close()
 for lead in rsrc:gmatch("[\192-\255]") do assert(lead:byte() <= 195, "beyond Latin-1 in Registry.lua") end
@@ -895,7 +895,7 @@ end
 ---------------------------------------------------------------------------
 -- new texts are Latin-1
 ---------------------------------------------------------------------------
-local fh = assert(io.open(ADDON_DIR .. "/UI/Widgets.lua", "rb"))
+local fh = assert(io.open(ADDON_FILE("UI/Widgets.lua"), "rb"))
 local src = fh:read("*a")
 fh:close()
 for lead in src:gmatch("[\192-\255]") do assert(lead:byte() <= 195, "beyond Latin-1 in Widgets.lua") end

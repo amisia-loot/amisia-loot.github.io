@@ -1,4 +1,4 @@
-"""Builds Amisia/Data/QuestData.lua (WoW Forever): every quest of the world for the addon's quest
+"""Builds Amisia_Gear/Data/QuestData.lua (WoW Forever): every quest of the world for the addon's quest
 tracker - zone, name, required level, faction, class and race limits, profession, the quest giver
 and where it stands, pre-quests, quests it excludes, gear rewards. Runs without a WoW install (on
 the N100).
@@ -33,7 +33,7 @@ import att_data  # noqa: E402  (the AllTheThings reader)
 import lua_data  # noqa: E402  (the lazy form of the data file)
 import build_gear  # noqa: E402  (Lua strings)
 
-OUT = os.path.join(ROOT, 'Amisia', 'Data', 'QuestData.lua')
+OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'QuestData.lua')
 ATT_CACHE = att_data.ATT_CACHE
 MAX_POINTS = 4
 GEAR_CLASSES = (2, 4)      # weapon, armour

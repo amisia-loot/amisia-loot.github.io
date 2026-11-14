@@ -5,7 +5,7 @@
 
 Writes two lazy data files of the addon:
 
-- `Amisia/Data/ScanLists.lua` (`ns.Data("SCAN_LISTS")`): what /amisia scan quests and /amisia scan
+- `Amisia_Gear/Data/ScanLists.lua` (`ns.Data("SCAN_LISTS")`): what /amisia scan quests and /amisia scan
   npcs ask for. Q: every quest id of the client table QuestV2 (as ranges "<step>.<length>", base 36,
   steps from the end of the previous range). NA: phase A of the NPC scan, every NPC id the shipped data
   names (the bosses of DungeonData.lua and BisData.lua, the quest givers of QuestData.lua, the rares,
@@ -13,7 +13,7 @@ Writes two lazy data files of the addon:
   steps from the previous id). NB: phase B, the id ranges where Forever's new NPCs live: the ids of
   that data from FOREVER_MIN up, in clusters no more than GAP apart, each padded by PAD ({from, to}).
   The data files are read as the addon reads them, so this build runs after the others.
-- `Amisia/Data/ScanNames.lua` (`ns.Data("SCAN_NAMES")`): the names the scans found, per language other
+- `Amisia_Gear/Data/ScanNames.lua` (`ns.Data("SCAN_NAMES")`): the names the scans found, per language other
   than English (the data's names are English already): L = {deDE = {Q = {[quest id] = title},
   N = {[NPC id] = name}}}. From tools/scan_archive.json and the SavedVariables (id_scans of
   build_scan_archive.py). The addon shows them where the data has only the English name (quest titles
@@ -32,7 +32,7 @@ sys.path.insert(0, HERE)
 import build_scan_archive  # noqa: E402  (the scan archive, b36)
 import lua_data  # noqa: E402  (the lazy form, reading data files)
 
-DATA = os.path.join(ROOT, 'Amisia', 'Data')
+DATA = os.path.join(ROOT, 'Amisia_Gear', 'Data')
 LISTS = os.path.join(DATA, 'ScanLists.lua')
 NAMES = os.path.join(DATA, 'ScanNames.lua')
 FOREVER_MIN = 200000    # NPC ids from here on are new in Forever (Classic's highest are far below)

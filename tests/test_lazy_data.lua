@@ -10,7 +10,7 @@ local function built(k) return NS.DataBuilt()[k] ~= nil end
 
 -- every file hands its table over as text
 for k, file in pairs(KEYS) do
-    local fh = assert(io.open(ADDON_DIR .. "/Data/" .. file .. ".lua", "rb"))
+    local fh = assert(io.open(ADDON_FILE("Data/" .. file .. ".lua"), "rb"))
     local src = fh:read("*a")
     fh:close()
     assert(src:find('ns.LazyData("' .. k .. '", [', 1, true), file .. " is in the lazy form")

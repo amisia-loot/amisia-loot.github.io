@@ -49,6 +49,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du auf TBC Anniversary einloggst, dann lädt der Raid-Teil wie bisher, "Ausrüstung & Dungeons" fehlt ohne Fehler, und ein Text ohne Block der Website auf der Seite Punkte unter "Einfügen" meldet "Kein Block der Website erkannt." statt eines Lua-Fehlers.
 - Notiz: Spec `docs/specs/2026-11-14-module.md`; erst nach F-199. Am PC einmal neue Verknüpfungen (Skript kommt mit).
 - Notiz: Schritt 1 von 3 (D-130): noch ein Ordner; die Aufnahme liegt in `Raid/Record.lua`, Kern und Module rufen sich nur geprüft auf (`tools/modules.py`, `tools/tests/test_module_deps.py`, `tests/test_without_raid.lua`, `tests/test_without_gear.lua`).
+- Notiz: Schritt 2 von 3 (D-130): drei Ordner und Addons `Amisia/`, `Amisia_Raid/`, `Amisia_Gear/` mit eigenen TOCs, ein Namensraum über `Module.lua`, die Inhalte laufen erst, wenn alle Module geladen sind (D-128); Release-Ordner mit drei Unterordnern. Noch nicht released; offen für Schritt 3: Einstellungen "Module", `/amisia module`, Feld `m` im Versionsruf, Hinweis bei halbem Update, `tools/install_junctions.ps1`.
 
 ### F-199 Sprache wählen: Deutsch oder Englisch, Standard die Clientsprache
 - Version: -

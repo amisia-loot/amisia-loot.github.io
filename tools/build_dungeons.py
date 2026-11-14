@@ -1,4 +1,4 @@
-"""Builds Amisia/Data/DungeonData.lua from tools/forever_dungeons.json: the dungeons and raids of
+"""Builds Amisia_Gear/Data/DungeonData.lua from tools/forever_dungeons.json: the dungeons and raids of
 WoW Forever for the addon's dungeon planner (Dungeons.lua).
 
 The JSON file is kept by hand and holds facts only (names, level ranges, sizes, bosses known so
@@ -43,7 +43,7 @@ ROOT = os.path.dirname(HERE)
 FACTS = os.path.join(HERE, 'forever_dungeons.json')
 CLIENT = os.path.join(HERE, 'forever_dungeons_client.json')
 KEYS = os.path.join(HERE, 'forever_dungeon_keys.json')
-OUT = os.path.join(ROOT, 'Amisia', 'Data', 'DungeonData.lua')
+OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'DungeonData.lua')
 WAGO_DIRS = (os.path.expanduser('~/addons/_wago'), os.path.join(att_data.ATT_CACHE, '.config', '.wago'))
 # where a client table in another language lies (build.py tables --locale deDE writes the first)
 DE_DIRS = (os.path.expanduser('~/addons/_cache/wago'), os.path.expanduser('~/addons/_wago'))

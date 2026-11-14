@@ -12,7 +12,7 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
 ROOT = os.path.dirname(TOOLS)
-ADDON = os.path.join(ROOT, 'Amisia')
+ADDON = os.path.join(ROOT, 'Amisia_Gear')   # the gear module holds the data (F-202)
 sys.path.insert(0, TOOLS)
 import att_data  # noqa: E402
 import build_dungeons  # noqa: E402

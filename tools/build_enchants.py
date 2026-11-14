@@ -18,7 +18,7 @@ docs/specs/2026-10-31-verzauberungen.md), from the client's own tables only (D-0
 
 Reads <Table>.csv or <Table>.<build>.csv from the folders given with --wago (default: the newest copy of each
 table, tools/client_tables.py).
-Writes Amisia/Data/EnchantData.lua (ns.ENCHANT, lazy).
+Writes Amisia_Gear/Data/EnchantData.lua (ns.ENCHANT, lazy).
 """
 import argparse
 import csv
@@ -34,7 +34,7 @@ import att_data  # noqa: E402
 import build_bis  # noqa: E402
 import lua_data  # noqa: E402
 
-OUT = os.path.join(ROOT, 'Amisia', 'Data', 'EnchantData.lua')
+OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'EnchantData.lua')
 WAGO = os.path.expanduser('~/addons/_wago')
 
 REQUIRED = ['SpellEffect', 'SpellItemEnchantment', 'SpellEquippedItems', 'SkillLineAbility', 'ItemEffect',

@@ -325,6 +325,6 @@ assert(count(FRAK, "Frage den Raid nach Amisia-Versionen.") == 1)
 BUS.tick(12)
 
 for _, file in ipairs({ "Raid/Sync.lua", "Core/Comm.lua", "Raid/Awards.lua", "UI/Pages/Awards.lua" }) do
-    local src = assert(io.open(ADDON_DIR .. "/" .. file, "rb")):read("*a")
+    local src = assert(io.open(ADDON_FILE(file), "rb")):read("*a")
     for ch in src:gmatch("[\196-\255][\128-\191]") do error(file .. ": character above Latin-1: " .. ch) end
 end

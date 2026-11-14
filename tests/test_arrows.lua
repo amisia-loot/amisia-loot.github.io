@@ -113,13 +113,15 @@ F:Hide()
 -- no text glyph is left as an arrow in the addon's source
 ---------------------------------------------------------------------------
 local files = {}
-for line in io.lines(ADDON_DIR .. "/Amisia.toc") do
-    line = line:gsub("%s*%[[^%]]*%]", ""):gsub("\\", "/"):match("^%s*(.-)%s*$")
-    if line ~= "" and not line:find("^#") and line:find("%.lua$") then files[#files + 1] = line end
+for _, toc in ipairs(ADDON_TOCS) do
+    for line in io.lines(toc) do
+        line = line:gsub("%s*%[[^%]]*%]", ""):gsub("\\", "/"):match("^%s*(.-)%s*$")
+        if line ~= "" and not line:find("^#") and line:find("%.lua$") then files[#files + 1] = line end
+    end
 end
-assert(#files > 20, "the TOC lists the files")
+assert(#files > 150, "the TOCs list the files")
 for _, name in ipairs(files) do
-    local fh = assert(io.open(ADDON_DIR .. "/" .. name, "rb"))
+    local fh = assert(io.open(ADDON_FILE(name), "rb"))
     local src = fh:read("*a")
     fh:close()
     local n = 0

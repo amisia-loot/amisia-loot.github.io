@@ -328,6 +328,6 @@ assert(AmisiaDB.benchNext.list.Gastzwei.self, "into benchNext")
 -- texts stay within Latin-1
 ---------------------------------------------------------------------------
 for _, file in ipairs({ "Raid/Bench.lua", "Core/Chat.lua", "Raid/SoftRes.lua" }) do
-    local src = assert(io.open(ADDON_DIR .. "/" .. file, "rb")):read("*a")
+    local src = assert(io.open(ADDON_FILE(file), "rb")):read("*a")
     for c in src:gmatch("[\196-\255][\128-\191]") do error(file .. ": character above Latin-1: " .. c) end
 end

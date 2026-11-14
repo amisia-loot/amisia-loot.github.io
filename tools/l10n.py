@@ -21,6 +21,8 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ADDON = os.path.join(ROOT, 'Amisia')
+# the core and its modules (F-202, D-130): each folder has its own Locales/enUS_<area>.lua
+ADDONS = tuple(os.path.join(ROOT, d) for d in ('Amisia', 'Amisia_Raid', 'Amisia_Gear'))
 LOCALES = os.path.join(ADDON, 'Locales')
 ENUS = os.path.join(LOCALES, 'enUS.lua')
 SKIP_DIRS = ('Data', 'Locales')
@@ -138,13 +140,14 @@ def is_german(text):
 
 def addon_files():
     out = []
-    for dirpath, dirs, files in os.walk(ADDON):
-        rel = os.path.relpath(dirpath, ADDON)
-        if rel.split(os.sep)[0] in SKIP_DIRS:
-            continue
-        for f in files:
-            if f.endswith('.lua'):
-                out.append(os.path.join(dirpath, f))
+    for base in ADDONS:
+        for dirpath, dirs, files in os.walk(base):
+            rel = os.path.relpath(dirpath, base)
+            if rel.split(os.sep)[0] in SKIP_DIRS:
+                continue
+            for f in files:
+                if f.endswith('.lua'):
+                    out.append(os.path.join(dirpath, f))
     return sorted(out)
 
 
@@ -181,9 +184,12 @@ def used_keys(files=None):
 
 
 def enus_files():
-    if not os.path.isdir(LOCALES):
-        return []
-    return sorted(os.path.join(LOCALES, f) for f in os.listdir(LOCALES) if re.match(r'enUS.*\.lua$', f))
+    out = []
+    for base in ADDONS:
+        loc = os.path.join(base, 'Locales')
+        if os.path.isdir(loc):
+            out += [os.path.join(loc, f) for f in os.listdir(loc) if re.match(r'enUS.*\.lua$', f)]
+    return sorted(out, key=os.path.basename)
 
 
 def enus_entries(paths=None, dups=None):
@@ -216,7 +222,7 @@ def file_entries(path):
 def data_keys():
     """German texts of the generated files the code shows through L[variable] (they count as used)."""
     keys = set()
-    gw = os.path.join(ADDON, 'Data', 'GearWeights.lua')
+    gw = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'GearWeights.lua')
     if os.path.exists(gw):
         src = read(gw)
         for m in re.finditer(r'\b(name|why)\s*=\s*"((?:[^"\\]|\\.)*)"', src):

@@ -1,0 +1,80 @@
+## Interface: 16001, 20506, 11509
+## Title: Amisia: Raid
+## Title-deDE: Amisia: Raid
+## Notes: Amisia's raid module: records raid members, loot and awards per raid, runs rolls, soft reserves, points, the lineup and the raid calendar, and exports everything for the Amisia loot site. Needs Amisia.
+## Notes-deDE: Raid-Modul von Amisia: zeichnet pro Raid Raidmitglieder, Loot und Vergaben auf, verwaltet Rolls, Soft-Reserves, Punkte, Aufstellung und Raidkalender und exportiert alles für die Amisia-Loot-Seite. Braucht Amisia.
+## Author: mrvulo
+## Version: 2.84.0
+## Category: VuloUI
+## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia
+## Dependencies: Amisia
+
+Raid\Module.lua
+Locales\enUS_raid.lua
+Locales\enUS_raid2.lua
+Locales\enUS_raidcheck.lua
+Raid\Record.lua
+Raid\Mats.lua
+Raid\Awards.lua
+Raid\Rolls.lua
+Raid\RollFrame.lua
+Raid\AwardDialog.lua
+Raid\SoftRes.lua
+Raid\SoftResShare.lua
+Raid\RaidNote.lua
+Raid\LootAnnounce.lua
+Raid\RaidLog.lua
+Raid\Bench.lua
+Raid\GroupRolls.lua
+Raid\Sync.lua
+Raid\LootPrio.lua
+Raid\Points.lua
+Raid\PointsRounds.lua
+Raid\PointsSync.lua
+Raid\RaidText.lua
+Raid\Stats.lua
+Raid\AwardHistory.lua
+Raid\BankNeeds.lua
+Raid\BankLog.lua
+Raid\Need.lua
+Raid\LootRules.lua
+Raid\RollWindow.lua
+Raid\RaidNoteWindow.lua
+Raid\RollWatch.lua
+Raid\Handover.lua [AllowLoadGameType camelot]
+Raid\Calendar.lua
+Raid\CalendarWrite.lua
+Raid\Lineup.lua
+Raid\LineupInvite.lua
+Raid\LineupSort.lua
+Raid\LineupRoles.lua
+Raid\GroupAccept.lua
+Raid\OnlineInvite.lua
+Raid\PullTimer.lua
+Raid\Signup.lua
+Raid\RaidCalendar.lua
+Raid\RaidCheckRead.lua
+Raid\RaidCheck.lua
+Raid\RaidIDs.lua
+UI\Pages\Raids.lua
+UI\Pages\Lineup.lua
+UI\Pages\RaidCheck.lua
+UI\Pages\RaidLogRolls.lua
+UI\Pages\RaidLog.lua
+UI\Pages\Rolls.lua
+UI\Pages\RaidNote.lua
+UI\Pages\Awards.lua
+UI\Pages\Stats.lua
+UI\Pages\Points.lua
+UI\Pages\SoftRes.lua
+UI\SoftResImport.lua
+UI\Pages\Export.lua [AllowLoadGameType camelot]
+UI\Pages\Bank.lua
+UI\Pages\Members.lua
+UI\Setup.lua
+UI\Signup.lua
+UI\RaidCalendar.lua
+UI\Pages\Calendar.lua
+Core\SelfTestCalendar.lua
+Core\SelfTestCalendarWrite.lua
+Core\SelfTestGroup.lua

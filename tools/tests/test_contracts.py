@@ -10,10 +10,14 @@ test DECISIONS.md names exists.
 import json
 import os
 import re
+import sys
 
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(ROOT, 'tools'))
+import modules  # noqa: E402 - the addon folders of the core and its modules (F-202, D-130)
+
 ADDON = os.path.join(ROOT, 'Amisia')
 TOOLS = os.path.join(ROOT, 'tools')
 ARCH = os.path.join(ROOT, 'docs', 'ARCHITECTURE.md')
@@ -27,15 +31,18 @@ def read(path):
 
 
 def addon_files(exts=('.lua',), skip=()):
-    """(path relative to the addon folder with "/", text) of every addon file with one of exts."""
+    """(path relative to its addon folder with "/", text) of every addon file with one of exts, in the
+    core's folder and the modules' (a path stands in one folder only)."""
     out = []
-    for d, dirs, files in os.walk(ADDON):
-        dirs[:] = sorted(x for x in dirs if not x.startswith('.'))
-        for f in sorted(files):
-            if f.endswith(exts):
-                rel = os.path.relpath(os.path.join(d, f), ADDON).replace(os.sep, '/')
-                if not any(rel.startswith(s) for s in skip):
-                    out.append((rel, read(os.path.join(d, f))))
+    for module in modules.MODULES:
+        base = modules.folder(module)
+        for d, dirs, files in os.walk(base):
+            dirs[:] = sorted(x for x in dirs if not x.startswith('.'))
+            for f in sorted(files):
+                if f.endswith(exts):
+                    rel = os.path.relpath(os.path.join(d, f), base).replace(os.sep, '/')
+                    if not any(rel.startswith(s) for s in skip):
+                        out.append((rel, read(os.path.join(d, f))))
     return out
 
 
@@ -86,7 +93,7 @@ def arch():
 
 @pytest.fixture(scope='module')
 def comm():
-    return read(os.path.join(ADDON, 'Core', 'Comm.lua'))
+    return read(modules.path_of('Core/Comm.lua'))
 
 
 def lua_table(src, name):
@@ -228,7 +235,7 @@ def test_paste_in_blocks(arch):
     assert on_site == doc - addon_only, f'blocks the site writes {sorted(on_site)} against ARCHITECTURE.md {sorted(doc - addon_only)}'
     assert not on_site & addon_only, f'blocks marked "read by the addon only" that the site writes: {sorted(on_site & addon_only)}'
     assert in_addon == doc, f'blocks the addon reads {sorted(in_addon)} against ARCHITECTURE.md {sorted(doc)}'
-    pts = read(os.path.join(ADDON, 'Raid', 'Points.lua'))
+    pts = read(modules.path_of('Raid/Points.lua'))
     parser = re.search(r'^function ns\.ParsePointsSite\(.*?^end', pts, re.M | re.S)
     assert parser, 'Points.lua has ns.ParsePointsSite'
     kinds = set(re.findall(r'kind == "([A-Z]+)"', parser.group(0)))
@@ -273,12 +280,8 @@ def test_every_settings_section_is_listed(arch):
 
 
 def toc_files():
-    out = []
-    for line in read(os.path.join(ADDON, 'Amisia.toc')).splitlines():
-        line = line.strip()
-        if line and not line.startswith('#'):
-            out.append(re.sub(r'\s*\[[^\]]*\]', '', line).replace('\\', '/'))
-    return out
+    """The files of the core's and the modules' TOCs (paths relative to their folder)."""
+    return [name for name, _, _ in modules.toc_entries()]
 
 
 def test_the_module_map_has_every_toc_file(arch):
@@ -299,33 +302,45 @@ FOREVER_FILES = {'Core/Duels.lua', 'Core/SelfTestLayer.lua', 'Raid/Handover.lua'
 
 
 def test_the_classic_clients_have_their_own_toc_without_the_forever_parts():
-    # TBC Anniversary loaded the camelot-tagged files anyway; Amisia_TBC.toc and Amisia_Vanilla.toc,
-    # which those clients prefer, are Amisia.toc without them (D-57, build.py tocs)
-    base = read(os.path.join(ADDON, 'Amisia.toc')).splitlines()
-    for name, interface in (('Amisia_TBC.toc', '20506'), ('Amisia_Vanilla.toc', '11509')):
-        lines = read(os.path.join(ADDON, name)).splitlines()
-        assert f'## Interface: {interface}' in lines, f'{name} targets {interface}'
-        assert not any('AllowLoadGameType' in ln for ln in lines), f'{name} lists a Forever part'
-        want = [ln for ln in base if 'AllowLoadGameType camelot' not in ln and not ln.startswith('## Interface:')]
-        have = [ln for ln in lines if not ln.startswith('## Interface:') and not re.match(r'#(?!#)', ln)]
-        assert have == want, f'{name} is not Amisia.toc without the Forever parts (python3 tools/build.py tocs)'
+    # TBC Anniversary loaded the camelot-tagged files anyway; <folder>_TBC.toc and <folder>_Vanilla.toc,
+    # which those clients prefer, are the folder's TOC without them (D-57, build.py tocs); the gear
+    # module's list no file at all (Forever only, D-130)
+    for module in modules.MODULES:
+        base = read(os.path.join(modules.folder(module), modules.toc_name(module))).splitlines()
+        for flavor, interface in (('_TBC', '20506'), ('_Vanilla', '11509')):
+            name = modules.toc_name(module, flavor)
+            lines = read(os.path.join(modules.folder(module), name)).splitlines()
+            assert f'## Interface: {interface}' in lines, f'{name} targets {interface}'
+            assert not any('AllowLoadGameType' in ln for ln in lines), f'{name} lists a Forever part'
+            want = [ln for ln in base if 'AllowLoadGameType camelot' not in ln and not ln.startswith('## Interface:')]
+            if module == 'gear':
+                want = [ln for ln in want if ln.startswith('##') or not ln.strip()]
+            have = [ln for ln in lines if not ln.startswith('## Interface:') and not re.match(r'#(?!#)', ln)]
+            assert have == want, f'{name} is not {modules.toc_name(module)} without the Forever parts (python3 tools/build.py tocs)'
 
 
 def test_the_toc_loads_the_forever_parts_on_forever_only():
-    toc = read(os.path.join(ADDON, 'Amisia.toc'))
-    assert re.search(r'^## Interface: 16001, 20506, 11509\s*$', toc, re.M), \
-        'the TOC targets WoW Forever, TBC Anniversary and Classic Era (16001, 20506, 11509) and nothing else'
-    assert '## AllowLoadGameType' not in toc, 'no TOC-wide load condition'
-    for line in toc.splitlines():
-        if not line.strip() or line.startswith('#'):
-            continue
-        name = re.sub(r'\s*\[[^\]]*\]', '', line).replace('\\', '/').strip()
-        forever = name.startswith(FOREVER_DIRS) or name in FOREVER_FILES
-        conds = re.findall(r'\[([^\]]*)\]', line)
-        if forever:
-            assert conds == ['AllowLoadGameType camelot'], f'a Forever part loads on Forever only: {line}'
-        else:
-            assert not conds, f'the raid part loads on all three clients: {line}'
+    # the core and the raid module target all three clients, the gear module (the Forever part, D-130)
+    # WoW Forever only; the raid module marks its two Forever-only features per file
+    for module in modules.MODULES:
+        toc = read(os.path.join(modules.folder(module), modules.toc_name(module)))
+        targets = '16001' if module == 'gear' else '16001, 20506, 11509'
+        assert re.search(r'^## Interface: ' + targets + r'\s*$', toc, re.M), f'{module}: ## Interface: {targets}'
+        assert '## AllowLoadGameType' not in toc, 'no TOC-wide load condition'
+        assert module == 'core' or re.search(r'^## Dependencies: Amisia\s*$', toc, re.M), f'{module} needs the core'
+        for line in toc.splitlines():
+            if not line.strip() or line.startswith('#'):
+                continue
+            name = re.sub(r'\s*\[[^\]]*\]', '', line).replace('\\', '/').strip()
+            forever = name.startswith(FOREVER_DIRS) or name in FOREVER_FILES
+            conds = re.findall(r'\[([^\]]*)\]', line)
+            if module == 'gear':
+                assert not conds, f'the gear module is Forever\'s by its TOC, no mark per file: {line}'
+                assert forever or name.startswith('Locales/') or name == 'Gear/Module.lua', f'not a Forever part: {line}'
+            elif forever:
+                assert conds == ['AllowLoadGameType camelot'], f'a Forever part loads on Forever only: {line}'
+            else:
+                assert not conds, f'the raid part loads on all three clients: {line}'
 
 
 def test_no_tbc_client_left_in_the_addon():
@@ -421,7 +436,7 @@ def test_every_generated_file_names_its_generator_and_sources():
             assert rel in licence, f'{rel} uses AllTheThings data but LICENSES/AllTheThings-MIT.txt does not list it'
         assert not re.search(r'OneForAll|AtlasLoot|GPL', head), f'{rel}: data under a copyleft licence (D-04)'
     for rel in re.findall(r'Data/\w+\.lua', licence):
-        assert os.path.exists(os.path.join(ADDON, rel)), f'LICENSES names {rel}, which does not exist'
+        assert os.path.exists(modules.path_of(rel)), f'LICENSES names {rel}, which does not exist'
     assert sorted(os.listdir(os.path.join(ADDON, 'LICENSES'))) == ['AllTheThings-MIT.txt'], \
         'a new licence file: decide it with the user first (D-04)'
 
@@ -457,8 +472,8 @@ def test_no_characters_the_game_font_lacks():
 
 
 def test_the_forever_look():
-    widgets = read(os.path.join(ADDON, 'UI', 'Widgets.lua'))
-    theme = read(os.path.join(ADDON, 'UI', 'Theme.lua'))
+    widgets = read(modules.path_of('UI/Widgets.lua'))
+    theme = read(modules.path_of('UI/Theme.lua'))
     assert '"SharedButtonSmallTemplate"' in widgets, 'buttons and chips are the red profession-window button'
     assert '"PortraitFrameTemplate"' in widgets, 'windows are the client\'s portrait frame'
     atlases = re.search(r'T\.ATLASES = \{(.*?)\n\}', theme, re.S)
@@ -555,7 +570,7 @@ def test_the_named_exception_stays_narrow():
 def test_the_version_stands_only_in_the_toc():
     for rel, text in code_files():
         assert not re.search(r'ns\.VERSION\s*=\s*"', text), f'{rel} sets a version literal (the TOC holds it)'
-    core = read(os.path.join(ADDON, 'Core', 'Core.lua'))
+    core = read(modules.path_of('Core/Core.lua'))
     assert re.search(r'ns\.VERSION = GetAddOnMetadata and GetAddOnMetadata\(ADDON, "Version"\)', core)
 
 
@@ -579,7 +594,7 @@ def test_every_decision_says_how_it_is_kept():
 
 def test_every_test_the_decisions_name_exists():
     text = read(DECISIONS)
-    named = re.findall(r'`((?:tools|tests|Amisia|Amisia-Website)/[\w./-]+?)(?:::(\w+))?`', text)
+    named = re.findall(r'`((?:tools|tests|Amisia|Amisia_Raid|Amisia_Gear|Amisia-Website)/[\w./-]+?)(?:::(\w+))?`', text)
     assert named
     for path, func in named:
         full = os.path.join(ROOT, path)

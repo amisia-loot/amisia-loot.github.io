@@ -7,7 +7,9 @@
 - Features and their status: `docs/FEATURES.md`; larger features get a spec in `docs/specs` first (README
   there). After a release relay the test list; record results with `build.py tested F-xxx`; game errors:
   `build.py errors`.
-- Folders: `Amisia/` the WoW Forever addon only (what the release copies, TOC at its root);
+- Folders: the WoW Forever addon in three addons (F-202, D-130), each with its TOC at its root and copied by
+  the release: `Amisia/` the core, `Amisia_Raid/` the raid module, `Amisia_Gear/` the gear module
+  ("Ausrüstung & Dungeons", Forever only, with all generated `Data/*`); a file's folder says its part;
   `Amisia-Website/` the site (`index.html`, `data/*.js`, `Amisia.zip`, `supabase/` not deployed; GitHub
   Pages via `.github/workflows/pages.yml`, the only live copy; the claude.ai twin is unmaintained);
   `tests/` the addon's Lua tests; `tools/` builders and tool tests; `docs/` the documents.
@@ -18,7 +20,7 @@
   Tests one by one: `~/.venvs/amisia/bin/python -m pytest tools/tests -q`,
   `~/.venvs/amisia/bin/python tests/run.py [name]`,
   `NODE_PATH=~/addons/VuloForeverUI/tools/node_modules node tests/syntax.cjs` (Node in `~/.local/node/bin`).
-- New user-visible text: German inside `L["…"]`, English in `Amisia/Locales/enUS_<area>.lua`;
+- New user-visible text: German inside `L["…"]`, English in `Locales/enUS_<area>.lua` of its part's folder;
   `python3 tools/l10n.py check` stays clean.
 - Every addon file but `Locales/Locale.lua` and the generated `Data/*` puts its body in `ns.Load(function()`
   ... `end)` right after `local ADDON, ns = ...`: the bodies run on ADDON_LOADED, once the chosen language
@@ -30,7 +32,7 @@
   SavedVariables into it and writes `Data/ScanDone.lua`, after which the addon trims its file (D-34).
   Commit and push the archive: it is the only copy of what the addon trimmed.
 - Bump `BUILD_ID` in `Amisia-Website/index.html` whenever an `Amisia-Website/data/*.js` file changes.
-- Saving in `Amisia/` does not reach the game: only `tools/build.py release` (via
+- Saving in the addon folders does not reach the game: only `tools/build.py release` (via
   `tools/release_addon.sh`) copies a committed version to the Syncthing release folder; then `/reload`.
   Machines and folders: ARCHITECTURE.md, "Machines".
 - New client build: the PC exports the tables by itself and the N100 builds and checks them on branch

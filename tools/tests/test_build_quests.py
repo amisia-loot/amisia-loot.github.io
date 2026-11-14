@@ -11,7 +11,7 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
 ROOT = os.path.dirname(TOOLS)
-ADDON = os.path.join(ROOT, 'Amisia')
+ADDON = os.path.join(ROOT, 'Amisia_Gear')   # the gear module holds the data (F-202)
 FIXTURE = os.path.join(HERE, 'fixtures', 'att')
 sys.path.insert(0, TOOLS)
 import build_quests as bq  # noqa: E402
@@ -125,16 +125,16 @@ def test_the_shipped_file():
     assert os.path.getsize(path) < 600 * 1024, 'kept small: one string per quest'
     qd = lua_load(text)
     assert qd.count >= 0
-    with open(os.path.join(ADDON, 'Amisia.toc'), encoding='utf-8') as fh:
+    with open(os.path.join(ADDON, 'Amisia_Gear.toc'), encoding='utf-8') as fh:
         toc = fh.read()
-    assert re.search(r'^Data\\QuestData\.lua \[AllowLoadGameType camelot\]$', toc, re.M)
+    assert re.search(r'^Data\\QuestData\.lua$', toc, re.M)
     assert toc.index('Data\\QuestData.lua') < toc.index('Gear\\Quests.lua') < toc.index('UI\\Pages\\Quests.lua')
-    with open(os.path.join(ADDON, 'LICENSES', 'AllTheThings-MIT.txt'), encoding='utf-8') as fh:
+    with open(os.path.join(ROOT, 'Amisia', 'LICENSES', 'AllTheThings-MIT.txt'), encoding='utf-8') as fh:
         assert 'QuestData.lua' in fh.read()
 
 
 def test_the_licence_names_every_file_from_allthethings():
-    with open(os.path.join(ADDON, 'LICENSES', 'AllTheThings-MIT.txt'), encoding='utf-8') as fh:
+    with open(os.path.join(ROOT, 'Amisia', 'LICENSES', 'AllTheThings-MIT.txt'), encoding='utf-8') as fh:
         head = fh.read().split('used under this licence')[0]
     users = []
     for base, _, files in os.walk(ADDON):

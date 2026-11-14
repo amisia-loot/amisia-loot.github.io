@@ -42,16 +42,21 @@ local function round(x, d)
     return math.floor((tonumber(x) or 0) * m + 0.5) / m
 end
 
--- Amisia's memory in KB (the client's own count, refreshed: only at start and stop), or nil.
+-- Amisia's memory in KB, the core and its modules (the client's own count, refreshed: only at start and stop), or nil.
 local function addonKB()
     local update = _G.UpdateAddOnMemoryUsage or (C_AddOns and C_AddOns.UpdateAddOnMemoryUsage)
     local get = _G.GetAddOnMemoryUsage or (C_AddOns and C_AddOns.GetAddOnMemoryUsage)
     if type(update) ~= "function" or type(get) ~= "function" then return nil end
     local ok = pcall(update)
     if not ok then return nil end
-    local ok2, kb = pcall(get, ADDON)
-    kb = ok2 and tonumber(ns.Plain and ns.Plain(kb) or kb) or nil
-    return kb and round(kb, 0) or nil
+    -- the core and its loaded modules (F-202)
+    local sum
+    for _, name in ipairs(ns.OwnAddons()) do
+        local ok2, kb = pcall(get, name)
+        kb = ok2 and tonumber(ns.Plain and ns.Plain(kb) or kb) or nil
+        if kb then sum = (sum or 0) + kb end
+    end
+    return sum and round(sum, 0) or nil
 end
 
 local function build()

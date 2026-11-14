@@ -12,7 +12,7 @@
     python3 tools/build.py errors [--sv FILE] [--all]
     python3 tools/build.py perf [--sv FILE] [--rows N]
 
-data     rebuilds every generated file in Amisia/Data in dependency order (dungeons, gear, map,
+data     rebuilds every generated file in Amisia_Gear/Data in dependency order (dungeons, gear, map,
          dungeon quests, quests, professions, talents, mage scrolls, raid check, enchants, dungeon art, BiS), stops at the first error
          and shows what changed. Without --wago it first chooses per client table the newest, fullest
          copy of the user's export (~/addons/_wago), the wago.tools exports (~/addons/_cache/wago) and
@@ -31,8 +31,9 @@ check    the syntax check, the addon tests (German, then English), the translati
          (tools/ui_layout.py), the tool tests (they include the "generated file is current" checks),
          a UTF-8 check of the addon files, the TOC against the folder, luacheck. Exit code 1 when
          anything fails. Ends with a note (never a failure) when the game caught errors of Amisia.
-tocs     writes Amisia_TBC.toc and Amisia_Vanilla.toc: Amisia.toc without the Forever parts (D-57);
-         check fails while they differ, release writes them with the new version.
+tocs     writes the core's ## Version into the modules' TOCs (Amisia_Raid.toc, Amisia_Gear.toc) and each
+         folder's <folder>_TBC.toc and <folder>_Vanilla.toc: its TOC without the Forever parts (D-57,
+         D-130); check fails while they differ, release writes them with the new version.
 snapshots  draws every page (raider, officer and expert view) and side window from the test stub
          (--locale deDE or enUS) into PNGs with an index.html contact sheet (default /tmp/amisia-snapshots); --compare names
          the shots whose layout boxes differ from an earlier run's folder.
@@ -122,74 +123,105 @@ def has_lupa():
 
 
 # ---------------------------------------------------------------- TOC
-def toc_path(root):
-    return os.path.join(root, ADDON_REL, 'Amisia.toc')
+# The core and its modules (F-202, D-130): one addon folder each, its TOC <folder>.toc at its root. The
+# core's TOC holds the version (D-16); the modules' TOCs carry the same (set_toc_version, check_toc).
+ADDON_FOLDERS = ('Amisia', 'Amisia_Raid', 'Amisia_Gear')
 
 
-def toc_version(root=ROOT):
-    with open(toc_path(root), encoding='utf-8') as fh:
+def addon_folders(root=ROOT):
+    """The addon folders that exist under root (core first), each with its TOC."""
+    return [f for f in ADDON_FOLDERS if os.path.isfile(os.path.join(root, f, f + '.toc'))]
+
+
+def toc_path(root, folder=ADDON_REL):
+    return os.path.join(root, folder, folder + '.toc')
+
+
+def toc_version(root=ROOT, folder=ADDON_REL):
+    with open(toc_path(root, folder), encoding='utf-8') as fh:
         m = VERSION_LINE.search(fh.read())
     return m.group(2) if m else None
 
 
 def set_toc_version(root, version):
-    path = toc_path(root)
-    with open(path, encoding='utf-8', newline='') as fh:
-        text = fh.read()
-    new, n = VERSION_LINE.subn(lambda m: m.group(1) + version, text, count=1)
-    if n != 1:
-        raise SystemExit('no "## Version:" line in ' + path)
-    with open(path, 'w', encoding='utf-8', newline='') as fh:
-        fh.write(new)
+    """## Version in the core's TOC and in every module's."""
+    for folder in addon_folders(root):
+        path = toc_path(root, folder)
+        with open(path, encoding='utf-8', newline='') as fh:
+            text = fh.read()
+        new, n = VERSION_LINE.subn(lambda m: m.group(1) + version, text, count=1)
+        if n != 1:
+            raise SystemExit('no "## Version:" line in ' + path)
+        with open(path, 'w', encoding='utf-8', newline='') as fh:
+            fh.write(new)
 
 
-# The classic clients load a TOC with their suffix instead of Amisia.toc. They do not honour
-# [AllowLoadGameType camelot] (TBC Anniversary loaded the gear part with it), so their TOCs are
-# Amisia.toc without the Forever parts (D-57), written by flavor_tocs and checked by check_toc.
-FLAVOR_TOCS = {'Amisia_TBC.toc': '20506', 'Amisia_Vanilla.toc': '11509'}
+# The classic clients load a TOC with their suffix instead of <folder>.toc. They do not honour
+# [AllowLoadGameType camelot] (TBC Anniversary loaded the gear part with it), so their TOCs are the
+# folder's TOC without the Forever parts (D-57): without the lines with the camelot mark, and without
+# any file when the folder's ## Interface does not name that client (Amisia_Gear, Forever only, D-130).
+# Written by flavor_tocs and checked by check_toc.
+FLAVORS = {'_TBC': '20506', '_Vanilla': '11509'}
+FLAVOR_TOCS = {'Amisia' + suffix + '.toc': interface for suffix, interface in FLAVORS.items()}
 FOREVER_TAG = '[AllowLoadGameType camelot]'
 
 
-def flavor_toc(text, interface):
-    """Amisia.toc's text for a classic client: its interface number, no Forever part."""
+def flavor_toc(text, interface, folder=ADDON_REL):
+    """A folder's TOC text for a classic client: its interface number, no Forever part."""
+    m = re.search(r'^## Interface:(.*)$', text, re.M)
+    targets = re.findall(r'\d+', m.group(1)) if m else []
+    none = interface not in targets
+    note = (f'# Written by tools/build.py from {folder}.toc (D-57, D-130): {folder} loads on WoW Forever only, '
+            f'this client gets no file. Edit {folder}.toc.\n') if none else \
+        f'# Written by tools/build.py from {folder}.toc (D-57): without the Forever-only files. Edit {folder}.toc.\n'
     out, noted = [], False
     for line in text.splitlines(keepends=True):
         if line.startswith('## Interface:'):
             line = f'## Interface: {interface}\n'
-        elif FOREVER_TAG in line:
-            continue
-        elif not noted and not line.startswith('##'):
+        elif line.startswith('##'):
+            pass
+        elif not noted:
             # after the "## Field:" lines
-            out.append('# Written by tools/build.py from Amisia.toc (D-57): the raid part only. Edit Amisia.toc.\n')
+            out.append(note)
             noted = True
+        if noted and line.strip() and not line.startswith('#') and (none or FOREVER_TAG in line):
+            continue
         out.append(line)
+    if not noted:
+        out.append(note)
     return ''.join(out)
+
+
+def flavor_toc_names(root=ROOT):
+    """The classic TOCs relative to root ("Amisia_Raid/Amisia_Raid_TBC.toc"), every folder's."""
+    return [f'{folder}/{folder}{suffix}.toc' for folder in addon_folders(root) for suffix in FLAVORS]
 
 
 def flavor_tocs(root=ROOT, write=False):
     """{path: (wanted text, current text or None)} of the classic TOCs; write=True writes them."""
-    with open(toc_path(root), encoding='utf-8', newline='') as fh:
-        base = fh.read()
     out = {}
-    for name, interface in FLAVOR_TOCS.items():
-        path = os.path.join(root, ADDON_REL, name)
-        want = flavor_toc(base, interface)
-        have = None
-        if os.path.exists(path):
-            with open(path, encoding='utf-8', newline='') as fh:
-                have = fh.read()
-        if write and have != want:
-            with open(path, 'w', encoding='utf-8', newline='') as fh:
-                fh.write(want)
-            have = want
-        out[path] = (want, have)
+    for folder in addon_folders(root):
+        with open(toc_path(root, folder), encoding='utf-8', newline='') as fh:
+            base = fh.read()
+        for suffix, interface in FLAVORS.items():
+            path = os.path.join(root, folder, folder + suffix + '.toc')
+            want = flavor_toc(base, interface, folder)
+            have = None
+            if os.path.exists(path):
+                with open(path, encoding='utf-8', newline='') as fh:
+                    have = fh.read()
+            if write and have != want:
+                with open(path, 'w', encoding='utf-8', newline='') as fh:
+                    fh.write(want)
+                have = want
+            out[path] = (want, have)
     return out
 
 
-def toc_files(root=ROOT):
-    """The files the TOC loads, as paths relative to the addon folder with "/"."""
+def toc_files(root=ROOT, folder=ADDON_REL):
+    """The files a folder's TOC loads, as paths relative to the folder with "/"."""
     out = []
-    with open(toc_path(root), encoding='utf-8') as fh:
+    with open(toc_path(root, folder), encoding='utf-8') as fh:
         for line in fh:
             line = line.strip()
             if line and not line.startswith('#'):
@@ -307,7 +339,7 @@ def cmd_data(args):
         done.append(f'{name} {time.time() - t0:.0f}s')
     say()
     say('built: ' + ', '.join(done) + (('; skipped: ' + ', '.join(skipped)) if skipped else ''))
-    stat = git(ROOT, 'diff', '--stat', '--', ADDON_REL + '/Data', 'tools', 'Amisia-Website/data', 'Amisia-Website/index.html').rstrip()
+    stat = git(ROOT, 'diff', '--stat', '--', 'Amisia_Gear/Data', 'tools', 'Amisia-Website/data', 'Amisia-Website/index.html').rstrip()
     say('changed:\n' + stat if stat else 'changed: nothing (every generated file is current)')
     return 0
 
@@ -351,8 +383,12 @@ def luacheck_cmd():
     return found
 
 
-def addon_files(root=ROOT):
-    base = os.path.join(root, ADDON_REL)
+def addon_files(root=ROOT, folder=None):
+    """The files of an addon folder relative to it; without folder those of every folder relative to
+    root ("Amisia_Raid/Raid/Awards.lua")."""
+    if folder is None:
+        return [f'{d}/{rel}' for d in addon_folders(root) for rel in addon_files(root, d)]
+    base = os.path.join(root, folder)
     out = []
     for d, dirs, files in os.walk(base):
         dirs[:] = sorted(x for x in dirs if not x.startswith('.'))
@@ -368,7 +404,7 @@ def check_utf8(root=ROOT):
     for rel in addon_files(root):
         if not rel.lower().endswith(TEXT_EXT):
             continue
-        with open(os.path.join(root, ADDON_REL, rel), 'rb') as fh:
+        with open(os.path.join(root, rel), 'rb') as fh:
             data = fh.read()
         if data.startswith(b'\xef\xbb\xbf'):
             bad.append(f'{rel}: byte order mark')
@@ -381,16 +417,29 @@ def check_utf8(root=ROOT):
 
 
 def check_toc(root=ROOT):
-    """The TOC lists only files that exist, and every .lua and .xml of the addon is in it."""
-    listed = toc_files(root)
-    have = [f for f in addon_files(root) if f.endswith(('.lua', '.xml'))]
-    bad = [f'{f}: in the TOC, but no such file' for f in listed if f not in have]
-    bad += [f'{f}: not in the TOC' for f in have if f not in listed]
-    dup = sorted({f for f in listed if listed.count(f) > 1})
-    bad += [f'{f}: twice in the TOC' for f in dup]
+    """Each folder's TOC lists only files that exist, every .lua and .xml of the folder is in it, a path
+    stands in one folder only, the classic TOCs are current and the modules carry the core's version."""
+    bad, seen = [], {}
+    version = toc_version(root)
+    for folder in addon_folders(root):
+        listed = toc_files(root, folder)
+        have = [f for f in addon_files(root, folder) if f.endswith(('.lua', '.xml'))]
+        pre = '' if folder == ADDON_REL else folder + '/'
+        bad += [f'{pre}{f}: in the TOC, but no such file' for f in listed if f not in have]
+        bad += [f'{pre}{f}: not in the TOC' for f in have if f not in listed]
+        dup = sorted({f for f in listed if listed.count(f) > 1})
+        bad += [f'{pre}{f}: twice in the TOC' for f in dup]
+        for f in have:
+            if f in seen:
+                bad.append(f'{f}: in {seen[f]} and in {folder} (a path stands in one folder only)')
+            seen.setdefault(f, folder)
+        if folder != ADDON_REL and toc_version(root, folder) != version:
+            bad.append(f'{folder}.toc: ## Version {toc_version(root, folder)} is not the core\'s {version} '
+                       f'(python3 tools/build.py tocs)')
     for path, (want, have) in flavor_tocs(root).items():
         if want != have:
-            bad.append(f'{os.path.basename(path)}: not current with Amisia.toc (python3 tools/build.py tocs)')
+            bad.append(f'{os.path.basename(path)}: not current with {os.path.basename(os.path.dirname(path))}.toc '
+                       f'(python3 tools/build.py tocs)')
     return bad
 
 
@@ -463,7 +512,7 @@ def cmd_check(args=None):
         exe = luacheck_cmd()
         if not exe:
             return 'skip', ['luacheck not installed (see tools/README.md)']
-        rc, out = run([exe, '--no-color', '--formatter', 'plain', ADDON_REL], capture=True)
+        rc, out = run([exe, '--no-color', '--formatter', 'plain', *addon_folders()], capture=True)
         return ('ok', []) if rc == 0 else ('FAIL', fail_lines(out, 40))
 
     step('syntax (luaparse, Lua 5.1)', syntax)
@@ -585,22 +634,24 @@ def release_test_list(root, version):
 
 # ---------------------------------------------------------------- release
 def build_zip(root, out=None):
-    """Amisia-Website/Amisia.zip from the tracked addon files, under Amisia/, without dotfiles."""
+    """Amisia-Website/Amisia.zip from the tracked files of the addon folders (the core and its modules, one
+    top folder each: Amisia/, Amisia_Raid/, Amisia_Gear/), without dotfiles."""
     out = out or os.path.join(root, 'Amisia-Website', 'Amisia.zip')
-    files = [f for f in git(root, 'ls-files', '--', ADDON_REL).splitlines() if f]
-    base = os.path.join(root, ADDON_REL)
     n = 0
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as zf:
-        for rel in sorted(files):
-            inner = os.path.relpath(os.path.join(root, rel), base).replace(os.sep, '/')
-            if any(part.startswith('.') for part in inner.split('/')):
-                continue
-            path = os.path.join(root, rel)
-            if not os.path.isfile(path):
-                continue
-            zf.write(path, 'Amisia/' + inner)
-            n += 1
+        for folder in addon_folders(root):
+            files = [f for f in git(root, 'ls-files', '--', folder).splitlines() if f]
+            base = os.path.join(root, folder)
+            for rel in sorted(files):
+                inner = os.path.relpath(os.path.join(root, rel), base).replace(os.sep, '/')
+                if any(part.startswith('.') for part in inner.split('/')):
+                    continue
+                path = os.path.join(root, rel)
+                if not os.path.isfile(path):
+                    continue
+                zf.write(path, folder + '/' + inner)
+                n += 1
     return out, n
 
 
@@ -689,8 +740,7 @@ def restart_note(root, since):
     if not since:
         return 'Im Spiel: WoW ganz neu starten (erste Version, /reload reicht nicht).'
     why = []
-    for name in ['Amisia.toc', *FLAVOR_TOCS]:
-        toc = ADDON_REL + '/' + name
+    for toc in [f'{d}/{d}.toc' for d in addon_folders(root)] + flavor_toc_names(root):
         old = git(root, 'show', f'{since}:{toc}', check=False)
         new = git(root, 'show', f'HEAD:{toc}', check=False)
         if toc_lines(old) != toc_lines(new):
@@ -723,15 +773,15 @@ def release(root, version, summary=None, push=True, copy=True, check=None, day=N
     if current and version_key(version) <= version_key(current):
         raise SystemExit(f'{version} is not newer than the TOC version {current}')
     dirty = git(root, 'status', '--porcelain', '--untracked-files=no').strip()
-    untracked = git(root, 'ls-files', '--others', '--exclude-standard', '--', ADDON_REL).strip()
+    untracked = git(root, 'ls-files', '--others', '--exclude-standard', '--', *addon_folders(root)).strip()
     if dirty or untracked:
         raise SystemExit('the tree is not clean; commit or stash first:\n' + '\n'.join(filter(None, [dirty, untracked])))
     branch = git(root, 'rev-parse', '--abbrev-ref', 'HEAD').strip()
     if push and branch != 'main':
         raise SystemExit(f'releases are pushed from main, this is {branch} (or use --no-push)')
 
-    touched = [ADDON_REL + '/Amisia.toc', *(ADDON_REL + '/' + n for n in FLAVOR_TOCS),
-               'Amisia-Website/Amisia.zip', 'CHANGELOG.md']
+    touched = [f'{d}/{d}.toc' for d in addon_folders(root)] + flavor_toc_names(root) + \
+        ['Amisia-Website/Amisia.zip', 'CHANGELOG.md']
     previous = last_release_commit(root)
     note = game_errors_note(errors_sv)
     if note:
@@ -808,6 +858,12 @@ def cmd_snapshots(args):
 
 
 def cmd_tocs(args=None):
+    # the modules carry the core's version (D-16, D-130), then every folder's classic TOCs
+    version = toc_version()
+    for folder in addon_folders()[1:]:
+        if toc_version(ROOT, folder) != version:
+            set_toc_version(ROOT, version)
+            break
     for path in flavor_tocs(write=True):
         say(os.path.relpath(path, ROOT))
     return 0
@@ -847,7 +903,7 @@ def main(argv=None):
     df.add_argument('builds', nargs='*', help='OLD NEW (default: the build of the data on main, the newest on disk)')
     df.add_argument('--out', default=None, help='also write the full report into this file')
     sub.add_parser('check', help='every test and check; exit 1 on a failure')
-    sub.add_parser('tocs', help='write Amisia_TBC.toc and Amisia_Vanilla.toc from Amisia.toc (D-57)')
+    sub.add_parser('tocs', help="the modules' version and every folder's _TBC/_Vanilla TOC from its TOC (D-57, D-130)")
     sn = sub.add_parser('snapshots', help='PNGs of every page and window with an index.html (tools/ui_layout.py)')
     sn.add_argument('--out', default=SNAPSHOTS, help=f'output folder (default {SNAPSHOTS})')
     sn.add_argument('--compare', default=None, help='an earlier run\'s folder: list the shots whose layout changed')

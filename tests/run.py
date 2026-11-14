@@ -63,13 +63,19 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ADDON = os.path.join(ROOT, 'Amisia')
 
 
+def addon_file(rel):
+    """The absolute path of an addon file given relative to its folder ("Gear/Map.lua"), in whichever of
+    the three folders holds it (the tests' ADDON_FILE, F-202)."""
+    return modules.path_of(str(rel).replace('\\', '/'))
+
+
 def measure(text, font):
     """The stub's GetStringWidth: the estimated width of text in font (a font object's name or None)."""
     return textwidth.text_width(text, font)
 
 
 def toc_meta():
-    """The TOC's "## Field: value" lines as a dict (the stub's C_AddOns.GetAddOnMetadata answers from it)."""
+    """The core TOC's "## Field: value" lines as a dict (the stub's C_AddOns.GetAddOnMetadata answers from it)."""
     out = {}
     with open(os.path.join(ADDON, 'Amisia.toc'), encoding='utf-8') as fh:
         for line in fh:
@@ -79,24 +85,21 @@ def toc_meta():
     return out
 
 
-# The TOC each classic client loads instead of Amisia.toc (D-57, written by tools/build.py tocs).
-GAME_TOCS = {'tbc': 'Amisia_TBC.toc', 'era': 'Amisia_Vanilla.toc'}
+# The suffix of the TOC each classic client loads instead of <folder>.toc (D-57, written by tools/build.py
+# tocs): the core and the raid module there; the gear module's lists no file.
+GAME_TOCS = {'tbc': '_TBC', 'era': '_Vanilla'}
 
 
-def toc_files(game=None):
-    """The files the TOC loads in order. game None: every file of Amisia.toc (the Forever tests);
-    "tbc" or "era": the files of that client's own TOC, the raid part (D-57)."""
+def toc_files(game=None, module=None):
+    """The files the TOCs load in order, as (part, path relative to its folder). game None: every file of
+    the three TOCs (the Forever tests); "tbc" or "era": the files of that client's own TOCs, the core and
+    the raid part (D-57). module: only that part's."""
     out = []
-    with open(os.path.join(ADDON, GAME_TOCS.get(game, 'Amisia.toc')), encoding='utf-8') as fh:
-        for line in fh:
-            line = line.strip()
-            if line and not line.startswith('#'):
-                # load conditions like "[AllowLoadGameType camelot]" stay out of the file name
-                name = re.sub(r'\s*\[[^\]]*\]', '', line).replace('\\', os.sep)
-                # XML files (templates) are for the client; a test reads them itself
-                if name.lower().endswith('.xml'):
-                    continue
-                out.append(name)
+    for name, _, part in modules.toc_entries(module or modules.MODULES, GAME_TOCS.get(game, '')):
+        # XML files (templates) are for the client; a test reads them itself
+        if name.lower().endswith('.xml'):
+            continue
+        out.append((part, name.replace('/', os.sep)))
     return out
 
 
@@ -201,34 +204,57 @@ def fresh(source='', player=None, setup=None, locale=None):
     lua.execute('if STUB.noEncoding then C_EncodingUtil = nil end')
     if setup:
         setup(lua)
-    # the addon folder, for a test that loads one file again (a /reload of it)
+    # the core's folder, and the path of any addon file, for a test that reads or loads one file again
     lua.globals().ADDON_DIR = ADDON
-    ns = lua.eval('{}')
-    loader = lua.eval('function(src, name) return assert(loadstring(src, "@" .. name)) end')
+    lua.globals().ADDON_FILE = addon_file
+    # the TOCs of the core and its modules (the paths), in load order
+    lua.globals().ADDON_TOCS = lua.table_from([os.path.join(modules.folder(m), modules.toc_name(m)) for m in modules.MODULES])
     without = file_without(source)
-    for name in toc_files(game):
-        if without and modules.module_of(name.replace(os.sep, '/')) == without:
-            continue
-        path = os.path.join(ADDON, name)
-        if not os.path.exists(path):
-            continue
-        with open(path, encoding='utf-8') as fh:
-            chunk = loader(fh.read(), name)
-        chunk('Amisia', ns)
-    # the files' bodies wait for ADDON_LOADED (Locales/Locale.lua, D-128): run them here, so the
-    # patch below finds ns.Data; the event then only starts the core (ns.CoreLoaded)
-    lua.eval('function(ns) ns.RunLoad() end')(ns)
-    # The shipped scan names (Data/ScanNames.lua: the titles and names the user's client gave the quest
-    # and NPC scans) change with every scan and would replace the names tests make up. A test sees none
-    # unless it sets STUB.scanNames (a table shaped as the file's) or STUB.shippedScanNames = true.
+    # the modules this client has (F-202): the stub's C_AddOns answers for them, and the core waits for
+    # the ADDON_LOADED of those it will load (Locales/Locale.lua); the gear module is Forever's only
+    present = [m for m in ('raid', 'gear') if m != without and not (m == 'gear' and game)]
+    for m in ('raid', 'gear'):
+        state = '{ loadable = true }' if m in present else (
+            '{ loadable = false, enabled = false }' if m == without else 'nil')
+        lua.execute('STUB.addons["%s"] = %s' % (modules.FOLDERS[m], state))
+    loader = lua.eval('function(src, name) return assert(loadstring(src, "@" .. name)) end')
+
+    def load(part, ns):
+        for _, name in toc_files(game, part):
+            path = os.path.join(modules.folder(part), name)
+            if not os.path.exists(path):
+                continue
+            with open(path, encoding='utf-8') as fh:
+                chunk = loader(fh.read(), name)
+            chunk(modules.FOLDERS[part], ns)
+
+    # each addon gets a namespace of its own, as in the client; a module's Module.lua points it at the core's
+    ns = lua.eval('{}')
+    load('core', ns)
+    # The files' bodies wait for the ADDON_LOADED of the core and of every module it expects (Locales/
+    # Locale.lua, D-128, D-130). Once they ran, and before the core's ADDON_LOADED handlers run, the
+    # shipped scan names (Data/ScanNames.lua: the titles and names the user's client gave the quest and
+    # NPC scans, which change with every scan and would replace the names tests make up) go: a test sees
+    # none unless it sets STUB.scanNames (a table shaped as the file's) or STUB.shippedScanNames = true.
     lua.eval('''function(ns)
-        local real = ns.Data
-        ns.Data = function(key, ...)
-            if key == "SCAN_NAMES" and not STUB.shippedScanNames then return STUB.scanNames or { L = {} } end
-            return real(key, ...)
+        local run, patched = ns.RunLoad, false
+        ns.RunLoad = function()
+            run()
+            if patched then return end
+            patched = true
+            local real = ns.Data
+            ns.Data = function(key, ...)
+                if key == "SCAN_NAMES" and not STUB.shippedScanNames then return STUB.scanNames or { L = {} } end
+                return real(key, ...)
+            end
         end
+        NS = ns
+        STUB.fire("ADDON_LOADED", "Amisia")
     end''')(ns)
-    lua.eval('function(ns) NS = ns; STUB.fire("ADDON_LOADED", "Amisia") end')(ns)
+    # then each module the client has, in load order: its files (in a namespace of their own), its ADDON_LOADED
+    for part in present:
+        load(part, lua.eval('{}'))
+        lua.globals().STUB.fire('ADDON_LOADED', modules.FOLDERS[part])
     return lua
 
 
@@ -316,6 +342,7 @@ class Bus:
         g.C = self.run
         g.CLIENTS = self.director.table_from(names)
         g.ADDON_DIR = ADDON
+        g.ADDON_FILE = addon_file
         bus.deliver = self.deliver
         bus.tick = self.tick
         bus.lock = self.lock

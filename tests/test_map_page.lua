@@ -541,7 +541,7 @@ AmisiaDB.map.hidden["V:Elwynn Guy"] = nil
 -- Latin-1 only, in the files and in the chat
 ---------------------------------------------------------------------------
 for _, name in ipairs({ "UI/Pages/Map.lua", "UI/Pages/Gear.lua", "Gear/Map.lua", "Gear/MapPins.lua", "Gear/Bis.lua", "Core/Minimap.lua" }) do
-    local fh = assert(io.open(ADDON_DIR .. "/" .. name, "rb"))
+    local fh = assert(io.open(ADDON_FILE(name), "rb"))
     local src = fh:read("*a")
     fh:close()
     for c in src:gmatch("[\196-\255][\128-\191]") do error(name .. ": character above Latin-1: " .. c) end

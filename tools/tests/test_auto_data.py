@@ -46,7 +46,7 @@ def test_data_build_reads_the_talent_data_line():
 
 
 def test_the_repo_talent_data_has_a_build():
-    with open(os.path.join(auto_data.ROOT, 'Amisia', 'Data', 'TalentData.lua'), encoding='utf-8') as fh:
+    with open(os.path.join(auto_data.ROOT, 'Amisia_Gear', 'Data', 'TalentData.lua'), encoding='utf-8') as fh:
         assert auto_data.data_build(fh.read())
 
 
@@ -250,7 +250,7 @@ import time  # noqa: E402
 
 # A stand-in for tools/build.py in a temporary repository: `data --sv FILE` reads lines "-- item N",
 # "-- quest N", "-- kill N" and "-- red" of the file into the archives of ITS OWN checkout (beside this
-# script, as the real builders do with HERE), `check` is red when the data build left Amisia/Data/Red.lua.
+# script, as the real builders do with HERE), `check` is red when the data build left Amisia_Gear/Data/Red.lua.
 FAKE_BUILD = r'''
 import json, os, sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -272,12 +272,12 @@ if sys.argv[1] == 'data':
             if w[1] == 'quest': arch['quests']['deDE'][w[2]] = 'quest ' + w[2]
             if w[1] == 'kill': drops['k'][w[2]] = [int(w[2])]
             if w[1] == 'red':
-                with open(p('Amisia/Data/Red.lua'), 'w') as fh: fh.write('-- a dungeon without an entry\n')
+                with open(p('Amisia_Gear/Data/Red.lua'), 'w') as fh: fh.write('-- a dungeon without an entry\n')
     save('tools/scan_archive.json', arch); save('tools/drop_obs.json', drops)
-    with open(p('Amisia/Data/ScanDone.lua'), 'w') as fh: fh.write('-- items %d\n' % len(arch['items']))
+    with open(p('Amisia_Gear/Data/ScanDone.lua'), 'w') as fh: fh.write('-- items %d\n' % len(arch['items']))
     print('built: scan archive')
 elif sys.argv[1] == 'check':
-    if os.path.exists(p('Amisia/Data/Red.lua')):
+    if os.path.exists(p('Amisia_Gear/Data/Red.lua')):
         print('ok    luacheck (1.0s)')
         print('FAILED tools/tests/test_dungeons.py::test_every_dungeon_has_an_entry - KeyError')
         print('check: 1 failed'); sys.exit(1)
@@ -303,8 +303,8 @@ def repo(tmp_path, monkeypatch):
     put(os.path.join(r, 'tools', 'scan_archive.json'), json.dumps(
         {'items': {'1': 'name 1'}, 'quests': {'deDE': {}}}, indent=1, sort_keys=True) + '\n')
     put(os.path.join(r, 'tools', 'drop_obs.json'), json.dumps({'k': {}}, indent=1, sort_keys=True) + '\n')
-    put(os.path.join(r, 'Amisia', 'Data', 'ScanDone.lua'), '-- items 1\n')
-    put(os.path.join(r, 'Amisia', 'Data', 'TalentData.lua'), f'build="{OLD}",max=51,\n')
+    put(os.path.join(r, 'Amisia_Gear', 'Data', 'ScanDone.lua'), '-- items 1\n')
+    put(os.path.join(r, 'Amisia_Gear', 'Data', 'TalentData.lua'), f'build="{OLD}",max=51,\n')
     put(os.path.join(r, 'Amisia-Website', 'data', 'drops-forever.js'), '// none\n')
     sh('git', 'init', '-q', '-b', 'main', cwd=r)
     sh('git', '-c', 'user.name=t', '-c', 'user.email=t@t', 'add', '-A', cwd=r)
@@ -366,7 +366,7 @@ def test_a_changed_file_is_taken_over_after_settle_and_gap(repo, tmp_path):
     text = status(args)
     assert f'übernommen auf Branch auto/sv-{day} (' in text and 'Prüfung grün.' in text
     assert 'Neu gegenüber main: 2 Items, 1 Questnamen, 1 Kills.' in text
-    assert 'Amisia/Data/ScanDone.lua' in text and 'tools/scan_archive.json' in text
+    assert 'Amisia_Gear/Data/ScanDone.lua' in text and 'tools/scan_archive.json' in text
     assert 'Zum Veröffentlichen: build.py data auf main, dann build.py release.' in text
     # the branch has the build's archives; the main checkout, its commit and its worktrees are untouched
     assert '"25": "name 25"' in sh('git', 'show', f'auto/sv-{day}:tools/scan_archive.json', cwd=repo)
@@ -429,7 +429,7 @@ def test_a_red_check_is_reported_and_the_branch_kept(repo, tmp_path):
     assert block[0].endswith('Prüfung ROT:')
     assert '  FAILED tools/tests/test_dungeons.py::test_every_dungeon_has_an_entry - KeyError' in block
     assert '  check: 1 failed' in block and block[-1].startswith('Vor dem nächsten Release klären')
-    assert 'Amisia/Data/Red.lua' in sh('git', 'show', '--stat', f'auto/sv-{day}', cwd=repo)
+    assert 'Amisia_Gear/Data/Red.lua' in sh('git', 'show', '--stat', f'auto/sv-{day}', cwd=repo)
     assert main_state(repo) == before and not os.path.exists(args.worktree)
 
 

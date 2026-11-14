@@ -22,7 +22,7 @@ enchanter enchants. From the client's own tables only (D-03), never from the net
 
 Reads <Table>.csv or <Table>.<build>.csv from the folders given with --wago (default: the newest copy of each
 table, tools/client_tables.py).
-Writes Amisia/Data/RaidCheckData.lua (ns.RAIDCHECK, lazy).
+Writes Amisia_Gear/Data/RaidCheckData.lua (ns.RAIDCHECK, lazy).
 """
 import argparse
 import csv
@@ -37,7 +37,7 @@ sys.path.insert(0, HERE)
 import att_data  # noqa: E402
 import lua_data  # noqa: E402
 
-OUT = os.path.join(ROOT, 'Amisia', 'Data', 'RaidCheckData.lua')
+OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'RaidCheckData.lua')
 WAGO = os.path.expanduser('~/addons/_wago')
 
 REQUIRED = ['Item', 'ItemEffect', 'ItemXItemEffect', 'SpellEffect', 'SpellMisc', 'SpellDuration', 'SpellName']

@@ -11,7 +11,7 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
 ROOT = os.path.dirname(TOOLS)
-ADDON = os.path.join(ROOT, 'Amisia')
+ADDON = os.path.join(ROOT, 'Amisia_Gear')   # the gear module holds the data (F-202)
 sys.path.insert(0, TOOLS)
 import build_dungeons  # noqa: E402
 
@@ -278,9 +278,9 @@ def test_the_generated_file_is_valid_lua():
 
 
 def test_the_toc_loads_the_facts_on_forever_and_the_planner_after_bis():
-    with open(os.path.join(ADDON, 'Amisia.toc'), encoding='utf-8') as fh:
+    with open(os.path.join(ADDON, 'Amisia_Gear.toc'), encoding='utf-8') as fh:
         lines = [l.strip() for l in fh if l.strip() and not l.startswith('#')]
-    assert 'Data\\DungeonData.lua [AllowLoadGameType camelot]' in lines
+    assert 'Data\\DungeonData.lua' in lines
     names = [re.sub(r'\s*\[.*\]', '', l) for l in lines]
     assert names.index('Data\\MapData.lua') < names.index('Data\\DungeonData.lua') < names.index('Gear\\Dungeons.lua')
     assert names.index('Gear\\Bis.lua') < names.index('Gear\\Dungeons.lua') < names.index('UI\\Pages\\Gear.lua')

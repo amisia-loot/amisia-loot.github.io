@@ -1,5 +1,5 @@
 -- luacheck configuration of the Amisia addon (WoW Forever, Lua 5.1).
--- Run: luacheck Amisia   (python tools/build.py check runs it too)
+-- Run: luacheck Amisia Amisia_Raid Amisia_Gear   (python tools/build.py check runs it too; the core and its modules)
 std = "lua51"
 max_line_length = false          -- long lines are the house style; not reflowed
 codes = true
@@ -15,6 +15,8 @@ ignore = {
 -- compartment callbacks of the TOC, and the client's registries it adds entries to.
 globals = {
     "AmisiaDB", "SLASH_AMISIA1", "SlashCmdList", "StaticPopupDialogs",
+    -- the core's namespace for its modules (Locales/Locale.lua, Raid/Module.lua, Gear/Module.lua; F-202)
+    "AmisiaCore",
     "Amisia_OnAddonCompartmentClick", "Amisia_OnAddonCompartmentEnter", "Amisia_OnAddonCompartmentLeave",
 }
 

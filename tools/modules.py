@@ -5,83 +5,78 @@ static check that the core never needs a module and the modules need each other 
     python3 tools/modules.py files      the files of each module in TOC order
     python3 tools/modules.py symbols    the ns symbols each module defines
 
-Three parts: "core" (the addon Amisia), "raid" (Amisia_Raid) and "gear" (Amisia_Gear, Ausrüstung &
-Dungeons). A module may use the core freely; the core may use no module; raid and gear may use each
+Three parts, each an addon folder of its own with its TOC: "core" (Amisia/), "raid" (Amisia_Raid/) and
+"gear" (Amisia_Gear/, Ausrüstung & Dungeons). A file belongs to the part whose folder holds it. A module may use the core freely; the core may use no module; raid and gear may use each
 other only guarded. The rules of the check are in check() below; tools/tests/test_module_deps.py runs it.
 """
-import functools
 import os
 import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ADDON = os.path.join(ROOT, 'Amisia')
 MODULES = ('core', 'raid', 'gear')
-# the order in which the bodies run once the parts are addons of their own (core, then raid, then gear)
+# the order in which the client loads the parts and their bodies run (core, then raid, then gear)
 ORDER = {'core': 0, 'raid': 1, 'gear': 2}
-# the addon folder of each part (step 2 of F-202 moves the files there)
+# the addon folder of each part, with its TOC <folder>.toc at its root
 FOLDERS = {'core': 'Amisia', 'raid': 'Amisia_Raid', 'gear': 'Amisia_Gear'}
-
-# Raid files: the raid pages and windows outside Raid/ (Raid/* is raid but for the ones in CORE_FILES).
-RAID_FILES = {
-    'UI/Pages/Raids.lua', 'UI/Pages/Lineup.lua', 'UI/Pages/RaidCheck.lua', 'UI/Pages/RaidLogRolls.lua',
-    'UI/Pages/RaidLog.lua', 'UI/Pages/Rolls.lua', 'UI/Pages/RaidNote.lua', 'UI/Pages/Awards.lua',
-    'UI/Pages/Stats.lua', 'UI/Pages/Points.lua', 'UI/Pages/SoftRes.lua', 'UI/Pages/Bank.lua',
-    'UI/Pages/Members.lua', 'UI/Pages/Calendar.lua', 'UI/SoftResImport.lua', 'UI/Signup.lua',
-    'UI/RaidCalendar.lua',
-    # the setup assistant sets the raid's loot, roll and point settings only
-    'UI/Setup.lua',
-    # Forever-only raid features: they keep their camelot mark, but belong to the raid module
-    'Raid/Handover.lua', 'UI/Pages/Export.lua',
-    # the self-tests of the raid parts only (calendar, lineup and raid check readers)
-    'Core/SelfTestCalendar.lua', 'Core/SelfTestCalendarWrite.lua', 'Core/SelfTestGroup.lua',
-    'Locales/enUS_raid.lua', 'Locales/enUS_raid2.lua', 'Locales/enUS_raidcheck.lua',
-}
-# Core files under Raid/ (the alts are the core's, spec F-202).
-CORE_FILES = {'Raid/Alts.lua'}
-# Gear files without the camelot mark.
-GEAR_FILES = {'Locales/enUS_gear.lua', 'Locales/enUS_world.lua'}
+# the core's folder
+ADDON = os.path.join(ROOT, FOLDERS['core'])
 
 
-def toc_entries(toc='Amisia.toc'):
-    """(path with /, camelot mark) of every file line of a TOC, in order."""
+def folder(module):
+    """The absolute path of a part's addon folder."""
+    return os.path.join(ROOT, FOLDERS[module])
+
+
+def toc_name(module, flavor=''):
+    """The file name of a part's TOC: "Amisia_Raid.toc", with flavor "_TBC" "Amisia_Raid_TBC.toc"."""
+    return FOLDERS[module] + flavor + '.toc'
+
+
+def toc_entries(modules=MODULES, flavor=''):
+    """(path relative to its folder with /, camelot mark, part) of every file line of the parts' TOCs,
+    in load order (the parts in ORDER, each in its TOC's order)."""
     out = []
-    with open(os.path.join(ADDON, toc), encoding='utf-8') as fh:
-        for line in fh:
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            name = line.split(' [')[0].replace('\\', '/')
-            out.append((name, 'AllowLoadGameType camelot' in line))
+    for module in (modules,) if isinstance(modules, str) else modules:
+        path = os.path.join(folder(module), toc_name(module, flavor))
+        if not os.path.exists(path):
+            continue
+        with open(path, encoding='utf-8') as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                name = line.split(' [')[0].replace('\\', '/')
+                out.append((name, 'AllowLoadGameType camelot' in line, module))
     return out
 
 
-@functools.lru_cache(maxsize=None)
-def _camelot():
-    return dict(toc_entries())
-
-
-def module_of(path, camelot=None):
-    """The part a file belongs to: "core", "raid" or "gear" (path relative to Amisia/, with /)."""
-    if camelot is None:
-        camelot = _camelot().get(path, False)
-    if path in CORE_FILES:
-        return 'core'
-    if path in RAID_FILES:
-        return 'raid'
-    if camelot or path in GEAR_FILES:
-        return 'gear'
-    if path.startswith('Raid/'):
-        return 'raid'
+def module_of(path):
+    """The part a file belongs to: "core", "raid" or "gear", from the folder that holds it. path is
+    relative to its addon folder ("Raid/Awards.lua") or to the repository ("Amisia_Raid/Raid/Awards.lua");
+    a file no folder holds is the core's."""
+    path = path.replace(os.sep, '/')
+    head = path.split('/', 1)[0]
+    for module, name in FOLDERS.items():
+        if head == name:
+            return module
+    for module in MODULES:
+        if os.path.exists(os.path.join(folder(module), path)):
+            return module
     return 'core'
 
 
+def path_of(path):
+    """The absolute path of an addon file given relative to its folder ("Gear/Map.lua")."""
+    return os.path.join(folder(module_of(path)), path)
+
+
 def files_by_module():
-    """{module: [paths in TOC order]} of the .lua files of Amisia.toc."""
+    """{module: [paths in TOC order]} of the .lua files of the three TOCs."""
     out = {m: [] for m in MODULES}
-    for name, camelot in toc_entries():
+    for name, _, module in toc_entries():
         if name.endswith('.lua'):
-            out[module_of(name, camelot)].append(name)
+            out[module].append(name)
     return out
 
 
@@ -226,6 +221,20 @@ def aliases_of(toks):
     return out
 
 
+def _assigns_after(toks, k):
+    """Whether toks[k:] is a list ", name.field, ..." up to "=" (k at "," or "="): the rest of the
+    targets of a multiple assignment, not the arguments of a call like pcall(ns.X, id)."""
+    j = k
+    while True:
+        if _is(_at(toks, j), 'op', '='):
+            return True
+        if not _is(_at(toks, j), 'op', ',') or not _is(_at(toks, j + 1), 'name'):
+            return False
+        j += 2
+        while _is(_at(toks, j), 'op', '.') and _is(_at(toks, j + 1), 'name'):
+            j += 2
+
+
 def definitions(toks, aliases):
     """The ns paths a file assigns: ("X",) for "ns.X =" / "function ns.X(", ("X", "Y") for "ns.X.Y =",
     "function ns.X.Y(", "function ns.X:Y(" and the same through a local alias of ns.X."""
@@ -254,23 +263,24 @@ def definitions(toks, aliases):
         nxt = _at(toks, k)
         if _is(prev, 'kw', 'function') and _is(nxt, 'op', '('):
             out.append(tuple(parts))
-        elif _is(nxt, 'op', '=') or (_is(nxt, 'op', ',') and t.value == 'ns' and len(parts) == 1):
+        elif _is(nxt, 'op', '=') or (_is(nxt, 'op', ',') and t.value == 'ns' and len(parts) == 1
+                                     and _assigns_after(toks, k)):
             # "ns.X = ..." or the first of "ns.X, ns.Y = ..."
             out.append(tuple(parts))
-        elif _is(prev, 'op', ',') and t.value == 'ns' and len(parts) == 1 and (_is(nxt, 'op', '=') or _is(nxt, 'op', ',')):
+        elif _is(prev, 'op', ',') and t.value == 'ns' and len(parts) == 1 and _assigns_after(toks, k):
             out.append(tuple(parts))
     return out
 
 
 def read_files():
-    """[(path, module, tokens, aliases)] of the .lua files of Amisia.toc in TOC order."""
+    """[(path, module, tokens, aliases)] of the .lua files of the three TOCs in load order."""
     out = []
-    for name, camelot in toc_entries():
+    for name, _, module in toc_entries():
         if not name.endswith('.lua'):
             continue
-        with open(os.path.join(ADDON, name), encoding='utf-8') as fh:
+        with open(os.path.join(folder(module), name), encoding='utf-8') as fh:
             toks = tokenize(fh.read())
-        out.append((name, module_of(name, camelot), toks, aliases_of(toks)))
+        out.append((name, module, toks, aliases_of(toks)))
     return out
 
 
@@ -534,8 +544,8 @@ def check(files=None):
     settings and slash commands go through the registry, events through ns.Fire/ns.Listen and
     ns.OnEvent: they name no symbol of the other part and need no guard.
 
-    Rule 2, load order: once the parts are addons of their own the bodies run core, then raid, then gear
-    (F-202 step 2). A reference, guarded or not, that runs while a file's body runs (in ns.Load's
+    Rule 2, load order: the parts are addons of their own; their bodies run core, then raid, then gear
+    (Locales/Locale.lua, D-128). A reference, guarded or not, that runs while a file's body runs (in ns.Load's
     function, not in a function of its own) may not name a symbol of a part that runs later: it would
     always be nil there ("local Layer = ns.Layer" in a core file). Look it up inside the function.
     """

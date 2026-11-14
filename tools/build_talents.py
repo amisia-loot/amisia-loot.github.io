@@ -25,7 +25,7 @@ own (German) text where it gets one (C_Traits.GetTraitDescription) and this one 
 Reads <Table>.csv or <Table>.<build>.csv (tools/export_db2.ps1 on the PC, or wago.tools) from the
 folders given with --wago (default: the newest copy of each table, tools/client_tables.py); the first
 folder with a table wins.
-Writes Amisia/Data/TalentData.lua (ns.TALENTS).
+Writes Amisia_Gear/Data/TalentData.lua (ns.TALENTS).
 """
 import argparse
 import collections
@@ -41,7 +41,7 @@ sys.path.insert(0, HERE)
 from att_data import wago_csv  # noqa: E402
 import lua_data  # noqa: E402  (the lazy form of the data file)
 
-OUT = os.path.join(ROOT, 'Amisia', 'Data', 'TalentData.lua')
+OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'TalentData.lua')
 WAGO = os.path.expanduser('~/addons/_wago')
 
 REQUIRED = [
@@ -674,7 +674,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--wago', action='append', default=None,
                     help='folder of the client table CSVs (repeatable; default: the newest copy of each table, tools/client_tables.py)')
-    ap.add_argument('--out', default=OUT, help='output Lua file (default Amisia/Data/TalentData.lua)')
+    ap.add_argument('--out', default=OUT, help='output Lua file (default Amisia_Gear/Data/TalentData.lua)')
     args = ap.parse_args(argv)
     if not args.wago:
         import client_tables

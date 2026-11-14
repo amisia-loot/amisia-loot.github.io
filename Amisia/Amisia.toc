@@ -1,7 +1,7 @@
 ## Interface: 16001, 20506, 11509
 ## Title: Amisia
-## Notes: Records raid members, loot and awards per raid, runs rolls and soft reserves, exports everything for the Amisia loot site and shows the best gear per level range.
-## Notes-deDE: Zeichnet pro Raid Raidmitglieder, Loot und Vergaben auf, verwaltet Rolls und Soft-Reserves, exportiert alles für die Amisia-Loot-Seite und zeigt die beste Ausrüstung pro Levelbereich.
+## Notes: Amisia's core: main window, settings, overview, guild sync and loot toasts. The modules Amisia: Raid and Amisia: Gear & Dungeons add the raid tools and the gear, dungeon and map pages.
+## Notes-deDE: Kern von Amisia: Hauptfenster, Einstellungen, Übersicht, Gildenabgleich und Beute-Anzeige. Die Module Amisia: Raid und Amisia: Ausrüstung & Dungeons bringen die Raid-Werkzeuge und die Seiten für Ausrüstung, Dungeons und Karte.
 ## Author: mrvulo
 ## Version: 2.84.0
 ## Category: VuloUI
@@ -14,187 +14,31 @@
 
 Locales\Locale.lua
 Locales\enUS_core.lua
-Locales\enUS_raid.lua
-Locales\enUS_raid2.lua
-Locales\enUS_gear.lua
-Locales\enUS_world.lua
 Locales\enUS_selftest.lua
-Locales\enUS_raidcheck.lua
 Core\Registry.lua
 Core\Perf.lua
 Core\LazyData.lua
 Core\Core.lua
-Raid\Module.lua
-Gear\Module.lua [AllowLoadGameType camelot]
-Raid\Record.lua
 Core\Names.lua
 Core\Migrate.lua
 Raid\Alts.lua
-Raid\Mats.lua
 Core\Chat.lua
 Core\Comm.lua
 Core\Trust.lua
 Core\Version.lua
 Core\Feedback.lua
 Core\Inspect.lua
-Core\Duels.lua [AllowLoadGameType camelot]
 UI\Theme.lua
 UI\Widgets.lua
-Raid\Awards.lua
-Raid\Rolls.lua
-Raid\RollFrame.lua
-Raid\AwardDialog.lua
-Raid\SoftRes.lua
-Raid\SoftResShare.lua
-Raid\RaidNote.lua
-Raid\LootAnnounce.lua
-Raid\RaidLog.lua
-Raid\Bench.lua
-Raid\GroupRolls.lua
-Raid\Sync.lua
-Raid\LootPrio.lua
-Raid\Points.lua
-Raid\PointsRounds.lua
-Raid\PointsSync.lua
-Raid\RaidText.lua
-Raid\Stats.lua
-Raid\AwardHistory.lua
-Raid\BankNeeds.lua
-Raid\BankLog.lua
-Collect\Scan.lua [AllowLoadGameType camelot]
-Collect\ScanById.lua [AllowLoadGameType camelot]
-Collect\ScanQuests.lua [AllowLoadGameType camelot]
-Collect\ScanNpcs.lua [AllowLoadGameType camelot]
-Collect\Collect.lua [AllowLoadGameType camelot]
-Collect\ScanTrim.lua [AllowLoadGameType camelot]
-Collect\ScanAll.lua [AllowLoadGameType camelot]
-Collect\Drops.lua [AllowLoadGameType camelot]
-Collect\DropSync.lua [AllowLoadGameType camelot]
-Collect\Collector.lua [AllowLoadGameType camelot]
-Collect\CollectSync.lua [AllowLoadGameType camelot]
-Collect\QuestXP.lua [AllowLoadGameType camelot]
-Collect\QuestTags.lua [AllowLoadGameType camelot]
-Data\GearData.lua [AllowLoadGameType camelot]
-Data\GearNoSource.lua [AllowLoadGameType camelot]
-Data\GearWeights.lua [AllowLoadGameType camelot]
-Data\BisData.lua [AllowLoadGameType camelot]
-Data\MapData.lua [AllowLoadGameType camelot]
-Data\DungeonData.lua [AllowLoadGameType camelot]
-Data\DungeonQuestData.lua [AllowLoadGameType camelot]
-Data\ProfessionData.lua [AllowLoadGameType camelot]
-Data\QuestData.lua [AllowLoadGameType camelot]
-Data\QuestItemData.lua [AllowLoadGameType camelot]
-Data\TalentData.lua [AllowLoadGameType camelot]
-Data\MageScrollData.lua [AllowLoadGameType camelot]
-Data\DungeonArt.lua [AllowLoadGameType camelot]
-Data\ScanDone.lua [AllowLoadGameType camelot]
-Data\ScanLists.lua [AllowLoadGameType camelot]
-Data\ScanNames.lua [AllowLoadGameType camelot]
-Data\RaidCheckData.lua [AllowLoadGameType camelot]
-Data\EnchantData.lua [AllowLoadGameType camelot]
-Gear\Gear.lua [AllowLoadGameType camelot]
-Gear\PlayStyle.lua [AllowLoadGameType camelot]
-Gear\Model.lua [AllowLoadGameType camelot]
-Gear\GearFrame.lua [AllowLoadGameType camelot]
-Gear\Bis.lua [AllowLoadGameType camelot]
-Gear\NoSource.lua [AllowLoadGameType camelot]
-Gear\Dungeons.lua [AllowLoadGameType camelot]
-Gear\Runs.lua [AllowLoadGameType camelot]
-Gear\RunTimes.lua [AllowLoadGameType camelot]
-Gear\RunGains.lua [AllowLoadGameType camelot]
-Gear\RunTimer.lua [AllowLoadGameType camelot]
-Gear\Professions.lua [AllowLoadGameType camelot]
-Gear\ProfRoute.lua [AllowLoadGameType camelot]
-Gear\ProfTrainers.lua [AllowLoadGameType camelot]
-Gear\Crafters.lua [AllowLoadGameType camelot]
-Gear\Quests.lua [AllowLoadGameType camelot]
-Gear\GuildWishes.lua [AllowLoadGameType camelot]
-Gear\Compare.lua [AllowLoadGameType camelot]
-Gear\Catalog.lua [AllowLoadGameType camelot]
-Gear\Enchants.lua [AllowLoadGameType camelot]
-Raid\Need.lua
-Raid\LootRules.lua
-Raid\RollWindow.lua
-Raid\RaidNoteWindow.lua
-Raid\RollWatch.lua
-Raid\Handover.lua [AllowLoadGameType camelot]
-Raid\Calendar.lua
-Raid\CalendarWrite.lua
-Raid\Lineup.lua
-Raid\LineupInvite.lua
-Raid\LineupSort.lua
-Raid\LineupRoles.lua
-Raid\GroupAccept.lua
-Raid\OnlineInvite.lua
-Raid\PullTimer.lua
-Raid\Signup.lua
-Raid\RaidCalendar.lua
-Raid\RaidCheckRead.lua
-Raid\RaidCheck.lua
-Raid\RaidIDs.lua
-Gear\Talents.lua [AllowLoadGameType camelot]
-Gear\MageScrolls.lua [AllowLoadGameType camelot]
-Gear\Map.lua [AllowLoadGameType camelot]
-Gear\MapPins.lua [AllowLoadGameType camelot]
-Gear\MapPlaces.lua [AllowLoadGameType camelot]
-Gear\QuestGiverPins.lua [AllowLoadGameType camelot]
-Gear\Routes.lua [AllowLoadGameType camelot]
-Gear\RouteMap.lua [AllowLoadGameType camelot]
-Gear\DungeonBar.lua [AllowLoadGameType camelot]
-Gear\GroupQuests.lua [AllowLoadGameType camelot]
-Gear\QuestItems.lua [AllowLoadGameType camelot]
-Gear\QuestItemsWindow.lua [AllowLoadGameType camelot]
-Gear\QuestStart.lua [AllowLoadGameType camelot]
-Gear\Layer.lua [AllowLoadGameType camelot]
-Gear\LayerChange.lua [AllowLoadGameType camelot]
-Gear\LayerWindow.lua [AllowLoadGameType camelot]
 UI\Search.lua
 UI\MainFrame.lua
 UI\Pages\Overview.lua
-UI\Pages\Raids.lua
-UI\Pages\Lineup.lua
-UI\Pages\RaidCheck.lua
-UI\Pages\RaidLogRolls.lua
-UI\Pages\RaidLog.lua
-UI\Pages\Rolls.lua
-UI\Pages\RaidNote.lua
-UI\Pages\Awards.lua
-UI\Pages\Stats.lua
-UI\Pages\Points.lua
-UI\Pages\SoftRes.lua
-UI\SoftResImport.lua
-UI\Pages\Gear.lua [AllowLoadGameType camelot]
-UI\Pages\JournalParts.lua [AllowLoadGameType camelot]
-UI\Pages\Dungeons.lua [AllowLoadGameType camelot]
-UI\Pages\RaidJournal.lua [AllowLoadGameType camelot]
-UI\GearDoll.lua [AllowLoadGameType camelot]
-UI\Pages\Planner.lua [AllowLoadGameType camelot]
-UI\SlotCard.lua [AllowLoadGameType camelot]
-UI\Pages\Map.lua [AllowLoadGameType camelot]
-UI\Pages\Professions.lua [AllowLoadGameType camelot]
-UI\Pages\Quests.lua [AllowLoadGameType camelot]
-UI\Pages\Talents.lua [AllowLoadGameType camelot]
-UI\Pages\MageScrolls.lua [AllowLoadGameType camelot]
-UI\Pages\Export.lua [AllowLoadGameType camelot]
-UI\Pages\Bank.lua
-UI\Pages\Members.lua
 UI\UnitInfo.lua
-UI\DuelInfo.lua [AllowLoadGameType camelot]
-UI\Pages\Duels.lua [AllowLoadGameType camelot]
-UI\Pages\Tools.lua [AllowLoadGameType camelot]
 UI\Pages\Settings.lua
 UI\Pages\About.lua
 UI\Pages\Feedback.lua
-UI\Setup.lua
 UI\LootToast.lua
-UI\Signup.lua
-UI\RaidCalendar.lua
-UI\Pages\Calendar.lua
 Core\Minimap.lua
 Core\SelfTest.lua
-Core\SelfTestCalendar.lua
-Core\SelfTestCalendarWrite.lua
-Core\SelfTestGroup.lua
 Core\SelfTestData.lua
-Core\SelfTestLayer.lua [AllowLoadGameType camelot]
 Core\PerfReport.lua

@@ -1,0 +1,99 @@
+## Interface: 16001
+## Title: Amisia: Gear & Dungeons
+## Title-deDE: Amisia: Ausrüstung & Dungeons
+## Notes: Amisia's gear module, WoW Forever only: the best gear per level range, planner, dungeons, quests, map and routes, professions, talents and the run timer. Needs Amisia.
+## Notes-deDE: Ausrüstungs-Modul von Amisia, nur WoW Forever: die beste Ausrüstung pro Levelbereich, Planer, Dungeons, Quests, Karte und Routen, Berufe, Talente und der Speedrun-Timer. Braucht Amisia.
+## Author: mrvulo
+## Version: 2.84.0
+## Category: VuloUI
+## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia
+## Dependencies: Amisia
+## OptionalDeps: Amisia_Raid
+
+Gear\Module.lua
+Locales\enUS_gear.lua
+Locales\enUS_world.lua
+Core\Duels.lua
+Collect\Scan.lua
+Collect\ScanById.lua
+Collect\ScanQuests.lua
+Collect\ScanNpcs.lua
+Collect\Collect.lua
+Collect\ScanTrim.lua
+Collect\ScanAll.lua
+Collect\Drops.lua
+Collect\DropSync.lua
+Collect\Collector.lua
+Collect\CollectSync.lua
+Collect\QuestXP.lua
+Collect\QuestTags.lua
+Data\GearData.lua
+Data\GearNoSource.lua
+Data\GearWeights.lua
+Data\BisData.lua
+Data\MapData.lua
+Data\DungeonData.lua
+Data\DungeonQuestData.lua
+Data\ProfessionData.lua
+Data\QuestData.lua
+Data\QuestItemData.lua
+Data\TalentData.lua
+Data\MageScrollData.lua
+Data\DungeonArt.lua
+Data\ScanDone.lua
+Data\ScanLists.lua
+Data\ScanNames.lua
+Data\RaidCheckData.lua
+Data\EnchantData.lua
+Gear\Gear.lua
+Gear\PlayStyle.lua
+Gear\Model.lua
+Gear\GearFrame.lua
+Gear\Bis.lua
+Gear\NoSource.lua
+Gear\Dungeons.lua
+Gear\Runs.lua
+Gear\RunTimes.lua
+Gear\RunGains.lua
+Gear\RunTimer.lua
+Gear\Professions.lua
+Gear\ProfRoute.lua
+Gear\ProfTrainers.lua
+Gear\Crafters.lua
+Gear\Quests.lua
+Gear\GuildWishes.lua
+Gear\Compare.lua
+Gear\Catalog.lua
+Gear\Enchants.lua
+Gear\Talents.lua
+Gear\MageScrolls.lua
+Gear\Map.lua
+Gear\MapPins.lua
+Gear\MapPlaces.lua
+Gear\QuestGiverPins.lua
+Gear\Routes.lua
+Gear\RouteMap.lua
+Gear\DungeonBar.lua
+Gear\GroupQuests.lua
+Gear\QuestItems.lua
+Gear\QuestItemsWindow.lua
+Gear\QuestStart.lua
+Gear\Layer.lua
+Gear\LayerChange.lua
+Gear\LayerWindow.lua
+UI\Pages\Gear.lua
+UI\Pages\JournalParts.lua
+UI\Pages\Dungeons.lua
+UI\Pages\RaidJournal.lua
+UI\GearDoll.lua
+UI\Pages\Planner.lua
+UI\SlotCard.lua
+UI\Pages\Map.lua
+UI\Pages\Professions.lua
+UI\Pages\Quests.lua
+UI\Pages\Talents.lua
+UI\Pages\MageScrolls.lua
+UI\DuelInfo.lua
+UI\Pages\Duels.lua
+UI\Pages\Tools.lua
+Core\SelfTestLayer.lua

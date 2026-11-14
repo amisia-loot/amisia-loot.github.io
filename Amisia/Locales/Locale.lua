@@ -5,11 +5,14 @@
 -- shows as it stands (German). A key may carry a context after "##" ("Aus##Ansage") when one German
 -- text needs two English ones; the German text is the part before "##".
 --
--- Loading (D-128): the client runs an addon's files first and loads its SavedVariables after them, but
--- most files translate texts while they load. So this file, the first of the TOC, runs at once; every
--- other file puts its body in ns.Load(function() ... end), and this file runs those bodies in TOC order
--- on Amisia's ADDON_LOADED, once AmisiaDB (and with it the chosen language) is there; then the core's
--- own ADDON_LOADED (ns.CoreLoaded). A body that fails stops only itself, as a failing file did.
+-- Loading (D-128, D-130): the client runs an addon's files first and loads its SavedVariables after
+-- them, but most files translate texts while they load. So this file, the first of the core's TOC, runs
+-- at once; every other file puts its body in ns.Load(function() ... end). Amisia is a core (this addon)
+-- and the modules Amisia_Raid and Amisia_Gear, addons of their own that load right after it and share
+-- its namespace (their Module.lua). This file runs the bodies once AmisiaDB (and with it the chosen
+-- language) is there and every module that will load has loaded its files: core, raid, gear, each in
+-- TOC order; then the core's own ADDON_LOADED (ns.CoreLoaded). A body that fails stops only itself, as
+-- a failing file did.
 local ADDON, ns = ...
 -- the start of loading Amisia's files, for /amisia leistung (Core/Perf.lua, F-184): this is the first file
 ns.PERF_T0 = (type(debugprofilestop) == "function" and debugprofilestop())
@@ -54,19 +57,54 @@ function ns.LanguageChoice(db)
     return (type(v) == "string" and ns.LANGUAGES[v]) and v or "auto"
 end
 
--- The files' bodies, in TOC order, until ns.RunLoad runs them; after it a body runs at once (a test
--- that loads one file again).
-local bodies, ran = {}, false
-function ns.Load(fn)
+---------------------------------------------------------------------------
+-- The core and its modules (F-202, D-130)
+---------------------------------------------------------------------------
+-- The modules' first file (Raid/Module.lua, Gear/Module.lua) points the module's namespace at this one.
+_G.AmisiaCore = ns
+-- the core's addon name: the ADDON_LOADED the handlers of every part wait for (ns.CoreLoaded)
+ns.ADDON = ADDON
+-- the modules whose files are loaded: { raid = true, gear = true } (ns.HasModule, Core/Registry.lua)
+ns.MODULES = {}
+-- the modules' addons in load order (the gear module's TOC names the raid module as optional
+-- dependency, so the client loads it after the raid module); gear loads on WoW Forever only
+ns.MODULE_ADDONS = { { key = "raid", addon = "Amisia_Raid" }, { key = "gear", addon = "Amisia_Gear", forever = true } }
+local PARTS = { core = 1, raid = 2, gear = 3 }
+local own = { [ADDON] = "core" }
+for _, m in ipairs(ns.MODULE_ADDONS) do own[m.addon] = m.key end
+
+-- Whether name is one of Amisia's addons (the core or a module): the client names the addon whose code
+-- it refused (ADDON_ACTION_BLOCKED) or measures (memory).
+function ns.OwnAddon(name)
+    return type(name) == "string" and own[name] ~= nil
+end
+
+-- The addon names of the core and of every module whose files are loaded, in load order (the memory
+-- the client counts per addon: /amisia speicher, /amisia leistung).
+function ns.OwnAddons()
+    local out = { ADDON }
+    for _, m in ipairs(ns.MODULE_ADDONS) do
+        if ns.MODULES[m.key] then out[#out + 1] = m.addon end
+    end
+    return out
+end
+
+-- The files' bodies per part, each in TOC order, until ns.RunLoad runs them; after it a body runs at
+-- once (a test that loads one file again, a module the client loads late).
+local bodies, ran = { {}, {}, {} }, false
+function ns.LoadPart(part, fn)
     if ran then
         fn()
     else
-        bodies[#bodies + 1] = fn
+        local list = bodies[PARTS[part] or 1]
+        list[#list + 1] = fn
     end
 end
+function ns.Load(fn) ns.LoadPart("core", fn) end
 
--- Chooses the language from AmisiaDB and runs the files' bodies (once). Each runs protected: its error
--- goes to the client's error handler and the next body runs.
+-- Chooses the language from AmisiaDB and runs the files' bodies (once): the core's, the raid module's,
+-- the gear module's. Each runs protected: its error goes to the client's error handler and the next
+-- body runs.
 function ns.RunLoad()
     if ran then return end
     ran = true
@@ -74,7 +112,7 @@ function ns.RunLoad()
     ns.LANG = choice == "auto" and ns.CLIENT_LANG or choice
     ns.GERMAN = ns.LANG == "deDE"
     settled = true
-    local list = bodies
+    local parts = bodies
     bodies = nil
     -- xpcall: the error handler sees the failing body's stack (and its locals), as for a failing file
     local handler = type(geterrorhandler) == "function" and geterrorhandler() or nil
@@ -82,17 +120,90 @@ function ns.RunLoad()
         if handler then pcall(handler, err) end
         return err
     end
-    for _, fn in ipairs(list) do xpcall(fn, report) end
+    for _, list in ipairs(parts) do
+        for _, fn in ipairs(list) do xpcall(fn, report) end
+    end
 end
 
+-- The client's answer to "will this addon load now": installed, enabled for this character, loadable
+-- (not out of date, its dependencies there) and not load on demand. C_AddOns on every client of
+-- Amisia, the old globals as fallback; nil when the client cannot tell.
+local function willLoad(name)
+    local A = _G.C_AddOns
+    local function api(key) return (A and A[key]) or _G[key] end
+    local info = api("GetAddOnInfo")
+    if type(info) ~= "function" then return nil end
+    local ok, found, _, _, loadable = pcall(info, name)
+    if not ok or not found then return false end
+    local isLoadable = A and A.IsAddOnLoadable
+    if type(isLoadable) == "function" then
+        local ok2, yes = pcall(isLoadable, name, (UnitName and UnitName("player")) or nil)
+        if ok2 then loadable = yes end
+    end
+    if not loadable then return false end
+    -- the state for this character: 0 off (C_AddOns: name first; the old global: character first)
+    local who = UnitName and UnitName("player") or nil
+    local state
+    if A and type(A.GetAddOnEnableState) == "function" then
+        local ok3, v = pcall(A.GetAddOnEnableState, name, who)
+        state = ok3 and v or nil
+    elseif type(_G.GetAddOnEnableState) == "function" then
+        local ok3, v = pcall(_G.GetAddOnEnableState, who, name)
+        state = ok3 and v or nil
+    end
+    if tonumber(state) == 0 then return false end
+    local lod = api("IsAddOnLoadOnDemand")
+    if type(lod) == "function" then
+        local ok4, v = pcall(lod, name)
+        if ok4 and v then return false end
+    end
+    return true
+end
+
+-- The modules' addons whose ADDON_LOADED is still to come after the core's: { name = true }.
+local function modulesToCome()
+    local out = {}
+    for _, m in ipairs(ns.MODULE_ADDONS) do
+        local here = not m.forever or (_G.WOW_PROJECT_CAMELOT ~= nil and _G.WOW_PROJECT_ID == _G.WOW_PROJECT_CAMELOT)
+        if here and willLoad(m.addon) then out[m.addon] = true end
+    end
+    return out
+end
+
+-- The core's ADDON_LOADED notes which modules will load; the last of their ADDON_LOADED runs every body
+-- and then ns.CoreLoaded. PLAYER_LOGIN runs them if something still waits (the client loaded a module
+-- after all that it did not name, or not one it named). A module the client loads after that (its
+-- files run their bodies at once) gets its ADDON_LOADED handlers through ns.LateLoaded.
 do
     local f = CreateFrame("Frame")
-    f:RegisterEvent("ADDON_LOADED")
-    f:SetScript("OnEvent", function(self, _, name)
-        if name ~= ADDON then return end
-        self:UnregisterEvent("ADDON_LOADED")
+    local waiting, started
+    local function start(atLogin)
+        started = true
         ns.RunLoad()
         if ns.CoreLoaded then ns.CoreLoaded() end
+        if atLogin and ns.LoginLoaded then ns.LoginLoaded() end
+    end
+    f:RegisterEvent("ADDON_LOADED")
+    f:RegisterEvent("PLAYER_LOGIN")
+    f:SetScript("OnEvent", function(self, event, name)
+        if event == "PLAYER_LOGIN" then
+            self:UnregisterEvent("ADDON_LOADED")
+            self:UnregisterEvent("PLAYER_LOGIN")
+            if not started then start(true) end
+            return
+        end
+        if started then
+            if own[name] and name ~= ADDON and ns.LateLoaded then ns.LateLoaded() end
+            return
+        end
+        if name == ADDON then
+            waiting = modulesToCome()
+        elseif waiting and own[name] then
+            waiting[name] = nil
+        else
+            return
+        end
+        if next(waiting) == nil then start(false) end
     end)
 end
 

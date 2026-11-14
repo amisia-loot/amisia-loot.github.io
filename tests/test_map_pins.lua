@@ -10,7 +10,7 @@ local Gear, Map = NS.Gear, NS.Map
 local function has(text, part) return type(text) == "string" and text:find(part, 1, true) ~= nil end
 local function near(a, b) return math.abs(a - b) < 1e-6 end
 local function readFile(name)
-    local fh = assert(io.open(ADDON_DIR .. "/" .. name, "rb"))
+    local fh = assert(io.open(ADDON_FILE(name), "rb"))
     local src = fh:read("*a")
     fh:close()
     return src
@@ -28,10 +28,10 @@ end
 ---------------------------------------------------------------------------
 -- the TOC: no template file, no pin mixin
 ---------------------------------------------------------------------------
-local toc = readFile("Amisia.toc")
+local toc = readFile("Amisia_Gear.toc")
 local iPins, iPlaces, iWish = toc:find("\nGear\\MapPins.lua", 1, true), toc:find("\nGear\\MapPlaces.lua", 1, true), toc:find("\nGear\\GuildWishes.lua", 1, true)
 assert(iPins and iPlaces and iWish and iWish < iPins and iPins < iPlaces, "MapPins.lua, then MapPlaces.lua, after GuildWishes.lua")
-assert(not toc:find("MapPin.xml", 1, true) and not io.open(ADDON_DIR .. "/Gear/MapPin.xml", "rb"), "no pin template any more")
+assert(not toc:find("MapPin.xml", 1, true) and not io.open(ADDON_FILE("Gear/MapPin.xml"), "rb"), "no pin template any more")
 assert(AmisiaMapPinMixin == nil, "no pin mixin")
 
 ---------------------------------------------------------------------------

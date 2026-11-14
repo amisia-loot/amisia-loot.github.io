@@ -13,7 +13,7 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOOLS = os.path.dirname(HERE)
 ROOT = os.path.dirname(TOOLS)
-ADDON = os.path.join(ROOT, 'Amisia')
+ADDON = os.path.join(ROOT, 'Amisia_Gear')   # the gear module holds the data (F-202)
 NEW = os.path.join(HERE, 'fixtures', 'att_new')
 sys.path.insert(0, TOOLS)
 import att_data  # noqa: E402
@@ -127,10 +127,10 @@ def test_the_shipped_file():
     assert qi.count == len(list(qi.I.keys()))
     for v in list(qi.I.values())[:200]:
         assert re.fullmatch(r'[SOD]\d+(,[SOD]\d+)*', v), v
-    for toc in ('Amisia.toc',):
+    for toc in ('Amisia_Gear.toc',):
         with open(os.path.join(ADDON, toc), encoding='utf-8') as fh:
             t = fh.read()
-        assert re.search(r'^Data\\QuestItemData\.lua \[AllowLoadGameType camelot\]$', t, re.M)
+        assert re.search(r'^Data\\QuestItemData\.lua$', t, re.M)
         assert t.index('Data\\QuestData.lua') < t.index('Data\\QuestItemData.lua') < t.index('Gear\\QuestItems.lua')
-    with open(os.path.join(ADDON, 'LICENSES', 'AllTheThings-MIT.txt'), encoding='utf-8') as fh:
+    with open(os.path.join(ROOT, 'Amisia', 'LICENSES', 'AllTheThings-MIT.txt'), encoding='utf-8') as fh:
         assert 'QuestItemData.lua' in fh.read().split('used under this licence')[0]

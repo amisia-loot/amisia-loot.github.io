@@ -468,6 +468,6 @@ BUS.reload(KIM)
 assert(C(KIM, "#AmisiaDB.sessions[#AmisiaDB.sessions].sync.pending") == 1, "loading twice changes nothing")
 
 for _, file in ipairs({ "Raid/Sync.lua" }) do
-    local src = assert(io.open(ADDON_DIR .. "/" .. file, "rb")):read("*a")
+    local src = assert(io.open(ADDON_FILE(file), "rb")):read("*a")
     for c in src:gmatch("[\196-\255][\128-\191]") do error(file .. ": character above Latin-1: " .. c) end
 end

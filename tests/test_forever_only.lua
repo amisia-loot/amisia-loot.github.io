@@ -25,7 +25,8 @@ GetGuildBankItemInfo = function(tab, slot)
 end
 ]]
 -- Amisia is WoW Forever with every part, TBC Anniversary and Classic Era with the raid part only
--- (D-01, D-57): the TOC (the interface list, the Forever parts behind [AllowLoadGameType camelot]), no
+-- (D-01, D-57, D-130): the TOCs (the interface lists, the gear module Forever's only, the raid
+-- module's two Forever parts behind [AllowLoadGameType camelot]), no
 -- file or code path of the old TBC client of 1.9, the removed helpers, the move of the saved settings
 -- (twice changes nothing), the ignore list and the empty list of guild materials with the mechanism
 -- that comes back with a list. tests/test_tbc_raid.lua loads the raid part alone.
@@ -38,15 +39,21 @@ local function readFile(path)
 end
 
 ---------------------------------------------------------------------------
--- the TOC
+-- the TOCs
 ---------------------------------------------------------------------------
-local toc = readFile(ADDON_DIR .. "/Amisia.toc")
-local interface = {}
-for v in toc:gmatch("## Interface:%s*([^\r\n]+)") do interface[#interface + 1] = v end
-assert(#interface == 1 and interface[1] == "16001, 20506, 11509",
-    "## Interface: Forever, TBC Anniversary, Classic Era: " .. table.concat(interface, "|"))
-assert(not toc:find("TBC", 1, true) and not toc:find("AllowLoadGameType tbc", 1, true), "no TBC line")
-assert(not toc:find("## AllowLoadGameType", 1, true), "no TOC-wide load condition")
+-- the core (Amisia) and the raid module (Amisia_Raid) target all three clients, the gear module
+-- (Amisia_Gear) Forever only (F-202, D-130): a folder of its own instead of a mark per file
+local toc = readFile(ADDON_TOCS[1])
+local tocs = { core = toc, raid = readFile(ADDON_TOCS[2]), gear = readFile(ADDON_TOCS[3]) }
+for part, text in pairs(tocs) do
+    local interface = {}
+    for v in text:gmatch("## Interface:%s*([^\r\n]+)") do interface[#interface + 1] = v end
+    local want = part == "gear" and "16001" or "16001, 20506, 11509"
+    assert(#interface == 1 and interface[1] == want, part .. ": ## Interface: " .. table.concat(interface, "|"))
+    assert(not text:find("AllowLoadGameType tbc", 1, true), part .. ": no TBC line")
+    assert(not text:find("## AllowLoadGameType", 1, true), part .. ": no TOC-wide load condition")
+    assert(part == "core" or text:find("## Dependencies: Amisia\n", 1, true), part .. ": needs the core")
+end
 -- the Forever parts (D-57): exactly these load on Forever only, every other file on all three clients
 local FOREVER_FILES = { ["Core/Duels.lua"] = true, ["Core/SelfTestLayer.lua"] = true, ["Raid/Handover.lua"] = true, ["UI/GearDoll.lua"] = true,
                         ["UI/SlotCard.lua"] = true, ["UI/DuelInfo.lua"] = true }
@@ -57,17 +64,28 @@ end
 local function foreverOnly(name)
     return FOREVER_FILES[name] or name:find("^Data/") ~= nil or name:find("^Collect/") ~= nil or name:find("^Gear/") ~= nil
 end
-local tagged = 0
-for line in toc:gmatch("[^\r\n]+") do
-    if not line:find("^#") and line:find("%S") then
-        local name = line:gsub("%s*%[[^%]]*%]", ""):gsub("\\", "/"):match("^%s*(.-)%s*$")
-        local camelot = line:find("%[AllowLoadGameType camelot%]") ~= nil
-        assert(camelot == (foreverOnly(name) and true or false),
-            name .. (camelot and " loads on Forever only but belongs to the raid part" or " is a Forever part without its load condition"))
-        if camelot then tagged = tagged + 1 end
+local tagged, gear = 0, 0
+for part, text in pairs(tocs) do
+    for line in text:gmatch("[^\r\n]+") do
+        if not line:find("^#") and line:find("%S") then
+            local name = line:gsub("%s*%[[^%]]*%]", ""):gsub("\\", "/"):match("^%s*(.-)%s*$")
+            local camelot = line:find("%[AllowLoadGameType camelot%]") ~= nil
+            if part == "gear" then
+                -- the whole module is Forever's: its locale files and its first file too, no mark
+                assert(not camelot, name .. ": the gear module's files need no mark")
+                assert(foreverOnly(name) or name:find("^Locales/") or name == "Gear/Module.lua", name .. " in the gear module")
+                gear = gear + 1
+            else
+                -- the raid module keeps the mark on its two Forever-only features
+                assert(camelot == (foreverOnly(name) and true or false),
+                    name .. (camelot and " loads on Forever only but belongs to the raid part" or " is a Forever part without its load condition"))
+                assert(not camelot or part == "raid", name .. ": a mark in the core")
+                if camelot then tagged = tagged + 1 end
+            end
+        end
     end
 end
-assert(tagged > 50, "the Forever files: " .. tagged)
+assert(tagged == 2 and gear > 50, "the Forever files: " .. tagged .. " marked, " .. gear .. " in the gear module")
 local version = toc:match("## Version:%s*([^\r\n]+)")
 assert(version and version == NS.VERSION, "TOC version and ns.VERSION agree: " .. tostring(version) .. " / " .. tostring(NS.VERSION))
 assert(version and tonumber(version:match("^(%d+)")) >= 2, "the Forever-only addon is 2.0.0 or later: " .. tostring(version))
@@ -77,19 +95,21 @@ assert(version and tonumber(version:match("^(%d+)")) >= 2, "the Forever-only add
 ---------------------------------------------------------------------------
 -- every file the TOC loads (the test runtime has no directory listing), and the TBC files of 1.9
 local files = {}
-for line in toc:gmatch("[^\r\n]+") do
-    if not line:find("^#") and line:find("%S") then
-        files[#files + 1] = (line:gsub("%s*%[[^%]]*%]", ""):gsub("\\", "/"):match("^%s*(.-)%s*$"))
+for _, part in ipairs({ "core", "raid", "gear" }) do
+    for line in tocs[part]:gmatch("[^\r\n]+") do
+        if not line:find("^#") and line:find("%S") then
+            files[#files + 1] = (line:gsub("%s*%[[^%]]*%]", ""):gsub("\\", "/"):match("^%s*(.-)%s*$"))
+        end
     end
 end
 assert(#files > 30, "the addon files: " .. #files)
 for _, name in ipairs({ "BisDataTBC.lua", "BisWeightsTBC.lua", "MapDataTBC.lua" }) do
-    assert(io.open(ADDON_DIR .. "/" .. name, "rb") == nil, name .. " is gone")
+    assert(io.open(ADDON_FILE(name), "rb") == nil, name .. " is gone")
 end
 for _, name in ipairs(files) do
     assert(not name:find("TBC", 1, true), "a file with TBC in its name: " .. name)
     if name:find("%.lua$") then
-        local src = readFile(ADDON_DIR .. "/" .. name)
+        local src = readFile(ADDON_FILE(name))
         -- a generated data file holds item and spell numbers: the TBC interface number may be part of one
         local generated = src:find("^%-%- GENERATED") ~= nil
         -- OnTooltipSetItem: only Core.lua's item tooltip hook of TBC and Era (D-57); the classic loot
@@ -123,13 +143,13 @@ assert(NS.Gear.Available(), "the Forever data loads")
 -- the map: one data file without guard, no reputation keys, the arrow's tip
 ---------------------------------------------------------------------------
 assert(NS.MAP and NS.MAP.game == "forever", "MapData.lua loads")
-local mapSrc = readFile(ADDON_DIR .. "/Data/MapData.lua")
+local mapSrc = readFile(ADDON_FILE("Data/MapData.lua"))
 assert(not mapSrc:find("then return end", 1, true) and not mapSrc:find("quartermaster", 1, true), "no guard, no quartermaster list")
 for key in pairs(NS.MAP.P) do assert(not key:find("^F:"), "no reputation key: " .. key) end
 assert(NS.MapKeyOf({ "F", "Thrallmar", 5, 947, "H" }) == nil, "no key for a reputation source")
 assert(NS.SettingItem("map.arrow").tip == "Ein kleines Fenster mit Kompass, Entfernung, Zeit und Koordinaten für dein Ziel und die Kartenmarkierung des Clients (Strg + Klick auf die Weltkarte). Nur ohne Pfeil des Clients: nur für Ziele, die der Client nicht selbst anzeigen kann.")
 for _, name in ipairs({ "Gear/Map.lua", "Gear/MapPins.lua", "UI/Pages/Map.lua" }) do
-    local src = readFile(ADDON_DIR .. "/" .. name)
+    local src = readFile(ADDON_FILE(name))
     assert(not src:find("TBC", 1, true) and not src:find("both clients", 1, true), name .. " still names a second client")
 end
 
