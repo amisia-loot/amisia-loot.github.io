@@ -1456,6 +1456,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: seit 2.55.0 auf eigener Pin-Ebene statt als Datenlieferant der Weltkarte (Taint-Fehler, DECISIONS D-64); seit 2.57.1 öffnet der Client die Karte selbst (`C_Map.OpenWorldMap`).
 - Notiz: 2.57.0: Seite Karte öffnet auf "Alle Zonen" (nach Zonen, nächste zuerst), Chip "Quests" (nächster Questweg-Schritt, auch als "!" auf der Weltkarte, Einstellung `map.pinsQuests`), Ansicht "Ohne Ort", Zielkarte mit Richtung und Pfeil, Knopf "Karte" je Zeile, deutsche Namen aus eigener Beobachtung.
 
+### F-203 Zielfenster mit Kompass für Kartenmarkierung und Ziel
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du mit Strg auf die Weltkarte klickst, dann erscheint das Fenster "Ziel" mit "Kartenmarkierung", einem Pfeil im Kompass, der beim Drehen der Figur mitdreht, der Entfernung und den Koordinaten mit Zone; beim Hinlaufen steht neben der Entfernung eine Zeit in Sekunden, die kleiner wird.
+- Prüfung: Wenn du auf "Kompakt" klickst, dann bleiben nur Kompass und Entfernung; nach `/reload` ist es weiter kompakt und an derselben Stelle.
+- Prüfung: Wenn du auf das X klickst, dann sind Fenster und Markierung weg (auch die gelbe Markierung des Clients auf der Karte).
+- Prüfung: Wenn du auf der Seite Karte eine Zeile anklickst, dann zeigt das Fenster ihren Namen statt "Kartenmarkierung".
+- Prüfung: Wenn du einen Dungeon betrittst oder in den Kampf kommst, dann gibt es keine Lua-Fehler und keine Meldung "Aktion blockiert"; draußen ist das Fenster wieder da.
+- Notiz: Spec `docs/specs/2026-11-14-zielfenster.md`; ersetzt den Pfeil von F-045. Eigene Umsetzung, nichts aus anderen Addons (D-03, D-04).
+
 ### F-105 Orte auf der Weltkarte (Eingänge, Flugmeister, Zeppeline, Schiffe)
 - Version: 2.67.0
 - Status: gebaut
