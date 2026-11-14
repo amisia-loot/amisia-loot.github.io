@@ -13,7 +13,7 @@ local _, ns = ...
 -- files yet, N<n> only n of pre needed (any one of them for N1).
 ns.LazyData("QUEST_DATA", [=[
 return {
-built="2026-11-13",source="007a0073a4",count=4065,
+built="2026-11-14",source="007a0073a4",count=4065,
 Z={
 [33]="Blackrock Mountain",
 [213]="Ragefire Chasm",

@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-12",
+ "updated": "2026-11-14",
  "entrances": {
   "33": {
    "map": 1421,
@@ -17,6 +17,14 @@
    "kind": "party",
    "seen": 1794145460
   },
+  "70": {
+   "map": 1418,
+   "x": 3519,
+   "y": 1042,
+   "name": "Uldaman",
+   "kind": "party",
+   "seen": 1794601747
+  },
   "129": {
    "map": 1434,
    "x": 2170,
@@ -32,6 +40,14 @@
    "name": "Scharlachrotes Kloster",
    "kind": "party",
    "seen": 1794403436
+  },
+  "209": {
+   "map": 1446,
+   "x": 3871,
+   "y": 1991,
+   "name": "Zul'Farrak",
+   "kind": "party",
+   "seen": 1794611831
   },
   "389": {
    "map": 1454,
