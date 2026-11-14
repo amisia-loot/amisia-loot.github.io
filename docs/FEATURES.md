@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-202 Module: Kern, Raid und Ausrüstung & Dungeons als eigene Addons
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du in der AddOn-Liste "Amisia: Ausrüstung & Dungeons" abhakst und einloggst, dann gibt es keine Lua-Fehler, die Seitenleiste zeigt nur Kern- und Raid-Seiten, und Rolls, Vergaben und Aufstellung gehen.
+- Prüfung: Wenn du es danach wieder anhakst und einloggst, dann sind Planer-Ziele, Routen, Bestzeiten und deren Einstellungen unverändert da.
+- Prüfung: Wenn du "Amisia: Raid" abhakst, dann laufen Planer, Dungeons und Karte ohne Lua-Fehler, und im Raid zeichnet Amisia nichts auf.
+- Prüfung: Wenn du in den Einstellungen unter "Module" ein Modul ausschaltest und "Neu laden" klickst, dann ist es danach in der AddOn-Liste abgehakt.
+- Prüfung: Wenn du auf TBC Anniversary einloggst, dann lädt der Raid-Teil wie bisher, und "Ausrüstung & Dungeons" fehlt ohne Fehler.
+- Notiz: Spec `docs/specs/2026-11-14-module.md`; erst nach F-199. Am PC einmal neue Verknüpfungen (Skript kommt mit).
+
 ### F-199 Sprache wählen: Deutsch oder Englisch, Standard die Clientsprache
 - Version: -
 - Status: geplant
