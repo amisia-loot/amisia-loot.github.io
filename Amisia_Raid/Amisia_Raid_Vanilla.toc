@@ -4,7 +4,7 @@
 ## Notes: Amisia's raid module: records raid members, loot and awards per raid, runs rolls, soft reserves, points, the lineup and the raid calendar, and exports everything for the Amisia loot site. Needs Amisia.
 ## Notes-deDE: Raid-Modul von Amisia: zeichnet pro Raid Raidmitglieder, Loot und Vergaben auf, verwaltet Rolls, Soft-Reserves, Punkte, Aufstellung und Raidkalender und exportiert alles für die Amisia-Loot-Seite. Braucht Amisia.
 ## Author: mrvulo
-## Version: 2.84.0
+## Version: 2.85.0
 ## Category: VuloUI
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia_Raid
 ## Dependencies: Amisia

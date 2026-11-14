@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.85.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.85.0) (2026-11-14)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.84.0...v2.85.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(modules): Amisia is now three addons: the core, Amisia: Raid and Amisia: Gear & Dungeons (F-202)
 
     The AddOn list now shows three entries instead of one: Amisia (the core: window, settings, overview, guild
