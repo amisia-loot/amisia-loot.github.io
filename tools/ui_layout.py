@@ -171,15 +171,18 @@ def capture(view, mode, locale='deDE'):
     return shots, used, allowed
 
 
-def capture_all(locale='deDE'):
-    shots, used, allowed = [], set(), set()
+def iter_shots(locale='deDE', used=None, allowed=None):
+    """Every shot of every view, one view and mode at a time; adds the atlases used and the allow-list to
+    the sets used and allowed. A shot holds every frame its runtime made so far (up to ~14,000 nodes):
+    all ~450 shots of a locale held at once took 8-12 GB, so callers keep only what they need of each."""
     for view in VIEWS:
         for mode in ('pages', 'windows'):
-            s, u, a = capture(view, mode, locale)
-            shots += s
-            used |= set(u)
-            allowed |= set(a)
-    return shots, sorted(used), sorted(allowed)
+            shots, u, a = capture(view, mode, locale)
+            if used is not None:
+                used |= set(u)
+            if allowed is not None:
+                allowed |= set(a)
+            yield from shots
 
 
 # ---------------------------------------------------------------- geometry
@@ -697,10 +700,9 @@ def rule_red(tree, shot):
 def red_report(write=False):
     """Every page's count against its budget; write lowers the budget to the counts (never raises it)
     and adds missing pages. Returns the lines and whether a count is over its budget."""
-    shots, _, _ = capture_all('deDE')
     budget = red_budget()
     counts = {}
-    for s in shots:
+    for s in iter_shots('deDE'):
         if not s['nodes'] or s['view'] == 'wide':   # the wide pass counts against the expert view's budget
             continue
         n = red_count(Tree(s['nodes'], s['marks']))
@@ -757,12 +759,12 @@ def run_rules(locales=None):
     """Every rule over every shot in every locale. Returns a list of 'locale view/shot rule: text'."""
     out = []
     for loc in (locales or LOCALES):
-        shots, used, allowed = capture_all(loc)
-        for s in shots:
+        used, allowed = set(), set()
+        for s in iter_shots(loc, used, allowed):
             for rule, items in check_shot(s, LOCALES.get(loc, 1.0)).items():
                 for it in items:
                     out.append(f'{loc} {s["view"]}/{s["name"]} {rule}: {it}')
-        for it in check_atlases(used, allowed):
+        for it in check_atlases(sorted(used), sorted(allowed)):
             out.append(f'{loc} atlas: {it}')
     return out
 
@@ -1028,19 +1030,21 @@ def compare(old_dir, shots):
 
 def snapshots(out_dir, compare_dir=None, scale=1, locale='deDE', mono=False):
     os.makedirs(out_dir, exist_ok=True)
-    shots, used, allowed = capture_all(locale)
+    used, allowed = set(), set()
     factor = LOCALES.get(locale, 1.0)
-    cards = []
-    for s in shots:
+    cards, changed = [], ([] if compare_dir else None)
+    for s in iter_shots(locale, used, allowed):
         key = f'{s["view"]}-{s["name"]}'
         found = check_shot(s, factor)
         if s['nodes']:
             render(s, os.path.join(out_dir, key + '.png'), scale, mono)
             with open(os.path.join(out_dir, key + '.boxes.json'), 'w', encoding='utf-8') as fh:
                 json.dump(boxes(s), fh, ensure_ascii=False)
-        cards.append((s, key, found))
-    atlas_bad = check_atlases(used, allowed)
-    changed = compare(compare_dir, shots) if compare_dir else None
+        if compare_dir:
+            changed += compare(compare_dir, [s])
+        # the card keeps what the index needs, not the shot's nodes
+        cards.append(({'view': s['view'], 'name': s['name'], 'nodes': bool(s['nodes'])}, key, found))
+    atlas_bad = check_atlases(sorted(used), sorted(allowed))
     write_index(out_dir, cards, atlas_bad, changed, locale)
     return cards, atlas_bad, changed
 
