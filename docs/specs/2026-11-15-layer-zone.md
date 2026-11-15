@@ -1,6 +1,6 @@
 # Spec: Layer-Wechsel mit allen Amisia-Nutzern der Zone
 
-Stand: 2026-11-15 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-15 · Status: freigegeben ·
 Feature: F-216
 
 ## Ziel
@@ -133,4 +133,6 @@ aufgeht, eine leise Nachricht an einen Fremden (geht sie raus, kommt eine Fehler
 
 ## Entscheidungen
 
-Noch keine.
+- 2026-11-15: alle vier Fragen: "Passt, bauen" -> Fremde Amisia-Nutzer der Zone per `/who` und `ZQ`/`ZA`/`YI` fragen;
+  Bitten über Amisia ohne Frage einladen (auch Fremde), Chat-Bitten von Fremden fragen weiter; nach dem Wechsel von
+  selbst verlassen, an, 5 Sekunden; alles in einem Release mit dem Selbsttest.
