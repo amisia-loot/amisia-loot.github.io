@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.90.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.90.0) (2026-11-15)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.89.2...v2.90.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(map): the column of light over the map pin stands on the ground better (F-206)
 
     The column now has the size of a thing in the world: small and thin far away, taller and wider as
