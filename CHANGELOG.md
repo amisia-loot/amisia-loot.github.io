@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.94.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.94.1) (2026-11-15)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.94.0...v2.94.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - fix(comm): no "player not online" lines when a guild member logs off (F-216)
 
     When a guild member went offline while Amisia still had hidden messages for them, the chat showed the server's
