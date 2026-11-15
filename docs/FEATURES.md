@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-215 Aufrufe: ein Spieler reicht, Stufe und Rollen eintippen
-- Version: -
-- Status: geplant
+- Version: 2.93.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn du unter Gilde > Aufrufe einen Aufruf der Art "Hilfe" mit 0 Tank, 0 Heiler, 1 Schaden erstellst, dann geht er ohne Fehlermeldung an die Gilde, und Gildenmitglieder mit Amisia ab dieser Version sehen ihn auf ihrer Seite und als Chatzeile mit [Anmelden].
 - Prüfung: Wenn du in das Feld "Stufe ab" klickst, "45" tippst und Enter drückst, dann steht dort 45; die Pfeile zählen davon weiter, Escape stellt die alte Zahl wieder her.
@@ -49,8 +49,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Nutzer 2026-11-15: "können wir das posten das es andere gmitglieder sehen und können wir bei lvl einstellung auch einfach eine zahl reintippen". Mit 0/0/1 lehnte Amisia den Aufruf ab ("Rollen: zusammen 2 bis 40."), darum sah ihn niemand. DECISIONS D-140. Ältere Amisia-Versionen verwerfen einen Aufruf mit nur einem gesuchten Spieler.
 
 ### F-214 Fenster Layer: ein Knopf zum Wechseln, Helfen an und aus
-- Version: -
-- Status: geplant
+- Version: 2.93.0
+- Status: gebaut
 - Prüfung: Wenn du allein in einer Gilde im Fenster Layer (`/amisia layer`) "Layer wechseln" klickst und ein Gildenmitglied in derselben Zone auf einem anderen Layer ist, dann bittet Amisia es ohne weiteren Klick um die Einladung, nimmt sie an, und nach einem angezielten NPC steht "Gewechselt: Layer C".
 - Prüfung: Wenn binnen 10 Sekunden keine Antwort kommt, dann heißt der Knopf "Im Kanal fragen", und ein Klick öffnet die Chatzeile mit "/1 inv layer".
 - Prüfung: Wenn du "Helfen: AN" klickst und ein Gildenmitglied dich danach um einen Wechsel bittet, dann passiert bei dir nichts und der Knopf zeigt "Helfen: AUS"; nach `/reload` ist er wieder AN.
