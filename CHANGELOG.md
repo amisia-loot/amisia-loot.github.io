@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): your own note for each dungeon and raid (F-212)
+
+    The detail of a dungeon or raid has a new tab "Note": write what you want to remember there (tactics,
+    the way, what you still need) and a line per boss; it is saved as you type, and shift + click on an
+    item puts its link in. A dungeon with a note shows a note mark in the table and the first lines in its
+    tooltip. When you enter it, the chat names the note's first line with [Note], and the dungeon bar gets
+    "Note": a click shows the whole note, a boss's line stands grey under it in the boss list. The note is
+    yours only and never sent; the chat line can be switched off under Settings, Dungeon bar.
+
 ## [v2.90.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.90.0) (2026-11-15)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.89.2...v2.90.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

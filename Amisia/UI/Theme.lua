@@ -448,6 +448,10 @@ T.DPART = {
     ACCESS = { ROW_H = 22, ICON = 16, TEXT_X = 24, STEP_X = 24, STATE_W = 110 },
     -- the part Zeiten (F-166): rows ROW_H high, four cells at X with widths W (the first from TEXT_X)
     TIMES = { ROW_H = 22, X = { 4, 220, 330, 440 }, W = { 210, 104, 104, 130 } },
+    -- the part Notiz (F-212): the note's field EDIT_H high, under it the count and "Notiz leeren" (BAR_H),
+    -- the head "Bosse" (BAR_H), then the bosses in rows ROW_H high: the portrait PORT square at PORT_X,
+    -- the name from NAME_X (NAME_W wide), the boss's line from EDIT_X to the right end
+    NOTE = { EDIT_H = 120, GAP = 6, BAR_H = 20, ROW_H = 28, PORT = 24, PORT_X = 4, NAME_X = 34, NAME_W = 170, EDIT_X = 210 },
 }
 
 -- The run timer window (F-166, Gear/RunTimer.lua, AmisiaRunTimer): W wide, the content PAD from the
@@ -578,7 +582,7 @@ T.LAYER = { W = 300, PAD = 14, TOP = 30, VALUE_H = 22, LINE_H = 14, GAP = 8, HEA
     MINI_NAME_Y = 7, MINI_SUB_Y = -7, MINI_TEXT_W = 112, MINI_X = 20, MINI_X_R = 6 }
 
 T.DUNGEONBAR = { H = 26, PAD = 6, GAP = 10, NAME_W = 130, CLOSE = 14, SHADE = 0.78, LIST_GAP = 2, LIST_W = 300, ROW_H = 18,
-    ROW_NAME_W = 196, ROW_NOTE_W = 84, MAX_ROWS = 20, TICK = 0.5 }
+    ROW_NAME_W = 196, ROW_NOTE_W = 84, MAX_ROWS = 20, TICK = 0.5, NOTE_INDENT = 14 }
 
 -- the part Übersicht of the detail views of Dungeons and Raids (F-154, D-85): left the bosses (LIST_W
 -- wide with the list's bar, rows ROW_H high: the boss's model PORTRAIT square at PORT_X on a black

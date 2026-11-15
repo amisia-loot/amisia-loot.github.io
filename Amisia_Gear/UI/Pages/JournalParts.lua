@@ -1,5 +1,5 @@
 -- The journal's detail parts (F-146, D-72) for the pages Dungeons and Raids: the tabs under the
--- image (Übersicht, Karte, Quests, Wunschliste, Zugang), the run in the bosses' header line (kills
+-- image (Übersicht, Karte, Quests, Wunschliste, Zugang, Zeiten, Notiz), the run in the bosses' header line (kills
 -- "n/m" with a bar, "Lauf zurücksetzen"), a boss's kill mark and menu, the instance map (the client's
 -- map art of the instance's floors, zoom and drag, the player's arrow inside) and the keys (each key
 -- with its state and the quests that lead to it). The run comes from Gear/Runs.lua, the floors and
@@ -18,7 +18,7 @@ ns.JournalParts = P
 ---------------------------------------------------------------------------
 -- Tabs
 ---------------------------------------------------------------------------
-local PART_TEXT = { bosses = L["Übersicht"], map = L["Karte"], quests = "Quests", wish = L["Wunschliste"], access = L["Zugang"], times = L["Zeiten"] }
+local PART_TEXT = { bosses = L["Übersicht"], map = L["Karte"], quests = "Quests", wish = L["Wunschliste"], access = L["Zugang"], times = L["Zeiten"], note = L["Notiz##Dungeon"] }
 local PART_TIP = {
     bosses = L["Die Bosse mit ihrer Beute und dein Lauf: welche Bosse du schon getötet hast."],
     map = L["Die Karte der Instanz aus dem Spiel, mit ihren Ebenen. Mausrad: zoomen, Ziehen: verschieben."],
@@ -26,6 +26,7 @@ local PART_TIP = {
     wish = L["Was du dir aus dieser Instanz wünschst und was deine Ausrüstungsplanung empfiehlt, nach Boss."],
     access = L["Die Schlüssel der Instanz: ob du sie hast und die Quests, die zu ihnen führen."],
     times = L["Deine Lauf-Zeiten in dieser Instanz: der beste Lauf mit seinen Zwischenzeiten, die beste Zeit je Boss und die letzten Läufe."],
+    note = L["Deine eigene Notiz zu dieser Instanz und je Boss eine Zeile: Taktik, Weg, was du dort noch brauchst. Nur für dich, wird nie gesendet; beim Betreten steht sie in der Dungeon-Leiste."],
 }
 
 -- The tabs of page B in band top (a SetPoint offset), one per key; field: the key in settings.bis
@@ -562,5 +563,185 @@ function P.FillTimes(B, e, on)
         B.timesView.empty:SetShown(#rows == 0)
     end
     B.clearTimes:SetShown(on and #rows > 0 or false)
+end
+---------------------------------------------------------------------------
+-- The own note (F-212, Gear/DungeonNotes.lua)
+---------------------------------------------------------------------------
+local NTEXT = {
+    count = L["Länge %d/%d"],
+    clear = L["Notiz leeren"],
+    clearTip = L["Löscht die Notiz dieser Instanz und alle ihre Boss-Notizen."],
+    clearAsk = L["Die Notiz von %s und ihre Boss-Notizen löschen?"],
+    bosses = L["Notizen je Boss"],
+    bossTip = L["Eine Zeile je Boss; sie steht in der Dungeon-Leiste unter dem Boss. Enter oder ein Klick daneben speichert, Escape nimmt die Änderung zurück."],
+    gone = L["(Boss nicht mehr in der Liste)"],
+    noBosses = L["Für diese Instanz kennt Amisia keine Bosse."],
+}
+P.NOTE_HINT = L["Schreib, was du dir merken willst; gespeichert wird beim Tippen. Shift + Klick auf ein Item fügt seinen Link ein. Beim Betreten zeigt die Dungeon-Leiste \"Notiz\", und der Chat nennt die erste Zeile (Einstellungen, Dungeon-Leiste)."]
+
+-- the fields of the note views (both pages): a shift-clicked link lands in the one with the focus
+local noteBoxes = {}
+local lastInsert = {}   -- link, box, time: both hooks may run for one click
+local function onInsertLink(link)
+    if type(link) ~= "string" or not ns.ItemID(link) then return end
+    local t = GetTime()
+    for box in pairs(noteBoxes) do
+        local same = lastInsert.link == link and lastInsert.box == box and lastInsert.t == t
+        -- a link that would not fit whole is not put in (the cap would cut it)
+        if box:HasFocus() and not same and #(box:GetText() or "") + #link <= (box.noteMax or 0) then
+            lastInsert.link, lastInsert.box, lastInsert.t = link, box, t
+            box:Insert(link)
+            -- a link put in by code is no typing: the field keeps it itself
+            if box.afterInsert then box.afterInsert(box) end
+        end
+    end
+end
+if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
+    hooksecurefunc(ChatFrameUtil, "InsertLink", ns.Perf.Wrap("Hook InsertLink Notiz", onInsertLink))
+end
+if type(ChatEdit_InsertLink) == "function" then
+    hooksecurefunc("ChatEdit_InsertLink", ns.Perf.Wrap("Hook ChatEdit_InsertLink Notiz", onInsertLink))
+end
+
+local function setBox(box, text)
+    if box:GetText() == text then return end
+    box.setting = true
+    box:SetText(text)
+    box.setting = false
+end
+
+-- Every field of the note view lets go of the keyboard (each saves what it holds to its own key).
+local function dropFocus(v)
+    if v.area.box:HasFocus() then v.area.box:ClearFocus() end
+    for _, r in ipairs(v.list and v.list.rows or {}) do
+        if r.edit and r.edit:HasFocus() then r.edit:ClearFocus() end
+    end
+end
+
+local function noteCount(v)
+    local n = #(v.area.box:GetText() or "")
+    v.count:SetText(NTEXT.count:format(n, ns.DungeonNotes.MAX_TEXT))
+end
+
+-- The note view on B from top to the page's bottom (B.noteView): the field of the instance's note, its
+-- count and "Notiz leeren", then one line per boss (B.noteList).
+function P.BuildNote(B, top)
+    local X = D.NOTE
+    local NT = ns.DungeonNotes
+    local v = CreateFrame("Frame", nil, B)
+    v:SetPoint("TOPLEFT", 0, top)
+    v:SetPoint("BOTTOMRIGHT", 0, B:Bottom())
+    v.area = W.EditArea(v)
+    v.area:SetPoint("TOPLEFT", 0, 0)
+    v.area:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, 0)
+    v.area:SetHeight(X.EDIT_H)
+    local box = v.area.box
+    if box.SetMaxBytes then box:SetMaxBytes(NT.MAX_TEXT + 1) else box:SetMaxLetters(NT.MAX_TEXT) end
+    box:HookScript("OnTextChanged", function(self, user)
+        if user and not self.setting and B.noteKey then NT.Set(B.noteKey, self:GetText()) end
+        noteCount(v)
+    end)
+    -- the text as kept (cleaned) once the field is left
+    box:HookScript("OnEditFocusLost", function(self)
+        if B.noteKey then setBox(self, NT.Get(B.noteKey)) end
+        noteCount(v)
+    end)
+    box.afterInsert = function(self) if B.noteKey then NT.Set(B.noteKey, self:GetText()) end end
+    box.noteMax = NT.MAX_TEXT
+    noteBoxes[box] = true
+    local y = -(X.EDIT_H + X.GAP)
+    v.count = W.Text(v, T.FONT.hint, 200)
+    v.count:SetPoint("TOPLEFT", T.LAYOUT.TEXT_X, y - 3)
+    v.clear = W.Link(v, NTEXT.clear, function()
+        local k = B.noteKey
+        if not k then return end
+        local f = ns.Runs.Fact(k)
+        W.Confirm(NTEXT.clear, NTEXT.clearAsk:format(f and ns.Dungeons.Name(f) or k), NTEXT.clear, function()
+            -- a field with the focus would keep the old text and save it again
+            dropFocus(v)
+            NT.Clear(k)
+            ns.Refresh()
+        end)
+    end)
+    v.clear:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, y)
+    W.Tooltip(v.clear, NTEXT.clear, NTEXT.clearTip)
+    y = y - X.BAR_H - X.GAP
+    v.title = W.Text(v, T.FONT.title, 300)
+    v.title:SetPoint("TOPLEFT", T.LAYOUT.TEXT_X, y)
+    v.title:SetText(NTEXT.bosses)
+    v.titleHot = CreateFrame("Frame", nil, v)
+    v.titleHot:SetAllPoints(v.title)
+    v.titleHot:EnableMouse(true)
+    W.Tooltip(v.titleHot, NTEXT.bosses, NTEXT.bossTip)
+    y = y - X.BAR_H
+    local list = W.List(v, 3, X.ROW_H, function(r)
+        r.port = W.Portrait(r, X.PORT)
+        r.port:SetPoint("LEFT", X.PORT_X, 0)
+        r.name = W.Text(r, T.FONT.text, X.NAME_W)
+        r.name:SetPoint("LEFT", X.NAME_X, 0)
+        r.edit = W.LineEdit(r, 200, function(text)
+            local k = r.editKey
+            if k then NT.SetBoss(k[1], k[2], text) end
+        end)
+        r.edit:SetPoint("LEFT", r, "LEFT", X.EDIT_X, 0)
+        r.edit:SetPoint("RIGHT", r, "RIGHT", -4, 0)
+        if r.edit.SetMaxBytes then r.edit:SetMaxBytes(NT.MAX_BOSS + 1) else r.edit:SetMaxLetters(NT.MAX_BOSS) end
+        r.edit:HookScript("OnEditFocusLost", function(self)
+            local k = r.editKey
+            if k then setBox(self, NT.Boss(k[1], k[2])) end
+        end)
+        r.edit.noteMax = NT.MAX_BOSS
+        noteBoxes[r.edit] = true
+    end, function(r, e)
+        local k = { e.dkey, e.key }
+        -- a row given another boss while its line has the focus: the line goes to its old boss first
+        if r.edit:HasFocus() and r.editKey and (r.editKey[1] ~= k[1] or r.editKey[2] ~= k[2]) then r.edit:ClearFocus() end
+        r.editKey = k
+        r.name:SetText(e.name and ("%d. %s"):format(e.i, e.name) or (GREY .. NTEXT.gone .. "|r"))
+        W.SetPortrait(r.port, e.name and ns.Dungeons.BossNpc(e.dkey, e.name) or nil)
+        if not r.edit:HasFocus() then setBox(r.edit, e.text or "") end
+    end)
+    list:SetPoint("TOPLEFT", 0, y)
+    list:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, y)
+    W.FillTo(list, B, top + y, 3, X.ROW_H)
+    list.empty = W.Text(list, T.FONT.dim, 400, true)
+    list.empty:SetPoint("TOP", 0, -T.LAYOUT.EMPTY_Y)
+    list.empty:SetText(NTEXT.noBosses)
+    v.list = list
+    -- hidden (another tab, the window closed): no field keeps the keyboard
+    v:SetScript("OnHide", function() dropFocus(v) end)
+    v:Hide()
+    B.noteView = v
+    return v
+end
+
+-- The note of e on B; on: the part Notiz shows. The tab reads "Notiz" with the note's mark while e has one.
+function P.FillNote(B, e, on)
+    local NT = ns.DungeonNotes
+    if B.parts.note then
+        B.parts.note:SetText(e and NT.Has(e.key) and (NT.ICON .. " " .. PART_TEXT.note) or PART_TEXT.note)
+    end
+    local v = B.noteView
+    if not (e and on) then
+        if v.area.box:HasFocus() then v.area.box:ClearFocus() end
+        B.noteKey = nil
+        return
+    end
+    if B.noteKey ~= e.key then
+        -- another instance: the field's text goes to the one it was written for first
+        if v.area.box:HasFocus() then v.area.box:ClearFocus() end
+        v.area.scroll:SetVerticalScroll(0)
+        v.list.offset = 0
+    end
+    B.noteKey = e.key
+    if not v.area.box:HasFocus() then setBox(v.area.box, NT.Get(e.key)) end
+    noteCount(v)
+    v.clear:SetShown(NT.Has(e.key))
+    local rows = {}
+    for _, b in ipairs(NT.Bosses(e.key)) do
+        rows[#rows + 1] = { dkey = e.key, key = b.key, i = b.i, name = b.name, text = b.text }
+    end
+    v.list:SetItems(rows)
+    v.list.empty:SetShown(#rows == 0)
 end
 end)

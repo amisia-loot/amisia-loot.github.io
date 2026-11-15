@@ -78,6 +78,7 @@ local function raidTip(self)
     end
     local x = ownID(e)
     if x and ns.RaidIDText then GameTooltip:AddLine(L["Deine Raid-ID: %s"]:format(ns.RaidIDText(x)), 1, 0.5, 0.25) end
+    ns.DungeonNotes.AddTooltip(e.key)
     GameTooltip:Show()
 end
 
@@ -156,7 +157,7 @@ local function create(parent)
     B.header = W.SectionHeader(B, "", false)
     B.header:SetPoint("TOPLEFT", 0, headerTop)
     B.header:SetPoint("TOPRIGHT", -132, headerTop)
-    JP.BuildTabs(B, tabTop, { "bosses", "map", "wish", "access", "times" }, "rpart")
+    JP.BuildTabs(B, tabTop, { "bosses", "map", "wish", "access", "times", "note" }, "rpart")
     B.way = W.Link(B, L["Wegpunkt"], function()
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
@@ -176,12 +177,14 @@ local function create(parent)
     J.buildBossView(B, headerTop - T.HEADER_H - G.GAP)
     JP.BuildMap(B, headerTop - T.HEADER_H - G.GAP)
     JP.BuildAccess(B, headerTop - T.HEADER_H - G.GAP)
+    -- the own note (F-212)
+    JP.BuildNote(B, headerTop - T.HEADER_H - G.GAP)
     B.startParts = { B.next, B.why, B.table, B.table.head }
     for _, f in ipairs(B.filterParts) do B.startParts[#B.startParts + 1] = f end
     B.detailParts = { B.back, B.header, B.way }
     for _, k in ipairs(B.partKeys) do B.detailParts[#B.detailParts + 1] = B.parts[k] end
     -- shown by the part (refresh): the list, the bosses, the map, the keys, the run
-    B.partViews = { B.detail, B.bossView, B.mapView, B.accessView, B.runBar, B.resetRun, B.timesView, B.clearTimes }
+    B.partViews = { B.detail, B.bossView, B.mapView, B.accessView, B.runBar, B.resetRun, B.timesView, B.clearTimes, B.noteView }
     return B
 end
 
@@ -241,6 +244,7 @@ local function refresh(B)
         B.mapView:SetShown(part == "map")
         B.accessView:SetShown(part == "access")
         B.timesView:SetShown(part == "times")
+        B.noteView:SetShown(part == "note")
     end
     B.way:SetEnabled(e ~= nil and ns.DungeonEntrance(e.key) ~= nil)
     if e and part == "wish" then
@@ -254,6 +258,8 @@ local function refresh(B)
         JP.FillAccess(B, e)
     elseif e and part == "times" then
         B.header:SetHeaderText(L["Zeiten"])
+    elseif e and part == "note" then
+        B.header:SetHeaderText(L["Notiz##Dungeon"])
     elseif e then
         B.header:SetHeaderText(L["Bosse"])
         J.showBosses(B, e)
@@ -263,6 +269,7 @@ local function refresh(B)
     end
     JP.FillRun(B, detail and e or nil, part == "bosses")
     JP.FillTimes(B, detail and e or nil, detail and part == "times")
+    JP.FillNote(B, detail and e or nil, detail and part == "note")
     B:PlaceParts()
     local hint = L["Je Lauf: Zuwachs der Upgrades mal Dropchance. Beute und Chance aus den Drop-Aufzeichnungen der Gilde."]
     if not detail then
@@ -277,6 +284,9 @@ local function refresh(B)
         return
     elseif part == "times" then
         B.hint:SetText(JP.TIMES_HINT)
+        return
+    elseif part == "note" then
+        B.hint:SetText(JP.NOTE_HINT)
         return
     end
     if e and #B.bossView.list.items == 0 then hint = L["Für diesen Raid kennt Amisia noch keine Beute."] .. " " .. hint end

@@ -171,6 +171,7 @@ local function dungeonTip(self)
         GameTooltip:AddLine(L["%d Upgrades, je Lauf %s, Quests %s, Wert %d"]:format(e.upgrades, signed(e.perRun), signed(e.once),
             math.floor(e.value + 0.5)), 0.6, 0.6, 0.6)
     end
+    ns.DungeonNotes.AddTooltip(e.key)
     GameTooltip:Show()
 end
 
@@ -2212,6 +2213,8 @@ local function runBadge(e, withQuests, noKeys)
     local parts = {}
     local _, n, m = ns.Runs.Of(e.key)
     if n then parts[#parts + 1] = ("%s %d/%d"):format(SKULL_MARK, n, m) end
+    -- the own note (F-212)
+    if ns.DungeonNotes.Has(e.key) then parts[#parts + 1] = ns.DungeonNotes.ICON end
     if withQuests then
         local q = openQuests(e.key)
         if q > 0 then parts[#parts + 1] = ("%s %d"):format(QMARK, q) end
@@ -2516,7 +2519,7 @@ local function create(parent)
     B.header:SetPoint("TOPRIGHT", -244, headerTop)
     -- the parts of the detail as tabs under the image (D-72): Übersicht (the bosses and their loot),
     -- Karte, Quests, Wunschliste, Zugang (only with a key); the last one stays in settings.bis.dpart
-    JP.BuildTabs(B, tabTop, { "bosses", "map", "quests", "wish", "access", "times" }, "dpart")
+    JP.BuildTabs(B, tabTop, { "bosses", "map", "quests", "wish", "access", "times", "note" }, "dpart")
     B.way = W.Link(B, L["Wegpunkt"], function()
         if B.chosen then say(ns.DungeonWaypoint(B.chosen)) end
     end)
@@ -2537,6 +2540,8 @@ local function create(parent)
     buildBossView(B, headerTop - T.HEADER_H - G.GAP)
     JP.BuildMap(B, headerTop - T.HEADER_H - G.GAP)
     JP.BuildAccess(B, headerTop - T.HEADER_H - G.GAP)
+    -- the own note (F-212)
+    JP.BuildNote(B, headerTop - T.HEADER_H - G.GAP)
     -- the quest path in place of the list, the image and the quests (F-135); only in memory
     B.pathView = buildPath(B)
     -- the journal remembers the part it was opened from (the planner's quests or bosses)
@@ -2560,7 +2565,7 @@ local function create(parent)
     B.detailParts = { B.back, B.art, B.header, B.way, B.detail }
     for _, k in ipairs(B.partKeys) do B.detailParts[#B.detailParts + 1] = B.parts[k] end
     -- shown by the part (refresh): the run's parts, the bosses, the map and the keys
-    B.planParts = { B.emptyGrid, B.runBar, B.resetRun, B.bossView, B.mapView, B.accessView, B.timesView, B.clearTimes }
+    B.planParts = { B.emptyGrid, B.runBar, B.resetRun, B.bossView, B.mapView, B.accessView, B.timesView, B.clearTimes, B.noteView }
     for _, f in ipairs(B.startParts) do B.planParts[#B.planParts + 1] = f end
     for _, f in ipairs(B.detailParts) do B.planParts[#B.planParts + 1] = f end
     for _, chip in ipairs(sortRow) do B.planParts[#B.planParts + 1] = chip end
@@ -2687,9 +2692,11 @@ local function refresh(B)
             B.mapView:SetShown(part == "map")
             B.accessView:SetShown(part == "access")
             B.timesView:SetShown(part == "times")
+            B.noteView:SetShown(part == "note")
         end
         JP.FillRun(B, detail and e or nil, part == "bosses")
         JP.FillTimes(B, detail and e or nil, detail and part == "times")
+        JP.FillNote(B, detail and e or nil, detail and part == "note")
         B:PlaceParts()
     else
         B.art:Hide()
@@ -2732,6 +2739,9 @@ local function refresh(B)
     elseif e and part == "times" then
         B.header:SetHeaderText(L["Zeiten"])
         B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
+    elseif e and part == "note" then
+        B.header:SetHeaderText(L["Notiz##Dungeon"])
+        B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
     elseif e then
         B.header:SetHeaderText(L["Bosse"])
         showBosses(B, e)
@@ -2759,6 +2769,8 @@ local function refresh(B)
         hint = part == "map" and MAP_HINT or ACCESS_HINT
     elseif part == "times" then
         hint = JP.TIMES_HINT
+    elseif part == "note" then
+        hint = JP.NOTE_HINT
     else
         hint = L["Je Lauf: Zuwachs der Upgrades mal Dropchance, ohne Mitbewerber in der Gruppe. Wert: offene Dungeon-Quests plus zwei Läufe."]
         if e and e.computed and #B.bossView.list.items == 0 then hint = L["In diesem Dungeon gibt es nichts mehr für dich."] .. " " .. hint end
@@ -2843,6 +2855,8 @@ end
 
 -- the own run changed (a kill, an entry, a reset; Gear/Runs.lua): the cards and the bosses (D-72)
 ns.Listen("RUN", function() if ns.RefreshSoon then ns.RefreshSoon() end end)
+-- the own note changed (F-212): the tab, the marks in the table
+ns.Listen("DUNGEON_NOTES", function() if ns.RefreshSoon then ns.RefreshSoon() end end)
 -- a member's quest state came or went (F-178)
 ns.Listen("GROUP_QUESTS", function() if ns.RefreshSoon then ns.RefreshSoon() end end)
 

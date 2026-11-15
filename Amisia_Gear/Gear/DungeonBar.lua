@@ -11,6 +11,9 @@
 --   "Zeit 12:40"  while the run's clock runs (RunTimes.lua): shows or hides the window "Lauf-Zeiten"
 --   "Route 3/7"   while an own route is followed (Routes.lua): the stops, "Weiter" and "Folgen beenden";
 --                 a right click goes on to the next stop
+--   "Notiz"       while the dungeon has an own note (DungeonNotes.lua, F-212): the note and the boss
+--                 notes, wrapped over the list's width; a right click opens the part Notiz of the page.
+--                 The boss list shows a boss's note grey under it.
 -- In a map of several dungeons (the Scarlet Monastery's four wings, the halves of Blackrock Spire; F-174,
 -- D-106) the bar names the client's instance and lists the bosses and quests of all of them until the
 -- first kill tells which one the character is in; from then on that one, with its own name.
@@ -34,7 +37,7 @@ ns.DungeonBar = DBar
 
 local GREEN, GREY, GOLD = T.GREEN, T.GREY, T.GOLD_TEXT
 local TICK_ICON = "|TInterface\\RaidFrame\\ReadyCheck-Ready:13:13|t"
-local SEGMENTS = { "bosses", "quests", "time", "route" }
+local SEGMENTS = { "bosses", "quests", "time", "route", "note" }
 DBar.SEGMENTS = SEGMENTS
 
 local bar, list
@@ -253,10 +256,24 @@ function entriesOf.bosses(k)
             b.key = sk
         end
     end
-    for n, b in ipairs(out) do
-        if not b.head then out[n] = DBar.BossEntry(b.key, b) end
+    local NT = ns.DungeonNotes
+    local full = {}
+    for _, b in ipairs(out) do
+        if b.head then
+            full[#full + 1] = b
+        else
+            full[#full + 1] = DBar.BossEntry(b.key, b)
+            -- its own note grey under it (F-212)
+            local t = NT and NT.Boss(b.key, NT.BossKey(b.key, b.i, b.name)) or ""
+            if t ~= "" then
+                for _, line in ipairs(DBar.Wrap(t, S.LIST_W - 2 * S.PAD - 4 - S.NOTE_INDENT)) do
+                    -- grey again after a link's own end of colour
+                    full[#full + 1] = { text = GREY .. line:gsub("|r", "|r" .. GREY) .. "|r", wide = true, indent = S.NOTE_INDENT }
+                end
+            end
+        end
     end
-    return out
+    return full
 end
 
 -- The list entry of boss b (DBar.Bosses) of key k.
@@ -310,6 +327,71 @@ function entriesOf.route()
     return out
 end
 
+-- The own note of the shown keys (F-212): each one's text and its boss notes ("Name: note"), wrapped
+-- over the list's width; a click opens the part Notiz of the page.
+function entriesOf.note(k)
+    local NT = ns.DungeonNotes
+    local out = {}
+    if not NT then return out end
+    local keys = {}
+    for _, sk in ipairs(shownKeys(k)) do
+        if NT.Has(sk) then keys[#keys + 1] = sk end
+    end
+    local width = S.LIST_W - 2 * S.PAD - 4
+    for _, sk in ipairs(keys) do
+        local function toPage() if ns.ShowDungeon then ns.ShowDungeon(sk, "note") end end
+        if #keys > 1 or #shownKeys(k) > 1 then
+            local f = R.Fact(sk)
+            out[#out + 1] = { text = GOLD .. (f and ns.Dungeons.Name(f) or sk) .. "|r", note = "", head = sk, run = toPage }
+        end
+        for para in (NT.Get(sk) .. "\n"):gmatch("(.-)\n") do
+            if para:match("%S") then
+                for _, line in ipairs(DBar.Wrap(para, width)) do
+                    out[#out + 1] = { text = line, wide = true, run = toPage }
+                end
+            end
+        end
+        for _, b in ipairs(NT.BossNotes(sk)) do
+            for n, line in ipairs(DBar.Wrap(GOLD .. b.name .. ":|r " .. b.text, width - S.NOTE_INDENT)) do
+                out[#out + 1] = { text = line, wide = true, indent = n > 1 and S.NOTE_INDENT or 0, run = toPage }
+            end
+        end
+    end
+    return out
+end
+
+-- Text broken into lines no wider than width (the list's font); an item link and a colour stay whole
+-- on one line.
+local measure
+function DBar.Wrap(text, width)
+    if not measure then
+        measure = UIParent:CreateFontString(nil, "OVERLAY")
+        measure:SetFontObject(T.FONT.text)
+        measure:Hide()
+    end
+    -- links and colour codes aside, so no break falls inside them
+    local held = {}
+    local function hold(l)
+        held[#held + 1] = l
+        return "\1" .. #held .. "\2"
+    end
+    local plain = tostring(text or ""):gsub("|c[^|]*|H.-|h.-|h|r", hold):gsub("|c%x%x%x%x%x%x%x%x[^|]*|r", hold)
+    local function back(s) return (s:gsub("\1(%d+)\2", function(n) return held[tonumber(n)] end)) end
+    local lines, line = {}, ""
+    for word in plain:gmatch("%S+") do
+        local try = line == "" and word or (line .. " " .. word)
+        measure:SetText(back(try))
+        if line ~= "" and (measure:GetStringWidth() or 0) > width then
+            lines[#lines + 1] = back(line)
+            line = word
+        else
+            line = try
+        end
+    end
+    if line ~= "" then lines[#lines + 1] = back(line) end
+    return lines
+end
+
 local function fillList()
     if not (list and open and key) then return end
     local entries = entriesOf[open](key)
@@ -317,12 +399,24 @@ local function fillList()
         list:Hide()
         return
     end
+    -- more than fit: the last row says so and opens the page (F-212, a long note)
+    if #entries > S.MAX_ROWS then
+        local last = entries[S.MAX_ROWS]
+        entries[S.MAX_ROWS] = { text = GREY .. L["... mehr auf der Seite (Klick)"] .. "|r", wide = true,
+            run = last.run or function() if ns.ShowDungeon then ns.ShowDungeon(key, open == "note" and "note" or nil) end end }
+    end
     local n = math.min(#entries, S.MAX_ROWS)
     for i = 1, n do
         list.rows[i] = list.rows[i] or listRow(i)
         local r, e = list.rows[i], entries[i]
+        -- a line of a note takes the whole width (F-212)
+        local indent = e.indent or 0
+        r.text:ClearAllPoints()
+        r.text:SetPoint("LEFT", 2 + indent, 0)
+        r.text:SetWidth(e.wide and (S.LIST_W - 2 * S.PAD - 4 - indent) or S.ROW_NAME_W)
         r.text:SetText(e.text)
         r.note:SetText(e.note or "")
+        r.note:SetShown(not e.wide)
         r.run = e.run
         r.entry = e
         r:Show()
@@ -370,6 +464,7 @@ local TIPS = {
         " " .. L["In einer Gruppe: \"2 teilen\" sind Quests aus deinem Log, die anderen mit Amisia fehlen (\"fehlt 2\" in der Liste)."] },
     time = { L["Zeit##Leiste"], L["Die Uhr dieses Laufs; ein Klick zeigt oder verbirgt das Fenster \"Lauf-Zeiten\"."] },
     route = { L["Route##Leiste"], L["Die Route, der du folgst: Stopp und Anzahl. Rechtsklick: weiter zum nächsten Stopp."] },
+    note = { L["Notiz##Leiste"], L["Deine Notiz zu diesem Dungeon und seinen Bossen; ein Klick zeigt sie. Rechtsklick: auf der Seite bearbeiten."] },
 }
 
 local function clicked(which, button)
@@ -382,6 +477,15 @@ local function clicked(which, button)
     end
     if which == "route" and button == "RightButton" then
         say(ns.Routes.Next())
+        return
+    end
+    if which == "note" and button == "RightButton" then
+        -- the first of the shown keys with a note
+        local k = key
+        for _, sk in ipairs(shownKeys(key)) do
+            if ns.DungeonNotes and ns.DungeonNotes.Has(sk) then k = sk break end
+        end
+        if ns.ShowDungeon then ns.ShowDungeon(k, "note") end
         return
     end
     DBar.Toggle(which)
@@ -497,6 +601,11 @@ function DBar.Texts(k)
         local i, n = DBar.Route()
         if i then out.route = L["Route %d/%d"]:format(i, n) end
     end
+    if on("note") and ns.DungeonNotes then
+        for _, sk in ipairs(shownKeys(k)) do
+            if ns.DungeonNotes.Has(sk) then out.note = ns.DungeonNotes.ICON .. " " .. L["Notiz##Leiste"] end
+        end
+    end
     return out
 end
 
@@ -588,6 +697,7 @@ ns.Listen("RUN", function() if bar then DBar.Update() end end)
 ns.Listen("RUNTIMES", function() if key then DBar.Refresh() end end)
 ns.Listen("ROUTES", function(what) if key and what == "follow" then DBar.Refresh() end end)
 ns.Listen("GROUP_QUESTS", function() if key then dirty = true end end)
+ns.Listen("DUNGEON_NOTES", function() if key then dirty = true end end)
 for _, e in ipairs({ "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED", "PLAYER_LEVEL_UP" }) do
     ns.OnEvent(e, soon)
 end
@@ -609,6 +719,10 @@ ns.RegisterSettings{ key = "dungeonbar", label = L["Dungeon-Leiste"], order = 53
       tip = L["\"Zeit 12:40\": die Uhr des Laufs (Lauf-Zeiten), solange sie läuft."] },
     { key = "dungeonbar.route", type = "toggle", label = L["Route in der Leiste"], default = true, onChange = apply,
       tip = L["\"Route 3/7\": der Stopp der Route, der du folgst; Rechtsklick geht weiter."] },
+    { key = "dungeonbar.note", type = "toggle", label = L["Notiz in der Leiste"], default = true, onChange = apply,
+      tip = L["\"Notiz\": deine Notiz zu diesem Dungeon (Seite Dungeons, Reiter Notiz), ein Klick zeigt sie."] },
+    { key = "dungeonbar.noteChat", type = "toggle", label = L["Notiz beim Betreten im Chat"], default = true,
+      tip = L["Betrittst du einen Dungeon oder Raid mit deiner Notiz, schreibt Amisia einmal ihre erste Zeile mit [Notiz] in den Chat (nur für dich)."] },
     { key = "dungeonbar.others", type = "toggle", label = L["Bosse und Zeit anderen Addons überlassen"], default = true, onChange = apply,
       tip = L["Ist ein anderes Addon geladen, das die Bosse und die Zeit eines Dungeons selbst zeigt, lässt Amisia \"Bosse\" und \"Zeit\" in der Leiste weg und öffnet das Fenster \"Lauf-Zeiten\" nicht von selbst. Gemessen wird weiter, die Zeiten stehen auf der Seite."] },
 } }

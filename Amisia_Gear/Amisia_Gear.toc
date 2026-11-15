@@ -74,6 +74,7 @@ Gear\MapBeacon.lua
 Gear\QuestGiverPins.lua
 Gear\Routes.lua
 Gear\RouteMap.lua
+Gear\DungeonNotes.lua
 Gear\DungeonBar.lua
 Gear\GroupQuests.lua
 Gear\QuestItems.lua

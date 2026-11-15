@@ -12,11 +12,11 @@ Gelöst ist es, wenn die Notiz beim Betreten des Dungeons ohne Suchen vor ihm st
 
 - **Reiter "Notiz"** auf der Detailseite eines Dungeons bzw. Raids (Seiten Dungeons und Raids), neben Bosse,
   Wunschliste, Karte, Zugang, Zeiten. Darin ein mehrzeiliges Eingabefeld für die Notiz des Dungeons (bis 1000 Zeichen)
-  und darunter je Boss eine einzeilige Notiz (bis 120 Zeichen) mit Porträt und Name. Gespeichert wird beim Verlassen
-  eines Feldes und beim Schließen des Fensters; ein Knopf "Leeren" löscht die Notiz des Dungeons nach Rückfrage.
+  und darunter je Boss eine einzeilige Notiz (bis 120 Zeichen) mit Porträt und Name. Die Notiz des Dungeons wird beim
+  Tippen gespeichert, eine Boss-Zeile beim Verlassen; "Notiz leeren" löscht die Notiz des Dungeons nach Rückfrage.
 - **Shift + Klick** auf ein Item (Taschen, Beute, Chat) fügt seinen Link in das Feld mit dem Cursor ein.
 - **Kennzeichen:** ein Dungeon mit Notiz trägt in der Tabelle der Startseite ein kleines Notizzeichen; der Tooltip zeigt
-  die ersten Zeilen. Der Reiter heißt dann "Notiz •".
+  die ersten Zeilen. Der Reiter trägt dann das Notizzeichen vor "Notiz".
 - **Dungeon-Leiste:** steht der Spieler in einem Dungeon mit Notiz, hat die Leiste ein Segment "Notiz"; ein Klick zeigt
   darunter die Notiz und die Boss-Notizen (wie die Liste der Bosse), ein zweiter Klick oder Escape schließt sie.
   Ein Rechtsklick auf "Notiz" öffnet den Reiter Notiz der Seite.
@@ -63,7 +63,7 @@ Gelöst ist es, wenn die Notiz beim Betreten des Dungeons ohne Suchen vor ihm st
 - Bosse anderen Addons überlassen (F-205): das Segment "Notiz" bleibt; die Boss-Notizen stehen dann nur in der Liste
   von "Notiz".
 - Ein Boss, den ein neuer Build umbenennt oder neu ordnet: die Boss-Notiz hängt an der Begegnungsnummer, nicht am
-  Platz in der Liste; ohne Begegnungsnummer an der NPC-Nummer.
+  Platz in der Liste; ohne Begegnungsnummer am Namen des Bosses.
 - Englischer Client: Notizen sind freier Text und bleiben, wie sie geschrieben sind.
 - Leere Notiz: kein Zeichen, kein Segment, keine Chatzeile; eine geleerte Notiz wird gelöscht.
 - `/reload` im Dungeon: keine zweite Chatzeile für dasselbe Betreten (`R.entry`).
@@ -78,7 +78,8 @@ alles außer Item-Links wird beim Speichern entfernt; Längen gedeckelt (1000 je
 
 - Neuer Schlüssel `AmisiaDB.dungeonNotes`: `{v = 1, list = {[dkey] = {text, at, boss = {[encId] = text}}}}`
   (account-weit, `dkey` wie `ns.Runs`/`ns.Dungeons`).
-- Neue Einstellung `dbar.noteChat` (an) im Abschnitt Dungeon-Leiste; neues Segment "note" in `DBar.SEGMENTS`.
+- Neue Einstellungen `dungeonbar.note` (Segment, an) und `dungeonbar.noteChat` (an) im Abschnitt Dungeon-Leiste;
+  neues Segment "note" in `DBar.SEGMENTS`.
 - Chatlink `addon:Amisia:note:<dkey>` öffnet den Reiter.
 - Keine Nachricht, keine Exportzeile, kein Website-Zustand. ARCHITECTURE (Schlüssel, Datei, Link) und eine kurze
   Entscheidung in DECISIONS im selben Commit.

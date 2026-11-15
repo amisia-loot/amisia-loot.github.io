@@ -382,7 +382,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn ein Dungeon eine Notiz hat, dann zeigt die Tabelle der Startseite bei ihm das Notizzeichen, und der Tooltip zeigt ihren Anfang.
 - Prüfung: Wenn du eine Boss-Notiz geschrieben hast, dann steht sie in der Bossliste der Leiste grau unter dem Boss.
 - Prüfung: Wenn du unter Einstellungen > Dungeon-Leiste "Notiz beim Betreten im Chat" ausschaltest, dann kommt beim Betreten keine Chatzeile mehr; das Segment bleibt.
-- Notiz: Spec docs/specs/2026-11-15-dungeon-notiz.md.
+- Notiz: Spec docs/specs/2026-11-15-dungeon-notiz.md; DECISIONS D-137. Auch für Raids (Seite Raids, Reiter Notiz). Nichts wird gesendet.
 
 ### F-211 Aufrufe der Gilde: Gruppe suchen mit Anmeldung
 - Version: 2.90.0

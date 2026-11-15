@@ -3740,3 +3740,23 @@ Flüstern, nur der Absender, nur der Ersteller, Fremder, falsche Felder, Abstän
 und Wegfall, `/reload`, Alle einladen mit Reihenfolge, Rollen, Schlachtzug, Kampf und Leiter, Kampfsperre),
 `tests/test_guild_calls_page.lua` (Seite, Filter, Rollenmenü, Formular und seine Prüfungen, Ersteller-Ansicht,
 250 Bytes, Laden), `tools/tests/test_contracts.py` (Nachrichten, Abstände, Schlüssel, Abschnitt).
+
+## D-137 Eigene Notiz je Dungeon: nur für den Spieler, Chatzeile einmal je Betreten
+
+**Datum:** 2026-11-15
+**Entscheidung:** Zu jedem Dungeon und Raid schreibt der Spieler eine eigene Notiz (F-212, Spec
+`docs/specs/2026-11-15-dungeon-notiz.md`): im Reiter "Notiz" der Seiten Dungeons und Raids ein Text (1000 Bytes) und je
+Boss eine Zeile (120 Bytes). Gespeichert account-weit in `AmisiaDB.dungeonNotes`, nie gesendet, nie exportiert. Eine
+Boss-Notiz hängt an der Begegnungsnummer des Bosses (ohne sie am gefalteten Namen), nicht an seinem Platz in der
+Liste. Behalten werden nur Text und ganze Item-Links; Farbcodes, Texturen und Steuerzeichen fallen beim Speichern
+weg. Beim Betreten einer Instanz mit Notiz steht einmal je Betreten eine Chatzeile mit der ersten Zeile und dem Link
+[Notiz] (abschaltbar, `dungeonbar.noteChat`, Standard an); ein `/reload` in der Instanz sagt nichts noch einmal. Die
+Dungeon-Leiste zeigt "Notiz" (`dungeonbar.note`) mit Notiz und Boss-Notizen und die Boss-Notiz grau unter dem Boss.
+**Grund:** Nutzer 2026-11-15: "können wir auch dungeon notiz machen", dann "Eigene Notiz je Dungeon" und "Passt,
+bauen" (Boss-Notizen, Chatzeile beim Betreten, auch Raids). Die Notiz soll beim Betreten ohne Suchen dastehen.
+**Folge:** Eine Notiz ist für alle Charaktere des Accounts gleich. Ein Boss, den ein neuer Build umbenennt, behält
+seine Notiz, solange die Begegnung bleibt; fällt er aus der Liste, steht seine Notiz als "(Boss nicht mehr in der
+Liste)" weiter im Reiter. Weitergabe an Gruppe oder Gilde bräuchte eine eigene Spec.
+**Durchgesetzt durch:** `tests/test_dungeon_notes.lua` (Säubern, Links, Deckel, Boss-Notizen, Laden zweimal ohne
+Änderung, Chatzeile einmal, nicht nach `/reload`, Schalter, Link, Leiste, Liste, Reiter, Link einfügen, Leeren, Raids),
+`tests/test_dungeon_bar.lua` (die Segmente und ihre Schalter), `tools/tests/test_contracts.py` (Schlüssel, Abschnitt).
