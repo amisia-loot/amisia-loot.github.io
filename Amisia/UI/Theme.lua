@@ -311,33 +311,35 @@ T.CLASS_ICON = {
 
 -- the members page (UI/Pages/Members.lua, tab Gilde, F-104): the head row (class and profession
 -- dropdowns, "nur online", the name search), the column heads, ROWS rows of ROW_H and the footer line:
--- 26 + 18 + 9 x 46 + 20 = 478. A row, left to right on the list's 590: the round class icon, the name
--- in class colour over level, class and rank; the item level in a column of its own (F-210); the
--- zone (map icon) over online or the last time online (clock icon); the professions as icon (skill on it)
--- and bar (name on it, filled rank / max), the main professions in the upper line, the secondary ones in
--- the lower, BOXES per line.
+-- 26 + 18 + 9 x 46 + 20 = 478. A row, left to right on the list's 590, the columns GAP apart: the round class
+-- icon, the name in class colour over class and rank; the level and the item level in columns of their own
+-- (F-210, 2026-11-15); the zone (map icon) over online or the last time online (clock icon); the professions
+-- as icon (skill on it) and bar (name on it, filled rank / max), the main professions in the upper line, the
+-- secondary ones in the lower, BOXES per line.
 T.MEMBERS = {
     ROWS = 9, ROW_H = 46,
     CLASS_W = 130, PROF_W = 130, SEARCH_W = 140,   -- the head row's dropdowns and the search box
     ICON = 36, ICON_X = 6,                         -- the round class icon (T.CLASS_ICON), centred on the row
     LINE1_Y = -8, LINE2_Y = -26,                   -- the two lines of text below the row's top
-    NAME_X = 48, NAME_W = 112,                     -- the name (T.FONT.body), under it level, class, rank
+    GAP = 8,                                       -- between two columns (was 4)
+    NAME_X = 48, NAME_W = 112,                     -- the name (T.FONT.body), under it class and rank
     INDENT = 14,                                   -- an alt under its main: class icon and name this far right (F-210)
-    IL_X = 164, IL_W = 28, IL_COLOR = "|cffffffff", -- the item level, its own column on the first line
-    ZONE_X = 196, ZONE_W = 134,                    -- the zone and the time column
+    LEVEL_X = 168, LEVEL_W = 26,                   -- the level, its own column on the first line
+    IL_X = 202, IL_W = 28, IL_COLOR = "|cffffffff", -- the item level, its own column on the first line
+    ZONE_X = 238, ZONE_W = 100,                    -- the zone and the time column
     SMALL_ICON = 12, SMALL_GAP = 3,                -- the map and clock icons before their texts
     MAP_ICON = "Interface\\Icons\\INV_Misc_Map_01",
     CLOCK_ICON = "Interface\\Icons\\INV_Misc_PocketWatch_01",
-    -- the professions from PROF_X to 588: two main ones of 2 x 125 + 4 = 254, under them three
-    -- secondary ones of 3 x 82 + 2 x 4 = 254
-    PROF_X = 334, MAIN_BOXES = 2, MAIN_BOX_W = 125, BOXES = 3,
-    BOX_W = 82, BOX_H = 18, BOX_GAP = 4, BOX_Y = -4, BOX_ROW_GAP = 3,
+    -- the professions from PROF_X to 588: two main ones of 2 x 119 + 4 = 242, under them three
+    -- secondary ones of 3 x 78 + 2 x 4 = 242
+    PROF_X = 346, MAIN_BOXES = 2, MAIN_BOX_W = 119, BOXES = 3,
+    BOX_W = 78, BOX_H = 18, BOX_GAP = 4, BOX_Y = -4, BOX_ROW_GAP = 3,
     BOX_ICON = 18, BAR_H = 14, BAR_GAP = 2, BAR_PAD = 3,
     BAR_COLOR = { 0.25, 0.42, 0.85 },              -- the bar's fill (the classic profession window's blue)
     NUM_FONT = "NumberFontNormalSmall",            -- the skill on the icon
     -- the column heads (sort on click; Berufe sorts by the skill), x and width on the list
-    COLS = { { "name", 48, 60 }, { "level", 110, 50 }, { "ilvl", 164, 28 }, { "zone", 196, 60 }, { "last", 258, 72 },
-        { "prof", 334, 120 } },
+    COLS = { { "name", 48, 112 }, { "level", 168, 26 }, { "ilvl", 202, 28 }, { "zone", 238, 34 }, { "last", 274, 68 },
+        { "prof", 346, 120 } },
 }
 
 -- the page Aufrufe (UI/Pages/Calls.lua, tab Gilde, F-211): the head row (the filters as text tabs, or "Zurück";

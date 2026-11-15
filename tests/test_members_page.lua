@@ -77,7 +77,8 @@ assert(has(f.data:GetText(), "12 Mitglieder, 7 online, 2 mit Amisia"), f.data:Ge
 local r1 = f.list.rows[1]
 assert(r1.classIcon:IsShown() and r1.classIcon.texture == NS.Theme.CLASS_ICON.TEXTURE, "the round class icon")
 assert(has(r1.name:GetText(), "Anna Amboss") and has(r1.name:GetText(), "|c"), r1.name:GetText())
-assert(has(r1.info:GetText(), "58 Krieger · Veteran") and not has(r1.info:GetText(), "Stufe"), r1.info:GetText())
+assert(has(r1.info:GetText(), "Krieger · Veteran") and not has(r1.info:GetText(), "58"), r1.info:GetText())
+assert(has(r1.level:GetText(), "58"), "the level in its own column: " .. tostring(r1.level:GetText()))
 assert(r1.zone:GetText() == "Eisenschmiede" and has(r1.last:GetText(), "online") and has(r1.last:GetText(), NS.Theme.GREEN))
 -- Anna: smithing in the upper line, cooking in the lower
 local b1, b4 = r1.boxes[1], r1.boxes[NS.Theme.MEMBERS.MAIN_BOXES + 1]

@@ -54,11 +54,10 @@ end
 -- the guild master types the rank names: shown as plain text (a bar would start a code)
 local function rankName(e) return e.rankName and (tostring(e.rankName):gsub("|", "||")) or L["Rang %d"]:format(e.rank or 0) end
 
--- "60 Priester · Offizier" (the level as the number only: the line holds the rank too)
+-- "Priester · Offizier" (the level stands in its own column)
 local function infoText(e)
     local cls = className(e)
-    return (e.level and tostring(e.level) or "?") .. (cls and (" " .. cls) or "")
-        .. " · " .. rankName(e)
+    return (cls and (cls .. " · ") or "") .. rankName(e)
 end
 
 local setClassIcon = W.SetClassIcon
@@ -545,7 +544,10 @@ local function buildRow(r)
     r.name:SetPoint("TOPLEFT", M.NAME_X, M.LINE1_Y)
     r.info = W.Text(r, T.FONT.text, M.NAME_W)
     r.info:SetPoint("TOPLEFT", M.NAME_X, M.LINE2_Y)
-    -- the item level, a column of its own between the name and the zone (F-210)
+    -- the level and the item level, columns of their own between the name and the zone (F-210)
+    r.level = W.Text(r, T.FONT.text, M.LEVEL_W)
+    r.level:SetPoint("TOPLEFT", M.LEVEL_X, M.LINE1_Y)
+    r.level:SetJustifyH("RIGHT")
     r.il = W.Text(r, T.FONT.text, M.IL_W)
     r.il:SetPoint("TOPLEFT", M.IL_X, M.LINE1_Y)
     r.il:SetJustifyH("RIGHT")
@@ -589,6 +591,7 @@ local function fillRow(r, e)
     r.info:ClearAllPoints()
     r.info:SetPoint("TOPLEFT", M.NAME_X + ind, M.LINE2_Y)
     r.info:SetWidth(M.NAME_W - ind)
+    r.level:SetText(e.level and (M.IL_COLOR .. e.level .. "|r") or (T.GREY .. "?|r"))
     r.il:SetText(e.il and (M.IL_COLOR .. e.il .. "|r") or (T.GREY .. "-|r"))
     setClassIcon(r.classIcon, e.class)
     r.name:SetText(classColored(e.name, e.class))

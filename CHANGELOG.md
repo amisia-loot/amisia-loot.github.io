@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(guild): the level in a column of its own on Members, more room between the columns (F-104)
+
+    The Members page shows each player's level in its own column "Level" (it sorts by a click on the head),
+    beside the item level; the line under the name now reads class and rank. The columns stand a little
+    further apart.
+
 ## [v2.92.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.92.0) (2026-11-15)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.91.0...v2.92.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
