@@ -1,6 +1,6 @@
 # Spec: Eigene Notiz je Dungeon
 
-Stand: 2026-11-15 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-15 · Status: freigegeben ·
 Feature: F-212
 
 ## Ziel
@@ -85,10 +85,10 @@ alles außer Item-Links wird beim Speichern entfernt; Längen gedeckelt (1000 je
 
 ## Offene Fragen
 
-1. Boss-Notizen zusätzlich zur Dungeon-Notiz? Vorschlag: ja, einzeilig je Boss.
-2. Chatzeile beim Betreten? Vorschlag: ja, abschaltbar, Standard an.
-3. Auch für Raids? Vorschlag: ja, gleiche Seite und gleiche Daten.
+Nichts. Die drei Fragen sind entschieden (unten).
 
 ## Entscheidungen
 
-Noch keine.
+- 2026-11-15: Art der Notiz: "Eigene Notiz je Dungeon" -> nur für den Spieler, account-weit, nichts gesendet.
+- 2026-11-15: Boss-Notizen, Chatzeile beim Betreten (abschaltbar, an), auch Raids: "Passt, bauen" -> alle drei ja.
+- 2026-11-15: Spec: "Passt, bauen" -> freigegeben.

@@ -374,6 +374,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du unter Einstellungen, Gruppeneinladungen "Einladungen von Gilde und Freunden annehmen" anschaltest und dich ein Gildenmitglied einlädt, dann bist du ohne Klick in der Gruppe, das Fenster des Spiels ist zu, und im Chat steht "Einladung von <Name> angenommen (Gilde)."; die Einladung eines Fremden fragt das Spiel wie immer.
 - Notiz: Spec docs/specs/2026-11-10-einladen-gilde.md; DECISIONS D-93. "Gilde einladen" nutzt dieselben Grenzen wie "Alle einladen": einer alle 0,5 Sekunden, Raid nach dem ersten Beitritt, 3 Einladungen pro Name und Abend, nur heute, nie im Kampf, nur als Leiter oder Assistent.
 
+### F-212 Eigene Notiz je Dungeon
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du auf der Detailseite eines Dungeons im Reiter "Notiz" etwas schreibst, woanders hinklickst und `/reload` machst, dann steht die Notiz noch da, auch auf einem anderen Charakter des Accounts.
+- Prüfung: Wenn du einen Dungeon mit Notiz betrittst, dann steht einmal eine Chatzeile mit ihrer ersten Zeile und [Notiz], und die Dungeon-Leiste hat "Notiz"; ein Klick darauf zeigt die Notiz und die Boss-Notizen.
+- Prüfung: Wenn ein Dungeon eine Notiz hat, dann zeigt die Tabelle der Startseite bei ihm das Notizzeichen, und der Tooltip zeigt ihren Anfang.
+- Prüfung: Wenn du eine Boss-Notiz geschrieben hast, dann steht sie in der Bossliste der Leiste grau unter dem Boss.
+- Prüfung: Wenn du unter Einstellungen > Dungeon-Leiste "Notiz beim Betreten im Chat" ausschaltest, dann kommt beim Betreten keine Chatzeile mehr; das Segment bleibt.
+- Notiz: Spec docs/specs/2026-11-15-dungeon-notiz.md.
+
 ### F-211 Aufrufe der Gilde: Gruppe suchen mit Anmeldung
 - Version: 2.90.0
 - Status: gebaut
