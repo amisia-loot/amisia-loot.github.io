@@ -375,8 +375,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-10-einladen-gilde.md; DECISIONS D-93. "Gilde einladen" nutzt dieselben Grenzen wie "Alle einladen": einer alle 0,5 Sekunden, Raid nach dem ersten Beitritt, 3 Einladungen pro Name und Abend, nur heute, nie im Kampf, nur als Leiter oder Assistent.
 
 ### F-211 Aufrufe der Gilde: Gruppe suchen mit Anmeldung
-- Version: -
-- Status: geplant
+- Version: 2.90.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn du unter Gilde > Aufrufe einen Aufruf für einen Dungeon mit 1 Tank, 1 Heiler, 3 Schaden erstellst, dann sehen Gildenmitglieder mit Amisia ihn auf ihrer Seite und als Chatzeile mit [Anmelden].
 - Prüfung: Wenn sich ein Gildenmitglied als Heiler anmeldet, dann steht es bei dir unter den Anmeldungen und bei allen steht "Heiler 1/1" bzw. "angemeldet".
@@ -386,8 +386,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-15-gilde-aufrufe.md.
 
 ### F-210 Gildenfenster-Knopf, Twinks und Itemlevel bei Mitglieder
-- Version: -
-- Status: geplant
+- Version: 2.90.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn du das Gildenfenster des Spiels öffnest, dann steht unten rechts ein roter Knopf "Amisia"; ein Klick öffnet Amisia auf der Seite Mitglieder.
 - Prüfung: Wenn ein Gildenmitglied mit dieser Version mit einem Twink online war, dann steht der Twink unter Mitglieder eingerückt unter seinem Main, beide mit Itemlevel, auch nachdem er offline ist.
@@ -1525,8 +1525,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: 2.57.0: Seite Karte öffnet auf "Alle Zonen" (nach Zonen, nächste zuerst), Chip "Quests" (nächster Questweg-Schritt, auch als "!" auf der Weltkarte, Einstellung `map.pinsQuests`), Ansicht "Ohne Ort", Zielkarte mit Richtung und Pfeil, Knopf "Karte" je Zeile, deutsche Namen aus eigener Beobachtung.
 
 ### F-206 Lichtsäule über der Kartenmarkierung
-- Version: 2.89.0
-- Status: im Spiel geprüft (2026-11-15)
+- Version: 2.90.0
+- Status: gebaut
 - Prüfung: Wenn du mit Strg + Klick auf die Weltkarte eine Markierung setzt und die Karte schließt, dann steht über dem Ort eine goldene Lichtsäule mit leuchtendem Ring am Boden und darüber ein Kästchen "Kartenmarkierung" mit der Entfernung, die beim Laufen kleiner wird (nach dem Update einmal das Spiel ganz neu starten, sonst fehlt die Textur).
 - Prüfung: Wenn du dich so drehst, dass der Ort hinter dir liegt, dann ist die Säule weg und kommt wieder, sobald er im Bild ist; mit einem Ziel von Amisia (z. B. "Ziel setzen" im Planer) steht dessen Name im Kästchen.
 - Prüfung: Wenn du unter Einstellungen > Karte und Wegpunkt "Lichtsäule an der Kartenmarkierung" ausschaltest, dann ist die Säule sofort weg; Markierung und Zielfenster bleiben.
