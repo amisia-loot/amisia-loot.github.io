@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(guild): the item level is a column of its own on the Members page (F-210)
+
+    The item level now stands in its own column "iLvl" between the level and the zone instead of small
+    beside the name; a click on the head sorts the guild by it, the highest first, and a grey dash marks a
+    member whose item level Amisia does not know yet. Name, zone and the profession bars are a little
+    narrower for it.
+
 ## [v2.91.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.91.0) (2026-11-15)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.90.0...v2.91.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

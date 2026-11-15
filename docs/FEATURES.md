@@ -374,6 +374,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du unter Einstellungen, Gruppeneinladungen "Einladungen von Gilde und Freunden annehmen" anschaltest und dich ein Gildenmitglied einlädt, dann bist du ohne Klick in der Gruppe, das Fenster des Spiels ist zu, und im Chat steht "Einladung von <Name> angenommen (Gilde)."; die Einladung eines Fremden fragt das Spiel wie immer.
 - Notiz: Spec docs/specs/2026-11-10-einladen-gilde.md; DECISIONS D-93. "Gilde einladen" nutzt dieselben Grenzen wie "Alle einladen": einer alle 0,5 Sekunden, Raid nach dem ersten Beitritt, 3 Einladungen pro Name und Abend, nur heute, nie im Kampf, nur als Leiter oder Assistent.
 
+### F-213 Gruppen-Notiz im Dungeon
+- Version: -
+- Status: geplant
+- Braucht: Gruppe
+- Prüfung: Wenn der Gruppenleiter unter Raid > Notiz Text schreibt und "An Gruppe senden" klickt, dann sehen die anderen mit Amisia binnen Sekunden die Chatzeile und das Fenster "Gruppen-Notiz" mit dem Text.
+- Prüfung: Wenn ein Mitglied, das nicht Leiter ist, die Seite öffnet, dann kann es nicht senden; nach "Leitung übergeben" an es kann es.
+- Prüfung: Wenn jemand der Gruppe später beitritt oder `/reload` macht, dann hat er nach wenigen Sekunden die aktuelle Notiz.
+- Prüfung: Wenn du einen Dungeon mit eigener Notiz betrittst, dann öffnet sich das Fenster und zeigt "Deine Notiz zu <Dungeon>" mit Text und Boss-Notizen, unter einer Gruppen-Notiz, wenn es eine gibt.
+- Prüfung: Wenn du im Bosskampf `/amisia notiz` eingibst, dann öffnet und schließt sich das Fenster ohne Fehlermeldung.
+- Notiz: Spec docs/specs/2026-11-15-gruppen-notiz.md.
+
 ### F-212 Eigene Notiz je Dungeon
 - Version: 2.91.0
 - Status: gebaut
@@ -402,9 +413,10 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du das Gildenfenster des Spiels öffnest, dann steht unten rechts ein roter Knopf "Amisia"; ein Klick öffnet Amisia auf der Seite Mitglieder.
 - Prüfung: Wenn ein Gildenmitglied mit dieser Version mit einem Twink online war, dann steht der Twink unter Mitglieder eingerückt unter seinem Main, beide mit Itemlevel, auch nachdem er offline ist.
 - Prüfung: Wenn in der Notiz eines Mitglieds "Twink von <Name>" oder nur der Name eines anderen Mitglieds steht, dann steht es unter diesem eingerückt.
-- Prüfung: Wenn du mit einem deiner Charaktere einloggst, dann stehen deine eigenen Charaktere der Gilde unter deinem Main mit ihrem Itemlevel.
+- Prüfung: Wenn du mit einem deiner Charaktere einloggst, dann stehen deine eigenen Charaktere der Gilde unter deinem Main, ihr Itemlevel in der Spalte "iLvl" zwischen Stufe und Ort; ein Klick auf den Kopf "iLvl" sortiert danach, das höchste zuerst.
 - Prüfung: Wenn du einen Spieler mit der Maus betrachtet hast, dann steht sein Itemlevel auch unter Mitglieder.
 - Notiz: Spec docs/specs/2026-11-15-gilde-twinks.md.
+- Notiz: Itemlevel seit 2026-11-15 als eigene, sortierbare Spalte "iLvl" zwischen Stufe und Ort statt klein rechts neben dem Namen (Wunsch des Nutzers mit Bild); Name, Ort und Berufe dafür etwas schmaler.
 
 ### F-209 Spielsprache im Spieler-Tooltip
 - Version: 2.89.0

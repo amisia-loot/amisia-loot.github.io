@@ -1,6 +1,6 @@
 # Spec: Gruppen-Notiz im Dungeon
 
-Stand: 2026-11-15 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-15 · Status: freigegeben ·
 Feature: F-213
 
 ## Ziel
@@ -95,14 +95,13 @@ Gelöst ist es, wenn eine Gruppe im Dungeon die Taktik im Fenster hat statt im C
 
 ## Offene Fragen
 
-1. Darf ein Gruppenmitglied ohne Leitung wenigstens seine eigene Dungeon-Notiz als Vorschlag an den Leiter schicken?
-   Vorschlag: nein, vorerst nicht.
-2. Soll sich das Fenster beim Betreten auch öffnen, wenn es nur die eigene Dungeon-Notiz gibt? Vorschlag: ja,
-   abschaltbar.
-3. Länge 1000 Bytes und 20 Zeilen für eine Gruppen-Notiz genug? Vorschlag: ja.
+Nichts. Die drei Fragen sind entschieden (unten).
 
 ## Entscheidungen
 
 - 2026-11-15: Umfang: "Fenster + an Gruppe senden" -> Fenster wie die Raid-Notiz, der Gruppenleiter sendet an die
   Gruppe, die eigene Dungeon-Notiz darunter.
 - 2026-11-15: Vertrauen: "Gruppenleiter, jeder" -> vom Leiter der eigenen Gruppe, auch außerhalb der Gilde.
+- 2026-11-15: Fragen 1-3: "Passt, bauen" -> keine Vorschläge an den Leiter; das Fenster öffnet sich beim Betreten auch
+  nur mit der eigenen Dungeon-Notiz (abschaltbar); 1000 Bytes und 20 Zeilen.
+- 2026-11-15: Spec: "Passt, bauen" -> freigegeben.

@@ -129,7 +129,9 @@ local anna, bob = rows[1], rows[2]
 assert(bob.item.name == "Bob" and bob.classIcon.points.LEFT.x == M.ICON_X + M.INDENT, "the alt's icon one step right")
 assert(bob.name.points.TOPLEFT.x == M.NAME_X + M.INDENT and bob.info.points.TOPLEFT.x == M.NAME_X + M.INDENT, "and its name")
 assert(anna.classIcon.points.LEFT.x == M.ICON_X and anna.name.points.TOPLEFT.x == M.NAME_X, "the main where it was")
-assert(has(bob.il:GetText(), "52") and anna.il:GetText() == "", "the item level beside the name, none without")
+assert(has(bob.il:GetText(), "52") and anna.il:GetText():gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "") == "-",
+    "the item level in its own column, a dash without")
+assert(bob.il.points.TOPLEFT.x == M.IL_X and anna.il.points.TOPLEFT.x == M.IL_X, "the column does not move with the indent")
 assert(has(rows[5].il:GetText(), "47"), "the inspected one: " .. tostring(rows[5].il:GetText()))
 -- a scrolled row is filled anew: the indent follows the item
 page.list.scripts.OnMouseWheel(page.list, -1)
@@ -174,6 +176,19 @@ page.heads.level:Click()
 assert(names() == "Vulo Vultrox,>Vuloo,Anna Amboss,>Bob,Carla,>Emil,Fynn,Vulo Zweitname,Dora", names())
 page.heads.name:Click()
 assert(names() == "Anna Amboss,>Bob,Carla,>Emil,Dora,Fynn,Vulo Vultrox,>Vuloo,Vulo Zweitname", names())
+-- the item level column sorts too, the highest first
+assert(page.heads.ilvl and page.heads.ilvl.label:GetText() == "iLvl", "a head for the item level column")
+page.heads.ilvl:Click()
+assert(AmisiaDB.settings.window.members.sort == "ilvl" and AmisiaDB.settings.window.members.desc, "sorted by item level")
+do
+    local prev
+    for _, e in ipairs(page.list.items) do
+        if e.depth == 0 then
+            assert(not prev or (e.il or 0) <= prev, "mains by item level, highest first: " .. names())
+            prev = e.il or 0
+        end
+    end
+end
 AmisiaDB.settings.window.members.sort = nil
 -- a main that left the guild: its alt stands alone, "Twink von X" in the tooltip
 assert(NS.SetAlts("#AMISIA-ALTS 1 forever 2026-11-15\nA Bob Anna_Amboss\nA Fynn Gone_Away\n#END"))

@@ -7,8 +7,8 @@
 -- Dropdowns Klasse and Beruf, "nur online", a name search; a click on a column head sorts. The row's
 -- tooltip: rank, notes (the officer note only when the client shows it), main and alts and where Amisia
 -- knows them from, the item level and its age (F-210: Core/GuildChars.lua, ns.GuildCharsView: the website's
--- alt list, the members' own reports AC, the notes; alts indented under their main, the item level beside
--- the name);
+-- alt list, the members' own reports AC, the notes; alts indented under their main, the item level in a
+-- column of its own);
 -- a profession's tooltip: skill, recipes, how old. A click on a row: Flüstern, Einladen. Everyone sees
 -- it; without a guild it says so. The filters stay in settings.window.members.
 local ADDON, ns = ...
@@ -22,7 +22,7 @@ local query = ""                -- the name search (not kept)
 local last                      -- the rows of the last build (shown again in the lockdown)
 local askedAt                   -- when the page last asked the client for the roster
 
-local SORTS = { name = true, level = true, zone = true, last = true, prof = true }
+local SORTS = { name = true, level = true, ilvl = true, zone = true, last = true, prof = true }
 
 -- settings.window.members: { class = class token or "all", prof = skill line or "all", online = bool,
 -- sort = a column key (nil: online first, then the name), desc = bool }
@@ -279,6 +279,7 @@ local function compare(st)
         end
         local x, y
         if key == "level" then x, y = a.level or 0, b.level or 0
+        elseif key == "ilvl" then x, y = a.il or 0, b.il or 0
         elseif key == "zone" then x, y = ns.Fold(a.zone or "~"), ns.Fold(b.zone or "~")
         elseif key == "last" then x, y = a.away, b.away
         elseif key == "prof" then x, y = profRank(a, skill), profRank(b, skill)
@@ -544,9 +545,9 @@ local function buildRow(r)
     r.name:SetPoint("TOPLEFT", M.NAME_X, M.LINE1_Y)
     r.info = W.Text(r, T.FONT.text, M.NAME_W)
     r.info:SetPoint("TOPLEFT", M.NAME_X, M.LINE2_Y)
-    -- the item level at the right of the name column (F-210)
+    -- the item level, a column of its own between the name and the zone (F-210)
     r.il = W.Text(r, T.FONT.text, M.IL_W)
-    r.il:SetPoint("TOPLEFT", M.NAME_X + M.NAME_W - M.IL_W, M.LINE1_Y)
+    r.il:SetPoint("TOPLEFT", M.IL_X, M.LINE1_Y)
     r.il:SetJustifyH("RIGHT")
     local textX, textW = M.ZONE_X + M.SMALL_ICON + M.SMALL_GAP, M.ZONE_W - M.SMALL_ICON - M.SMALL_GAP
     r.zone = W.Text(r, T.FONT.text, textW)
@@ -584,11 +585,11 @@ local function fillRow(r, e)
     r.classIcon:SetPoint("LEFT", M.ICON_X + ind, 0)
     r.name:ClearAllPoints()
     r.name:SetPoint("TOPLEFT", M.NAME_X + ind, M.LINE1_Y)
-    r.name:SetWidth(M.NAME_W - ind - (e.il and M.IL_W or 0))
+    r.name:SetWidth(M.NAME_W - ind)
     r.info:ClearAllPoints()
     r.info:SetPoint("TOPLEFT", M.NAME_X + ind, M.LINE2_Y)
     r.info:SetWidth(M.NAME_W - ind)
-    r.il:SetText(e.il and (M.IL_COLOR .. e.il .. "|r") or "")
+    r.il:SetText(e.il and (M.IL_COLOR .. e.il .. "|r") or (T.GREY .. "-|r"))
     setClassIcon(r.classIcon, e.class)
     r.name:SetText(classColored(e.name, e.class))
     r.info:SetText(T.GREY .. infoText(e) .. "|r")
@@ -631,14 +632,15 @@ local function buildPage(parent)
     f:Footer({ "data" })
 
     local cols = {}
-    local heads = { name = L["Name"], level = L["Stufe"], zone = L["Ort##Mitglieder"], last = L["Zuletzt online"], prof = L["Berufe"] }
+    local heads = { name = L["Name"], level = L["Stufe"], ilvl = L["iLvl"], zone = L["Ort##Mitglieder"],
+        last = L["Zuletzt online"], prof = L["Berufe"] }
     for _, c in ipairs(M.COLS) do cols[#cols + 1] = { c[1], c[2], c[3], heads[c[1]] } end
     f.headFrame, f.heads = f:Columns(cols, { sort = function(key)
         local st = state()
         if st.sort == key then
             st.desc = (not st.desc) or nil
         else
-            st.sort, st.desc = key, (key == "level" or key == "prof") or nil
+            st.sort, st.desc = key, (key == "level" or key == "ilvl" or key == "prof") or nil
         end
         ns.Refresh()
     end })
