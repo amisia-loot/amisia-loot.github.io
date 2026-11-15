@@ -375,8 +375,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-10-einladen-gilde.md; DECISIONS D-93. "Gilde einladen" nutzt dieselben Grenzen wie "Alle einladen": einer alle 0,5 Sekunden, Raid nach dem ersten Beitritt, 3 Einladungen pro Name und Abend, nur heute, nie im Kampf, nur als Leiter oder Assistent.
 
 ### F-213 Gruppen-Notiz im Dungeon
-- Version: -
-- Status: geplant
+- Version: 2.92.0
+- Status: gebaut
 - Braucht: Gruppe
 - Prüfung: Wenn der Gruppenleiter unter Raid > Raid- und Gruppen-Notiz Text schreibt und "An Gruppe senden" klickt, dann sehen die anderen mit Amisia binnen Sekunden die Chatzeile und das Fenster "Gruppen-Notiz" mit dem Text.
 - Prüfung: Wenn ein Mitglied, das nicht Leiter ist, die Seite öffnet, dann kann es nicht senden; nach "Leitung übergeben" an es kann es.
