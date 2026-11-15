@@ -378,12 +378,12 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Version: -
 - Status: geplant
 - Braucht: Gruppe
-- Prüfung: Wenn der Gruppenleiter unter Raid > Notiz Text schreibt und "An Gruppe senden" klickt, dann sehen die anderen mit Amisia binnen Sekunden die Chatzeile und das Fenster "Gruppen-Notiz" mit dem Text.
+- Prüfung: Wenn der Gruppenleiter unter Raid > Raid- und Gruppen-Notiz Text schreibt und "An Gruppe senden" klickt, dann sehen die anderen mit Amisia binnen Sekunden die Chatzeile und das Fenster "Gruppen-Notiz" mit dem Text.
 - Prüfung: Wenn ein Mitglied, das nicht Leiter ist, die Seite öffnet, dann kann es nicht senden; nach "Leitung übergeben" an es kann es.
 - Prüfung: Wenn jemand der Gruppe später beitritt oder `/reload` macht, dann hat er nach wenigen Sekunden die aktuelle Notiz.
 - Prüfung: Wenn du einen Dungeon mit eigener Notiz betrittst, dann öffnet sich das Fenster und zeigt "Deine Notiz zu <Dungeon>" mit Text und Boss-Notizen, unter einer Gruppen-Notiz, wenn es eine gibt.
 - Prüfung: Wenn du im Bosskampf `/amisia notiz` eingibst, dann öffnet und schließt sich das Fenster ohne Fehlermeldung.
-- Notiz: Spec docs/specs/2026-11-15-gruppen-notiz.md.
+- Notiz: Spec docs/specs/2026-11-15-gruppen-notiz.md; DECISIONS D-138. Die Seite heißt jetzt "Raid- und Gruppen-Notiz". Annehmen abschaltbar (Einstellungen, Raid- und Gruppen-Notiz).
 
 ### F-212 Eigene Notiz je Dungeon
 - Version: 2.91.0

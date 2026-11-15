@@ -5,7 +5,8 @@
 -- travels. The head row: the template picker, the name field, "Speichern", "Löschen"; at the right
 -- "Fenster zeigen". Over the note's field the eight raid marks (F-198): a click puts "{totenkopf}" ...
 -- (the client's language) at the cursor of the field written in last (the own note for who may not
--- send). Under the note's field the counter and the red "An Raid senden".
+-- send). Under the note's field the counter and the red "An Raid senden". In an own party (F-213) the page is the
+-- group note's: its leader writes and sends ("An Gruppe senden", 1000 bytes, 20 lines), the others see it read only.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -52,10 +53,12 @@ local function deleteSet()
     end)
 end
 
+local function party() return RN.Mode() == "party" end
+
 local function send(f)
     local ok, why = RN.Send(f.note.box:GetText())
     if ok then
-        ns.msg(L["Raid-Notiz an den Raid geschickt."])
+        ns.msg(party() and L["Gruppen-Notiz an die Gruppe geschickt."] or L["Raid-Notiz an den Raid geschickt."])
     else
         ns.msg(why)
     end
@@ -89,10 +92,12 @@ end
 
 function counter(f)
     local text = f.note.box:GetText() or ""
-    f.count:SetText(L["%d/%d Zeichen · %d/%d Zeilen"]:format(#text, RN.MAX_CHARS, RN.LineCount(text), RN.MAX_LINES))
+    local chars, lines = RN.MAX_CHARS, RN.MAX_LINES
+    if party() then chars, lines = RN.PARTY_CHARS, RN.PARTY_LINES end
+    f.count:SetText(L["%d/%d Zeichen · %d/%d Zeilen"]:format(#text, chars, RN.LineCount(text), lines))
 end
 
-ns.RegisterPanel{ key = "raidnote", label = L["Raid-Notiz"], sub = L["Cooldowns und Einteilungen für den Raid, auch im Kampf zu sehen."], icon = "Interface\\Icons\\INV_Misc_Note_02", order = 18, group = "raid",
+ns.RegisterPanel{ key = "raidnote", label = L["Raid- und Gruppen-Notiz"], sub = L["Cooldowns, Einteilungen und Taktik für Raid und Gruppe, auch im Kampf zu sehen."], icon = "Interface\\Icons\\INV_Misc_Note_02", order = 18, group = "raid",
     create = function(parent)
         local f = W.Page(parent)
         f:Bands({ "row", "line", "row" })
@@ -157,7 +162,7 @@ ns.RegisterPanel{ key = "raidnote", label = L["Raid-Notiz"], sub = L["Cooldowns 
         f.send = W.Button(f, L["An Raid senden"], 130, function() send(f) end)
         W.FitChip(f.send, 130)
         f.send:SetPoint("TOPRIGHT", 0, y)
-        W.Tooltip(f.send, L["An Raid senden"], L["Schickt die Notiz an alle im Raid mit Amisia; sie ersetzt die vorige. Nicht im Kampf."])
+        W.Tooltip(f.send, L["Senden"], L["Schickt die Notiz an alle im Raid (oder als Gruppenleiter an die Gruppe) mit Amisia; sie ersetzt die vorige. Nicht im Kampf."])
         y = y - T.BUTTON_H - S.GAP
         f.ownTitle = W.Text(f, T.FONT.title, 300)
         f.ownTitle:SetPoint("TOPLEFT", LAY.TEXT_X, y)
@@ -184,7 +189,8 @@ ns.RegisterPanel{ key = "raidnote", label = L["Raid-Notiz"], sub = L["Cooldowns 
     refresh = function(f)
         local may = RN.CanEdit()
         local canSend, why = RN.CanSend()
-        local c = RN.Current()
+        local c = RN.Shown()
+        local inParty = party()
         f.readOnly = not may
         f.note:SetLocked(not may)
         -- the templates
@@ -206,14 +212,17 @@ ns.RegisterPanel{ key = "raidnote", label = L["Raid-Notiz"], sub = L["Cooldowns 
         end
         counter(f)
         local held = canSend and RN.SendHeld()
+        f.send:SetText(inParty and L["An Gruppe senden"] or L["An Raid senden"])
+        W.FitChip(f.send, 130)
         f.send:SetShown(may)
         f.send:SetEnabled(canSend and not held)
-        local from = c and L["Aktuelle Notiz von %s, %s."]:format(c.by, date("%H:%M", c.at)) or L["Noch keine Raid-Notiz."]
+        local from = c and L["Aktuelle Notiz von %s, %s."]:format(c.by, date("%H:%M", c.at))
+            or (inParty and L["Noch keine Gruppen-Notiz."] or L["Noch keine Raid-Notiz."])
         if canSend then
             f.status:SetText(from .. (held and (" " .. ORANGE .. held .. "|r") or ""))
         else
             -- an officer outside a raid writes now and sends there
-            if may and why == L["Nur im Raid."] then why = L["Schreiben geht jetzt, senden erst im Raid."] end
+            if may and why == L["Nur in Raid oder Gruppe."] then why = L["Schreiben geht jetzt, senden erst im Raid oder als Gruppenleiter."] end
             f.status:SetText(from .. " " .. GREY .. (why or "") .. "|r")
         end
         if not f.own.box:HasFocus() then setBox(f.own.box, RN.Own()) end

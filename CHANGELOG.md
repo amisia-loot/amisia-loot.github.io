@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(raid): a group note for dungeons, like the raid note (F-213)
+
+    In a group of five the group leader can now send a note to the group from the page Raid > "Raid and group
+    note" ("Send to group"), even when the leader is not in your guild. Everyone with Amisia sees it in the
+    note window, which is called "Group note" in a group and stays usable in a fight; members who join later
+    or reload get it again. Under it the window shows your own note on the dungeon you are in. Entering a
+    dungeon opens the window when there is a group note or your own dungeon note. Accepting group notes and
+    opening on entering can be switched off in the settings.
+
 - feat(guild): the item level is a column of its own on the Members page (F-210)
 
     The item level now stands in its own column "iLvl" between the level and the zone instead of small

@@ -3760,3 +3760,26 @@ Liste)" weiter im Reiter. Weitergabe an Gruppe oder Gilde bräuchte eine eigene 
 **Durchgesetzt durch:** `tests/test_dungeon_notes.lua` (Säubern, Links, Deckel, Boss-Notizen, Laden zweimal ohne
 Änderung, Chatzeile einmal, nicht nach `/reload`, Schalter, Link, Leiste, Liste, Reiter, Link einfügen, Leeren, Raids),
 `tests/test_dungeon_bar.lua` (die Segmente und ihre Schalter), `tools/tests/test_contracts.py` (Schlüssel, Abschnitt).
+
+## D-138 Gruppen-Notiz: der Gruppenleiter sendet, auch von außerhalb der Gilde, ohne Datenblock
+
+**Datum:** 2026-11-15
+**Entscheidung:** In einer eigenen Fünfergruppe schickt der Gruppenleiter eine Notiz an die Gruppe (F-213, Spec
+`docs/specs/2026-11-15-gruppen-notiz.md`); sie steht im Fenster der Raid-Notiz, das in der Gruppe "Gruppen-Notiz"
+heißt, und auf der Seite Raid > "Raid- und Gruppen-Notiz". Senden darf nur, wen die eigene Gruppenliste des Empfängers
+als Leiter nennt, auch wenn er nicht in der Gilde ist. Weil Datenblöcke nur aus der Gilde kommen (Comm, D-12), geht
+die Gruppen-Notiz nicht als Blob, sondern als 1 bis 6 Steuernachrichten `TN` nur über PARTY (Text mit `%XX` für `%`,
+`|`, Zeilenende und Tab; jedes Stück höchstens 200 Bytes); der Empfänger setzt sie zusammen und prüft sie ganz (Hash,
+1000 Bytes, 20 Zeilen). Wer neu dazukommt oder neu lädt, fragt mit `TQ`; der Leiter schickt sie erneut (höchstens alle
+10 s). Der Text wird beim Anzeigen entschärft wie die Raid-Notiz. Schalter "Gruppen-Notiz annehmen" (an). Unter der
+Notiz steht im Fenster die eigene Notiz zum Dungeon (F-212), und beim Betreten eines Dungeons öffnet sich das Fenster,
+wenn es eine Gruppen-Notiz oder eine eigene Dungeon-Notiz gibt (einmal je Betreten, nicht nach `/reload`, abschaltbar).
+**Grund:** Nutzer 2026-11-15: "will das so wie bei raids nur für dungeons", dann "Fenster + an Gruppe senden" und
+"Gruppenleiter, jeder" (Zufallsgruppen), "Passt, bauen".
+**Folge:** Erste Ausnahme von "Daten nur aus der Gilde": ein fremder Gruppenleiter kann Text in dieses Fenster
+schreiben, mehr nicht (keine Links, keine Codes, gedeckelt, abschaltbar). Mitglieder ohne Leitung senden nichts;
+eine Gruppen-Notiz verschwindet beim Verlassen der Gruppe. Im Raid gilt weiter D-126.
+**Durchgesetzt durch:** `tests/test_groupnote_share.lua` (Kodierung und Stücke, nur der Leiter, nur PARTY, Leiter
+außerhalb der Gilde, Schalter, gefälschte Teile, Nachzügler, `/reload` ohne Neusenden, Verlassen),
+`tests/test_dungeon_notes.lua` (Fenster mit der eigenen Dungeon-Notiz beim Betreten, nicht nach `/reload`, Schalter),
+`tests/test_raidnote.lua`, `tools/tests/test_contracts.py` (Nachrichten, Abstände, Schlüssel, Abschnitt).

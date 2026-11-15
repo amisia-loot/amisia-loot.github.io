@@ -16,7 +16,7 @@ Gelöst ist es, wenn eine Gruppe im Dungeon die Taktik im Fenster hat statt im C
   Oben die zuletzt empfangene (oder selbst gesendete) Notiz mit "von <Name>, <Uhrzeit>"; darunter, in einem Dungeon mit
   eigener Notiz (F-212), "Deine Notiz zu <Dungeon>" mit Text und Boss-Notizen, sonst wie bisher die eigene Notiz.
   Verschieben, Größe, Schloss, Schrift und Hintergrund wie bei der Raid-Notiz; im Kampf öffnen, schließen, scrollen.
-- **Seite:** die Seite Raid > Raid-Notiz heißt "Notiz" und gilt in Raid und Gruppe. Knopf "An Gruppe senden" in einer
+- **Seite:** die Seite Raid > Raid-Notiz heißt "Raid- und Gruppen-Notiz" und gilt in Raid und Gruppe. Knopf "An Gruppe senden" in einer
   Gruppe, "An Raid senden" im Raid. Vorlagen (30) für beides.
 - **Wer sendet:** in einer Gruppe nur der Gruppenleiter, auch wenn er nicht in der Gilde ist (Zufallsgruppen). Im Raid
   bleibt alles wie bisher (D-126).
@@ -39,7 +39,7 @@ Gelöst ist es, wenn eine Gruppe im Dungeon die Taktik im Fenster hat statt im C
 
 ## Abläufe
 
-1. Der Gruppenleiter öffnet Raid > Notiz, schreibt "{totenkopf} zuerst, Vulo unterbricht Heiler" und klickt
+1. Der Gruppenleiter öffnet Raid > Raid- und Gruppen-Notiz, schreibt "{totenkopf} zuerst, Vulo unterbricht Heiler" und klickt
    "An Gruppe senden".
 2. Jedes Mitglied mit Amisia bekommt sie binnen Sekunden: Chatzeile, das Fenster "Gruppen-Notiz" öffnet sich. Wer
    eine eigene Notiz zu diesem Dungeon hat, sieht sie darunter.
@@ -50,7 +50,7 @@ Gelöst ist es, wenn eine Gruppe im Dungeon die Taktik im Fenster hat statt im C
 
 ## Abnahmekriterien
 
-- Wenn der Gruppenleiter unter Raid > Notiz Text schreibt und "An Gruppe senden" klickt, dann sehen die anderen mit
+- Wenn der Gruppenleiter unter Raid > Raid- und Gruppen-Notiz Text schreibt und "An Gruppe senden" klickt, dann sehen die anderen mit
   Amisia binnen Sekunden die Chatzeile und das Fenster "Gruppen-Notiz" mit dem Text (braucht: Gruppe).
 - Wenn ein Mitglied, das nicht Leiter ist, die Seite öffnet, dann kann es nicht senden; nach "Leitung übergeben" an
   es kann es (braucht: Gruppe).
@@ -76,22 +76,23 @@ Gelöst ist es, wenn eine Gruppe im Dungeon die Taktik im Fenster hat statt im C
 - Senden darf nur, wen die eigene Gruppenliste des Empfängers als Leiter nennt (`UnitIsGroupLeader`); der Absender
   ist der Name, den der Server setzt. Ein Fremder außerhalb der eigenen Gruppe wird nie gehört.
 - Neu: Daten von einem Spieler außerhalb der Gilde. Sie gehen nicht über Datenblöcke (die bleiben nur für die Gilde,
-  D-12), sondern als bis zu 6 kurze Nachrichten `GN` nur über PARTY; jede wird ganz geprüft, ein falsches Teil
+  D-12), sondern als bis zu 6 kurze Nachrichten `TN` nur über PARTY; jede wird ganz geprüft, ein falsches Teil
   verwirft die Notiz. Der Text wird beim Anzeigen entschärft wie die Raid-Notiz (jedes `|` verdoppelt).
-- Fluten: eine Notiz je 10 s je Absender, höchstens 1000 Bytes und 20 Zeilen; eine Frage `GQ` je 30 s.
+- Fluten: der Leiter sendet höchstens alle 10 s (auch beim Nachschicken), die Teile zweier Notizen werden getrennt
+  zusammengesetzt, höchstens 1000 Bytes und 20 Zeilen; eine Frage `TQ` je 30 s.
 - Ein böser Leiter kann nur Text in dieses Fenster schreiben; abschaltbar mit "Gruppen-Notiz annehmen" (an).
 
 ## Daten
 
-- Neue Nachrichten (Präfix Steuerung, nur PARTY): `GN` (Leiter -> Gruppe: Id, Teil i/n, Textstück bis 200 Bytes;
-  bei "Senden", bei einem Beitritt, als Antwort auf `GQ`), `GQ` (Mitglied -> Gruppe: "habe Id x" oder "-", nach
+- Neue Nachrichten (Präfix Steuerung, nur PARTY): `TN` (Leiter -> Gruppe: Id, Teil i/n, Textstück bis 200 Bytes;
+  bei "Senden", bei einem Beitritt, als Antwort auf `TQ`), `TQ` (Mitglied -> Gruppe: "habe Id x" oder "-", nach
   Beitritt und `/reload`, je 30 s).
 - `AmisiaDB.raidNote` bekommt `party = {id, at, by, text}` (die aktuelle Gruppen-Notiz; nach dem Verlassen der Gruppe
   gelöscht).
 - Neue Einstellungen im Abschnitt `raidnote`: `raidnote.party` ("Gruppen-Notiz annehmen", an),
   `raidnote.dungeonOpen` ("Fenster beim Betreten eines Dungeons öffnen", an).
-- Seite und Fenster bekommen neue Namen ("Notiz", "Gruppen-Notiz"); ARCHITECTURE (Nachrichten, Schlüssel,
-  Einstellungen) und eine Entscheidung in DECISIONS (Ausnahme von D-12 nur für `GN`) im selben Commit.
+- Seite und Fenster bekommen neue Namen ("Raid- und Gruppen-Notiz", "Gruppen-Notiz"); ARCHITECTURE (Nachrichten, Schlüssel,
+  Einstellungen) und eine Entscheidung in DECISIONS (Ausnahme von D-12 nur für `TN`) im selben Commit.
 
 ## Offene Fragen
 

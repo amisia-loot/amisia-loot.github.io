@@ -4,6 +4,10 @@
 -- both (locked, clicks go through it, only the lock and the close button take the mouse). No protected
 -- frame: it opens, closes and scrolls in a fight; moving and sizing wait until after it. Escape does not
 -- close it. Place and size in settings.raidNoteWindow = { point, x, y, w, h, locked }.
+-- In an own party (F-213) it is the window "Gruppen-Notiz" with the party leader's note; under the note, in a
+-- dungeon with the own note of the gear module (F-212, ns.DungeonNotes), "Deine Notiz zu <Dungeon>" with its boss
+-- notes in place of the own note. Entering a dungeon opens it once per entry when there is a group note or an own
+-- dungeon note (raidnote.dungeonOpen; not after a /reload).
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -51,24 +55,66 @@ local function applyLock()
     F.lock.icon:SetTexture(locked and LOCK_TEX or OPEN_TEX)
 end
 
+-- The own note of the dungeon stood in (F-212, the gear module), or nil: its key.
+local function dungeonKey()
+    -- in a raid the own note stays (the cooldowns); the dungeon note only in a dungeon
+    if RN.Mode() == "raid" then return nil end
+    local _, kind = IsInInstance()
+    if ns.Plain(kind) ~= "party" then return nil end
+    local NT = ns.DungeonNotes
+    return NT and NT.HereKey and NT.HereKey() or nil
+end
+
+-- The own dungeon note as the window shows it: its text (own, so its item links stay) with the raid marks,
+-- then each boss note "Name: note".
+local function dungeonText(k)
+    local NT = ns.DungeonNotes
+    if not NT then return "" end
+    local lines = {}
+    local t = NT.Get(k)
+    if t ~= "" then lines[#lines + 1] = RN.Marks(t) end
+    for _, b in ipairs(NT.BossNotes(k)) do
+        lines[#lines + 1] = "|cffffd100" .. b.name .. ":|r " .. RN.Marks(b.text)
+    end
+    return table.concat(lines, "\n")
+end
+
+local GREY = "|cff8f86a3"
+
 local function text()
-    local c = RN.Current()
+    local party = RN.Mode() == "party"
+    local c = RN.Shown()
     local parts = {}
     if c then
         parts[1] = RN.Render(c.text)
+    elseif party then
+        parts[1] = GREY .. L["Keine Gruppen-Notiz. Der Gruppenleiter schickt sie."] .. "|r"
     else
-        parts[1] = "|cff8f86a3" .. L["Keine Raid-Notiz. Die Raidleitung schickt sie vor dem Pull."] .. "|r"
+        parts[1] = GREY .. L["Keine Raid-Notiz. Die Raidleitung schickt sie vor dem Pull."] .. "|r"
     end
-    local own = RN.Own()
-    if own ~= "" then
-        parts[#parts + 1] = "\n|cff8f86a3" .. L["Eigene Notiz"] .. "|r\n" .. RN.Render(own)
+    local k = dungeonKey()
+    if k then
+        local f = ns.Runs and ns.Runs.Fact(k)
+        local name = f and ns.Dungeons and ns.Dungeons.Name(f) or k
+        parts[#parts + 1] = "\n" .. GREY .. L["Deine Notiz zu %s"]:format(name) .. "|r\n" .. dungeonText(k)
+    else
+        local own = RN.Own()
+        if own ~= "" then
+            parts[#parts + 1] = "\n" .. GREY .. L["Eigene Notiz"] .. "|r\n" .. RN.Render(own)
+        end
     end
     return table.concat(parts, "\n")
 end
 
+local function setTitle()
+    local t = RN.Mode() == "party" and L["Gruppen-Notiz"] or L["Raid-Notiz"]
+    if F.SetTitle then F:SetTitle(t) elseif F.GetTitleText then F:GetTitleText():SetText(t) end
+end
+
 local function refresh()
     if not F or not F:IsShown() then return end
-    local c = RN.Current()
+    setTitle()
+    local c = RN.Shown()
     F.from:SetText(c and L["von %s, %s"]:format(c.by, date("%H:%M", c.at)) or "")
     F.note:SetText(text())
 end
@@ -191,5 +237,27 @@ function ns.ResetRaidNotePosition()
 end
 
 ns.Listen("RAIDNOTE", refresh)
+ns.Listen("DUNGEON_NOTES", refresh)
 ns.OnEvent("GROUP_ROSTER_UPDATE", function() if RW.Shown() then refresh() end end)
+
+-- Entering a dungeon (F-213): once per entry the window, when there is a group note or an own dungeon note.
+local lastInst
+function RW.OnEnter(reload)
+    local inside, kind = IsInInstance()
+    if not ns.Plain(inside) or ns.Plain(kind) ~= "party" then
+        lastInst = nil
+        return
+    end
+    local id = select(8, GetInstanceInfo())
+    if id == lastInst then return end
+    lastInst = id
+    if reload or not ns.Get("raidnote.dungeonOpen") then return end
+    if (RN.Mode() == "party" and RN.Party()) or dungeonKey() then RN.ShowSoon() end
+end
+ns.OnEvent("PLAYER_ENTERING_WORLD", function(_, reload)
+    C_Timer.After(3, function() RW.OnEnter(reload) end)
+end)
+
+-- for the tests
+function RW._reset() lastInst = nil end
 end)

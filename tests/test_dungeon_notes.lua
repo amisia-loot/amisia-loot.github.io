@@ -229,4 +229,29 @@ local Rj = NS.PageFrame("raidjournal")
 assert(Rj.noteView:IsShown() and Rj.noteView.area.box:GetText() == "Tiefe Atemzüge", "the raid's note")
 assert(Rj.hint:GetText() == NS.JournalParts.NOTE_HINT, "the raid's hint")
 
+---------------------------------------------------------------------------
+-- the note window (F-213): entering a dungeon with an own note opens it with "Deine Notiz zu"
+---------------------------------------------------------------------------
+local RW = NS.RaidNote.Window
+N.Set("thanes", "Links {totenkopf} zuerst")
+N.SetBoss("thanes", bk, "Adds zuerst")
+RW.Hide()
+RW._reset()
+enter(OUT)
+enter(THANES)
+local NW = _G.AmisiaRaidNote
+assert(NW and NW:IsShown(), "the window opened on entering")
+local wt = NW.note.fs:GetText()
+assert(has(wt, "Deine Notiz zu") and has(wt, "Links") and has(wt, "UI-RaidTargetingIcon_8") and has(wt, "Adds zuerst"), wt)
+-- a /reload inside does not open it again; the switch keeps it closed
+RW.Hide()
+STUB.fire("PLAYER_ENTERING_WORLD", false, true)
+STUB.tick(3.1)
+assert(not NW:IsShown(), "not after a reload")
+NS.Set("raidnote.dungeonOpen", false)
+enter(OUT)
+enter(THANES)
+assert(not NW:IsShown(), "the switch off")
+NS.Set("raidnote.dungeonOpen", true)
+
 print("dungeon notes: clean, set, boss notes, load, chat once, link, bar, list, part, link insert, clear, raids")

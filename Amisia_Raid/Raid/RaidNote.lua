@@ -7,7 +7,13 @@
 -- (Raid/RaidNoteWindow.lua) with raid marks for {stern}/{star}/{rt1} ..., raid members in their class
 -- colour and the own lines in gold; the text from outside is defused first (every "|" doubled).
 -- Saved: AmisiaDB.raidNote = { v = 1, sets = { { name, text, at } } (30), cur = { id, at, by, text, h },
--- draft, own } (the own note never travels).
+-- party = { id, at, by, text, h }, draft, own } (the own note never travels).
+-- The group note (F-213, D-138, spec docs/specs/2026-11-15-gruppen-notiz.md): in an own party (not a raid) the
+-- party leader sends the note (RN.PARTY_CHARS bytes, RN.PARTY_LINES lines) to the party as up to RN.PARTY_PARTS
+-- control messages "TN <id> <i> <n> <hash> <piece>" (no blob: those stay the guild's, D-12); taken from the leader
+-- by the receiver's own party, also outside the guild (raidnote.party), checked whole by its hash. A member who
+-- joins or reloads asks "TQ <id> <hash>"; the leader sends it again (also soon after a join). Leaving the party
+-- drops it. The window shows it in a party, the raid note in a raid.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -16,6 +22,10 @@ local RN = {}
 ns.RaidNote = RN
 
 RN.MAX_CHARS, RN.MAX_LINES, RN.MAX_OWN, RN.MAX_SETS, RN.MAX_SET_NAME = 4000, 120, 1000, 30, 24
+RN.PARTY_CHARS, RN.PARTY_LINES, RN.PARTY_PARTS, RN.PIECE = 1000, 20, 6, 180
+local PARTS_TTL = 30          -- seconds a group note's parts wait for the rest
+local RESEND_GAP = 10         -- the leader sends his group note again at most this often
+local TQ_GAP = 30             -- a member asks for the group note at most this often
 local NV_EVERY = 240          -- the sender repeats his announcement this often
 local NV_GAP = 10             -- and not more often than this
 local SEND_GAP = 10           -- one note per sender this often (the receivers keep the same)
@@ -57,20 +67,25 @@ local function lineCount(s)
 end
 RN.LineCount = lineCount
 
--- The text as the note may carry it: control characters out, at most MAX_LINES lines and MAX_CHARS bytes.
-function RN.CleanText(s)
-    s = clip(s, RN.MAX_CHARS)
-    if lineCount(s) > RN.MAX_LINES then
+-- The text as the note may carry it: control characters out, at most MAX_LINES lines and MAX_CHARS bytes
+-- (maxChars, maxLines: other bounds, the group note's).
+function RN.CleanText(s, maxChars, maxLines)
+    maxChars, maxLines = maxChars or RN.MAX_CHARS, maxLines or RN.MAX_LINES
+    s = clip(s, maxChars)
+    if lineCount(s) > maxLines then
         local out, n = {}, 0
         for line in (s .. "\n"):gmatch("(.-)\n") do
             n = n + 1
-            if n > RN.MAX_LINES then break end
+            if n > maxLines then break end
             out[n] = line
         end
         s = table.concat(out, "\n")
     end
     return s
 end
+
+-- The text as a group note may carry it (F-213).
+function RN.CleanParty(s) return RN.CleanText(s, RN.PARTY_CHARS, RN.PARTY_LINES) end
 
 local function validCur(c)
     return type(c) == "table" and type(c.id) == "number" and type(c.at) == "number" and type(c.by) == "string"
@@ -93,12 +108,27 @@ function RN.DB()
     end
     while #d.sets > RN.MAX_SETS do table.remove(d.sets) end
     if d.cur ~= nil and not validCur(d.cur) then d.cur = nil end
+    if d.party ~= nil and not (validCur(d.party) and #d.party.text <= RN.PARTY_CHARS) then d.party = nil end
     if type(d.draft) ~= "string" then d.draft = nil end
     if type(d.own) ~= "string" then d.own = nil end
     return d
 end
 
 function RN.Current() local d = RN.DB() return d and d.cur end
+function RN.Party() local d = RN.DB() return d and d.party end
+
+-- "raid" in an own raid, "party" in an own party of five, else nil (F-213).
+function RN.Mode()
+    if ns.HomeRaid() then return "raid" end
+    if ns.HomeGroup() then return "party" end
+    return nil
+end
+
+-- The note the window and the page show now: the group note in a party, else the raid note.
+function RN.Shown()
+    if RN.Mode() == "party" then return RN.Party() end
+    return RN.Current()
+end
 function RN.Draft() local d = RN.DB() return d and d.draft or "" end
 function RN.Own() local d = RN.DB() return d and d.own or "" end
 
@@ -178,9 +208,30 @@ RN.RaidRank = raidRank
 
 local function me() return ns.UnitFullName("player") end
 
--- Whether this client may send a note now: true, or false and the reason.
+-- Whether name leads the own party (not a raid), by the own roster (GetRaidRosterInfo: rank 2 the leader, as
+-- the group index reads a party too).
+local function partyLeader(name)
+    if ns.HomeRaid() or not ns.HomeGroup() or type(name) ~= "string" then return false end
+    for i = 1, GetNumGroupMembers() or 0 do
+        local raw, rank = GetRaidRosterInfo(i)
+        local n = ns.FullName(ns.Plain(raw))
+        if n and ns.SameNameInGroup(n, name) then return tonumber(ns.Plain(rank)) == 2 end
+    end
+    return false
+end
+RN.PartyLeader = partyLeader
+
+local function selfLeads()
+    return not ns.HomeRaid() and ns.HomeGroup() and ns.Plain(UnitIsGroupLeader("player")) and true or false
+end
+
+-- Whether this client may send a note now: true, or false and the reason. In a party: its leader (F-213).
 function RN.CanSend()
-    if not ns.HomeRaid() then return false, L["Nur im Raid."] end
+    if RN.Mode() == "party" then
+        if not selfLeads() then return false, L["Senden kann nur der Gruppenleiter."] end
+        return true
+    end
+    if not ns.HomeRaid() then return false, L["Nur in Raid oder Gruppe."] end
     local name = me()
     if not name then return false, L["Nur im Raid."] end
     if ns.IsVerifiedMember(name) == false then
@@ -227,6 +278,9 @@ local function mark(word)
     if not i then return "{" .. word .. "}" end
     return ("|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_%d:0|t"):format(i)
 end
+
+-- The raid marks of an own text (its codes stay as they are: the own dungeon note's item links, F-213).
+function RN.Marks(text) return (tostring(text or ""):gsub("{(%w+)}", mark)) end
 
 local function pattern(s) return (s:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")) end
 
@@ -329,6 +383,7 @@ function RN.Send(text)
     local held = RN.SendHeld()
     if held then return nil, held end
     if type(text) ~= "string" or text:match("^%s*$") then return nil, L["Die Notiz ist leer."] end
+    if RN.Mode() == "party" then return RN.SendParty(text) end
     if RN.CleanText(text) ~= text then
         return nil, L["Zu lang: höchstens %d Zeichen und %d Zeilen."]:format(RN.MAX_CHARS, RN.MAX_LINES)
     end
@@ -369,6 +424,114 @@ local function sendNotes()
     end)
 end
 local askNote = ns.AnswerBatch(sendNotes)
+
+---------------------------------------------------------------------------
+-- The group note (F-213): sending
+---------------------------------------------------------------------------
+-- The text for the messages: %, |, line end and tab as %XX.
+local function encode(s) return (s:gsub("[%%|\n\t]", function(c) return ("%%%02X"):format(c:byte()) end)) end
+local function decode(s) return (s:gsub("%%(%x%x)", function(h) return string.char(tonumber(h, 16)) end)) end
+RN.Encode, RN.Decode = encode, decode
+
+-- The encoded text in pieces of at most RN.PIECE bytes, never cut inside an escape or a UTF-8 letter.
+function RN.Pieces(enc)
+    local out, pos = {}, 1
+    while pos <= #enc do
+        local e = math.min(#enc, pos + RN.PIECE - 1)
+        if e < #enc then
+            if enc:sub(e, e) == "%" then e = e - 1 elseif enc:sub(e - 1, e - 1) == "%" then e = e - 2 end
+            while e > pos and (enc:byte(e + 1) or 0) >= 128 and (enc:byte(e + 1) or 0) < 192 do e = e - 1 end
+        end
+        out[#out + 1] = enc:sub(pos, e)
+        pos = e + 1
+    end
+    return out
+end
+
+local lastResend = -1e9
+local resendPending = false
+local resendWanted = false    -- a join or a question waits for the next resend
+local resendLocked = false    -- a resend waits for the end of the chat lockdown
+
+-- The own group note's parts to the party; true when every part was queued.
+local function sendParts(c)
+    local ps = RN.Pieces(encode(c.text))
+    if #ps == 0 or #ps > RN.PARTY_PARTS then return false end
+    local all = true
+    for i, piece in ipairs(ps) do
+        if not ns.CommSend("TN", { tostring(c.id), tostring(i), tostring(#ps), c.h, piece }, "PARTY", nil,
+            { ttl = 60, key = "TN:" .. i }) then all = false end
+    end
+    return all
+end
+
+-- Sends text to the party as the group note. true, or nil and the reason.
+function RN.SendParty(text)
+    if RN.CleanParty(text) ~= text then
+        return nil, L["Zu lang: höchstens %d Zeichen und %d Zeilen."]:format(RN.PARTY_CHARS, RN.PARTY_LINES)
+    end
+    -- line ends and the characters % and | take three bytes each on the way
+    if #RN.Pieces(encode(text)) > RN.PARTY_PARTS then
+        return nil, L["Zu lang für eine Gruppen-Notiz: Zeilenumbrüche und Sonderzeichen zählen auf dem Weg dreifach."]
+    end
+    local id = ns.ServerTime()
+    local old = RN.Party()
+    if old and old.id >= id then id = old.id + 1 end
+    local c = { id = id, at = id, by = me(), text = text, h = ns.Checksum(text) }
+    if not sendParts(c) then return nil, L["Senden ging nicht."] end
+    RN.DB().party = c
+    lastSend, lastResend = now(), now()
+    stats.sent = stats.sent + 1
+    ns.Fire("RAIDNOTE", "party")
+    C_Timer.After(SEND_GAP + 0.1, function() ns.Fire("RAIDNOTE", "gap") end)
+    return true
+end
+
+-- The leader sends his group note again (a member asked or joined), at most every RESEND_GAP s; in the chat
+-- lockdown once it is over (a fight alone holds nothing: addon messages go in a fight).
+local function resend(again)
+    if not again then resendWanted = true end
+    if not resendWanted then return end
+    local c = RN.Party()
+    if not (c and c.by == me() and selfLeads() and RN.Fresh(c.id)) then
+        resendWanted = false
+        return
+    end
+    if ns.ChatLocked and ns.ChatLocked() then
+        resendLocked = true
+        return
+    end
+    local wait = RESEND_GAP - (now() - lastResend)
+    if wait > 0 then
+        if not resendPending then
+            resendPending = true
+            C_Timer.After(wait + 0.1, function() resendPending = false resend(true) end)
+        end
+        return
+    end
+    resendWanted = false
+    lastResend = now()
+    sendParts(c)
+end
+RN.Resend = function() resend() end
+
+ns.OnEvent("ADDON_RESTRICTION_STATE_CHANGED", function()
+    if resendLocked and not (ns.ChatLocked and ns.ChatLocked()) then
+        resendLocked = false
+        resend(true)
+    end
+end)
+
+local lastAsk = -1e9
+-- A member asks the party for the group note (after joining, a login or a /reload).
+local function ask()
+    if RN.Mode() ~= "party" or selfLeads() or ns.Get("raidnote.party") == false then return end
+    if now() - lastAsk < TQ_GAP then return end
+    lastAsk = now()
+    local c = RN.Party()
+    ns.CommSend("TQ", { c and tostring(c.id) or "-", c and c.h or "-" }, "PARTY", nil, { ttl = 20, key = "TQ" })
+end
+RN.Ask = ask
 
 ---------------------------------------------------------------------------
 -- Receiving
@@ -478,15 +641,116 @@ ns.CommOnBlob("RN", function(sender, tbl, chan, key)
     end)
 end)
 
+-- The group note (F-213): parts from the leader of the own party, put together and checked whole.
+local partial = {}            -- "<sender>:<id>:<hash>" -> { by, id, h, n, parts, got, t } (two notes of one sender may cross)
+
+local function takeParty(c)
+    local d = RN.DB()
+    if not d then return end
+    d.party = c
+    stats.taken = stats.taken + 1
+    ns.Fire("RAIDNOTE", "party")
+    if ns.Get("raidnote.chat") then
+        ns.msg(L["Gruppen-Notiz von %s (%d Zeilen). /amisia notiz zeigt sie."]:format(c.by, lineCount(c.text)))
+    end
+    if ns.Get("raidnote.autoShow") and RN.Window and not RN.Window.Shown() then
+        if InCombatLockdown() then pendingShow = true else RN.Window.Show() end
+    end
+end
+
+ns.CommOn("TN", function(sender, f, chan)
+    if chan ~= "PARTY" or ns.Get("raidnote.party") == false then return end
+    local name = ns.TrustName(sender)
+    if not name then return end
+    if not partyLeader(name) then stats.refused = stats.refused + 1 return end
+    local id, i, n, h = tonumber(f[1]), tonumber(f[2]), tonumber(f[3]), f[4]
+    if not RN.Fresh(id) then return end
+    local cur = RN.Party()
+    if cur and cur.by == name and cur.id == id and cur.h == h then return end
+    if cur and cur.by == name and cur.id > id then return end
+    -- the sets of parts: old ones go, at most two per sender
+    local t, mine = now(), 0
+    for k, x in pairs(partial) do
+        if t - x.t > PARTS_TTL then partial[k] = nil elseif x.by == name then mine = mine + 1 end
+    end
+    local key = name .. ":" .. id .. ":" .. h
+    local p = partial[key]
+    if p and p.n ~= n then return end
+    if not p then
+        if mine >= 2 then return end
+        p = { by = name, id = id, h = h, n = n, parts = {}, got = 0, t = t }
+        partial[key] = p
+    end
+    if not p.parts[i] then
+        p.parts[i] = f[5]
+        p.got = p.got + 1
+    end
+    if p.got < n then return end
+    partial[key] = nil
+    local text = decode(table.concat(p.parts))
+    if text:match("^%s*$") or ns.Checksum(text) ~= h or RN.CleanParty(text) ~= text then
+        stats.refused = stats.refused + 1
+        return
+    end
+    -- a newer note of the same leader came first
+    cur = RN.Party()
+    if cur and cur.by == name and cur.id > id then return end
+    takeParty({ id = id, at = id, by = name, text = text, h = h })
+end)
+
+ns.CommOn("TQ", function(sender, f, chan)
+    if chan ~= "PARTY" then return end
+    local name = ns.TrustName(sender)
+    if not name or not ns.InMyGroup(name) then return end
+    local c = RN.Party()
+    if not c or c.by ~= me() then return end
+    if f[1] == tostring(c.id) and f[2] == c.h then return end
+    resend()
+end)
+
 function RN.Stats() return stats end
 
 -- someone joined: the next tick announces again
 local members = 0
+local wasParty = false
 ns.OnEvent("GROUP_ROSTER_UPDATE", function()
     local n = GetNumGroupMembers() or 0
     if n > members and lastNV then lastNV.h = nil end
+    local mode = RN.Mode()
+    -- the group note (F-213): the leader sends it to a newcomer, a new member asks, out of the party it goes
+    if mode == "party" and n > members then C_Timer.After(3, function() resend() end) end
+    local d = RN.DB()
+    if mode == "party" and not wasParty then
+        C_Timer.After(4, ask)
+        -- a note kept from another party (a logout in it) is not this party's
+        local c = d and d.party
+        if c and c.by ~= me() and not ns.InMyGroup(c.by) then
+            d.party = nil
+            ns.Fire("RAIDNOTE", "party")
+        end
+    end
+    -- a real leave (not a roster read before the group is known): the note goes
+    if wasParty and not ns.HomeGroup() and d and d.party then
+        d.party = nil
+        partial = {}
+        ns.Fire("RAIDNOTE", "party")
+    end
+    wasParty = mode == "party"
     members = n
 end)
+
+ns.OnEvent("PLAYER_ENTERING_WORLD", function(login, reload)
+    if login or reload then C_Timer.After(5, ask) end
+    wasParty = RN.Mode() == "party"
+    -- after a login or /reload the group is no newcomer
+    members = GetNumGroupMembers() or 0
+end)
+
+-- Opens the window now, or after the fight when one is on.
+function RN.ShowSoon()
+    if not RN.Window or RN.Window.Shown() then return end
+    if InCombatLockdown() then pendingShow = true else RN.Window.Show() end
+end
 
 ns.OnEvent("PLAYER_REGEN_ENABLED", function()
     if pendingShow then
@@ -503,16 +767,20 @@ end))
 ---------------------------------------------------------------------------
 -- Command and settings
 ---------------------------------------------------------------------------
-ns.RegisterSlash("notiz", { en = "note", desc = L["Raid-Notiz: das Fenster mit Cooldowns und Einteilungen zeigen oder schließen"],
+ns.RegisterSlash("notiz", { en = "note", desc = L["Raid- und Gruppen-Notiz: das Fenster zeigen oder schließen"],
     run = function()
         if RN.Window then RN.Window.Toggle() end
     end })
 
-ns.RegisterSettings{ key = "raidnote", label = L["Raid-Notiz"], order = 17, group = "raid", pages = { "raidnote" }, items = {
+ns.RegisterSettings{ key = "raidnote", label = L["Raid- und Gruppen-Notiz"], order = 17, group = "raid", pages = { "raidnote" }, items = {
     { key = "raidnote.autoShow", type = "toggle", label = L["Bei neuer Raid-Notiz das Fenster öffnen"], default = true,
       tip = L["Kommt eine neue Raid-Notiz, öffnet sich ihr Fenster von selbst (im Kampf erst danach)."] },
     { key = "raidnote.chat", type = "toggle", label = L["Chatzeile bei neuer Raid-Notiz"], default = true,
       tip = L["Eine Zeile im Chat, wenn eine neue Raid-Notiz ankommt: von wem und wie viele Zeilen."] },
+    { key = "raidnote.party", type = "toggle", label = L["Gruppen-Notiz annehmen"], default = true,
+      tip = L["In einer Gruppe nimmt Amisia die Notiz des Gruppenleiters an, auch wenn er nicht in der Gilde ist (nur Text, ohne Links)."] },
+    { key = "raidnote.dungeonOpen", type = "toggle", label = L["Fenster beim Betreten eines Dungeons öffnen"], default = true,
+      tip = L["Betrittst du einen Dungeon und gibt es eine Gruppen-Notiz oder deine eigene Notiz zu ihm, öffnet sich das Fenster (im Kampf erst danach)."] },
     { key = "raidnote.font", type = "slider", label = L["Schriftgröße der Raid-Notiz"], default = 12, min = 10, max = 18, step = 1,
       tip = L["Die Schriftgröße im Fenster Raid-Notiz."],
       onChange = function() if RN.Window then RN.Window.Restyle() end end },

@@ -35,7 +35,7 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, NV = 8, AC = 300, EA = 10, EQ = 300 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, NV = 8, AC = 300, EA = 10, EQ = 300, TQ = 30 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
 -- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
@@ -44,7 +44,7 @@ local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10, IV = 60
 local KEYED_MAX = 64        -- keyed gaps remembered per sender before the old ones are cleared
 
 -- PARTY only in an own home party (D-97: the routes and points shared with a group of five; D-110: the
--- group's quest state of a dungeon)
+-- group's quest state of a dungeon; D-138: the group note)
 local CHANNELS = { RAID = true, PARTY = true, GUILD = true, WHISPER = true }
 local BLOB_ARTS = { SP = true, SO = true, OP = true, DK = true, CK = true, LC = true, PK = true, KS = true, SR = true, RN = true }
 -- parts a blob of an art may have (default MAX_PARTS)
@@ -442,6 +442,15 @@ local VALID = {
     -- the raid note (F-196): NV <note id> <hash> <lines>; NQ <note id> <own hash>|-
     NV = function(f) return #f >= 3 and isNum(f[1], 1, 4e9) and isHex(f[2], 16) and isNum(f[3], 1, 120) end,
     NQ = function(f) return #f >= 2 and isNum(f[1], 1, 4e9) and (f[2] == "-" or isHex(f[2], 16)) end,
+    -- the group note (F-213, D-138; PARTY only): TN <note id> <part> <parts> <hash> <piece> (the text percent-escaped:
+    -- %, |, line end and tab as %XX; a piece of 1-200 bytes); TQ <note id or -> <own hash or ->
+    TN = function(f)
+        if #f < 5 or not isNum(f[1], 1, 4e9) or not isNum(f[2], 1, 6) or not isNum(f[3], 1, 6) or tonumber(f[2]) > tonumber(f[3]) then return false end
+        if not isHex(f[4], 16) or type(f[5]) ~= "string" or #f[5] < 1 or #f[5] > 200 or f[5]:find("[%c|]") then return false end
+        -- every % starts a whole escape
+        return not f[5]:gsub("%%%x%x", ""):find("%", 1, true)
+    end,
+    TQ = function(f) return #f >= 2 and (f[1] == "-" or isNum(f[1], 1, 4e9)) and (f[2] == "-" or isHex(f[2], 16)) end,
     -- DKP/EPGP (Raid/PointsSync.lua): KV <raid key> <hash> <players> from the keeper; KQ <raid key> <own hash>;
     -- KC <raid key> <award id> <D|G> <amount> <epoch>: an officer's cost of an award
     KV = function(f) return #f >= 3 and isKey(f[1]) and isHex(f[2], 16) and isNum(f[3], 0, 999) end,
@@ -851,7 +860,7 @@ local function envelope(kind, fields)
 end
 
 -- Sends one control message. kind: "HI", "VQ", ...; fields: list of strings; chan "GUILD", "RAID",
--- "PARTY" (only the routes, D-97, and the group quest state, D-110) or "WHISPER" with target. opts.ttl (seconds, default 60), opts.key (a waiting entry with the same
+-- "PARTY" (only the routes, D-97, the group quest state, D-110, and the group note, D-138) or "WHISPER" with target. opts.ttl (seconds, default 60), opts.key (a waiting entry with the same
 -- key is replaced), opts.jitter (random delay of 0 to n seconds before the first try), opts.low
 -- (lowest priority: goes only while nothing else waits, ttl default 120), opts.when (a function; the
 -- entry waits while it does not return true), opts.sent (a function called once the message went),
