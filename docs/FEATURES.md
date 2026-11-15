@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-216 Layer-Wechsel mit allen Amisia-Nutzern der Zone
-- Version: -
-- Status: geplant
+- Version: 2.94.0
+- Status: gebaut
 - Prüfung: Wenn du ohne Gilde (oder ohne Gildenmitglied in der Zone) im Fenster Layer "Layer wechseln" klickst und ein anderer Amisia-Nutzer in der Zone auf einem anderen Layer hilft, dann lädt er dich ohne weiteren Klick ein, nach einem angezielten NPC steht "Gewechselt: Layer B", und nach 5 Sekunden bist du aus der Gruppe.
 - Prüfung: Wenn du "Layer wechseln" klickst, dann öffnet sich das Fenster "Wer" nicht, nichts steht im Chat, und im Fenster steht "Erreicht: n · gehört: m".
 - Prüfung: Wenn niemand antwortet und du noch einmal klickst, dann fragt Amisia eine Klasse der Zone ("Weiter fragen: ...").
