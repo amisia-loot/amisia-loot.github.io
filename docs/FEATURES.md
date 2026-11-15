@@ -374,6 +374,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du unter Einstellungen, Gruppeneinladungen "Einladungen von Gilde und Freunden annehmen" anschaltest und dich ein Gildenmitglied einlädt, dann bist du ohne Klick in der Gruppe, das Fenster des Spiels ist zu, und im Chat steht "Einladung von <Name> angenommen (Gilde)."; die Einladung eines Fremden fragt das Spiel wie immer.
 - Notiz: Spec docs/specs/2026-11-10-einladen-gilde.md; DECISIONS D-93. "Gilde einladen" nutzt dieselben Grenzen wie "Alle einladen": einer alle 0,5 Sekunden, Raid nach dem ersten Beitritt, 3 Einladungen pro Name und Abend, nur heute, nie im Kampf, nur als Leiter oder Assistent.
 
+### F-210 Gildenfenster-Knopf, Twinks und Itemlevel bei Mitglieder
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du das Gildenfenster des Spiels öffnest, dann steht unten rechts ein roter Knopf "Amisia"; ein Klick öffnet Amisia auf der Seite Mitglieder.
+- Prüfung: Wenn ein Gildenmitglied mit dieser Version mit einem Twink online war, dann steht der Twink unter Mitglieder eingerückt unter seinem Main, beide mit Itemlevel, auch nachdem er offline ist.
+- Prüfung: Wenn in der Notiz eines Mitglieds "Twink von <Name>" oder nur der Name eines anderen Mitglieds steht, dann steht es unter diesem eingerückt.
+- Prüfung: Wenn du mit einem deiner Charaktere einloggst, dann stehen deine eigenen Charaktere der Gilde unter deinem Main mit ihrem Itemlevel.
+- Prüfung: Wenn du einen Spieler mit der Maus betrachtet hast, dann steht sein Itemlevel auch unter Mitglieder.
+- Notiz: Spec docs/specs/2026-11-15-gilde-twinks.md.
+
 ### F-209 Spielsprache im Spieler-Tooltip
 - Version: 2.89.0
 - Status: gebaut

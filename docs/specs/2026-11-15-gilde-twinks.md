@@ -1,6 +1,6 @@
 # Spec: Gildenfenster-Knopf, Twinks und Itemlevel bei Mitglieder
 
-Stand: 2026-11-15 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-15 · Status: freigegeben ·
 Feature: F-210
 
 ## Ziel
@@ -105,3 +105,4 @@ Nichts. Die drei Fragen sind entschieden (unten).
 - 2026-11-15: Itemlevel: "Amisia meldet es (Recommended)" -> mit der Meldung beim Einloggen, je Charakter gemerkt,
   dazu Werte vom Betrachten.
 - 2026-11-15: Anzeige: "Unter dem Main (Recommended)" -> Twinks eingerückt unter dem Main, Itemlevel in jeder Zeile.
+- 2026-11-15: Spec: "Passt" -> freigegeben.
