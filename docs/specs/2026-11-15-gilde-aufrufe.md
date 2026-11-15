@@ -1,6 +1,6 @@
 # Spec: Aufrufe der Gilde (Gruppe suchen mit Anmeldung)
 
-Stand: 2026-11-15 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-15 · Status: freigegeben ·
 Feature: F-211
 
 ## Ziel
@@ -116,3 +116,4 @@ Nichts. Die drei Fragen sind entschieden (unten).
 - 2026-11-15: Hinweis: "Chatzeile mit Link (Recommended)" -> eine Chatzeile mit [Anmelden], kein Fenster, kein
   Gildenchat.
 - 2026-11-15: Anmeldung: "Ersteller wählt (Recommended)" -> Liste mit Rolle, Einladen einzeln oder "Alle einladen".
+- 2026-11-15: Spec: "Passt" -> freigegeben.

@@ -374,6 +374,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du unter Einstellungen, Gruppeneinladungen "Einladungen von Gilde und Freunden annehmen" anschaltest und dich ein Gildenmitglied einlädt, dann bist du ohne Klick in der Gruppe, das Fenster des Spiels ist zu, und im Chat steht "Einladung von <Name> angenommen (Gilde)."; die Einladung eines Fremden fragt das Spiel wie immer.
 - Notiz: Spec docs/specs/2026-11-10-einladen-gilde.md; DECISIONS D-93. "Gilde einladen" nutzt dieselben Grenzen wie "Alle einladen": einer alle 0,5 Sekunden, Raid nach dem ersten Beitritt, 3 Einladungen pro Name und Abend, nur heute, nie im Kampf, nur als Leiter oder Assistent.
 
+### F-211 Aufrufe der Gilde: Gruppe suchen mit Anmeldung
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du unter Gilde > Aufrufe einen Aufruf für einen Dungeon mit 1 Tank, 1 Heiler, 3 Schaden erstellst, dann sehen Gildenmitglieder mit Amisia ihn auf ihrer Seite und als Chatzeile mit [Anmelden].
+- Prüfung: Wenn sich ein Gildenmitglied als Heiler anmeldet, dann steht es bei dir unter den Anmeldungen und bei allen steht "Heiler 1/1" bzw. "angemeldet".
+- Prüfung: Wenn du "Alle einladen" klickst, dann lädt Amisia die Angemeldeten ein; mehr als 5: die Gruppe wird ein Schlachtzug.
+- Prüfung: Wenn du "Beenden" klickst oder ausloggst, dann ist der Aufruf bei allen weg (beim Ausloggen nach spätestens 10 Minuten).
+- Prüfung: Wenn du dich einloggst, während ein Aufruf läuft, dann steht er nach kurzer Zeit auf deiner Seite.
+- Notiz: Spec docs/specs/2026-11-15-gilde-aufrufe.md.
+
 ### F-210 Gildenfenster-Knopf, Twinks und Itemlevel bei Mitglieder
 - Version: -
 - Status: geplant
