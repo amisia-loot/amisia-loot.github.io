@@ -375,8 +375,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-10-einladen-gilde.md; DECISIONS D-93. "Gilde einladen" nutzt dieselben Grenzen wie "Alle einladen": einer alle 0,5 Sekunden, Raid nach dem ersten Beitritt, 3 Einladungen pro Name und Abend, nur heute, nie im Kampf, nur als Leiter oder Assistent.
 
 ### F-212 Eigene Notiz je Dungeon
-- Version: -
-- Status: geplant
+- Version: 2.91.0
+- Status: gebaut
 - Prüfung: Wenn du auf der Detailseite eines Dungeons im Reiter "Notiz" etwas schreibst, woanders hinklickst und `/reload` machst, dann steht die Notiz noch da, auch auf einem anderen Charakter des Accounts.
 - Prüfung: Wenn du einen Dungeon mit Notiz betrittst, dann steht einmal eine Chatzeile mit ihrer ersten Zeile und [Notiz], und die Dungeon-Leiste hat "Notiz"; ein Klick darauf zeigt die Notiz und die Boss-Notizen.
 - Prüfung: Wenn ein Dungeon eine Notiz hat, dann zeigt die Tabelle der Startseite bei ihm das Notizzeichen, und der Tooltip zeigt ihren Anfang.
