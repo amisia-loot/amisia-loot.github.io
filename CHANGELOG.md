@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.93.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.93.0) (2026-11-15)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.92.0...v2.93.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(guild): a call may look for a single player; type the level and roles (F-215)
 
     A guild call now needs only one wanted player (for example "Hilfe" with one damage dealer); before, it needed
