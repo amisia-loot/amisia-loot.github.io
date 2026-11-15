@@ -39,6 +39,15 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-215 Aufrufe: ein Spieler reicht, Stufe und Rollen eintippen
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du unter Gilde > Aufrufe einen Aufruf der Art "Hilfe" mit 0 Tank, 0 Heiler, 1 Schaden erstellst, dann geht er ohne Fehlermeldung an die Gilde, und Gildenmitglieder mit Amisia ab dieser Version sehen ihn auf ihrer Seite und als Chatzeile mit [Anmelden].
+- Prüfung: Wenn du in das Feld "Stufe ab" klickst, "45" tippst und Enter drückst, dann steht dort 45; die Pfeile zählen davon weiter, Escape stellt die alte Zahl wieder her.
+- Prüfung: Wenn du in ein Rollenfeld (Tank, Heiler, Schaden) eine Zahl tippst, dann gilt sie wie mit den Pfeilen; die Zeile darunter nennt die neue Summe.
+- Notiz: Nutzer 2026-11-15: "können wir das posten das es andere gmitglieder sehen und können wir bei lvl einstellung auch einfach eine zahl reintippen". Mit 0/0/1 lehnte Amisia den Aufruf ab ("Rollen: zusammen 2 bis 40."), darum sah ihn niemand. DECISIONS D-140. Ältere Amisia-Versionen verwerfen einen Aufruf mit nur einem gesuchten Spieler.
+
 ### F-214 Fenster Layer: ein Knopf zum Wechseln, Helfen an und aus
 - Version: -
 - Status: geplant

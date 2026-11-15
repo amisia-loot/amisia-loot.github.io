@@ -3808,3 +3808,19 @@ Wahl, damit nicht zwei Wege zugleich laufen.
 **Durchgesetzt durch:** `tests/test_layer_window.lua` (zwei Fragende, Chat statt Wahl, Warten, die Wahl nach 2,5 s, nur der Layer der Zeile, kein
 Kanal von selbst, der zweite Klick, ohne Gilde, Helfen aus für YQ, YI und Flüstern, die Frage schließt sich, eine
 fremde Frage bleibt, Zähler), `tests/test_layer.lua` (Kennung, Leiste, Menü).
+
+## D-140 Aufrufe: ein gesuchter Spieler reicht
+
+**Datum:** 2026-11-15
+**Entscheidung:** Ein Aufruf der Gilde (F-211, D-136) sucht zusammen 1 bis 40 Spieler statt 2 bis 40 (F-215): beim
+Erstellen (`GC.Create`), beim Laden des eigenen Aufrufs (`GC.Loaded`) und bei der Prüfung von `EA` (`Core/Comm.lua`).
+Die Felder "Stufe ab" und die drei Rollen auf der Seite Aufrufe sind `W.NumberStepper`: Pfeile wie bisher, die Zahl
+lässt sich eintippen (nur Ziffern, auf den Bereich begrenzt, Escape stellt zurück).
+**Grund:** Nutzer 2026-11-15 mit einem Bild eines Aufrufs "Hilfe" mit 0/0/1: "können wir das posten das es andere
+gmitglieder sehen und können wir bei lvl einstellung auch einfach eine zahl reintippen". Wer Hilfe bei einer Quest
+sucht, braucht oft genau einen.
+**Folge:** Amisia-Versionen vor dieser verwerfen ein `EA` mit nur einem gesuchten Spieler; sie sehen solche Aufrufe
+erst nach einem Update. Sonst ändert sich an Nachrichten und Drosseln nichts.
+**Durchgesetzt durch:** `tests/test_guild_calls.lua` (ein `EA` ohne gesuchten Spieler wird verworfen),
+`tests/test_guild_calls_page.lua` (keine Rolle zu wenig, eine reicht beim Laden, Eintippen mit Grenzen, leer und
+Escape, die Pfeile danach).

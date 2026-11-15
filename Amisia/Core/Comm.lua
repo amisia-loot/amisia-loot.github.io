@@ -566,7 +566,7 @@ local VALID = {
         if not (f[7] == "0" or isNum(f[7], 1, 4294967295)) or not (f[11] == "O" or f[11] == "F") then return false end
         if not (f[12] == "-" or callText(f[12], 240)) then return false end
         local t, h, s = roleTriple(f[8])
-        if not t or t + h + s < 2 or t + h + s > 40 then return false end
+        if not t or t + h + s < 1 or t + h + s > 40 then return false end
         t, h, s = roleTriple(f[9])
         if not t or t + h + s > 30 then return false end
         return roleTriple(f[10]) ~= nil

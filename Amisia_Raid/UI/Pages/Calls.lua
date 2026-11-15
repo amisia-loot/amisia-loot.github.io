@@ -241,7 +241,7 @@ local function buildForm(f)
     f.titleBox = W.LineEdit(V, C.DUNGEON_W)
     if f.titleBox.SetMaxLetters then f.titleBox:SetMaxLetters(GC().TITLE_CHARS) end
     f.levelLabel = label(V, L["Stufe ab"])
-    f.level = W.Stepper(V, C.LEVEL_W, function(v) form.min = v end)
+    f.level = W.NumberStepper(V, C.LEVEL_W, function(v) form.min = v end)
     f.level:Configure(1, 99, 1)
     f.timeLabel = label(V, L["Zeit"])
     f.timeMode = W.Picker(V, C.TIME_MODE_W, function(v)
@@ -254,7 +254,7 @@ local function buildForm(f)
     f.roleLabels, f.roleSteppers = {}, {}
     for _, r in ipairs(GC().ROLES) do
         f.roleLabels[r] = label(V, GC().ROLE_NAMES[r])
-        f.roleSteppers[r] = W.Stepper(V, C.ROLE_W, function(v) form.need[r] = v end)
+        f.roleSteppers[r] = W.NumberStepper(V, C.ROLE_W, function(v) form.need[r] = v end)
         f.roleSteppers[r]:Configure(0, 40, 1)
     end
     f.noteLabel = label(V, L["Notiz"])
@@ -295,7 +295,7 @@ local function refreshForm(f)
     if formError then
         f.formHint:SetText(T.RED .. formError .. "|r")
     else
-        f.formHint:SetText(L["Gesucht: %d Spieler (zusammen 2 bis 40). Der Aufruf gilt bis 2 Stunden nach seiner Zeit."]:format(sum))
+        f.formHint:SetText(L["Gesucht: %d Spieler (zusammen 1 bis 40). Der Aufruf gilt bis 2 Stunden nach seiner Zeit."]:format(sum))
     end
 end
 

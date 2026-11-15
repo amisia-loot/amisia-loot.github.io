@@ -977,6 +977,40 @@ function W.LineEdit(parent, width, onCommit)
     return editBox(parent, width or T.LINE_W, "LEFT", onCommit, true)
 end
 
+-- A stepper whose number can also be typed (F-215): W.Stepper's arrows and mouse wheel, its field a centred
+-- box for digits only (as many as the maximum has). Enter or leaving the box takes the number, held to
+-- min..max (a step of 1); an empty or unreadable box and Escape put the old number back.
+function W.NumberStepper(parent, width, onChange)
+    local f = W.Stepper(parent, width, onChange)
+    f.value:Hide()
+    local e = CreateFrame("EditBox", nil, f.field)
+    e:SetAllPoints(f.field)
+    e:SetAutoFocus(false)
+    e:SetFontObject(ChatFontNormal)
+    e:SetJustifyH("CENTER")
+    e:SetNumeric(true)
+    e:SetMaxLetters(#tostring(f.max))
+    f.edit = e
+    local setValue, configure = f.SetValue, f.Configure
+    function f:SetValue(v)
+        setValue(self, v)
+        e:SetText(tostring(v))
+    end
+    function f:Configure(min, max, step, fmt)
+        configure(self, min, max, step, fmt)
+        e:SetMaxLetters(#tostring(math.floor(max)))
+    end
+    wireCommit(e, function(text)
+        local v = tonumber(text)
+        if not v then return f:SetValue(f.current or f.min) end
+        v = math.max(f.min, math.min(f.max, math.floor(v)))
+        local old = f.current
+        f:SetValue(v)
+        if v ~= old and onChange then onChange(v) end
+    end, true, false)
+    return f
+end
+
 -- The client's search box (SearchBoxTemplate: magnifying glass, clear button, a grey hint while
 -- empty; hint defaults to the client's word for search). It commits like W.LineEdit: Enter or
 -- leaving the box once, Escape restores. The template's focus and text scripts stay (hooked); its

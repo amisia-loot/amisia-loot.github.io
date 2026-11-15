@@ -1,6 +1,6 @@
 -- The page Aufrufe (tab Gilde, F-211, UI/Pages/Calls.lua): the others' calls as rows (title in this
 -- client's language for a dungeon key, the creator, level, roles, sign-ups, time left, note; "voll"), the
--- filters, "Anmelden" with a role and "Abmelden"; the form with its checks (roles 2 to 40, the time, a title or
+-- filters, "Anmelden" with a role and "Abmelden"; the form with its checks (roles 1 to 40, the time, a title or
 -- dungeon) and a dungeon from Amisia's data filling title and level; the creator's view (the sign-ups with
 -- level, role, item level and status, "Alle einladen" with the reason when inviting is off, "Beenden"); the
 -- message's 250 bytes (the note is cut first); the saved call checked on load.
@@ -104,14 +104,37 @@ for _, v in ipairs(f.dungeon.values) do if v.value == "smcath" then smcath = v e
 assert(smcath and smcath.min == 38, "the dungeons with their level")
 f.dungeon.onPick("smcath")
 assert(f.titleBox:GetText() == GC.Clean(name, GC.TITLE_CHARS) and f.level.current == 38, "the dungeon fills title and level")
--- roles: 1 in all is too few
+-- roles: none in all is too few (one is enough since F-215)
 for _, r in ipairs({ "T", "H", "S" }) do
     local st = f.roleSteppers[r]
     while st.current > 0 do st.minus:Click() end
 end
-f.roleSteppers.S.plus:Click()
 f.main:Click()
-assert(GC.Own() == nil and has(f.formHint:GetText(), "zusammen 2 bis 40"), f.formHint:GetText())
+assert(GC.Own() == nil and has(f.formHint:GetText(), "zusammen 1 bis 40"), f.formHint:GetText())
+-- the level and the roles can be typed (F-215): Enter takes the number, held to its range; an empty box
+-- and Escape put the old number back
+local function typeIn(st, text)
+    st.edit:SetText(text)
+    st.edit:GetScript("OnEnterPressed")(st.edit)
+end
+assert(f.level.edit:GetText() == "38" and f.level.edit.maxLetters == 2, "the box shows the level, two digits")
+typeIn(f.level, "0")
+assert(f.level.current == 1 and f.level.edit:GetText() == "1", "held to 1")
+typeIn(f.level, "99")
+assert(f.level.current == 99 and f.level.edit:GetText() == "99")
+typeIn(f.level, "")
+assert(f.level.current == 99 and f.level.edit:GetText() == "99", "empty: the old number")
+f.level.edit:GetScript("OnEditFocusGained")(f.level.edit)
+f.level.edit:SetText("12")
+f.level.edit:GetScript("OnEscapePressed")(f.level.edit)
+assert(f.level.current == 99 and f.level.edit:GetText() == "99", "Escape: the old number")
+typeIn(f.level, "38")
+assert(f.level.current == 38)
+f.level.plus:Click()
+assert(f.level.edit:GetText() == "39", "the arrows still step")
+f.level.minus:Click()
+typeIn(f.roleSteppers.S, "1")
+assert(f.roleSteppers.S.current == 1)
 f.roleSteppers.H.plus:Click()
 -- a time: "Uhrzeit" without a time is refused
 f.timeMode.onPick("clock")
@@ -202,7 +225,10 @@ GC.Loaded(DB)
 assert(DB.guildCall == nil, "older than 2 hours: dropped")
 DB = { guildCall = { v = 1, id = "a1b2", rev = 4, art = "Q", title = "Quest", min = 30, at = 0, created = time(), need = { T = 1, H = 0, S = 0 } } }
 GC.Loaded(DB)
-assert(DB.guildCall == nil, "one player wanted: dropped")
+assert(DB.guildCall ~= nil, "one player wanted: kept (F-215)")
+DB = { guildCall = { v = 1, id = "a1b2", rev = 4, art = "Q", title = "Quest", min = 30, at = 0, created = time(), need = { T = 0, H = 0, S = 0 } } }
+GC.Loaded(DB)
+assert(DB.guildCall == nil, "nobody wanted: dropped")
 -- the setting
 assert(NS.Get("guildCalls.chat") == true and NS.SettingItem("guildCalls.chat").section.group == "guild")
 print("guild calls page ok")

@@ -300,10 +300,10 @@ function GC.Create(spec)
     local need, sum = {}, 0
     for _, r in ipairs(GC.ROLES) do
         local n = tonumber(spec.need and spec.need[r]) or 0
-        if n < 0 or n > 40 or n ~= math.floor(n) then return nil, L["Rollen: zusammen 2 bis 40."] end
+        if n < 0 or n > 40 or n ~= math.floor(n) then return nil, L["Rollen: zusammen 1 bis 40."] end
         need[r], sum = n, sum + n
     end
-    if sum < 2 or sum > 40 then return nil, L["Rollen: zusammen 2 bis 40."] end
+    if sum < 1 or sum > 40 then return nil, L["Rollen: zusammen 1 bis 40."] end
     local at = tonumber(spec.at) or 0
     if at ~= 0 and (at < GetServerTime() or at > GetServerTime() + 86400) then return nil, L["Die Uhrzeit fehlt oder ist falsch (z. B. 20:30)."] end
     AmisiaDB.guildCall = { v = 1, id = newId(), rev = 1, art = art, key = key, title = title, min = min, at = at,
@@ -837,7 +837,7 @@ function GC.Loaded(DB)
             if not ns.Int(c.need[r], 0, 40) then ok = false break end
             sum = sum + c.need[r]
         end
-        ok = ok and sum >= 2 and sum <= 40
+        ok = ok and sum >= 1 and sum <= 40
     end
     if not ok or time() > base(c) + LIFE then
         DB.guildCall = nil

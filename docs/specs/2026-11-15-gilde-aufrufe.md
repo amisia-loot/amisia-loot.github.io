@@ -20,7 +20,7 @@ Gildenchat-Hin-und-Her zustande kommt.
     "Abmelden".
 - **Erstellen:** ein kleines Formular auf der Seite: Art (Dungeon, Quest, Hilfe, Sonstiges); bei Dungeon eine
   Auswahl der Dungeons aus Amisias Daten (mit Ausrüstungsmodul; füllt Titel und Stufe), sonst freier Titel
-  (40 Zeichen); Stufe ab; gesuchte Rollen Tank/Heiler/Schaden (zusammen 2 bis 40); "jetzt" oder eine Uhrzeit heute;
+  (40 Zeichen); Stufe ab; gesuchte Rollen Tank/Heiler/Schaden (zusammen 2 bis 40; seit F-215 1 bis 40); "jetzt" oder eine Uhrzeit heute;
   Notiz (80 Zeichen). Höchstens ein eigener Aufruf zur Zeit.
 - **Ersteller-Ansicht** seines Aufrufs: die Anmeldungen mit Name, Klasse, Stufe, Rolle, Itemlevel (soweit bekannt);
   je Zeile "Einladen" und "Ablehnen"; "Alle einladen" (so viele, wie die Rollen brauchen, in Anmeldereihenfolge);

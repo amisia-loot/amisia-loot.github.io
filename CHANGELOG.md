@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(guild): a call may look for a single player; type the level and roles (F-215)
+
+    A guild call now needs only one wanted player (for example "Hilfe" with one damage dealer); before, it needed
+    two and was refused, so nobody saw it. On the Aufrufe form the level and the three role fields take a typed
+    number besides the arrows. Older Amisia versions do not show a call that looks for one player.
+
 - feat(layer): one button to swap layers, helping on and off, the zone ID (F-214)
 
     The Layer window has a red button "Layer wechseln": it asks the guild and, once an answer comes, asks that

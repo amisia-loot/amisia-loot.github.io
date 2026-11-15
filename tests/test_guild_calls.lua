@@ -117,7 +117,7 @@ local bad = {
     "1EA\tabcd\t1\tD\tsm-cath\tT\t1\t0\t1/1/1\t0/0/0\t0/0/0\tO\t-", -- key
     "1EA\tabcd\t1\tD\t-\tT|r\t1\t0\t1/1/1\t0/0/0\t0/0/0\tO\t-",    -- title with a bar
     "1EA\tabcd\t1\tD\t-\tT\t0\t0\t1/1/1\t0/0/0\t0/0/0\tO\t-",     -- level 0
-    "1EA\tabcd\t1\tD\t-\tT\t1\t0\t1/0/0\t0/0/0\t0/0/0\tO\t-",     -- one player wanted
+    "1EA\tabcd\t1\tD\t-\tT\t1\t0\t0/0/0\t0/0/0\t0/0/0\tO\t-",     -- nobody wanted (one is enough since F-215)
     "1EA\tabcd\t1\tD\t-\tT\t1\t0\t41/0/0\t0/0/0\t0/0/0\tO\t-",    -- 41
     "1EA\tabcd\t1\tD\t-\tT\t1\t0\t1/1/1\t20/11/0\t0/0/0\tO\t-",   -- 31 signed
     "1EA\tabcd\t1\tD\t-\tT\t1\t0\t1/1/1\t0/0/0\t0/0/0\tX\t-",     -- state
