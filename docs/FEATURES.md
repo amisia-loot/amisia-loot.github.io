@@ -69,7 +69,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-11-14-sprache-waehlen.md`; DECISIONS D-08, D-128. Namen aus dem Spiel (Gegenstände, Zonen) bleiben in der Sprache des Clients.
 
 ### F-197 [Einladen] hinter "ist jetzt online"
-- Version: 2.86.0
+- Version: 2.89.0
 - Status: gebaut
 - Prüfung: Wenn ein Gildenmitglied oder Freund online kommt, dann steht hinter "<Name> ist jetzt online." ein blaues [Einladen]; ein Klick darauf lädt ihn ein und der Chat sagt "Eingeladen: <Name>".
 - Prüfung: Wenn du in einer Gruppe bist, aber nicht Gruppenleiter (im Raid auch nicht Assistent), dann steht kein [Einladen] da; für jemanden, der schon in deiner Gruppe ist, auch nicht.
@@ -375,24 +375,24 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-10-einladen-gilde.md; DECISIONS D-93. "Gilde einladen" nutzt dieselben Grenzen wie "Alle einladen": einer alle 0,5 Sekunden, Raid nach dem ersten Beitritt, 3 Einladungen pro Name und Abend, nur heute, nie im Kampf, nur als Leiter oder Assistent.
 
 ### F-209 Spielsprache im Spieler-Tooltip
-- Version: -
-- Status: geplant
+- Version: 2.89.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn ein Gildenmitglied mit dieser Amisia-Version eingeloggt ist (ab etwa einer Minute nach seinem Login) und du mit der Maus auf es zeigst, dann steht im Tooltip "Spielsprache: Deutsch" (oder Englisch, Französisch ...).
 - Prüfung: Wenn du auf einen Spieler ohne Amisia oder auf dich selbst zeigst, dann steht keine Spielsprache da; unter Einstellungen > Oberfläche schaltet "Spielsprache im Spieler-Tooltip" die Zeile ab.
 - Notiz: DECISIONS D-134. Das Land verrät das Spiel nicht; die Sprache nur von Spielern mit Amisia (6. Feld des Hallo).
 
 ### F-208 Fenster über dem Hauptfenster, Deckkraft-Regler
-- Version: -
-- Status: geplant
+- Version: 2.89.0
+- Status: gebaut
 - Prüfung: Wenn du unter Einstellungen > Oberfläche "Deckkraft des Hauptfensters (%)" auf 50 ziehst, dann scheint die Spielwelt durch das Amisia-Fenster; nach /reload bleibt es so, 100 macht es wieder ganz deckend.
 - Prüfung: Wenn das Hauptfenster offen ist und du ein anderes Amisia-Fenster öffnest (z. B. Talentrechner, Raid-Kalender, Lauf-Zeiten, Questgegenstände aufräumen, Layer), dann liegt es vor dem Hauptfenster; ein Klick auf das Hauptfenster holt dieses wieder nach vorn.
 - Prüfung: Wenn du danach das Hauptfenster schließt, dann liegen Lauf-Zeiten, Raid-Notiz und Co. wieder unter den Fenstern des Spiels (z. B. Taschen, Karte), wie vorher.
 - Notiz: DECISIONS D-133. Wunsch 2026-11-15 mit Bild eines Reglers "Opacity".
 
 ### F-207 Raid-Aufstellung: Ziel beim Ziehen sichtbar
-- Version: -
-- Status: geplant
+- Version: 2.89.0
+- Status: gebaut
 - Prüfung: Wenn du unter Aufstellung im Planer einen Namen mit gedrückter Maustaste ziehst, dann hängt neben dem Mauszeiger ein Kästchen mit dem Namen, und der Platz unter dem Zeiger hat einen goldenen Rahmen; darunter steht, was beim Loslassen passiert ("Gruppe 3", "Tauschen mit <Name>", "Ersatz", "Nicht eingeteilt").
 - Prüfung: Wenn du den Namen über eine Stelle ziehst, wo er nicht hin kann (oder auf sich selbst), dann ist kein Rahmen da und im Kästchen steht "Hier ablegen geht nicht"; nach dem Loslassen sind Rahmen und Kästchen weg.
 - Prüfung: Wenn du mit der Spielerliste ("Spieler") einen Namen auf einen Platz ziehst, dann zeigt das Kästchen ihn genauso und er steht nach dem Loslassen dort.
@@ -1502,7 +1502,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: 2.57.0: Seite Karte öffnet auf "Alle Zonen" (nach Zonen, nächste zuerst), Chip "Quests" (nächster Questweg-Schritt, auch als "!" auf der Weltkarte, Einstellung `map.pinsQuests`), Ansicht "Ohne Ort", Zielkarte mit Richtung und Pfeil, Knopf "Karte" je Zeile, deutsche Namen aus eigener Beobachtung.
 
 ### F-206 Lichtsäule über der Kartenmarkierung
-- Version: 2.88.0
+- Version: 2.89.0
 - Status: gebaut
 - Prüfung: Wenn du mit Strg + Klick auf die Weltkarte eine Markierung setzt und die Karte schließt, dann steht über dem Ort eine goldene Lichtsäule mit leuchtendem Ring am Boden und darüber ein Kästchen "Kartenmarkierung" mit der Entfernung, die beim Laufen kleiner wird (nach dem Update einmal das Spiel ganz neu starten, sonst fehlt die Textur).
 - Prüfung: Wenn du dich so drehst, dass der Ort hinter dir liegt, dann ist die Säule weg und kommt wieder, sobald er im Bild ist; mit einem Ziel von Amisia (z. B. "Ziel setzen" im Planer) steht dessen Name im Kästchen.
