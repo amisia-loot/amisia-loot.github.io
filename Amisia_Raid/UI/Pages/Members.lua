@@ -5,7 +5,10 @@
 -- the recipe exchange (Gear/Crafters.lua, Cr.Professions: members with Amisia and the own characters)
 -- and, for the rest, what the public or officer note names (Prof.FromNote: "Alchi 300 / Kräuter").
 -- Dropdowns Klasse and Beruf, "nur online", a name search; a click on a column head sorts. The row's
--- tooltip: rank, notes (the officer note only when the client shows it), main and alts (the alt list);
+-- tooltip: rank, notes (the officer note only when the client shows it), main and alts and where Amisia
+-- knows them from, the item level and its age (F-210: Core/GuildChars.lua, ns.GuildCharsView: the website's
+-- alt list, the members' own reports AC, the notes; alts indented under their main, the item level beside
+-- the name);
 -- a profession's tooltip: skill, recipes, how old. A click on a row: Flüstern, Einladen. Everyone sees
 -- it; without a guild it says so. The filters stay in settings.window.members.
 local ADDON, ns = ...
@@ -214,8 +217,9 @@ local built = {}
 local gen = 0                   -- counts CRAFTERS_CHANGED and ALTS
 local function bump() gen = gen + 1 end
 
--- Every member as a row: the roster's fields, the professions, whether Amisia is known to run there.
--- nil when the roster cannot be read yet.
+-- Every member as a row: the roster's fields, the professions, whether Amisia is known to run there,
+-- its main (F-210: main, mainSrc "site"/"amisia"/"note", mainHere = the main is in the guild), its alts
+-- ({ name, src } by name) and its item level (il, ilAt). nil when the roster cannot be read yet.
 local function build()
     local roster = ns.GuildRoster and ns.GuildRoster()
     if not roster then return nil end
@@ -223,11 +227,13 @@ local function build()
     local rev = ns.VersionSeenRev and ns.VersionSeenRev()
     local me = ns.UnitFullName("player")
     local data = ns.HasData and ns.HasData("PROFESSIONS") or false
+    local gc = ns.GuildCharsRev and ns.GuildCharsRev() or 0
     local b = built
     if b.rows and rev ~= nil and b.roster == roster and b.profs == profs and b.rev == rev and b.gen == gen
-        and b.me == me and b.data == data and b.db == AmisiaDB then
+        and b.me == me and b.data == data and b.db == AmisiaDB and b.gc == gc then
         return b.rows
     end
+    local view = ns.GuildCharsView and ns.GuildCharsView(roster) or {}
     local amisia = {}
     for _, v in ipairs(ns.VersionSeen and ns.VersionSeen() or {}) do amisia[v.name:lower()] = v.v or true end
     local out = {}
@@ -241,9 +247,25 @@ local function build()
         e.amisia = own or profs[low] ~= nil or amisia[low] ~= nil
         e.away = hoursAway(e)
         e.fold = ns.Fold(m.name)
+        local v = view[low]
+        if v then e.main, e.mainSrc, e.il, e.ilAt = v.main, v.src, v.il, v.ilAt end
         out[#out + 1] = e
     end
-    built = { rows = out, roster = roster, profs = profs, rev = rev, gen = gen, me = me, data = data, db = AmisiaDB }
+    -- the alts of every main, and whether a main is in the guild
+    local byLow = {}
+    for _, e in ipairs(out) do byLow[e.name:lower()] = e end
+    for _, e in ipairs(out) do
+        local m = e.main and byLow[e.main:lower()]
+        if m then
+            e.mainHere = true
+            m.alts = m.alts or {}
+            m.alts[#m.alts + 1] = { name = e.name, src = e.mainSrc }
+        end
+    end
+    for _, e in ipairs(out) do
+        if e.alts then table.sort(e.alts, function(a, b2) return ns.Fold(a.name) < ns.Fold(b2.name) end) end
+    end
+    built = { rows = out, roster = roster, profs = profs, rev = rev, gen = gen, me = me, data = data, db = AmisiaDB, gc = gc }
     return out
 end
 
@@ -269,28 +291,92 @@ local function compare(st)
     end
 end
 
--- The rows the filters leave, sorted, and the counts { all, shown, online, amisia }.
+-- The rows the filters leave, sorted, and the counts { all, shown, online, amisia }. An alt stands
+-- indented (depth 1) under its main when the main is shown too, else as a row of its own; the groups
+-- sort by their main, the alts under it by name (F-210).
 local function filtered(rows, st)
     local q = ns.Fold((query or ""):match("^%s*(.-)%s*$"))
-    local out, n = {}, { all = #rows, shown = 0, online = 0, amisia = 0 }
+    local pass, n = {}, { all = #rows, shown = 0, online = 0, amisia = 0 }
+    local shownLow = {}
     for _, e in ipairs(rows) do
         local ok = (st.class == "all" or e.class == st.class) and (not st.online or e.online)
             and (q == "" or e.fold:find(q, 1, true) ~= nil)
         if ok and st.prof ~= "all" then ok = profRank(e, st.prof) >= 0 end
         if ok then
-            out[#out + 1] = e
+            pass[#pass + 1] = e
+            shownLow[e.name:lower()] = e
             n.shown = n.shown + 1
             if e.online then n.online = n.online + 1 end
             if e.amisia then n.amisia = n.amisia + 1 end
         end
     end
-    table.sort(out, compare(st))
+    local tops, kids = {}, {}
+    for _, e in ipairs(pass) do
+        local m = e.main and shownLow[e.main:lower()]
+        if m and m ~= e and not m.main then
+            e.depth = 1
+            kids[m] = kids[m] or {}
+            table.insert(kids[m], e)
+        else
+            e.depth = 0
+            tops[#tops + 1] = e
+        end
+    end
+    table.sort(tops, compare(st))
+    local out = {}
+    for _, e in ipairs(tops) do
+        out[#out + 1] = e
+        local list = kids[e]
+        if list then
+            table.sort(list, function(a, b) return a.fold < b.fold end)
+            for _, k in ipairs(list) do out[#out + 1] = k end
+        end
+    end
     return out, n
 end
 
 ---------------------------------------------------------------------------
 -- Tooltips and the row menu
 ---------------------------------------------------------------------------
+local SOURCE = { site = L["Website"], amisia = "Amisia", note = L["Notiz"] }
+
+-- "iLvl 45 (heute)", "iLvl 45 (vor 3 Tagen)"
+local function ilText(e)
+    if not e.ilAt then return L["iLvl %d"]:format(e.il) end
+    local days = math.max(0, math.floor((time() - e.ilAt) / 86400))
+    if days == 0 then return L["iLvl %d (heute)"]:format(e.il) end
+    if days == 1 then return L["iLvl %d (vor 1 Tag)"]:format(e.il) end
+    return L["iLvl %d (vor %d Tagen)"]:format(e.il, days)
+end
+
+-- The main and alts of a row as the tooltip shows them: the main (or the alts) and where Amisia
+-- knows it from ("Website", "Amisia", "Notiz").
+local function altLines(e, add)
+    local grey = 0.6
+    if e.main then
+        add(e.mainHere and L["Main: %s"]:format(e.main) or L["Twink von %s"]:format(e.main))
+        if SOURCE[e.mainSrc] then add(L["Quelle: %s##Twinks"]:format(SOURCE[e.mainSrc]), grey, grey, grey) end
+        return
+    end
+    local names, srcs, seen, seenSrc = {}, {}, {}, {}
+    local function put(name, src)
+        if not seen[name:lower()] then
+            seen[name:lower()] = true
+            names[#names + 1] = name
+        end
+        if src and not seenSrc[src] then
+            seenSrc[src] = true
+            srcs[#srcs + 1] = SOURCE[src]
+        end
+    end
+    for _, a in ipairs(e.alts or {}) do put(a.name, a.src) end
+    for _, alt in ipairs(ns.AltsOf and ns.AltsOf(e.name) or {}) do put(alt, "site") end
+    if #names == 0 then return end
+    table.sort(names, function(a, b) return ns.Fold(a) < ns.Fold(b) end)
+    add(L["Twinks: %s"]:format(table.concat(names, ", ")))
+    if #srcs > 0 then add(L["Quelle: %s##Twinks"]:format(table.concat(srcs, ", ")), grey, grey, grey) end
+end
+
 -- The lines of a row's tooltip (also for the tests): { text, r, g, b }
 function ns.MembersTooltipLines(e)
     local out = {}
@@ -300,13 +386,8 @@ function ns.MembersTooltipLines(e)
     if e.online then add(L["online"], 0.31, 0.75, 0.48) else add(awayText(e.last), 0.6, 0.6, 0.6) end
     if e.note then add(L["Notiz: %s"]:format(plain(e.note))) end
     if e.officerNote then add(L["Offiziersnotiz: %s"]:format(plain(e.officerNote))) end
-    local main = ns.AltMain and ns.AltMain(e.name)
-    if main then
-        add(L["Main: %s"]:format(main))
-    else
-        local alts = ns.AltsOf and ns.AltsOf(e.name) or {}
-        if #alts > 0 then add(L["Twinks: %s"]:format(table.concat(alts, ", "))) end
-    end
+    altLines(e, add)
+    if e.il then add(ilText(e)) end
     if e.version then add(L["Amisia %s"]:format(plain(e.version)), 0.6, 0.6, 0.6) end
     if not e.own then add(L["Klick: Flüstern oder Einladen"], 0.6, 0.6, 0.6) end
     return out
@@ -463,6 +544,10 @@ local function buildRow(r)
     r.name:SetPoint("TOPLEFT", M.NAME_X, M.LINE1_Y)
     r.info = W.Text(r, T.FONT.text, M.NAME_W)
     r.info:SetPoint("TOPLEFT", M.NAME_X, M.LINE2_Y)
+    -- the item level at the right of the name column (F-210)
+    r.il = W.Text(r, T.FONT.text, M.IL_W)
+    r.il:SetPoint("TOPLEFT", M.NAME_X + M.NAME_W - M.IL_W, M.LINE1_Y)
+    r.il:SetJustifyH("RIGHT")
     local textX, textW = M.ZONE_X + M.SMALL_ICON + M.SMALL_GAP, M.ZONE_W - M.SMALL_ICON - M.SMALL_GAP
     r.zone = W.Text(r, T.FONT.text, textW)
     r.zone:SetPoint("TOPLEFT", textX, M.LINE1_Y)
@@ -493,6 +578,17 @@ local function buildRow(r)
 end
 
 local function fillRow(r, e)
+    -- an alt under its main: class icon and name one step to the right (F-210)
+    local ind = e.depth == 1 and M.INDENT or 0
+    r.classIcon:ClearAllPoints()
+    r.classIcon:SetPoint("LEFT", M.ICON_X + ind, 0)
+    r.name:ClearAllPoints()
+    r.name:SetPoint("TOPLEFT", M.NAME_X + ind, M.LINE1_Y)
+    r.name:SetWidth(M.NAME_W - ind - (e.il and M.IL_W or 0))
+    r.info:ClearAllPoints()
+    r.info:SetPoint("TOPLEFT", M.NAME_X + ind, M.LINE2_Y)
+    r.info:SetWidth(M.NAME_W - ind)
+    r.il:SetText(e.il and (M.IL_COLOR .. e.il .. "|r") or "")
     setClassIcon(r.classIcon, e.class)
     r.name:SetText(classColored(e.name, e.class))
     r.info:SetText(T.GREY .. infoText(e) .. "|r")
@@ -685,4 +781,5 @@ for _, event in ipairs({ "GUILD_ROSTER_UPDATE", "PLAYER_GUILD_UPDATE", "CLUB_MEM
 end
 ns.Listen("CRAFTERS_CHANGED", function() bump() if shown() then ns.RefreshSoon() end end)
 ns.Listen("ALTS", function() bump() if shown() then ns.RefreshSoon() end end)
+ns.Listen("GUILD_CHARS", function() if shown() then ns.RefreshSoon() end end)
 end)

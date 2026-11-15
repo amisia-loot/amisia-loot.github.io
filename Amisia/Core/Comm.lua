@@ -11,6 +11,7 @@ ns.SYNC_MIN_PROTO = 1    -- the oldest protocol this client still reads
 
 local PREFIX_CTRL, PREFIX_DATA = "Amisia", "AmisiaD"
 local MAX_TEXT = 250     -- bytes of one message (the client takes 255)
+ns.COMM_MAX_TEXT = MAX_TEXT
 local CHUNK = 200        -- Base64 characters per data part
 local MAX_PARTS, MAX_PARTS_OP, MAX_PARTS_DK = 60, 8, 20
 local MAX_UNPACKED = 65536
@@ -34,7 +35,7 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, NV = 8 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, NV = 8, AC = 300 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
 -- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
@@ -525,6 +526,16 @@ local VALID = {
     YQ = function(f) return #f >= 3 and isNum(f[1], 1, 999999) and isNum(f[2], 1, 4294967295) and isHex(f[3], 4) end,
     YA = function(f) return #f >= 3 and isHex(f[1], 4) and isNum(f[2], 1, 999999) and isNum(f[3], 1, 4294967295) end,
     YI = function(f) return #f >= 3 and isHex(f[1], 4) and isNum(f[2], 1, 999999) and isNum(f[3], 1, 4294967295) end,
+    -- the guild characters (Core/GuildChars.lua, F-210, D-135): AC <main> <name:itemlevel|name:->... (1 to 10
+    -- characters); a field out of its bounds drops the whole message
+    AC = function(f)
+        if #f < 2 or #f > 11 or not charName(f[1]) then return false end
+        for i = 2, #f do
+            local n, il = f[i]:match("^(.+):([^:]+)$")
+            if not n or not charName(n) or not (il == "-" or isNum(il, 1, 999)) then return false end
+        end
+        return true
+    end,
 }
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end

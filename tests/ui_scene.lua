@@ -340,6 +340,10 @@ function S.raidCheck()
     st.heard["Grimm Felsfaust"] = { by = "Bob Eisherz", at = t - 900, c = "WARRIOR", l = 60, ids = { { m = 409, d = 9, r = r, k = 2, t = 10 } } }
     st.heard["Mara Quell"] = { by = "Mara Quell", at = t - 60, c = "SHAMAN", l = 60, ids = {} }
     NS.ImportSiteText("#AMISIA-ALTS 1 forever 2026-10-12\nA Vulo_Pala Vulo_Hunt\nA Grimm_Felsfaust Bob_Eisherz\n#END")
+    -- the members page's item levels (F-210): heard by AC
+    AmisiaDB.guildChars = { v = 1, list = { ["Bob Eisherz"] = { main = "Bob Eisherz", il = 63, at = t - 900, by = "Bob Eisherz", self = true },
+        ["Grimm Felsfaust"] = { main = "Bob Eisherz", il = 48, at = t - 900, by = "Bob Eisherz" },
+        ["Anna Bergmann"] = { il = 57, at = t - 3 * 86400 } } }
     NS.RaidIDsChoose(409)
     NS.Set("raidcheck.chat", true)
 end

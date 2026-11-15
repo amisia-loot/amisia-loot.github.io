@@ -196,7 +196,9 @@ f.heads.last:Click()
 assert(f.list.items[1].online and f.list.items[8].name == "Dora" and f.list.items[9].name == "Carla"
     and f.list.items[10].name == "Ida" and f.list.items[11].name == "Fynn" and f.list.items[12].name == "Kai", f.list.items[8].name)
 f.heads.prof:Click()
-assert(f.list.items[1].name == "Anna Amboss" and f.list.items[2].name == "Vuloo", f.list.items[1].name)
+-- Bob, Anna's alt (the website's list), stays under her (F-210)
+assert(f.list.items[1].name == "Anna Amboss" and f.list.items[2].name == "Bob" and f.list.items[2].depth == 1
+    and f.list.items[3].name == "Vuloo", f.list.items[1].name)
 f.heads.name:Click()
 assert(f.list.items[1].name == "Anna Amboss" and f.list.items[12].name == "Vuloo" and not W.members.desc)
 -- the filters stay after a reload of the page state

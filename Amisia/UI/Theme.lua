@@ -320,6 +320,8 @@ T.MEMBERS = {
     ICON = 36, ICON_X = 6,                         -- the round class icon (T.CLASS_ICON), centred on the row
     LINE1_Y = -8, LINE2_Y = -26,                   -- the two lines of text below the row's top
     NAME_X = 48, NAME_W = 124,                     -- the name (T.FONT.body), under it level, class, rank
+    INDENT = 14,                                   -- an alt under its main: class icon and name this far right (F-210)
+    IL_W = 24, IL_COLOR = "|cffffffff",            -- the item level at the right end of the name column's first line
     ZONE_X = 176, ZONE_W = 140,                    -- the zone and the time column
     SMALL_ICON = 12, SMALL_GAP = 3,                -- the map and clock icons before their texts
     MAP_ICON = "Interface\\Icons\\INV_Misc_Map_01",
@@ -642,6 +644,9 @@ T.PROFPAGE = {
 -- level white, the gear score in the colour of the gear's average quality (SCORE without one); the
 -- profession icons ICON px high.
 T.UNITINFO = { WORDS = { 0.56, 0.53, 0.64 }, ILVL = "ffffffff", SCORE = "ffffd100", ICON = 14 }
+-- the button "Amisia" at the game's guild window (F-210, UI/GuildButton.lua): the red button, under the
+-- frame's bottom right corner (X, Y from it), in the friends window TAB_GAP right of its last tab
+T.GUILDBUTTON = { W = 80, H = 22, X = 0, Y = -2, TAB_GAP = 4 }
 
 T.DUELS = {
     CLASS_W = 130, SEARCH_W = 140, RANGE_W = 110,  -- the second head row's class and time pickers, search box

@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(guild): alts under their main with item levels on Members, and an Amisia button at the guild window (F-210)
+
+    The Members page now lists each player's alts indented under their main, with every character's item
+    level beside the name, also while they are offline. Amisia learns this from the website's alt list,
+    from what each member's Amisia reports to the guild once per session (its own characters and item
+    levels), from inspecting players and from guild notes such as "Twink von X". The tooltip says where it
+    comes from and how old the item level is. Points, loot priority and the lineup still use only the
+    website's list. The game's guild window gets a red "Amisia" button that opens the Members page.
+
 ## [v2.89.2](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.89.2) (2026-11-15)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.89.1...v2.89.2) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

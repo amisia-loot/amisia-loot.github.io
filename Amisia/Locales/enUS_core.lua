@@ -955,4 +955,6 @@ L["nicht installiert"] = "not installed"
 L["nur WoW Forever"] = "WoW Forever only"
 L["nur auf WoW Forever"] = "on WoW Forever only"
 L["Zielfenster"] = "Target window"
+-- UI/GuildButton.lua (F-210)
+L["Öffnet Amisia auf der Seite Mitglieder: Twinks und Itemlevel der Gilde."] = "Opens Amisia on the Members page: the guild's alts and item levels."
 end)

@@ -133,7 +133,11 @@ ns.OnEvent("PLAYER_LOGIN", function()
         if not d or not inGuild() then return end
         local t = time()
         if type(d.helloAt) == "number" and t >= d.helloAt and t - d.helloAt < HELLO_KEEP then return end
-        if hello("GUILD", nil, { key = "HI:GUILD", ttl = 120 }) then d.helloAt = t end
+        if hello("GUILD", nil, { key = "HI:GUILD", ttl = 120 }) then
+            d.helloAt = t
+            -- the own characters of this guild with it (F-210, Core/GuildChars.lua)
+            if ns.GuildCharsHello then ns.GuildCharsHello() end
+        end
     end)
 end)
 

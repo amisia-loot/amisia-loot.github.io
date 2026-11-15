@@ -3666,3 +3666,36 @@ Großbuchstaben besteht, fällt weg, beim Empfang und beim Laden.
 **Durchgesetzt durch:** `tests/test_version.lua` (Hallo mit `deDE` und `frFR`, `ns.VersionLang`, ein altes Hallo
 ohne Feld, ein falsches Feld, Laden), `tests/test_unit_info.lua` (Zeile für einen Spieler mit Amisia, keine für
 einen Fremden und den eigenen Charakter, unbekannte Sprache, Schalter aus).
+
+## D-135 Twinks und Itemlevel unter Mitglieder: Quellen, Rangfolge, Vertrauen
+
+**Datum:** 2026-11-15
+**Entscheidung:** Die Seite Mitglieder zeigt Twinks eingerückt unter ihrem Main und je Charakter das Itemlevel
+(F-210, Spec `docs/specs/2026-11-15-gilde-twinks.md`). Quellen: die eigenen Charaktere des Accounts
+(`AmisiaDB.account`, beim Einloggen und nach einem Ausrüstungswechsel, höchstens alle 10 s), die neue Nachricht `AC`
+(jedes Amisia schickt einmal pro Sitzung direkt nach dem Hallo an die Gilde den Main und bis zu 10 eigene
+Charaktere dieser Gilde als `Name:Itemlevel`; nicht nach einem `/reload` in 30 Minuten), das Itemlevel aus dem
+Spieler-Tooltip (nur ein vollständiges Lesen eines Gildenmitglieds) und die Gildennotizen (genau der Name eines
+anderen Mitglieds, voll oder ein eindeutiger Vorname, oder "Twink von X", "X Twink", "Twink: X", "Main: X",
+"alt of X", "X's alt"). Rangfolge für die Anzeige: Twink-Liste der Website vor der eigenen Meldung des Charakters
+(bzw. dem eigenen Account) vor der Meldung eines anderen Charakters vor der Notiz. Main des Accounts: höchste Stufe,
+dann höheres Itemlevel, dann der Name. Vertrauen: `AC` nur auf GUILD, nur vom Mitglied der eigenen Gilde
+(`ns.TrustWait` "member"), nur Namen aus dem Gildenroster, ein Feld außerhalb der Grenzen verwirft die ganze
+Nachricht, 300 s Abstand je Absender; gemerkt höchstens 1000 Charaktere, 60 Tage (`AmisiaDB.guildChars`), 50 eigene.
+`ns.MainOf`, `ns.AltMain`, `ns.AltsOf` bleiben bei der Website-Liste: Punkte, Loot-Prio, Aufstellung und
+Soft-Reserves sehen die neuen Quellen nie. Dazu ein roter Knopf "Amisia" am Gildenfenster des Spiels (Forever:
+unter der rechten unteren Ecke von `CommunitiesFrame`; TBC/Era: rechts neben dem letzten Reiter der Freundesliste),
+außerhalb der Fensterflächen, nichts gehookt.
+**Grund:** Nutzer 2026-11-15 (Spec freigegeben): "Amisia + Notizen", "Amisia meldet es", "Unter dem Main". Das Spiel
+sagt nicht, welche Charaktere einem Spieler gehören; die Website-Liste pflegen nur Offiziere, und viele Gilden
+schreiben Twinks in die Notiz.
+**Folge:** Ein Mitglied könnte fremde Charaktere als seine Twinks melden; das ändert nur die Anzeige, und sobald der
+Charakter selbst meldet, zählt sein Wort; die Website-Liste steht über beidem. Twinks in einer anderen Gilde meldet
+`AC` nicht. Ein Main, der die Gilde verlassen hat, lässt seine Twinks als eigene Zeilen stehen ("Twink von X").
+Ältere Versionen kennen `AC` nicht und verwerfen es.
+**Durchgesetzt durch:** `tests/test_guild_chars.lua` (AC mit dem Hallo, kein zweites nach `/reload`, Felder,
+schlechtes Feld, Absender außerhalb der Gilde, Namen außerhalb des Rosters, eigenes Wort gewinnt, Abstand 300 s),
+`tests/test_guild_chars_page.lua` (Notizen, Rangfolge, `ns.MainOf` unverändert, Bytegrenze, Einrückung, Itemlevel,
+Filter, Sortierung, Tooltip, Laden beider Schlüssel, Knopf am Gildenfenster), `tests/test_guild_button_noraid.lua`,
+`tests/test_unit_info.lua` (Itemlevel eines Mitglieds gemerkt), `tools/tests/test_contracts.py` (Nachricht, Abstand,
+Schlüssel).

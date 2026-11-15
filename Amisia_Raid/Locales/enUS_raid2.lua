@@ -1567,4 +1567,11 @@ L["Routen: Kartenlink, Position"] = "Routes: map link, position"
 L["Tauschen mit %s"] = "Swap with %s"
 L["Nicht eingeteilt"] = "Not placed"
 L["Hier ablegen geht nicht"] = "Cannot drop here"
+-- the members page's alts and item levels (F-210)
+L["Website"] = "Website"
+L["Quelle: %s##Twinks"] = "Source: %s"
+L["iLvl %d"] = "iLvl %d"
+L["iLvl %d (heute)"] = "iLvl %d (today)"
+L["iLvl %d (vor 1 Tag)"] = "iLvl %d (1 day ago)"
+L["iLvl %d (vor %d Tagen)"] = "iLvl %d (%d days ago)"
 end)

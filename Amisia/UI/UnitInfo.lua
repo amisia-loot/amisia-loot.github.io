@@ -8,7 +8,8 @@
 -- players, UI.FRESH seconds) or, with ui.unitInspect, by inspecting the player under the mouse
 -- through the shared helper Core/Inspect.lua; the line comes when the answer is there (nothing
 -- while waiting). Items the client does not hold yet are asked for and counted when they arrive
--- (the value is provisional until then). Sends nothing, saves nothing. With ui.unitLang the line
+-- (the value is provisional until then). Sends nothing; a complete reading of a guild member's item
+-- level goes to AmisiaDB.guildChars for the members page (F-210, Core/GuildChars.lua). With ui.unitLang the line
 -- "Spielsprache: Deutsch" for a player whose Amisia named its client's language in its hello (F-209,
 -- D-134, Core/Version.lua); not for the own character.
 local ADDON, ns = ...
@@ -200,6 +201,12 @@ local function readInto(guid, unit)
     local items, missing = UI.ReadGear(unit)
     local e = UI.Score(items)
     if e then put(guid, e, missing > 0) end
+    -- a complete reading of a guild member also goes to the members page (F-210, Core/GuildChars.lua)
+    if e and missing == 0 and ns.GuildCharsInspected then
+        local n, s = UnitName(unit)
+        n = ns.FullName(ns.Plain(n), ns.Plain(s))
+        if n then ns.GuildCharsInspected(n, e.ilvl) end
+    end
     if e or missing == 0 then refresh(guid) end
     return missing > 0
 end

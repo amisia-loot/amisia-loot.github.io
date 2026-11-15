@@ -4,7 +4,8 @@
 -- request, the expiry; not in combat, not with the inspect window open; items the client lacks at
 -- first (provisional, then the full value); the settings off; the profession icons of an own
 -- character, a twink, a guild member (note and recipe exchange), none for a stranger; NPCs nothing;
--- no line twice after a refresh; German and English (run.py --locale enUS).
+-- no line twice after a refresh; a guild member's reading kept for the members page (F-210); German and
+-- English (run.py --locale enUS).
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local UI, In = NS.UnitInfo, NS.Inspect
 local Cr = NS.Crafters
@@ -259,6 +260,22 @@ assert(not has(hover("stranger"), "|T"), "a stranger: no icons")
 NS.Set("ui.unitProfs", false)
 assert(not has(hover("player"), "|T"), "icons off")
 NS.Set("ui.unitProfs", true)
+
+-- a complete reading of a guild member goes to AmisiaDB.guildChars for the members page (F-210); a
+-- stranger's not, its main stays
+gear["Player-1-61"] = SET
+AmisiaDB.guildChars = { v = 1, list = { ["Bert Bach"] = { main = "Anna Amboss", at = time() - 86400, by = "Anna Amboss" } } }
+STUB.tick(UI.RETRY + 1)
+hover("bert")
+STUB.fire("INSPECT_READY", "Player-1-61")
+local gc = AmisiaDB.guildChars.list["Bert Bach"]
+assert(gc and gc.il == 36 and gc.at == time() and gc.main == "Anna Amboss", "the member's item level, its main kept")
+gear["Player-1-70"] = SET
+STUB.tick(2)
+hover("stranger")
+STUB.fire("INSPECT_READY", "Player-1-70")
+assert(AmisiaDB.guildChars.list["Fremder Foreverpvp"] == nil and AmisiaDB.guildChars.list["Fremder"] == nil, "a stranger: nothing kept")
+tip:Hide()
 
 -- the game language (F-209): only a player whose Amisia named it in a hello, never the own character
 AmisiaDB.sync = AmisiaDB.sync or { v = 1 }
