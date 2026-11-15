@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-14",
+ "updated": "2026-11-15",
  "entrances": {
   "33": {
    "map": 1421,
@@ -49,6 +49,14 @@
    "kind": "party",
    "seen": 1794611831
   },
+  "349": {
+   "map": 1414,
+   "x": 3857,
+   "y": 5697,
+   "name": "Maraudon",
+   "kind": "party",
+   "seen": 1794672558
+  },
   "389": {
    "map": 1454,
    "x": 5335,
@@ -64,6 +72,14 @@
    "name": "Die Versunkene Stadt",
    "kind": "party",
    "seen": 1794249463
+  },
+  "2994": {
+   "map": 1445,
+   "x": 7528,
+   "y": 1408,
+   "name": "Gefängnis von Alcaz",
+   "kind": "party",
+   "seen": 1794691966
   }
  }
 }
