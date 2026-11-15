@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.89.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.89.0) (2026-11-15)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.88.0...v2.89.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - fix(raid): the online and offline lines follow Amisia's language (F-197)
 
     When Amisia's language is not the game's, "has come online" and "has gone offline" now show in
