@@ -388,7 +388,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du unter Einstellungen > Oberfläche "Deckkraft des Hauptfensters (%)" auf 50 ziehst, dann scheint die Spielwelt durch das Amisia-Fenster; nach /reload bleibt es so, 100 macht es wieder ganz deckend.
 - Prüfung: Wenn das Hauptfenster offen ist und du ein anderes Amisia-Fenster öffnest (z. B. Talentrechner, Raid-Kalender, Lauf-Zeiten, Questgegenstände aufräumen, Layer), dann liegt es vor dem Hauptfenster; ein Klick auf das Hauptfenster holt dieses wieder nach vorn.
 - Prüfung: Wenn du danach das Hauptfenster schließt, dann liegen Lauf-Zeiten, Raid-Notiz und Co. wieder unter den Fenstern des Spiels (z. B. Taschen, Karte), wie vorher.
-- Notiz: DECISIONS D-133. Wunsch 2026-11-15 mit Bild eines Reglers "Opacity".
+- Prüfung: Wenn du im Hauptfenster oben rechts neben dem Minimieren-Knopf den Regler "Deckkraft" nach links ziehst, dann wird das Fenster durchsichtiger; der Regler unter Einstellungen > Oberfläche zeigt denselben Wert.
+- Notiz: DECISIONS D-133. Wunsch 2026-11-15 mit Bild eines Reglers "Opacity"; Nachtrag 2026-11-15: der Regler auch in der Titelleiste neben dem Minimieren-Knopf.
 
 ### F-207 Raid-Aufstellung: Ziel beim Ziehen sichtbar
 - Version: 2.89.0

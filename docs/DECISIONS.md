@@ -3632,7 +3632,9 @@ nimmt es die Ebene des Hauptfensters und kommt an deren Spitze (`Raise`); ein Fe
 Vergabe, Rolls) bleibt, wo es ist. Geht das Hauptfenster zu, kehren die so gehobenen Fenster auf ihre eigene Ebene
 zurück (`W.BackFromMain`), damit HUD-Fenster wie Lauf-Zeiten oder Raid-Notiz wieder unter den Fenstern des Spiels
 liegen. Dazu der Regler `ui.alpha` ("Deckkraft des Hauptfensters (%)", Abschnitt Oberfläche, 30-100, 100): die
-Deckkraft des ganzen Hauptfensters samt Text.
+Deckkraft des ganzen Hauptfensters samt Text; derselbe Wert hat einen schmalen Regler "Deckkraft" in der Titelleiste
+links neben dem Minimieren-Knopf (Nachtrag 2026-11-15, Nutzer: "ist das auch drin im hauptfenster in der nähe vom
+minimiren button?"), Schritte von 5.
 **Grund:** Nutzer 2026-11-15 mit Bild eines Reglers "Opacity": "so ein transparent gleiter machen und jedes fenster was
 geöffnet wird 1 layer über dem hauptfenster machen damit man es sofort sieht". Fenster mit MEDIUM, HIGH oder DIALOG
 gingen bisher hinter dem Hauptfenster auf.

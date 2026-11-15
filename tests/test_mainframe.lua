@@ -45,6 +45,20 @@ assert(AmisiaFrame:GetAlpha() == 1, "opaque by default")
 NS.Set("ui.alpha", 60); assert(math.abs(AmisiaFrame:GetAlpha() - 0.6) < 1e-6, "60 %")
 NS.ApplyAlpha(10); assert(math.abs(AmisiaFrame:GetAlpha() - 0.3) < 1e-6, "not below 30 %")
 NS.Reset("ui.alpha"); assert(AmisiaFrame:GetAlpha() == 1, "back to opaque")
+-- the slider in the title bar, left of the minimize button: it sets the opacity, and follows the setting
+local sl = AmisiaFrame.opacity and AmisiaFrame.opacity.slider
+assert(sl and sl:GetValue() == 100, "the slider at 100")
+local ap = AmisiaFrame.opacity.points and AmisiaFrame.opacity.points.RIGHT
+assert(ap and ap.rel == AmisiaFrame.minBtn and ap.relPoint == "LEFT", "left of the minimize button")
+assert(AmisiaFrame.opacity.label:GetText() == (NS.LANG == "enUS" and "Opacity" or "Deckkraft"))
+sl:SetValue(52)
+assert(NS.Get("ui.alpha") == 50 and math.abs(AmisiaFrame:GetAlpha() - 0.5) < 1e-6, "dragged to 52: 50 %")
+NS.Set("ui.alpha", 80)
+assert(sl:GetValue() == 80, "the setting moves the slider")
+sl:SetValue(10)
+assert(sl:GetValue() == 30 and NS.Get("ui.alpha") == 30, "not below 30")
+NS.Reset("ui.alpha")
+assert(sl:GetValue() == 100 and AmisiaFrame:GetAlpha() == 1)
 -- F-208: a window opened while the main window is shown stands over it; back to its own strata after
 local low = NS.W.Window("AmisiaTestLow", 200, 100, { strata = "MEDIUM" })
 local top = NS.W.Window("AmisiaTestTop", 200, 100, { strata = "FULLSCREEN_DIALOG" })

@@ -1367,6 +1367,24 @@ function _G.CreateFrame(kind, name, parent, template)
     f.IsShown = function(self) return self.shown end
     f.SetShown = function(self, on) if on then self:Show() else self:Hide() end end
     f.IsVisible = f.IsShown
+    -- a slider: its range, step and value; a new value runs OnValueChanged (userInput false), as the client
+    if kind == "Slider" then
+        f.min, f.max, f.value = 0, 1, 0
+        f.SetMinMaxValues = function(self, a, b) self.min, self.max = a, b end
+        f.GetMinMaxValues = function(self) return self.min, self.max end
+        f.SetValueStep = function(self, st) self.step = st end
+        f.SetObeyStepOnDrag = function(self, on) self.obey = on end
+        f.SetOrientation = function(self, o) self.orientation = o end
+        f.SetThumbTexture = function(self, t) self.thumb = t end
+        f.GetThumbTexture = function(self) return self.thumb end
+        f.GetValue = function(self) return self.value end
+        f.SetValue = function(self, v)
+            v = math.max(self.min, math.min(self.max, v))
+            if v == self.value then return end
+            self.value = v
+            if self.scripts.OnValueChanged then self.scripts.OnValueChanged(self, v, false) end
+        end
+    end
     -- an edit box keeps at most its max letters (characters, not bytes), as the client does
     f.SetMaxLetters = function(self, n) self.maxLetters = n; if n and n > 0 then self:SetText(self.text) end end
     f.GetMaxLetters = function(self) return self.maxLetters or 0 end

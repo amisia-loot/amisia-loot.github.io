@@ -131,10 +131,57 @@ function ns.ApplyScale(v)
     if F then F:SetScale((v or ns.Get("ui.scale") or 100) / 100) end
 end
 
--- F-208: the main window's opacity (ui.alpha, 30-100 %); the whole window, its text with it.
+-- F-208: the main window's opacity (ui.alpha, 30-100 %); the whole window, its text with it. The
+-- slider in the title bar follows (a change in the settings moves it too).
+local alphaSlider, alphaSync
 function ns.ApplyAlpha(v)
-    v = tonumber(v or ns.Get("ui.alpha")) or 100
-    if F then F:SetAlpha(math.max(30, math.min(100, v)) / 100) end
+    v = math.max(30, math.min(100, tonumber(v or ns.Get("ui.alpha")) or 100))
+    if F then F:SetAlpha(v / 100) end
+    if alphaSlider and alphaSlider:GetValue() ~= v then
+        alphaSync = true
+        alphaSlider:SetValue(v)
+        alphaSync = false
+    end
+end
+
+-- The opacity slider (F-208): "Deckkraft" and a thin slider in the title bar, left of the minimize
+-- button; dragging it sets ui.alpha in steps of 5.
+local function buildAlphaSlider(anchor)
+    local A = M.ALPHA
+    local holder = CreateFrame("Frame", nil, F)
+    holder:SetSize(A.LABEL_W + A.GAP + A.W, A.H)
+    holder:SetPoint("RIGHT", anchor, "LEFT", -A.GAP_R, 0)
+    holder.label = W.Text(holder, T.FONT.hint, A.LABEL_W)
+    holder.label:SetPoint("LEFT", 0, 0)
+    holder.label:SetJustifyH("RIGHT")
+    holder.label:SetText(L["Deckkraft"])
+    local s = CreateFrame("Slider", nil, holder)
+    s:SetOrientation("HORIZONTAL")
+    s:SetSize(A.W, A.H)
+    s:SetPoint("RIGHT", 0, 0)
+    s:SetMinMaxValues(30, 100)
+    s:SetValueStep(5)
+    if s.SetObeyStepOnDrag then s:SetObeyStepOnDrag(true) end
+    s:EnableMouse(true)
+    s.track = s:CreateTexture(nil, "BACKGROUND")
+    s.track:SetHeight(1)
+    s.track:SetPoint("LEFT", 0, 0)
+    s.track:SetPoint("RIGHT", 0, 0)
+    s.track:SetColorTexture(A.TRACK, A.TRACK, A.TRACK, 1)
+    s.thumb = s:CreateTexture(nil, "OVERLAY")
+    s.thumb:SetSize(A.THUMB_W, A.THUMB_H)
+    s.thumb:SetColorTexture(0.85, 0.85, 0.85, 1)
+    s:SetThumbTexture(s.thumb)
+    s:SetValue(math.max(30, math.min(100, tonumber(ns.Get("ui.alpha")) or 100)))
+    s:SetScript("OnValueChanged", function(_, v)
+        if alphaSync then return end
+        v = math.floor((v or 100) / 5 + 0.5) * 5
+        if v ~= ns.Get("ui.alpha") then ns.Set("ui.alpha", v) end
+    end)
+    W.Tooltip(s, L["Deckkraft des Hauptfensters"], L["Nach links ziehen lässt die Spielwelt durchscheinen, ganz rechts ist das Fenster deckend. Auch unter Einstellungen, Oberfläche."])
+    holder.slider = s
+    alphaSlider = s
+    return holder
 end
 
 -- The remembered group and pages stay (settings.window.tab, pages), the position and the size go.
@@ -1176,6 +1223,7 @@ local function build()
     -- the feedback button at the head's right end; close and minimize are the client's (D-84)
     local closeBtn = F.CloseButton
     minBtn = buildMinButton()
+    F.opacity = buildAlphaSlider(minBtn)
     local feedBtn = headButton(head, T.NAV_ICONS.feedback, "?", L["Feedback"], L["Einen Fehler melden oder einen Wunsch schicken."],
         function()
             ns.ClearSearch()

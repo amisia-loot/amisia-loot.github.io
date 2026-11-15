@@ -119,6 +119,9 @@ T.MAIN = {
     W = 806, H = 667, FRAME_TOP = 22, FRAME_X = 3, FRAME_BOTTOM = 3,
     -- the client's minimize button (UIPanelHideButtonNoScripts) left of its close button (D-71)
     MIN_SIZE = 24, MIN_SIZE_OLD = 20,
+    -- the opacity slider in the title bar left of the minimize button (F-208): "Deckkraft" LABEL_W wide,
+    -- GAP to the slider W x H (a thin track, TRACK its grey, the thumb THUMB_W x THUMB_H), GAP_R to the button
+    ALPHA = { LABEL_W = 64, GAP = 6, W = 90, H = 16, TRACK = 0.45, THUMB_W = 6, THUMB_H = 12, GAP_R = 6 },
     -- the size the player can drag (the grip at the bottom right, the chat window's size grabber,
     -- GRIP square in the frame's corner, GRIP_OUT past it): H_MIN to H_MAX and W_MIN to W_MAX, never
     -- more than the screen; T.PAGE_H, T.PAGE_W_NOW and the side bar follow (D-68, D-71)

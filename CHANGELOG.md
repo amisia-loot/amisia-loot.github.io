@@ -5,6 +5,11 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(ui): the opacity slider also in the main window's title bar (F-208)
+
+    A small "Opacity" slider now sits in the title bar left of the minimize button; it and the one in
+    the settings show the same value.
+
 ## [v2.89.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.89.0) (2026-11-15)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.88.0...v2.89.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

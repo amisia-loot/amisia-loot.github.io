@@ -689,7 +689,7 @@ dungeon and raid quests the own character can take now or within two levels, on 
 zone, "here" the own zone, a uiMapID).
 `ui` holds since F-169 the player tooltip's switches `ui.unitGear` ("Gearscore und Itemstufe im Spieler-Tooltip", on), `ui.unitInspect`
 ("Dafür Spieler unter der Maus ansehen", on; off: only the own character and players in the cache) and `ui.unitProfs` ("Berufe im
-Spieler-Tooltip", on, `forever`), `UI/UnitInfo.lua`; `ui.unitLang` ("Spielsprache im Spieler-Tooltip", on, F-209).  `ui` holds the window sizes: `ui.scale` (the main window, 70-130 %), `ui.alpha` ("Deckkraft des Hauptfensters (%)", the main window's opacity, 30-100 %, F-208, D-133), `ui.talentScale` (the talent
+Spieler-Tooltip", on, `forever`), `UI/UnitInfo.lua`; `ui.unitLang` ("Spielsprache im Spieler-Tooltip", on, F-209).  `ui` holds the window sizes: `ui.scale` (the main window, 70-130 %), `ui.alpha` ("Deckkraft des Hauptfensters (%)", the main window's opacity, 30-100 %, also the slider "Deckkraft" in its title bar left of the minimize button, F-208, D-133), `ui.talentScale` (the talent
 window, 70-150 %, also Ctrl + mouse wheel over it); `ui.goalScale` (the window "Ausrüstungsziele", F-110) went with
 the window (D-80, step 3 of `Core/Migrate.lua` drops it and `settings.goalWindow`); `ui.resetPosition` resets the main window,
 the gear table, the roll window, the talent window, the raid calendar window, the run timer, the loot toast, the dungeon bar, the window "Questgegenstände aufräumen", the window "Layer" and its chip.
