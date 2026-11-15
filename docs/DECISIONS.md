@@ -3622,6 +3622,15 @@ nicht mehr nur: solange `map.beacon` an ist und eine Markierung besteht, verfolg
 nach dem Setzen und nach jedem `ClearAllSuperTracked` des Spiels (höchstens alle 0,5 s). Nicht wieder verfolgt wird
 sie, wenn der Spieler das Verfolgen mit einem Klick auf die Markierung beendet, und nach "Ziel erreicht" des Spiels
 bis zur nächsten Markierung. Eine Markierung setzt Amisia dafür nie.
+**Nachtrag 2026-11-15 (2):** Nutzer: "können wir die lichtsäule verbessern ... ich will nicht das sie iwo in der luft ist".
+Der Navigationspunkt ist nur ein Punkt auf dem Bildschirm; `C_Navigation` nennt keine Höhe, und Strg + Klick baut die
+Markierung ohne z (`UiMapPoint.CreateFromCoordinates(mapID, x, y)` im `WaypointLocationDataProvider` von Forever), die
+Höhe des Punkts wählt das Spiel selbst. Eine Figur in der Welt kann ein Addon nicht zeichnen. Darum ist die Säule
+seitdem wie ein Ding in der Welt bemessen: `BEAM_YD` Meter hoch nach der Entfernung (`GetDistance`, angenommener
+Kamerawinkel `FOV`), zwischen `BEAM_MIN` und `BEAM_MAX`, Breiten und Ring im Verhältnis; ihr unterstes Stück blendet zum
+Boden hin aus (dieselbe Textur umgedreht, keine neue Datei); und der Regler `map.beaconDrop` ("Fuß der Lichtsäule
+tiefer (m)", 0) setzt den Fuß um so viele Meter tiefer, aus der Nähe auf dem Bildschirm weiter als aus der Ferne. Der
+Standard bleibt 0, bis ein Wert im Spiel gefunden ist. Die Folge "gleich groß in jeder Entfernung" gilt nicht mehr.
 
 ## D-133 Fenster öffnen über dem Hauptfenster; Deckkraft des Hauptfensters
 

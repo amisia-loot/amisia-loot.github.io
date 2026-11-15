@@ -5,7 +5,11 @@
 -- distance. It hangs at the client's navigation frame (C_Navigation.GetFrame), which the client keeps
 -- over the place in the world, and hides while that place is not on the screen
 -- (C_Navigation.HasValidScreenPosition) or the frame is held at the screen's edge
--- (C_Navigation.WasClampedToScreen). A plain frame at the back (strata BACKGROUND), no mouse, no
+-- (C_Navigation.WasClampedToScreen). The client gives that place only as a point on the screen, with no
+-- height over the ground (a pin from Ctrl + click carries no z), so the column is sized like a thing in
+-- the world: shorter and thinner the farther the place (B.Layout, by C_Navigation.GetDistance), its
+-- lowest part fading towards the ground, and the setting map.beaconDrop lowers its foot by so many yards
+-- (more on the screen near than far) for where the client's point floats over the ground. A plain frame at the back (strata BACKGROUND), no mouse, no
 -- protected call; built the first time it shows. The setting map.beacon (Karte, on) switches it.
 -- The client only has a navigation frame while it follows the pin, and Forever's world map places a pin
 -- with Ctrl + click without following it (SetSuperTrackedUserWaypoint(false)); its own navigation
@@ -29,6 +33,7 @@ local RING_TEX = "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\beacon_ring"
 local f            -- the frame, made the first time it shows
 local nav          -- the client's navigation frame while there is one
 local acc = 0      -- time since the last distance text
+local laid         -- the last layout ("height:drop"), so a frame without a change sets nothing
 
 local function api(name)
     local N = _G.C_Navigation
@@ -81,6 +86,48 @@ function B.DistanceText()
     return ns.Map.DistText(d)
 end
 
+local function clamp(v, lo, hi) return math.max(lo, math.min(hi, v)) end
+
+-- Units on the screen one yard high at distance d (nil or not a number: T.BEACON.FAR; at least NEAR).
+function B.PerYard(d)
+    local S = T.BEACON
+    if type(d) ~= "number" or d <= 0 then d = S.FAR end
+    d = math.max(d, S.NEAR)
+    local h = UIParent and UIParent:GetHeight() or 768
+    return (h / 2) / math.tan(math.rad(S.FOV) / 2) / d
+end
+
+-- The column's height and how far its foot goes down under the client's point, at distance d.
+function B.Size(d)
+    local S = T.BEACON
+    local px = B.PerYard(d)
+    local drop = tonumber(ns.Get("map.beaconDrop")) or 0
+    return clamp(S.BEAM_YD * px, S.BEAM_MIN, S.BEAM_MAX), math.max(0, drop) * px
+end
+
+-- Sizes and places the column for distance d: the foot drop under the client's point, the lowest part
+-- fading towards the ground, widths and ring in proportion to the height.
+function B.Layout(d)
+    if not (f and nav) then return end
+    local S = T.BEACON
+    local h, drop = B.Size(d)
+    local key = string.format("%.1f:%.1f", h, drop)
+    if key == laid then return end
+    laid = key
+    local r = clamp(h / S.BEAM_H, S.THIN, S.WIDE)
+    local foot = math.floor(h * S.FOOT + 0.5)
+    f:SetSize(S.GLOW_W * r, h)
+    f.glow:SetSize(S.GLOW_W * r, h - foot)
+    f.glow:SetPoint("BOTTOM", f, "BOTTOM", 0, foot)
+    f.glowFoot:SetSize(S.GLOW_W * r, foot)
+    f.beam:SetSize(S.BEAM_W * r, h - foot)
+    f.beam:SetPoint("BOTTOM", f, "BOTTOM", 0, foot)
+    f.beamFoot:SetSize(S.BEAM_W * r, foot)
+    f.ring:SetSize(S.RING_W * r, S.RING_H * r)
+    f:ClearAllPoints()
+    f:SetPoint("BOTTOM", nav, "CENTER", 0, -drop)
+end
+
 local function fill()
     f.name:SetText(B.Label())
     f.dist:SetText(B.DistanceText())
@@ -96,19 +143,23 @@ local function build()
     f:SetFrameStrata("BACKGROUND")
     f:SetSize(S.GLOW_W, S.BEAM_H)
     f:EnableMouse(false)
-    -- the wide soft glow and the bright core of the column, both added to what is behind
-    f.glow = f:CreateTexture(nil, "BACKGROUND")
-    f.glow:SetTexture(BEAM_TEX)
-    f.glow:SetSize(S.GLOW_W, S.BEAM_H)
-    f.glow:SetPoint("BOTTOM", f, "BOTTOM", 0, 0)
-    f.glow:SetBlendMode("ADD")
-    f.glow:SetVertexColor(S.COLOR[1], S.COLOR[2], S.COLOR[3], S.GLOW_ALPHA)
-    f.beam = f:CreateTexture(nil, "ARTWORK")
-    f.beam:SetTexture(BEAM_TEX)
-    f.beam:SetSize(S.BEAM_W, S.BEAM_H)
-    f.beam:SetPoint("BOTTOM", f, "BOTTOM", 0, 0)
-    f.beam:SetBlendMode("ADD")
-    f.beam:SetVertexColor(S.COLOR[1], S.COLOR[2], S.COLOR[3], 1)
+    -- the wide soft glow and the bright core of the column, both added to what is behind; each with a
+    -- foot under it: the same texture upside down over part of its height (its light rising from
+    -- FOOT_LOW at the ground to full where the column starts), sized by B.Layout
+    local function part(layer, w, a, foot)
+        local t = f:CreateTexture(nil, layer)
+        t:SetTexture(BEAM_TEX)
+        t:SetSize(w, S.BEAM_H)
+        t:SetPoint("BOTTOM", f, "BOTTOM", 0, 0)
+        t:SetBlendMode("ADD")
+        t:SetVertexColor(S.COLOR[1], S.COLOR[2], S.COLOR[3], a)
+        if foot then t:SetTexCoord(0, 1, 1, S.FOOT_LOW) end
+        return t
+    end
+    f.glow = part("BACKGROUND", S.GLOW_W, S.GLOW_ALPHA)
+    f.glowFoot = part("BACKGROUND", S.GLOW_W, S.GLOW_ALPHA, true)
+    f.beam = part("ARTWORK", S.BEAM_W, 1)
+    f.beamFoot = part("ARTWORK", S.BEAM_W, 1, true)
     -- the ring on the ground, squashed into an ellipse, its middle at the foot
     f.ring = f:CreateTexture(nil, "ARTWORK")
     f.ring:SetTexture(RING_TEX)
@@ -131,10 +182,12 @@ local function build()
     f.dist:SetPoint("BOTTOM", box, "BOTTOM", 0, S.PAD_Y)
     f.dist:SetJustifyH("CENTER")
     f:SetAlpha(0)
-    -- every frame while shown: hidden at once when the place leaves the screen; the text a few
-    -- times a second
+    -- every frame while shown: hidden at once when the place leaves the screen, the size with the
+    -- distance; the text a few times a second
     f:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate MapBeacon", function(_, elapsed)
-        f:SetAlpha(B.OnScreen() and 1 or 0)
+        local on = B.OnScreen()
+        f:SetAlpha(on and 1 or 0)
+        if on then B.Layout(ask(api("GetDistance"))) end
         acc = acc + (elapsed or 0)
         if acc >= S.TICK then
             acc = 0
@@ -153,9 +206,9 @@ function B.Update()
         return
     end
     build()
-    f:ClearAllPoints()
-    -- the column's foot on the place
-    f:SetPoint("BOTTOM", nav, "CENTER", 0, 0)
+    -- the column's foot on the place (lowered by map.beaconDrop), sized by the distance
+    laid = nil
+    B.Layout(ask(api("GetDistance")))
     acc = 0
     fill()
     f:SetAlpha(B.OnScreen() and 1 or 0)
@@ -225,7 +278,7 @@ ns.Listen("MAP_TARGET", function() if f and f:IsShown() then fill() end end)
 
 -- for the tests
 function B._reset()
-    nav, acc = nil, 0
+    nav, acc, laid = nil, 0, nil
     reached, lastFollow, waiting = false, nil, false
     if f then f:Hide() end
 end

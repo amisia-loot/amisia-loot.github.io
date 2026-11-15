@@ -513,7 +513,14 @@ T.TARGETWIN = { W = 250, H = 84, COMPACT_W = 190, SHADE = 0.78, RING = 64, ARROW
 -- follows the pin again after the client stopped following it.
 T.BEACON = { BEAM_H = 220, BEAM_W = 14, GLOW_W = 56, GLOW_ALPHA = 0.4, COLOR = { 1, 0.78, 0.3 },
     RING_W = 84, RING_H = 28, BOX_GAP = 6, BOX_H = 40, BOX_MIN = 80, BOX_MAX = 220, PAD = 10, PAD_Y = 5,
-    SHADE = 0.8, TICK = 0.1, REFOLLOW = 0.5 }
+    SHADE = 0.8, TICK = 0.1, REFOLLOW = 0.5,
+    -- sized like a thing in the world (2026-11-15): FOV the camera's assumed vertical angle (degrees), so a
+    -- yard at distance d is (UIParent's height / 2) / tan(FOV / 2) / d units high; the column BEAM_YD yards
+    -- high, between BEAM_MIN and BEAM_MAX units; widths and ring times its height / BEAM_H, between THIN and
+    -- WIDE; NEAR the least distance counted, FAR the one taken without a distance; the lowest FOOT of the
+    -- column fades towards the ground down to FOOT_LOW of its light; map.beaconDrop yards lower the foot.
+    FOV = 60, BEAM_YD = 16, BEAM_MIN = 60, BEAM_MAX = 360, THIN = 0.4, WIDE = 1.5, NEAR = 8, FAR = 100,
+    FOOT = 0.25, FOOT_LOW = 0.1 }
 
 -- The window "Raid-Notiz" (F-196, Raid/RaidNoteWindow.lua, AmisiaRaidNote): W x H at first, EDGE_X from the
 -- screen's right edge; sized by the grip (GRIP square) between MIN_W x MIN_H and MAX_W x MAX_H; the line

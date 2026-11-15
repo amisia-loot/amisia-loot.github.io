@@ -1531,6 +1531,9 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du dich so drehst, dass der Ort hinter dir liegt, dann ist die Säule weg und kommt wieder, sobald er im Bild ist; mit einem Ziel von Amisia (z. B. "Ziel setzen" im Planer) steht dessen Name im Kästchen.
 - Prüfung: Wenn du unter Einstellungen > Karte und Wegpunkt "Lichtsäule an der Kartenmarkierung" ausschaltest, dann ist die Säule sofort weg; Markierung und Zielfenster bleiben.
 - Notiz: DECISIONS D-132. Ein flaches Bild auf dem Bildschirm am Navigationspunkt des Spiels, gleich groß in jeder Entfernung. Liest nur, setzt nichts.
+- Prüfung: Wenn du auf die Markierung zu läufst, dann wird die Säule größer und breiter, aus der Ferne ist sie klein und schmal; ihr unteres Stück blendet zum Boden hin weich aus.
+- Prüfung: Wenn du unter Einstellungen > Karte und Wegpunkt "Fuß der Lichtsäule tiefer (m)" hochschiebst, dann rutscht der Fuß sofort nach unten; stell ihn so ein, dass der Ring auf dem Boden liegt, und nenne den Wert (er wird dann der Standard).
+- Notiz: Nachtrag 2026-11-15 (2): seit dann nach Entfernung bemessen, weicher Fuß, Regler für den Fuß (D-132).
 - Notiz: Nachtrag 2026-11-15 (Nutzer: "wieso wird mir das nicht angezeigt wenn ich kartenmarkierung mache?"): Strg + Klick setzt auf Forever die Markierung unverfolgt, und das Spiel beendet das Verfolgen am Bildschirmrand; seitdem verfolgt Amisia die Markierung selbst, solange die Säule an ist. Prüfen wie oben, ohne vorher auf die Markierung zu klicken.
 
 ### F-203 Zielfenster mit Kompass für Kartenmarkierung und Ziel

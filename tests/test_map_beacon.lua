@@ -34,8 +34,54 @@ assert(p and p.rel == nav.frame and p.relPoint == "CENTER", "its foot on the nav
 assert(f.name:GetText() == "Kartenmarkierung" and f.dist:GetText() == "86 m", tostring(f.dist:GetText()))
 assert(f.beam.blend == "ADD" and f.ring.blend == "ADD" and f.glow.blend == "ADD", "light added")
 assert(f.beam.texture:find("beacon_beam", 1, true) and f.ring.texture:find("beacon_ring", 1, true))
-assert(f.ring:GetWidth() == T.BEACON.RING_W and f.ring:GetHeight() == T.BEACON.RING_H, "the ring an ellipse")
+assert(near(f.ring:GetWidth() / f.ring:GetHeight(), T.BEACON.RING_W / T.BEACON.RING_H), "the ring an ellipse")
+assert(p.y == 0, "no drop by default: the foot on the client's point")
 assert(wp.sets == 1, "sets no waypoint itself")
+
+-- sized like a thing in the world (2026-11-15: "ich will nicht das sie iwo in der luft ist"): shorter
+-- and thinner the farther, within BEAM_MIN..BEAM_MAX; the lowest part fades towards the ground
+local S = T.BEACON
+local function perYard(d) return (UIParent:GetHeight() / 2) / math.tan(math.rad(S.FOV) / 2) / d end
+local function height(d) return math.max(S.BEAM_MIN, math.min(S.BEAM_MAX, S.BEAM_YD * perYard(d))) end
+nav.distance = 120
+f.scripts.OnUpdate(f, 0.01)
+local h30, w30 = f:GetHeight(), f.beam:GetWidth()
+assert(near(h30, height(120)) and h30 > S.BEAM_MIN and h30 < S.BEAM_MAX, "120 yd: " .. h30)
+nav.distance = 60
+f.scripts.OnUpdate(f, 0.01)
+assert(f:GetHeight() > h30 and f.beam:GetWidth() > w30, "nearer: taller and wider")
+assert(f.ring:GetWidth() > S.RING_W * S.THIN, "the ring grows too")
+nav.distance = 2000
+f.scripts.OnUpdate(f, 0.01)
+assert(f:GetHeight() == S.BEAM_MIN and near(f.beam:GetWidth(), S.BEAM_W * S.THIN), "far: the least size")
+nav.distance = 1
+f.scripts.OnUpdate(f, 0.01)
+assert(near(f:GetHeight(), height(S.NEAR)) or f:GetHeight() == S.BEAM_MAX, "nearest: no more than at NEAR")
+nav.distance = 120
+f.scripts.OnUpdate(f, 0.01)
+local foot = math.floor(h30 * S.FOOT + 0.5)
+assert(f.beamFoot:GetHeight() == foot and near(f.beam:GetHeight(), h30 - foot), "the foot under the column")
+assert(f.beam.points.BOTTOM.y == foot and f.beamFoot.points.BOTTOM.y == 0, "column on the foot")
+local tc = f.beamFoot.texCoord
+assert(tc and tc[3] == 1 and tc[4] == S.FOOT_LOW, "the foot: the light upside down, fading to the ground")
+assert(f.glowFoot.texCoord and f.beam.texCoord == nil, "the glow fades too, the column itself does not turn")
+-- map.beaconDrop: the foot lower by so many yards, further on the screen near than far
+assert(NS.SettingItem("map.beaconDrop").default == 0)
+NS.Set("map.beaconDrop", 2)
+NS.SettingItem("map.beaconDrop").onChange(2)
+local y30 = f.points.BOTTOM.y
+assert(near(y30, -2 * perYard(120)) and f.points.BOTTOM.rel == nav.frame, "2 yd lower at 120 yd: " .. y30)
+nav.distance = 240
+f.scripts.OnUpdate(f, 0.01)
+assert(near(f.points.BOTTOM.y, -2 * perYard(240)) and f.points.BOTTOM.y > y30, "farther: less on the screen")
+nav.distance = nil
+f.scripts.OnUpdate(f, 0.01)
+assert(near(f.points.BOTTOM.y, -2 * perYard(S.FAR)), "no distance: taken as FAR")
+NS.Set("map.beaconDrop", 0)
+NS.SettingItem("map.beaconDrop").onChange(0)
+assert(f.points.BOTTOM.y == 0, "back on the point")
+nav.distance = 86.4
+f.scripts.OnUpdate(f, T.BEACON.TICK)
 
 -- the distance follows a few times a second
 nav.distance = 40
@@ -159,4 +205,4 @@ assert(not f:IsShown(), "no navigation: hidden")
 C_Navigation = keep
 B._reset()
 nav.frame = nil
-print("map beacon: shown with the followed pin, foot on the navigation frame, name and distance, off screen, setting, gone with the pin")
+print("map beacon: shown with the followed pin, foot on the navigation frame, sized by distance, soft foot, drop, name and distance, off screen, setting, gone with the pin")

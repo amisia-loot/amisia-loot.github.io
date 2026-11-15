@@ -1186,6 +1186,9 @@ ns.RegisterSettings{ key = "map", label = L["Karte und Wegpunkt"], order = 48, g
     { key = "map.beacon", type = "toggle", label = L["Lichtsäule an der Kartenmarkierung"], default = true,
       onChange = function() if ns.MapBeacon then ns.MapBeacon.Follow(); ns.MapBeacon.Update() end end,
       tip = L["Über der Kartenmarkierung (Strg + Klick auf die Weltkarte oder ein Ziel von Amisia) steht eine goldene Lichtsäule mit Name und Entfernung, solange der Ort im Bild ist. Dafür verfolgt Amisia die Markierung; ein Klick auf die Markierung auf der Karte beendet das Verfolgen."] },
+    { key = "map.beaconDrop", type = "slider", label = L["Fuß der Lichtsäule tiefer (m)"], default = 0, min = 0, max = 10, step = 0.5,
+      onChange = function() if ns.MapBeacon then ns.MapBeacon.Update() end end,
+      tip = L["Steht der Fuß der Lichtsäule über dem Boden, setzt ihn dieser Wert um so viele Meter tiefer. Aus der Nähe rutscht er auf dem Bildschirm weiter als aus der Ferne, wie bei einem Ding in der Welt."] },
     { key = "map.tooltip", type = "toggle", label = L["Fundort im Tooltip (mit Shift)"], default = true, tip = L["Mit gedrückter Shift-Taste nennt der Item-Tooltip, wo das Item zu finden ist."] },
     -- the own routes (F-167, Gear/Routes.lua, Gear/RouteMap.lua)
     { key = "map.routeBar", type = "toggle", label = L["Routen-Leiste auf der Weltkarte zeigen"], default = true,

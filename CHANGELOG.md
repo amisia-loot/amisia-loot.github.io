@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(map): the column of light over the map pin stands on the ground better (F-206)
+
+    The column now has the size of a thing in the world: small and thin far away, taller and wider as
+    you come near, and its lowest part fades softly into the ground instead of ending in a hard edge in
+    the air. The game gives the pin no height over the ground, so a new slider "Lower the column's foot
+    (yd)" under Settings, Map and waypoint moves the foot down by so many yards; set it once so the ring
+    lies on the ground.
+
 - feat(guild): alts under their main with item levels on Members, and an Amisia button at the guild window (F-210)
 
     The Members page now lists each player's alts indented under their main, with every character's item
