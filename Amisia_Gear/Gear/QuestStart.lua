@@ -272,8 +272,7 @@ local function build()
     if F then return F end
     F = W.Window("AmisiaQuestStart", S.W, S.TOP + S.ICON + S.GAP + S.LINE_H + S.BOTTOM, { title = "", strata = "MEDIUM",
         escape = false, onDragStop = function(f) W.SaveWindowPlace(f, windowState()) end })
-    -- a protected window cannot be moved in combat
-    F:SetScript("OnDragStart", function(self) if not inCombat() then self:StartMoving() end end)
+    -- a protected window cannot be moved in combat: W.Window's drag waits for the fight's end
     F.CloseButton:SetScript("OnClick", function() QS.Dismiss() end)
     local slot = CreateFrame("Frame", nil, F)
     slot:SetSize(S.ICON, S.ICON)

@@ -3424,6 +3424,11 @@ gefragt): an als Standard, auch für Freunde, keine Nachfrage vor dem Einladen.
 **Durchgesetzt durch:** `tests/test_online_invite.lua` (deutsche und englische Zeile, Felder nach dem Namen, andere
 Zeilen, sich selbst, geheime Zeile, Schalter, ohne Einladerecht, Leiter, schon in der Gruppe, Klick, fremde Links,
 Klassenfarbe aus Gilde und Freundesliste, ohne Klasse, Schalter der Farbe).
+**Nachtrag 2026-11-15:** Nutzer: "soll in deutsch oder englisch sein je nach spracheinstellung". Ist Amisias Sprache
+(`ui.language`, D-128) nicht die des Clients, baut der Filter die Zeilen "ist jetzt online." (`ERR_FRIEND_ONLINE_SS`)
+und "ist jetzt offline." (`ERR_FRIEND_OFFLINE_S`) mit Amisias eigenen Worten neu (`OI.InLanguage`, der Spielerlink des
+Clients bleibt), damit Zeile und [Einladen] eine Sprache sprechen. Bei gleicher Sprache bleiben sie, wie das Spiel sie
+schreibt. Durchgesetzt durch `tests/test_online_invite.lua` (englischer Client, deutsches Amisia, online und offline).
 
 ## D-128 Sprache wählen: jede Datei wartet auf ADDON_LOADED (`ns.Load`)
 
@@ -3608,4 +3613,54 @@ einen Neustart des Spiels, `/reload` reicht nicht.
 **Durchgesetzt durch:** `tests/test_map_beacon.lua` (nicht gebaut ohne Markierung, Fuß am Navigationspunkt, Name
 und Entfernung, Rand und kein Bildpunkt, Amisias Ziel, Verfolgen aus, Punkt weg und neu, Einstellung, Markierung
 gelöscht, Client ohne Navigation).
+**Nachtrag 2026-11-15:** Nutzer: "wieso wird mir das nicht angezeigt wenn ich kartenmarkierung mache?" Forevers Weltkarte
+setzt die Markierung mit Strg + Klick unverfolgt (`WaypointLocationDataProvider`: `SetUserWaypoint`, dann
+`SetSuperTrackedUserWaypoint(false)`), und der Navigationsrahmen des Spiels (`SuperTrackedFrame`) beendet jedes
+Verfolgen (`ClearAllSuperTracked`), sobald der Ort an den Bildschirmrand geht oder von dort kommt (beim ersten Mal
+gleich nach dem Erscheinen). Ohne Verfolgen gibt es keinen Navigationspunkt und keine Säule. Darum liest die Säule
+nicht mehr nur: solange `map.beacon` an ist und eine Markierung besteht, verfolgt Amisia sie selbst (`B.Follow`): kurz
+nach dem Setzen und nach jedem `ClearAllSuperTracked` des Spiels (höchstens alle 0,5 s). Nicht wieder verfolgt wird
+sie, wenn der Spieler das Verfolgen mit einem Klick auf die Markierung beendet, und nach "Ziel erreicht" des Spiels
+bis zur nächsten Markierung. Eine Markierung setzt Amisia dafür nie.
 
+## D-133 Fenster öffnen über dem Hauptfenster; Deckkraft des Hauptfensters
+
+**Datum:** 2026-11-15
+**Entscheidung:** Ein Fenster aus `W.Window`, das aufgeht, während das Hauptfenster (`AmisiaFrame`, Ebene FULLSCREEN)
+auf dem Bildschirm ist, steht über ihm (F-208, `W.AboveMain`): liegt seine eigene Ebene darunter oder gleich hoch,
+nimmt es die Ebene des Hauptfensters und kommt an deren Spitze (`Raise`); ein Fenster mit höherer Ebene (Fragen,
+Vergabe, Rolls) bleibt, wo es ist. Geht das Hauptfenster zu, kehren die so gehobenen Fenster auf ihre eigene Ebene
+zurück (`W.BackFromMain`), damit HUD-Fenster wie Lauf-Zeiten oder Raid-Notiz wieder unter den Fenstern des Spiels
+liegen. Dazu der Regler `ui.alpha` ("Deckkraft des Hauptfensters (%)", Abschnitt Oberfläche, 30-100, 100): die
+Deckkraft des ganzen Hauptfensters samt Text.
+**Grund:** Nutzer 2026-11-15 mit Bild eines Reglers "Opacity": "so ein transparent gleiter machen und jedes fenster was
+geöffnet wird 1 layer über dem hauptfenster machen damit man es sofort sieht". Fenster mit MEDIUM, HIGH oder DIALOG
+gingen bisher hinter dem Hauptfenster auf.
+**Folge:** Ein Klick auf das Hauptfenster holt es wieder nach vorn (beide auf einer Ebene, `SetToplevel`). Fenster, die
+vor dem Hauptfenster offen waren, bleiben darunter, bis sie neu aufgehen. Unter 30 % Deckkraft geht es nicht, damit
+das Fenster nicht verloren geht. Ein geschütztes Fenster (das der Quest-Startgegenstände, D-113) wird im Kampf weder
+gehoben noch zurückgesetzt, noch beginnt oder endet dort sein Ziehen (`W.CombatLocked`); was der Kampf aufhält, holt
+`W.AfterCombat` nach (2026-11-15: das Spiel blockierte `AmisiaQuestStart:StopMovingOrSizing()`).
+**Durchgesetzt durch:** `tests/test_mainframe.lua`, `tests/test_quest_start.lua` (Deckkraft 60 %, Grenze 30 %, zurück auf 100; ein Fenster mit
+MEDIUM geht über dem Hauptfenster auf, eins mit FULLSCREEN_DIALOG bleibt, nach dem Schließen des Hauptfensters wieder
+MEDIUM, ohne Hauptfenster nicht gehoben).
+
+## D-134 Spielsprache im Spieler-Tooltip aus dem Hallo von Amisia
+
+**Datum:** 2026-11-15
+**Entscheidung:** Das Hallo (`HI`) trägt als 6. Feld die Sprache des eigenen Clients (`GetLocale()`, z. B. `deDE`;
+`-` ohne). Wer es sendet, steht mit `lc` in der Liste der gesehenen Versionen (`AmisiaDB.sync.seen`, 30 Tage).
+Der Spieler-Tooltip zeigt für einen anderen Spieler mit bekannter Sprache die Zeile "Spielsprache: Französisch"
+(F-209, `ui.unitLang`, an); nicht für den eigenen Charakter, nicht für eine Sprache, die Amisia nicht kennt. Das
+Land eines Spielers zeigt Amisia nicht.
+**Grund:** Nutzer 2026-11-15: "können wir im tooltipp anzeigen woher ein spieler ist also land und oder welche
+spreche er spricht?" Das Spiel verrät weder Land noch Sprache eines anderen Spielers, auch nicht die Sprache eines
+fremden Realms. Was Amisia selbst weiß, ist die Spielsprache der Amisia-Nutzer, und das Hallo geht ohnehin einmal
+pro Sitzung an Gilde und Raid.
+**Folge:** Die Zeile gibt es nur für Spieler mit Amisia ab dieser Version, die sich in Gilde oder Raid gemeldet
+haben. Es ist die Sprache, auf die ihr Spiel eingestellt ist, nicht sicher ihre Muttersprache. Ältere Versionen
+lesen das zusätzliche Feld nicht (sie nehmen nur die ersten fünf). Ein Feld, das nicht aus zwei Klein- und zwei
+Großbuchstaben besteht, fällt weg, beim Empfang und beim Laden.
+**Durchgesetzt durch:** `tests/test_version.lua` (Hallo mit `deDE` und `frFR`, `ns.VersionLang`, ein altes Hallo
+ohne Feld, ein falsches Feld, Laden), `tests/test_unit_info.lua` (Zeile für einen Spieler mit Amisia, keine für
+einen Fremden und den eigenen Charakter, unbekannte Sprache, Schalter aus).

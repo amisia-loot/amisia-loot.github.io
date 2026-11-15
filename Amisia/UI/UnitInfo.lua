@@ -8,7 +8,9 @@
 -- players, UI.FRESH seconds) or, with ui.unitInspect, by inspecting the player under the mouse
 -- through the shared helper Core/Inspect.lua; the line comes when the answer is there (nothing
 -- while waiting). Items the client does not hold yet are asked for and counted when they arrive
--- (the value is provisional until then). Sends nothing, saves nothing.
+-- (the value is provisional until then). Sends nothing, saves nothing. With ui.unitLang the line
+-- "Spielsprache: Deutsch" for a player whose Amisia named its client's language in its hello (F-209,
+-- D-134, Core/Version.lua); not for the own character.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -336,12 +338,27 @@ function UI.ProfIcons(name)
 end
 
 ---------------------------------------------------------------------------
+-- The client language (F-209, D-134)
+---------------------------------------------------------------------------
+-- The language of a client locale as a word ("Deutsch"), nil for one Amisia does not know.
+local LANG_WORD = {
+    deDE = L["Deutsch"], enUS = L["Englisch"], enGB = L["Englisch"], frFR = L["Französisch"], esES = L["Spanisch"],
+    esMX = L["Spanisch"], itIT = L["Italienisch"], ptBR = L["Portugiesisch"], ruRU = L["Russisch"], koKR = L["Koreanisch"],
+    zhCN = L["Chinesisch"], zhTW = L["Chinesisch"],
+}
+function UI.LangText(lc)
+    local word = type(lc) == "string" and LANG_WORD[lc]
+    return word and L["Spielsprache: %s"]:format(word) or nil
+end
+
+---------------------------------------------------------------------------
 -- The tooltip
 ---------------------------------------------------------------------------
 local function onUnitTooltip(tip)
     if tip ~= GameTooltip or type(tip.GetUnit) ~= "function" then return end
     local gearOn, profsOn = ns.Get("ui.unitGear"), ns.FOREVER and ns.Get("ui.unitProfs")
-    if not gearOn and not profsOn then return end
+    local langOn = ns.Get("ui.unitLang") and ns.VersionLang ~= nil
+    if not gearOn and not profsOn and not langOn then return end
     local _, unit = tip:GetUnit()
     unit = ns.Plain(unit)
     if type(unit) ~= "string" or type(UnitIsPlayer) ~= "function" or not ns.Plain(UnitIsPlayer(unit)) then return end
@@ -354,6 +371,12 @@ local function onUnitTooltip(tip)
     if gearOn then
         local e = UI.GearEntry(unit)
         if e then tip:AddLine(UI.Text(e), w[1], w[2], w[3]) end
+    end
+    if langOn and not (unit == "player" or (type(UnitIsUnit) == "function" and ns.Plain(UnitIsUnit(unit, "player")))) then
+        -- only another player whose Amisia said its client's language in a hello
+        local n, s = UnitName(unit)
+        local text = UI.LangText(ns.VersionLang(ns.FullName(ns.Plain(n), ns.Plain(s))))
+        if text then tip:AddLine(text, w[1], w[2], w[3]) end
     end
 end
 UI.OnUnitTooltip = onUnitTooltip

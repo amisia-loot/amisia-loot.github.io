@@ -30,6 +30,8 @@ local own = C("Kim Eisherz", "NS.VERSION")
 ---------------------------------------------------------------------------
 -- the hello after the login: once, 20 to 60 s later, only in a guild
 ---------------------------------------------------------------------------
+-- Kim plays a French client (F-209)
+C("Kim Eisherz", "STUB.locale = 'frFR'")
 for _, name in ipairs(CLIENTS) do C(name, "STUB.fire('PLAYER_LOGIN')") end
 BUS.tick(19.9)
 assert(BUS.count({ kind = "HI" }) == 0, "nothing before 20 s")
@@ -41,10 +43,10 @@ end
 assert(BUS.count({ sender = "Pug" }) == 0, "Pug is in no guild")
 local vuloHello
 for _, m in ipairs(BUS.sent) do if m.sender == "Vulo Sturmwind" and m.kind == "HI" then vuloHello = m.text end end
-assert(vuloHello == "1HI\t" .. own .. "\t1\tO\t-\trg", "the modules last (F-202): " .. vuloHello)
+assert(vuloHello == "1HI\t" .. own .. "\t1\tO\t-\trg\tdeDE", "the modules, then the client's language (F-202, F-209): " .. vuloHello)
 local kimHello
 for _, m in ipairs(BUS.sent) do if m.sender == "Kim Eisherz" and m.kind == "HI" then kimHello = m.text end end
-assert(kimHello == "1HI\t" .. own .. "\t1\t-\t-\trg", "a raider: " .. kimHello)
+assert(kimHello == "1HI\t" .. own .. "\t1\t-\t-\trg\tfrFR", "a raider: " .. kimHello)
 -- what Vulo saw: the guild, by the time seen
 local seen = C("Vulo Sturmwind", "NS.VersionSeen()")
 assert(#seen == 3, #seen)
@@ -53,6 +55,12 @@ local byName = {}
 for _, e in ipairs(seen) do byName[e.name] = e end
 assert(byName["Fraktur"].flags == "O" and byName["Kim Eisherz"].flags == "-" and byName["Lia Weide"])
 assert(C("Vulo Sturmwind", "type(AmisiaDB.sync.helloAt)") == "number")
+-- the client language of each hello (F-209): the player tooltip asks NS.VersionLang
+assert(C("Vulo Sturmwind", "NS.VersionLang('Kim Eisherz')") == "frFR", "Kim's French client")
+assert(C("Vulo Sturmwind", "NS.VersionLang('Fraktur')") == "deDE")
+assert(C("Vulo Sturmwind", "NS.VersionLang('Pug')") == nil, "no hello: unknown")
+assert(C("Vulo Sturmwind", "NS.VersionLang('Vulo Sturmwind')") == "deDE", "the own client")
+assert(C("Vulo Sturmwind", "AmisiaDB.sync.seen['Kim Eisherz'].lc") == "frFR", "kept in the seen list")
 assert(C("Vulo Sturmwind", "NS.VersionNewer()") == nil)
 -- no second hello in this session
 for _, name in ipairs(CLIENTS) do C(name, "STUB.fire('PLAYER_LOGIN')") end
@@ -209,6 +217,12 @@ C("Vulo Sturmwind", "NS.Refresh()")
 C("Kim Eisherz", "NS.CommSend('HI', { '2.0.0', '1', '-', '-' }, 'GUILD')")
 BUS.tick(0.1)
 BUS.tick(1.2)
+assert(C("Vulo Sturmwind", "NS.VersionLang('Kim Eisherz')") == nil, "an older hello without the language: unknown")
+C("Lia Weide", "NS.CommSend('HI', { '2.0.0', '1', '-', '-', 'rg', 'deutsch' }, 'GUILD')")
+BUS.tick(1.3)
+assert(C("Vulo Sturmwind", "NS.VersionLang('Lia Weide')") == nil, "not four letters: dropped")
+C("Vulo Sturmwind", "AmisiaDB.sync.seen['Fraktur'].lc = 'x<y'; NS.VersionLoaded(AmisiaDB)")
+assert(C("Vulo Sturmwind", "AmisiaDB.sync.seen['Fraktur'].lc") == nil, "a broken saved one dropped on load")
 assert(page("Vulo Sturmwind", "f.summary:GetText()"):find("Gilde: 2 gesehen", 1, true))
 -- the commands under the list
 assert(page("Vulo Sturmwind", "f.cmdTitle:GetText()") == "Befehle")

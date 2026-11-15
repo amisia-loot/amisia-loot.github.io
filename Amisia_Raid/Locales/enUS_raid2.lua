@@ -1523,6 +1523,8 @@ L["Zu lang: höchstens %d Zeichen und %d Zeilen."] = "Too long: at most %d chara
 
 -- "[Einladen]" behind "ist jetzt online" (F-197, Raid/OnlineInvite.lua)
 L["Einladen##online"] = "Invite"
+L["%s ist jetzt online."] = "%s has come online."
+L["%s ist jetzt offline."] = "%s has gone offline."
 L["Einladen kann nur der Gruppenleiter (im Raid auch Assistenten)."] = "Only the group leader can invite (in a raid assistants too)."
 L["%s ist schon in deiner Gruppe."] = "%s is already in your group."
 L["Eingeladen: %s"] = "Invited: %s"
@@ -1561,4 +1563,8 @@ L["%s (Upgrade %s)"] = "%s (upgrade %s)"
 L["Lauf-Fenster: XP, Gold, Rare"] = "Run window: XP, gold, rares"
 -- (from enUS_world.lua)
 L["Routen: Kartenlink, Position"] = "Routes: map link, position"
+-- the planner's drag (F-207)
+L["Tauschen mit %s"] = "Swap with %s"
+L["Nicht eingeteilt"] = "Not placed"
+L["Hier ablegen geht nicht"] = "Cannot drop here"
 end)

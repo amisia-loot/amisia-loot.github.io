@@ -5,7 +5,9 @@
 -- (C_PartyInfo.InviteUnit, else InviteUnit). No link for the player himself, someone already in the
 -- group or while this client is in a group it may not invite to; a secret line (the chat lockdown) stays
 -- as it is. The name in the line shows in its class colour (invites.onlineClass, on): the class from the
--- guild roster, else from the friend list. Sends nothing; nothing is saved.
+-- guild roster, else from the friend list. When Amisia's language (ui.language) is not the client's,
+-- the client's lines "ist jetzt online." and "ist jetzt offline." show in Amisia's language
+-- (OI.InLanguage), so the line and its "[Einladen]" speak one language. Sends nothing; nothing is saved.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -18,20 +20,46 @@ local COLOUR = "|cff4fb8ff"
 
 local function enabled() return ns.Get("invites.onlineLink") and true or false end
 
--- The client's line as a pattern: its "%s" (the name in the link, the name shown) captured, the
--- rest literal; nil without the global.
+-- A client format as a pattern: its "%s" captured, the rest literal; nil for none.
+local function toPattern(fmt)
+    if type(fmt) ~= "string" or fmt == "" then return nil end
+    -- literal first; then "%s" and a positional "%1$s" become captures
+    local p = fmt:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")
+    p = p:gsub("%%%%%d%%%$s", "(.-)")
+    p = p:gsub("%%%%s", "(.-)")
+    return "^" .. p .. "$"
+end
+
+-- The client's line as a pattern: its "%s" (the name in the link, the name shown) captured; nil
+-- without the global.
 local linePattern, lineFrom
 local function pattern()
     local fmt = _G.ERR_FRIEND_ONLINE_SS
-    if type(fmt) ~= "string" or fmt == "" then return nil end
-    if lineFrom ~= fmt then
-        -- literal first; then "%s" and a positional "%1$s" become captures
-        local p = fmt:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")
-        p = p:gsub("%%%%%d%%%$s", "(.-)")
-        p = p:gsub("%%%%s", "(.-)")
-        linePattern, lineFrom = "^" .. p .. "$", fmt
-    end
+    if lineFrom ~= fmt then linePattern, lineFrom = toPattern(fmt), fmt end
     return linePattern
+end
+local offPattern, offFrom
+local function offlinePattern()
+    local fmt = _G.ERR_FRIEND_OFFLINE_S
+    if offFrom ~= fmt then offPattern, offFrom = toPattern(fmt), fmt end
+    return offPattern
+end
+
+-- The client's lines "ist jetzt online." and "ist jetzt offline." in Amisia's language when it is not
+-- the client's (ui.language, D-128): the line rebuilt from Amisia's own words with the client's
+-- player link; as it is when both are one language or the line is not one of them.
+function OI.InLanguage(text)
+    if ns.LANG == ns.CLIENT_LANG or type(text) ~= "string" then return text end
+    local p = pattern()
+    local linked, shown
+    if p then linked, shown = text:match(p) end
+    if linked then
+        return L["%s ist jetzt online."]:format(("|Hplayer:%s|h[%s]|h"):format(linked, shown or linked))
+    end
+    local op = offlinePattern()
+    local name = op and text:match(op)
+    if name then return L["%s ist jetzt offline."]:format(name) end
+    return text
 end
 
 -- The name a line of the client names as coming online, or nil.
@@ -100,7 +128,13 @@ end
 -- The chat filter: the line with the link, or it as it is.
 function OI.Filter(_, _, text, ...)
     local name = OI.NameOf(text)
-    if not name then return false, text, ... end
+    if not name then
+        -- an offline line: only its language
+        local plain = ns.Plain(text)
+        if type(plain) == "string" then return false, OI.InLanguage(plain), ... end
+        return false, text, ...
+    end
+    text = OI.InLanguage(ns.Plain(text))
     if ns.Get("invites.onlineClass") then text = OI.Colour(text, name) end
     if not enabled() or not OI.CanInvite() then return false, text, ... end
     local me = ns.UnitFullName("player")

@@ -124,6 +124,58 @@ assert(slotOf("Vulo Hunt").group == 8, "moved to a free place")
 local from = slotOf("Vulo Hunt").entry
 NS._lineupDrop(from, slotOf("Bob Eisherz"))
 assert(slotOf("Bob Eisherz").group == 8, "dragged")
+-- while dragging (F-207): a gold frame on the place under the cursor, a box with the name and where
+local over
+local function hover(btn)
+    -- the stub starts every frame hidden; in the client the places are on the screen
+    if over then over.IsMouseOver = function() return false end end
+    over = btn
+    if btn then btn:Show(); btn.IsMouseOver = function() return true end end
+end
+local src = slotOf("Vulo Hunt")
+local back = src.group
+src.scripts.OnDragStart(src)
+local ghost = _G.AmisiaLineupDrag
+assert(ghost and ghost:IsShown() and ghost.strata == "TOOLTIP" and ghost.mouseEnabled == false, "the box")
+assert(has(ghost.name:GetText(), "Vulo Hunt"), ghost.name:GetText())
+assert(has(ghost.where:GetText(), "Hier ablegen geht nicht"), "nothing under the cursor")
+hover(slotOf("Bob Eisherz"))
+ghost.scripts.OnUpdate(ghost, 0.01)
+assert(ghost.where:GetText() == "Tauschen mit Bob Eisherz", ghost.where:GetText())
+local found
+for _, k in ipairs(UIParent.kids or {}) do
+    if k ~= ghost and k.strata == "TOOLTIP" and k.points and k.points.TOPLEFT and k.points.TOPLEFT.rel == over then found = k end
+end
+assert(found and found:IsShown(), "the gold frame on Bob")
+hover(src)
+ghost.scripts.OnUpdate(ghost, 0.01)
+assert(not found:IsShown() and has(ghost.where:GetText(), "Hier ablegen geht nicht"), "on itself: nothing")
+local freeG, freeSlot
+for g, box in ipairs(f.plan.groups) do
+    if g ~= back and box:IsShown() then
+        for _, s in ipairs(box.slots) do if not s.entry then freeG, freeSlot = g, s break end end
+    end
+    if freeSlot then break end
+end
+assert(freeSlot, "a free place in another group")
+local benchHead = f.benchBtn or (f.plan and f.plan.benchBtn)
+assert(benchHead, "the head Ersatz")
+hover(benchHead)
+ghost.scripts.OnUpdate(ghost, 0.01)
+assert(found:IsShown() and ghost.where:GetText() == "Ersatz", ghost.where:GetText())
+hover(freeSlot)
+ghost.scripts.OnUpdate(ghost, 0.01)
+assert(found:IsShown() and found.points.TOPLEFT.rel == freeSlot, "the frame moves to the free place")
+assert(ghost.where:GetText() == ("Gruppe %d"):format(freeG), ghost.where:GetText())
+src.scripts.OnDragStop(src)
+hover(nil)
+assert(not ghost:IsShown() and not found:IsShown(), "gone when the drag ends")
+assert(slotOf("Vulo Hunt").group == freeG, "dropped on the free place")
+-- back where it was, for what follows
+for _, s in ipairs(f.plan.groups[back].slots) do
+    if not s.entry then NS._lineupDrop(slotOf("Vulo Hunt").entry, s) break end
+end
+assert(slotOf("Vulo Hunt").group == back)
 -- right click: hold, bench
 local b = slotOf("Bob Eisherz")
 b.scripts.OnClick(b, "RightButton")

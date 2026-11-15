@@ -99,6 +99,57 @@ assert(NS.MapClearTarget())
 STUB.fire("SUPER_TRACKING_CHANGED")
 assert(not f:IsShown(), "the pin gone: hidden")
 
+-- Forever's Ctrl + click: the pin placed, not followed (the world map's own call right after); Amisia
+-- follows it a moment later, and the light comes with the client's navigation frame (2026-11-15: the
+-- light never showed for a plain map pin)
+B._reset()
+nav.frame = nil
+C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(1411, 0.4, 0.4))
+C_SuperTrack.SetSuperTrackedUserWaypoint(false)
+assert(not wp.superTracked)
+STUB.tick(0.01)
+assert(wp.superTracked, "Amisia follows the new pin")
+nav.frame = CreateFrame("Frame", nil, UIParent)
+STUB.fire("NAVIGATION_FRAME_CREATED")
+assert(B.Shown(), "the light over the plain map pin")
+-- the client's navigation frame stops all following at the screen's edge: followed again, at most
+-- every REFOLLOW seconds
+STUB.tick(T.BEACON.REFOLLOW)
+C_SuperTrack.ClearAllSuperTracked()
+assert(not wp.superTracked and not f:IsShown(), "stopped by the client")
+STUB.tick(0.01)
+assert(wp.superTracked, "followed again")
+C_SuperTrack.ClearAllSuperTracked()
+STUB.tick(0.01)
+assert(not wp.superTracked, "not again at once")
+STUB.tick(T.BEACON.REFOLLOW)
+assert(wp.superTracked, "again after the pause")
+-- the player clicks the pin to stop following it: it stays unfollowed
+C_SuperTrack.SetSuperTrackedUserWaypoint(false)
+STUB.fire("SUPER_TRACKING_CHANGED")
+STUB.tick(1)
+assert(not wp.superTracked and not f:IsShown(), "the player's choice stays")
+-- reached: the client stops following, Amisia does not follow again until a new pin
+C_SuperTrack.SetSuperTrackedUserWaypoint(true)
+STUB.fire("NAVIGATION_DESTINATION_REACHED", true)
+C_SuperTrack.ClearAllSuperTracked()
+STUB.tick(1)
+assert(not wp.superTracked, "reached: not followed again")
+C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(1411, 0.6, 0.6))
+C_SuperTrack.SetSuperTrackedUserWaypoint(false)
+STUB.tick(0.01)
+assert(wp.superTracked, "a new pin: followed")
+-- the setting off: no following
+NS.Set("map.beacon", false)
+C_SuperTrack.ClearAllSuperTracked()
+STUB.tick(1)
+assert(not wp.superTracked, "off: not followed")
+NS.Set("map.beacon", true)
+-- no pin: nothing to follow
+C_Map.ClearUserWaypoint()
+STUB.tick(1)
+assert(not wp.superTracked, "no pin: nothing followed")
+
 -- a client without navigation: nothing, no error
 local keep = C_Navigation
 C_Navigation = nil

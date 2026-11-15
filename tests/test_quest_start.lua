@@ -297,9 +297,28 @@ win().CloseButton:Click()
 -- the place
 ---------------------------------------------------------------------------
 local f = win()
+f.scripts.OnDragStart(f)
 f._point, f._x, f._y = "TOPLEFT", 120, -200
 f.scripts.OnDragStop(f)
 assert(AmisiaDB.settings.questStartWindow.point == "TOPLEFT" and AmisiaDB.settings.questStartWindow.x == 120, "the place kept")
+-- the window is protected (the secure button hangs on it): in combat a drag neither starts nor stops;
+-- one begun before the fight stops when it is over (the client blocked StopMovingOrSizing, 2026-11-15)
+assert(f:IsProtected(), "protected by its button")
+local blocked = #STUB.blocked
+STUB.combat = true
+f.scripts.OnDragStart(f)
+f.scripts.OnDragStop(f)
+assert(#STUB.blocked == blocked, "no drag in combat")
+STUB.combat = false
+f.scripts.OnDragStart(f)
+STUB.combat = true
+f._point, f._x, f._y = "TOPLEFT", 140, -220
+f.scripts.OnDragStop(f)
+assert(#STUB.blocked == blocked, "nothing protected called in combat")
+assert(AmisiaDB.settings.questStartWindow.x == 120, "not yet")
+STUB.combat = false
+STUB.fire("PLAYER_REGEN_ENABLED")
+assert(AmisiaDB.settings.questStartWindow.x == 140, "stopped and kept after the fight")
 NS.ResetPositions()
 assert(AmisiaDB.settings.questStartWindow.point == nil, "reset with the other windows")
 

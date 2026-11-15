@@ -20,6 +20,8 @@
 -- the raid, clear the groups, the night as the block to copy (the view "export").
 -- F-165 (D-95): the view "Rollen" (the link "Rollen" in the head row; Raid/LineupRoles.lua): main tanks, assistants and master looters as
 -- lists of names with their switches, the loot threshold, "Automatisch setzen"; "Rollen jetzt setzen".
+-- F-207: while a name is dragged in the planner, a gold frame marks the place under the cursor and a
+-- box beside the cursor names the player and where the drop puts them.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -314,24 +316,116 @@ end
 
 -- Every frame a drag may end on, with its target.
 local dropTargets = {}
+
+-- The drop frame under the cursor and its target, or nil.
+local function targetUnder()
+    for _, d in ipairs(dropTargets) do
+        local f = d.frame
+        if f:IsVisible() and f:IsMouseOver() then return f, d.target(f) end
+    end
+end
+
+-- While a name is dragged (F-207, tokens T.LINEUP_DRAG): the dragged button keeps the mouse, so the
+-- places do not light up by themselves. A gold frame lies on the place under the cursor, and a small
+-- box beside the cursor shows the name and where it goes ("Gruppe 3", "Tauschen mit Bob", "Ersatz",
+-- "Nicht eingeteilt"). Both are built on the first drag and hidden when it ends.
+local dragFx      -- { mark, ghost } while built
+
+-- What a drop on target does, as words; nil: nothing (the dragged name itself).
+local function whereText(target, from)
+    if not target then return nil end
+    if target.i then
+        if target.i == from then return nil end
+        local e = page and page.list and page.list[target.i]
+        return e and L["Tauschen mit %s"]:format(e.n) or nil
+    elseif target.g then
+        return L["Gruppe %d"]:format(target.g)
+    elseif target.to == "bench" then
+        return L["Ersatz"]
+    elseif target.to == "open" then
+        return L["Nicht eingeteilt"]
+    end
+end
+
+local function dragEnd()
+    if not dragFx then return end
+    dragFx.mark:Hide()
+    dragFx.ghost:Hide()
+end
+
+-- The frame on the place under the cursor and the box beside it, now.
+local function dragFollow()
+    local fx = dragFx
+    local from = page and page.drag
+    if not (page and (from or page.dragNew)) then return dragEnd() end
+    local S = T.LINEUP_DRAG
+    local x, y = GetCursorPosition()
+    local scale = UIParent:GetEffectiveScale()
+    if not scale or scale <= 0 then scale = 1 end
+    fx.ghost:ClearAllPoints()
+    fx.ghost:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", x / scale + S.OFFSET_X, y / scale + S.OFFSET_Y)
+    local frame, target = targetUnder()
+    local where = whereText(target, from)
+    if where then
+        fx.mark:ClearAllPoints()
+        fx.mark:SetAllPoints(frame)
+        fx.mark:Show()
+        fx.ghost.where:SetText(where)
+    else
+        fx.mark:Hide()
+        fx.ghost.where:SetText(GREY .. L["Hier ablegen geht nicht"] .. "|r")
+    end
+    local w = math.max(fx.ghost.name:GetStringWidth() or 0, fx.ghost.where:GetStringWidth() or 0)
+    fx.ghost:SetWidth(math.min(S.GHOST_MAX, math.max(S.GHOST_MIN, w + 2 * S.PAD)))
+end
+
+local function dragBuild()
+    if dragFx then return dragFx end
+    local S = T.LINEUP_DRAG
+    local mark = CreateFrame("Frame", nil, UIParent)
+    mark:SetFrameStrata("TOOLTIP")
+    mark:EnableMouse(false)
+    mark.fill = W.Flat(mark, T.GOLD[1], T.GOLD[2], T.GOLD[3], S.FILL_ALPHA)
+    mark.edges = W.Border(mark, T.GOLD[1], T.GOLD[2], T.GOLD[3], 1, S.EDGE)
+    mark:Hide()
+    local ghost = CreateFrame("Frame", "AmisiaLineupDrag", UIParent)
+    ghost:SetFrameStrata("TOOLTIP")
+    ghost:SetFrameLevel(mark:GetFrameLevel() + 10)
+    ghost:SetSize(S.GHOST_MIN, S.GHOST_H)
+    ghost:EnableMouse(false)
+    W.Flat(ghost, 0, 0, 0, S.SHADE)
+    W.Border(ghost, T.GOLD[1], T.GOLD[2], T.GOLD[3], 0.8)
+    ghost.name = W.Text(ghost, T.FONT.text, S.GHOST_MAX - 2 * S.PAD)
+    ghost.name:SetPoint("TOPLEFT", S.PAD, -S.PAD_Y)
+    ghost.where = W.Text(ghost, T.FONT.hint, S.GHOST_MAX - 2 * S.PAD)
+    ghost.where:SetPoint("BOTTOMLEFT", S.PAD, S.PAD_Y)
+    ghost:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate LineupDrag", function() dragFollow() end))
+    ghost:Hide()
+    dragFx = { mark = mark, ghost = ghost }
+    return dragFx
+end
+
+-- A drag starts: the name (class coloured) beside the cursor.
+local function dragStart(name, class)
+    local fx = dragBuild()
+    fx.ghost.name:SetText(classColored(name or "?", class))
+    fx.ghost:Show()
+    dragFollow()
+end
+
 local function dragStop()
+    dragEnd()
     local from, new = page and page.drag, page and page.dragNew
     if page then page.drag, page.dragNew = nil, nil end
     if not from and not new then return end
-    for _, d in ipairs(dropTargets) do
-        local f = d.frame
-        if f:IsVisible() and f:IsMouseOver() then
-            local target = d.target(f)
-            if target and not from then
-                -- a name of the player list joins the list where it is dropped
-                local why
-                from, why = ns.LineupAdd(curNight(), new.n, new.c)
-                if not from and why then ns.msg(why) end
-            end
-            if target and from and target.i ~= from then act(from, target) end
-            return
-        end
+    local _, target = targetUnder()
+    if target and not from then
+        -- a name of the player list joins the list where it is dropped
+        local why
+        from, why = ns.LineupAdd(curNight(), new.n, new.c)
+        if not from and why then ns.msg(why) end
     end
+    if target and from and target.i ~= from then act(from, target) end
 end
 ns._lineupDrop = function(from, frame)
     if page then page.drag = from end
@@ -360,7 +454,11 @@ local function wire(f, target, menuOnly)
     end)
     f:SetScript("OnDragStart", function(self)
         local t = target(self)
-        if t and t.i and page then page.drag = t.i end
+        if t and t.i and page then
+            page.drag = t.i
+            local e = page.list and page.list[t.i]
+            dragStart(e and e.n, e and e.c)
+        end
     end)
     f:SetScript("OnDragStop", dragStop)
     f:SetScript("OnEnter", function(self)
@@ -593,6 +691,7 @@ local function buildGridRow(row)
             local p = self.p
             if not p or not page then return end
             if p.i then page.drag = p.i else page.dragNew = { n = p.name, c = p.class } end
+            dragStart(p.name, p.class)
         end)
         b:SetScript("OnDragStop", dragStop)
         b:SetScript("OnEnter", gridTooltip)

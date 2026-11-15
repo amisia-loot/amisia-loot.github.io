@@ -17,6 +17,30 @@ _G.ERR_FRIEND_ONLINE_SS = "|Hplayer:%1$s|h[%2$s]|h has come online."
 assert(OI.NameOf("|Hplayer:Kim|h[Kim]|h has come online.") == "Kim", "positional")
 _G.ERR_FRIEND_ONLINE_SS = "|Hplayer:%s|h[%s]|h ist jetzt online."
 
+-- Amisia's language is not the client's (ui.language, D-128): the online and offline lines in Amisia's
+-- words, the player link kept; the same language: as they are
+do
+    local keepLang, keepClient = NS.LANG, NS.CLIENT_LANG
+    _G.ERR_FRIEND_ONLINE_SS = "|Hplayer:%s|h[%s]|h has come online."
+    _G.ERR_FRIEND_OFFLINE_S = "%s has gone offline."
+    NS.CLIENT_LANG, NS.LANG = "enUS", "deDE"
+    STUB.roster = {}
+    local _, on = OI.Filter(nil, "CHAT_MSG_SYSTEM", "|Hplayer:Uwe Umwucht:42|h[Uwe]|h has come online.")
+    assert(has(on, "|Hplayer:Uwe Umwucht:42|h[") and has(on, "Uwe]|h"), "link and shown name kept: " .. on)
+    _, on = OI.Filter(nil, "CHAT_MSG_SYSTEM", "|Hplayer:Uwe Umwucht|h[Uwe Umwucht]|h has come online.")
+    assert(has(on, "|Hplayer:Uwe Umwucht|h[") and has(on, "]|h ist jetzt online.") and has(on, "[Einladen]"), on)
+    local blockedOff, offText, x = OI.Filter(nil, "CHAT_MSG_SYSTEM", "Shen Ly has gone offline.", "x")
+    assert(blockedOff == false and offText == "Shen Ly ist jetzt offline." and x == "x", offText)
+    local _, other = OI.Filter(nil, "CHAT_MSG_SYSTEM", "Channel changed")
+    assert(other == "Channel changed", "another line as it is")
+    NS.LANG = "enUS"
+    local _, same = OI.Filter(nil, "CHAT_MSG_SYSTEM", "Shen Ly has gone offline.")
+    assert(same == "Shen Ly has gone offline.", "one language: as it is")
+    NS.LANG, NS.CLIENT_LANG = keepLang, keepClient
+    _G.ERR_FRIEND_ONLINE_SS = "|Hplayer:%s|h[%s]|h ist jetzt online."
+    _G.ERR_FRIEND_OFFLINE_S = nil
+end
+
 -- the filter adds the link (alone, out of a group)
 STUB.roster = {}
 local blocked, text, a, b = OI.Filter(nil, "CHAT_MSG_SYSTEM", line("Illnath Pala"), "x", 7)

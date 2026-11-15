@@ -1287,10 +1287,11 @@ end
 -- (type "item": the item given); PreClick and PostClick run around it, as in the client.
 STUB.blocked, STUB.secureUses = {}, {}
 local PROTECTED_METHODS = { "Show", "Hide", "SetPoint", "SetAllPoints", "ClearAllPoints", "SetSize", "SetWidth", "SetHeight",
-    "SetParent", "SetScale", "StartMoving", "SetAttribute", "EnableMouse" }
+    "SetParent", "SetScale", "StartMoving", "StopMovingOrSizing", "SetAttribute", "EnableMouse", "SetFrameStrata", "Raise" }
 local function protectFrame(fr)
     if type(fr) ~= "table" or fr == UIParent or fr.protectedGuard then return end
     fr.protectedGuard = true
+    fr.IsProtected = function() return true, false end
     for _, m in ipairs(PROTECTED_METHODS) do
         local orig = fr[m]
         if type(orig) == "function" then
@@ -1908,6 +1909,11 @@ _G.UiMapPoint = { CreateFromCoordinates = function(id, x, y, z) return { uiMapID
 _G.C_SuperTrack = {
     SetSuperTrackedUserWaypoint = function(on) STUB.waypoint.superTracked = on and true or false end,
     IsSuperTrackingUserWaypoint = function() return STUB.waypoint.superTracked end,
+    -- what Forever's own navigation frame calls when the place goes to or comes from the screen's edge
+    ClearAllSuperTracked = function()
+        STUB.waypoint.superTracked = false
+        STUB.fire("SUPER_TRACKING_CHANGED")
+    end,
 }
 -- The client's navigation (Forever): STUB.nav.frame the frame it keeps over the followed place (nil: none),
 -- valid (the place has a screen position), clamped (held at the screen's edge), distance in yards.

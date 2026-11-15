@@ -131,6 +131,12 @@ function ns.ApplyScale(v)
     if F then F:SetScale((v or ns.Get("ui.scale") or 100) / 100) end
 end
 
+-- F-208: the main window's opacity (ui.alpha, 30-100 %); the whole window, its text with it.
+function ns.ApplyAlpha(v)
+    v = tonumber(v or ns.Get("ui.alpha")) or 100
+    if F then F:SetAlpha(math.max(30, math.min(100, v)) / 100) end
+end
+
 -- The remembered group and pages stay (settings.window.tab, pages), the position and the size go.
 local applySize, applyHeight
 function ns.ResetPositions()
@@ -1087,6 +1093,9 @@ local function build()
         onDragStop = function() savePosition() end })
     restorePosition()
     ns.ApplyScale()
+    ns.ApplyAlpha()
+    -- the windows it lifted over itself go back to their own strata (F-208)
+    F:HookScript("OnHide", function() W.BackFromMain() end)
     -- the hub's dark ground inside the frame
     F.ground = F:CreateTexture(nil, "BACKGROUND", nil, 1)
     F.ground:SetPoint("TOPLEFT", M.FRAME_X, -M.FRAME_TOP)

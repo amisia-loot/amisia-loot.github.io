@@ -504,10 +504,11 @@ T.TARGETWIN = { W = 250, H = 84, COMPACT_W = 190, SHADE = 0.78, RING = 64, ARROW
 -- BEAM_W and its soft glow GLOW_W wide (GLOW_ALPHA), in COLOR and added to the world behind it; the ring at its
 -- foot RING_W x RING_H (an ellipse); BOX_GAP over the column the box BOX_H high, BOX_MIN to BOX_MAX wide (PAD
 -- left and right of the longer line, PAD_Y over the name and under the distance), on a dark ground (SHADE)
--- with a gold edge. TICK: how often the distance follows.
+-- with a gold edge. TICK: how often the distance follows. REFOLLOW: at most that often (seconds) Amisia
+-- follows the pin again after the client stopped following it.
 T.BEACON = { BEAM_H = 220, BEAM_W = 14, GLOW_W = 56, GLOW_ALPHA = 0.4, COLOR = { 1, 0.78, 0.3 },
     RING_W = 84, RING_H = 28, BOX_GAP = 6, BOX_H = 40, BOX_MIN = 80, BOX_MAX = 220, PAD = 10, PAD_Y = 5,
-    SHADE = 0.8, TICK = 0.1 }
+    SHADE = 0.8, TICK = 0.1, REFOLLOW = 0.5 }
 
 -- The window "Raid-Notiz" (F-196, Raid/RaidNoteWindow.lua, AmisiaRaidNote): W x H at first, EDGE_X from the
 -- screen's right edge; sized by the grip (GRIP square) between MIN_W x MIN_H and MAX_W x MAX_H; the line
@@ -690,6 +691,10 @@ T.EMPTY = { W = 420, H = 120, ICON = 56, ALPHA = 0.35, TITLE_GAP = 10, TEXT_GAP 
 -- the shared popup menu and the picker's panel
 T.MENU = { W = 182, ROW_W = 170, ROW_H = 20, PAD = 6, LABEL_W = 160, GROUND_X = 10, GROUND_Y = 3, ALPHA = 0.925 }
 T.LINEUP_MORE_W = 210   -- the menu "Mehr" of the page Aufstellung (F-161)
+-- dragging a name in the planner of Aufstellung (F-207): the gold frame on the place under the cursor
+-- (EDGE px, the fill FILL_ALPHA) and the box beside the cursor (name over where it goes)
+T.LINEUP_DRAG = { EDGE = 2, FILL_ALPHA = 0.18, GHOST_H = 34, GHOST_MIN = 90, GHOST_MAX = 220, PAD = 6, PAD_Y = 4,
+    SHADE = 0.85, OFFSET_X = 16, OFFSET_Y = -8 }
 T.PICKER = { ROWS = 8, ROW_H = 20, MIN_W = 180, FILTER_Y = 6, LIST_Y = 30, ARROW_ROOM = 26 }
 -- the talent calculator (Pages/Talents.lua) in the look of the game's classic three-tree talent
 -- window: three dark panels side by side, a centred head (name over points), square icons with a

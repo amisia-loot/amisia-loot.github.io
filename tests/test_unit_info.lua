@@ -260,6 +260,22 @@ NS.Set("ui.unitProfs", false)
 assert(not has(hover("player"), "|T"), "icons off")
 NS.Set("ui.unitProfs", true)
 
+-- the game language (F-209): only a player whose Amisia named it in a hello, never the own character
+AmisiaDB.sync = AmisiaDB.sync or { v = 1 }
+AmisiaDB.sync.seen = AmisiaDB.sync.seen or {}
+AmisiaDB.sync.seen[NS.FullName("Bert", "Bach")] = { v = "2.89.0", flags = "-", at = time(), lc = "frFR" }
+local LANG = EN and "Game language: French" or "Spielsprache: Französisch"
+assert(has(hover("bert"), LANG), "a player with Amisia: " .. hover("bert"))
+assert(count(hover("bert"), EN and "Game language" or "Spielsprache") == 1, "one line")
+assert(not has(hover("stranger"), EN and "Game language" or "Spielsprache"), "no hello: no line")
+assert(not has(hover("player"), EN and "Game language" or "Spielsprache"), "not for the own character")
+AmisiaDB.sync.seen[NS.FullName("Bert", "Bach")].lc = "xxYY"
+assert(not has(hover("bert"), EN and "Game language" or "Spielsprache"), "a language Amisia does not know: no line")
+AmisiaDB.sync.seen[NS.FullName("Bert", "Bach")].lc = "frFR"
+NS.Set("ui.unitLang", false)
+assert(not has(hover("bert"), EN and "Game language" or "Spielsprache"), "the setting off")
+NS.Set("ui.unitLang", true)
+
 -- the text in the client's language
 assert(has(UI.Text({ gs = 1, ilvl = 2 }), EN and " · item level " or " · Itemstufe "), "language")
 assert(has(UI.Text({ gs = 1, ilvl = 2 }), "|cffffd1001|r"), "no quality: gold")

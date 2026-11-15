@@ -4,6 +4,8 @@
 -- guild count. A newer version is pointed out once per version, and only when an officer or two
 -- members run it. The hello names the loaded modules (F-202): a member without the raid module shows
 -- as "ohne Raid", not as outdated.
+-- The hello also names the client's language (F-209, D-134: GetLocale(), e.g. "deDE"); the player
+-- tooltip shows it as "Spielsprache" (ns.VersionLang, UI/UnitInfo.lua).
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -89,9 +91,37 @@ function ns.VersionWithoutRaid(e)
     return type(e) == "table" and type(e.m) == "string" and not e.m:find("r", 1, true)
 end
 
+-- The client's language (F-209, D-134): GetLocale() as four letters ("deDE"), else "-".
+local function langOf(field)
+    if type(field) == "string" and field:match("^%l%l%u%u$") then return field end
+    return nil
+end
+local function ownLang()
+    local lc = type(GetLocale) == "function" and ns.Plain(GetLocale()) or nil
+    return langOf(lc) or "-"
+end
+
+-- The client language a player's Amisia named in its hello (the own client's for the own name), or nil.
+function ns.VersionLang(name)
+    if type(name) ~= "string" then return nil end
+    local me = ns.UnitFullName("player")
+    if me and ns.SameName(name, me) then return langOf(ownLang()) end
+    local d = type(AmisiaDB) == "table" and type(AmisiaDB.sync) == "table" and AmisiaDB.sync or nil
+    local seen = d and type(d.seen) == "table" and d.seen or nil
+    if not seen then return nil end
+    local e = seen[name]
+    if type(e) ~= "table" then
+        for n, x in pairs(seen) do
+            if type(n) == "string" and ns.SameName(n, name) and type(x) == "table" then e = x break end
+        end
+    end
+    return type(e) == "table" and langOf(e.lc) or nil
+end
+
 local function hello(chan, target, opts)
     if not versionOn() then return nil end
-    return ns.CommSend("HI", { ns.VERSION, tostring(ns.SYNC_MIN_PROTO), ownFlags(), ownKey(), ownModules() }, chan, target, opts)
+    return ns.CommSend("HI", { ns.VERSION, tostring(ns.SYNC_MIN_PROTO), ownFlags(), ownKey(), ownModules(), ownLang() },
+        chan, target, opts)
 end
 
 -- Once per session, 20 to 60 s after the login, not again after a /reload within 30 minutes.
@@ -314,7 +344,7 @@ ns.CommOn("HI", function(sender, f, chan, raw)
     ns.TrustWait(name, "member", function(ok)
         if not ok then return end
         record(name, { v = f[1], p = proto, mp = tonumber(f[2]) or 0, flags = f[3], k = f[4] ~= "-" and f[4] or nil,
-                       m = modulesOf(f[5]),
+                       m = modulesOf(f[5]), lc = langOf(f[6]),
                        where = ns.InMyGroup(name) and "raid" or "guild", at = time(),
                        o = ns.IsVerifiedOfficer(name) == true or nil })
     end)
@@ -338,6 +368,7 @@ function ns.VersionLoaded(DB)
     trim(d)
     for _, e in pairs(d.seen) do
         if e.m ~= nil and not modulesOf(e.m) then e.m = nil end
+        if e.lc ~= nil and not langOf(e.lc) then e.lc = nil end
     end
     if d.warned ~= nil and type(d.warned) ~= "string" then d.warned = nil end
     if d.helloAt ~= nil and type(d.helloAt) ~= "number" then d.helloAt = nil end

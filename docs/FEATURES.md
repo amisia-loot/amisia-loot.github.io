@@ -75,6 +75,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du in einer Gruppe bist, aber nicht Gruppenleiter (im Raid auch nicht Assistent), dann steht kein [Einladen] da; für jemanden, der schon in deiner Gruppe ist, auch nicht.
 - Prüfung: Wenn du "[Einladen] bei "ist jetzt online"" (Einstellungen, Raid, Gruppeneinladungen) ausschaltest, dann steht die Zeile wieder wie vom Spiel.
 - Prüfung: Wenn ein Gildenmitglied oder Freund online kommt, dann steht sein Name in "<Name> ist jetzt online." in seiner Klassenfarbe (Nachtrag 2026-11-14, Schalter "Name bei "ist jetzt online" in Klassenfarbe").
+- Prüfung: Wenn du Amisia auf Englisch stellst (`/amisia sprache en`, dann /reload) und jemand aus der Gilde online oder offline geht, dann steht "<Name> has come online. [Invite]" und "<Name> has gone offline." da; auf Deutsch "ist jetzt online. [Einladen]" und "ist jetzt offline." (Nachtrag 2026-11-15).
 - Notiz: DECISIONS D-127. Kein gespeicherter Schlüssel außer der Einstellung, keine Nachricht; ohne Spec (kleine Erweiterung). Der Link ist ein Addon-Link des Clients (`|Haddon:...|h`), Blizzards SetItemRef wird nicht überschrieben.
 
 ### F-195 Minimap-Symbol mit Alt frei verschieben
@@ -372,6 +373,30 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du unter Einstellungen, Raid-Aufstellung "Stichwörter zum Einladen" auf "raid, komm" setzt, "Einladen auf Flüstern" anschaltest und dir ein Gildenmitglied "komm" flüstert, dann wird es eingeladen; "inv" lädt dann nicht mehr ein.
 - Prüfung: Wenn du unter Einstellungen, Gruppeneinladungen "Einladungen von Gilde und Freunden annehmen" anschaltest und dich ein Gildenmitglied einlädt, dann bist du ohne Klick in der Gruppe, das Fenster des Spiels ist zu, und im Chat steht "Einladung von <Name> angenommen (Gilde)."; die Einladung eines Fremden fragt das Spiel wie immer.
 - Notiz: Spec docs/specs/2026-11-10-einladen-gilde.md; DECISIONS D-93. "Gilde einladen" nutzt dieselben Grenzen wie "Alle einladen": einer alle 0,5 Sekunden, Raid nach dem ersten Beitritt, 3 Einladungen pro Name und Abend, nur heute, nie im Kampf, nur als Leiter oder Assistent.
+
+### F-209 Spielsprache im Spieler-Tooltip
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn ein Gildenmitglied mit dieser Amisia-Version eingeloggt ist (ab etwa einer Minute nach seinem Login) und du mit der Maus auf es zeigst, dann steht im Tooltip "Spielsprache: Deutsch" (oder Englisch, Französisch ...).
+- Prüfung: Wenn du auf einen Spieler ohne Amisia oder auf dich selbst zeigst, dann steht keine Spielsprache da; unter Einstellungen > Oberfläche schaltet "Spielsprache im Spieler-Tooltip" die Zeile ab.
+- Notiz: DECISIONS D-134. Das Land verrät das Spiel nicht; die Sprache nur von Spielern mit Amisia (6. Feld des Hallo).
+
+### F-208 Fenster über dem Hauptfenster, Deckkraft-Regler
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du unter Einstellungen > Oberfläche "Deckkraft des Hauptfensters (%)" auf 50 ziehst, dann scheint die Spielwelt durch das Amisia-Fenster; nach /reload bleibt es so, 100 macht es wieder ganz deckend.
+- Prüfung: Wenn das Hauptfenster offen ist und du ein anderes Amisia-Fenster öffnest (z. B. Talentrechner, Raid-Kalender, Lauf-Zeiten, Questgegenstände aufräumen, Layer), dann liegt es vor dem Hauptfenster; ein Klick auf das Hauptfenster holt dieses wieder nach vorn.
+- Prüfung: Wenn du danach das Hauptfenster schließt, dann liegen Lauf-Zeiten, Raid-Notiz und Co. wieder unter den Fenstern des Spiels (z. B. Taschen, Karte), wie vorher.
+- Notiz: DECISIONS D-133. Wunsch 2026-11-15 mit Bild eines Reglers "Opacity".
+
+### F-207 Raid-Aufstellung: Ziel beim Ziehen sichtbar
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du unter Aufstellung im Planer einen Namen mit gedrückter Maustaste ziehst, dann hängt neben dem Mauszeiger ein Kästchen mit dem Namen, und der Platz unter dem Zeiger hat einen goldenen Rahmen; darunter steht, was beim Loslassen passiert ("Gruppe 3", "Tauschen mit <Name>", "Ersatz", "Nicht eingeteilt").
+- Prüfung: Wenn du den Namen über eine Stelle ziehst, wo er nicht hin kann (oder auf sich selbst), dann ist kein Rahmen da und im Kästchen steht "Hier ablegen geht nicht"; nach dem Loslassen sind Rahmen und Kästchen weg.
+- Prüfung: Wenn du mit der Spielerliste ("Spieler") einen Namen auf einen Platz ziehst, dann zeigt das Kästchen ihn genauso und er steht nach dem Loslassen dort.
+- Notiz: Wunsch 2026-11-15 mit Bild ("das ich sehen wenn ich bei raidplaner wo hinziehe"). Beim Ziehen hält der gezogene Knopf die Maus, die Plätze leuchten darum nicht von selbst auf. Keine Nachricht, kein gespeicherter Schlüssel, keine Entscheidung nötig.
 
 ### F-162 Autor-Charakter: Aufstellung und Raid-Check ohne Offiziersrang
 - Version: 2.73.1
@@ -1483,6 +1508,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du dich so drehst, dass der Ort hinter dir liegt, dann ist die Säule weg und kommt wieder, sobald er im Bild ist; mit einem Ziel von Amisia (z. B. "Ziel setzen" im Planer) steht dessen Name im Kästchen.
 - Prüfung: Wenn du unter Einstellungen > Karte und Wegpunkt "Lichtsäule an der Kartenmarkierung" ausschaltest, dann ist die Säule sofort weg; Markierung und Zielfenster bleiben.
 - Notiz: DECISIONS D-132. Ein flaches Bild auf dem Bildschirm am Navigationspunkt des Spiels, gleich groß in jeder Entfernung. Liest nur, setzt nichts.
+- Notiz: Nachtrag 2026-11-15 (Nutzer: "wieso wird mir das nicht angezeigt wenn ich kartenmarkierung mache?"): Strg + Klick setzt auf Forever die Markierung unverfolgt, und das Spiel beendet das Verfolgen am Bildschirmrand; seitdem verfolgt Amisia die Markierung selbst, solange die Säule an ist. Prüfen wie oben, ohne vorher auf die Markierung zu klicken.
 
 ### F-203 Zielfenster mit Kompass für Kartenmarkierung und Ziel
 - Version: 2.86.0

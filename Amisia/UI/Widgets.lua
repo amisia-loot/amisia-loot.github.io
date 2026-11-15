@@ -1957,10 +1957,22 @@ function W.Window(name, width, height, opts)
     F:SetMovable(true)
     F:EnableMouse(true)
     F:RegisterForDrag("LeftButton")
-    F:SetScript("OnDragStart", function(self) self:StartMoving() end)
+    -- a window holding a protected button (the quest start item's) is protected itself: in combat it
+    -- may not start or stop moving; a drag begun before the fight ends when the fight is over
+    F:SetScript("OnDragStart", function(self)
+        if W.CombatLocked(self) then return end
+        self:StartMoving()
+        self.amisiaMoving = true
+    end)
     F:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        if opts.onDragStop then opts.onDragStop(self) end
+        local function stop()
+            self.amisiaMoving = nil
+            self:StopMovingOrSizing()
+            if opts.onDragStop then opts.onDragStop(self) end
+        end
+        if not W.CombatLocked(self) then return stop() end
+        -- in combat: a drag begun before the fight ends after it; one refused in combat never moved
+        if self.amisiaMoving then W.AfterCombat(stop) end
     end)
     if opts.title then F:SetTitle(opts.title) end
     F:Hide()
@@ -1971,7 +1983,62 @@ function W.Window(name, width, height, opts)
     end
     -- Escape closes it, unless opts.escape is false (a window that stays through Escape)
     if name and UISpecialFrames and opts.escape ~= false then tinsert(UISpecialFrames, name) end
+    F.baseStrata = F:GetFrameStrata()
+    if name ~= "AmisiaFrame" then F:HookScript("OnShow", W.AboveMain) end
     return F
+end
+
+-- F-208 (D-133): a window that opens while the main window is on the screen stands over it, so it is
+-- seen at once: one below or level with the main window's strata takes that strata and comes to its
+-- top (Raise); one above stays where it is. When the main window hides, the windows it lifted go back
+-- to their own strata.
+-- Whether f is a protected frame (a secure button on it or under it) while combat locks such frames.
+function W.CombatLocked(f)
+    if not (type(InCombatLockdown) == "function" and InCombatLockdown()) then return false end
+    if not (f and type(f.IsProtected) == "function") then return false end
+    local ok, prot = pcall(f.IsProtected, f)
+    return ok and prot == true
+end
+
+-- fn once combat is over (now when it is).
+local afterCombat = {}
+function W.AfterCombat(fn)
+    if not (type(InCombatLockdown) == "function" and InCombatLockdown()) then return fn() end
+    afterCombat[#afterCombat + 1] = fn
+end
+ns.OnEvent("PLAYER_REGEN_ENABLED", function()
+    local list = afterCombat
+    afterCombat = {}
+    for _, fn in ipairs(list) do fn() end
+end)
+
+local STRATA_RANK = { BACKGROUND = 1, LOW = 2, MEDIUM = 3, HIGH = 4, DIALOG = 5, FULLSCREEN = 6,
+    FULLSCREEN_DIALOG = 7, TOOLTIP = 8 }
+local lifted = {}
+function W.AboveMain(F)
+    local main = _G.AmisiaFrame
+    if not (F and main and F ~= main and main:IsShown()) then return end
+    local ms = main:GetFrameStrata()
+    if (STRATA_RANK[F.baseStrata] or 0) > (STRATA_RANK[ms] or 0) then return end
+    if W.CombatLocked(F) then return end
+    F:SetFrameStrata(ms)
+    if F.Raise then F:Raise() end
+    lifted[F] = true
+end
+
+-- The main window hid: the lifted windows back to their own strata.
+function W.BackFromMain()
+    for F in pairs(lifted) do
+        if W.CombatLocked(F) then
+            -- a protected window keeps the main window's strata until the fight is over
+            W.AfterCombat(function()
+                if not (_G.AmisiaFrame and _G.AmisiaFrame:IsShown()) and F.baseStrata then F:SetFrameStrata(F.baseStrata) end
+            end)
+        elseif F.baseStrata then
+            F:SetFrameStrata(F.baseStrata)
+        end
+        lifted[F] = nil
+    end
 end
 
 ---------------------------------------------------------------------------

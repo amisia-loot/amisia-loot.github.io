@@ -5,9 +5,16 @@
 -- distance. It hangs at the client's navigation frame (C_Navigation.GetFrame), which the client keeps
 -- over the place in the world, and hides while that place is not on the screen
 -- (C_Navigation.HasValidScreenPosition) or the frame is held at the screen's edge
--- (C_Navigation.WasClampedToScreen). Only reads: it sets no waypoint and no super tracking. A plain
--- frame at the back (strata BACKGROUND), no mouse, no protected call; built the first time it shows.
--- The setting map.beacon (Karte, on) switches it.
+-- (C_Navigation.WasClampedToScreen). A plain frame at the back (strata BACKGROUND), no mouse, no
+-- protected call; built the first time it shows. The setting map.beacon (Karte, on) switches it.
+-- The client only has a navigation frame while it follows the pin, and Forever's world map places a pin
+-- with Ctrl + click without following it (SetSuperTrackedUserWaypoint(false)); its own navigation
+-- frame also stops all following (ClearAllSuperTracked) whenever the place goes to or comes from the
+-- screen's edge. So while map.beacon is on and a pin exists, Amisia follows it itself (B.Follow): a
+-- new pin a moment after it is placed, and again after the client's ClearAllSuperTracked (at most every
+-- T.BEACON.REFOLLOW seconds). It sets no waypoint; it leaves the pin unfollowed when the player clicks
+-- the pin to stop following it, and once the client says the place is reached
+-- (NAVIGATION_DESTINATION_REACHED) until a new pin is placed (D-132, Nachtrag 2026-11-15).
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -157,15 +164,69 @@ end
 
 function B.Shown() return f ~= nil and f:IsShown() and f:GetAlpha() > 0 end
 
-for _, e in ipairs({ "NAVIGATION_FRAME_CREATED", "NAVIGATION_FRAME_DESTROYED", "SUPER_TRACKING_CHANGED",
-    "USER_WAYPOINT_UPDATED", "PLAYER_ENTERING_WORLD" }) do
+-- Following the pin (see the head): reached = the client said the place is reached (no following
+-- until a new pin), lastFollow = when Amisia last followed it, waiting = a follow is planned.
+local reached, lastFollow, waiting = false, nil, false
+
+local function hasPin()
+    local M = _G.C_Map
+    return M and type(M.HasUserWaypoint) == "function" and ask(M.HasUserWaypoint) == true or false
+end
+
+-- Follows the client's pin when the light wants it and nothing else holds it back; true when it did.
+function B.Follow()
+    if not ns.Get("map.beacon") or reached then return false end
+    local S = _G.C_SuperTrack
+    if not (S and type(S.SetSuperTrackedUserWaypoint) == "function") then return false end
+    if not hasPin() or tracking() then return false end
+    local now = GetTime()
+    if lastFollow and now - lastFollow < T.BEACON.REFOLLOW then
+        -- just now: once more when the pause is over
+        if not waiting then
+            waiting = true
+            C_Timer.After(T.BEACON.REFOLLOW - (now - lastFollow), function()
+                waiting = false
+                if B.Follow() then B.Update() end
+            end)
+        end
+        return false
+    end
+    lastFollow = now
+    pcall(S.SetSuperTrackedUserWaypoint, true)
+    return true
+end
+
+-- A moment later: after the client's own call that placed the pin unfollowed or stopped following.
+local function followSoon()
+    C_Timer.After(0, function()
+        B.Follow()
+        B.Update()
+    end)
+end
+
+for _, e in ipairs({ "NAVIGATION_FRAME_CREATED", "NAVIGATION_FRAME_DESTROYED", "SUPER_TRACKING_CHANGED" }) do
     ns.OnEvent(e, function() B.Update() end)
+end
+ns.OnEvent("USER_WAYPOINT_UPDATED", function()
+    -- a new pin (or none): following it is allowed again
+    reached = false
+    B.Update()
+    followSoon()
+end)
+ns.OnEvent("PLAYER_ENTERING_WORLD", function()
+    B.Update()
+    followSoon()
+end)
+ns.OnEvent("NAVIGATION_DESTINATION_REACHED", function() reached = true end)
+if _G.C_SuperTrack and type(_G.C_SuperTrack.ClearAllSuperTracked) == "function" and hooksecurefunc then
+    hooksecurefunc(_G.C_SuperTrack, "ClearAllSuperTracked", function() followSoon() end)
 end
 ns.Listen("MAP_TARGET", function() if f and f:IsShown() then fill() end end)
 
 -- for the tests
 function B._reset()
     nav, acc = nil, 0
+    reached, lastFollow, waiting = false, nil, false
     if f then f:Hide() end
 end
 end)

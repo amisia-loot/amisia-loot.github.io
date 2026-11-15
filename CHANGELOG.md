@@ -5,6 +5,42 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(raid): the online and offline lines follow Amisia's language (F-197)
+
+    When Amisia's language is not the game's, "has come online" and "has gone offline" now show in
+    Amisia's language, so the line and its [Invite] link speak one language.
+
+- feat(ui): the game language of other Amisia users in the player tooltip (F-209)
+
+    The player tooltip shows "Game language: German" (or French, Spanish ...) for players whose Amisia
+    said hello in the guild or the raid. The game tells neither a player's country nor the language of
+    players without Amisia. A switch under Settings > Interface turns the line off.
+
+- fix(map): the column of light shows for a plain map pin (F-206)
+
+    A map pin set with Ctrl + click is not followed by the game, and the game stops following a pin
+    when it reaches the edge of the screen; the light needs it followed and so never showed. While the
+    light is on, Amisia now follows the map pin itself; a click on the pin on the world map still stops
+    following it.
+
+- fix(gear): no blocked action when the quest start window is dragged into a fight (F-181)
+
+    Letting go of the quest start window while a fight had begun made the game block Amisia
+    ("AmisiaQuestStart:StopMovingOrSizing()"). The window cannot move in combat; a drag begun before the
+    fight now ends when it is over.
+
+- feat(ui): windows open over the main window, and an opacity slider (F-208)
+
+    An Amisia window that opens while the main window is shown now stands in front of it instead of
+    behind it, and goes back to its own layer when the main window closes. Settings > Interface has
+    the new slider "Main window opacity (%)" (30 to 100) to let the game world show through.
+
+- feat(lineup): see where a dragged name goes (F-207)
+
+    While you drag a name in the lineup planner, a box beside the cursor shows the player and where
+    the drop puts them ("Group 3", "Swap with Bob", "Bench", "Not placed"), and the place under the
+    cursor gets a gold frame. Where a name cannot go, the box says so.
+
 ## [v2.88.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.88.0) (2026-11-15)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.87.0...v2.88.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

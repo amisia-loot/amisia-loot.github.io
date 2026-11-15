@@ -29,8 +29,9 @@ local function lastHello(sender)
     for _, m in ipairs(BUS.sent) do if m.sender == sender and m.kind == "HI" then text = m.text end end
     return text
 end
-assert(lastHello(KIM):match("\tg$"), lastHello(KIM))
-assert(lastHello(LIA):match("\trg$"), lastHello(LIA))
+-- the modules, then the client's language (F-209)
+assert(lastHello(KIM):match("\tg\t%l%l%u%u$"), lastHello(KIM))
+assert(lastHello(LIA):match("\trg\t%l%l%u%u$"), lastHello(LIA))
 local seen = C(VULO, "local out = {} for _, e in ipairs(NS.VersionSeen()) do out[e.name] = e.m or false end return out")
 assert(seen[KIM] == "g" and seen[LIA] == "rg", tostring(seen[KIM]))
 
