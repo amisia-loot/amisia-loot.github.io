@@ -1,6 +1,6 @@
 # Spec: Fenster Layer mit einem Wechsel-Knopf und Helfen an/aus
 
-Stand: 2026-11-15 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-15 · Status: freigegeben ·
 Feature: F-214
 
 ## Ziel
@@ -126,4 +126,6 @@ Das Fenster von oben nach unten (Größen, Schriften, Farben aus `T.LAYER`, rote
 
 ## Entscheidungen
 
-Noch keine.
+- 2026-11-15: alle vier Fragen: "Passt, bauen" -> Helfen AUS bis zum Ausloggen; "Layer wechseln" nimmt von selbst
+  die erste passende Antwort (ein neuer Layer zuerst); ohne Antwort öffnet erst ein zweiter Klick den Kanal; der
+  Knopf heißt "Helfen".

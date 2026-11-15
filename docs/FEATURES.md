@@ -39,6 +39,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-214 Fenster Layer: ein Knopf zum Wechseln, Helfen an und aus
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du allein in einer Gilde im Fenster Layer (`/amisia layer`) "Layer wechseln" klickst und ein Gildenmitglied in derselben Zone auf einem anderen Layer ist, dann bittet Amisia es ohne weiteren Klick um die Einladung, nimmt sie an, und nach einem angezielten NPC steht "Gewechselt: Layer C".
+- Prüfung: Wenn binnen 10 Sekunden keine Antwort kommt, dann heißt der Knopf "Im Kanal fragen", und ein Klick öffnet die Chatzeile mit "/1 inv layer".
+- Prüfung: Wenn du "Helfen: AN" klickst und ein Gildenmitglied dich danach um einen Wechsel bittet, dann passiert bei dir nichts und der Knopf zeigt "Helfen: AUS"; nach `/reload` ist er wieder AN.
+- Prüfung: Wenn du als Helfer jemanden einlädst und er beitritt, dann steht grün "Geholfen: 1 haben gefragt, 1 eingeladen, 1 gekommen."
+- Prüfung: Wenn du einen Layer kennst, dann steht unter "Layer A" grau "Kennung <Zahl> · <Zone>"; ein Klick auf eine Zeile eines anderen Layers unter "Gesehen in dieser Zone" fragt nur nach diesem.
+- Notiz: Spec `docs/specs/2026-11-15-layer-fenster.md`. Nutzer 2026-11-15 zu einem Bild eines anderen Layer-Addons: "können wir das genauso machen ... oder besser", gewählt: nur das Fenster, keine neuen Nachrichten.
+
 ### F-204 Fenster Layer zu einer kleinen Leiste einklappen
 - Version: 2.86.0
 - Status: im Spiel geprüft (2026-11-14)
