@@ -627,16 +627,16 @@ local function ownPair(s)
     return s == swap and inGroup() and not inRaid() and members() == 2 and ns.InMyGroup(s.host) and not LY.InInstance()
 end
 
-function SW.Leave(auto)
+function SW.Leave(byItself)
     if not swap or not inGroup() then return nil, L["Keine Gruppe aus einem Layer-Wechsel."] end
     if LY.InInstance() then return nil, L["Nicht in einer Instanz."] end
-    if auto and not ownPair(swap) then return nil end
+    if byItself and not ownPair(swap) then return nil end
     local api = rawget(_G, "C_PartyInfo")
     local fn = type(api) == "table" and api.LeaveParty or rawget(_G, "LeaveParty")
     if type(fn) ~= "function" then return nil, L["Das Spiel bietet Amisia kein Verlassen an."] end
     tried("leave")
     if not pcall(fn) then return nil, L["Das Spiel hat das Verlassen abgelehnt."] end
-    if auto then ns.msg(L["Gruppe nach dem Layer-Wechsel verlassen."]) end
+    if byItself then ns.msg(L["Gruppe nach dem Layer-Wechsel verlassen."]) end
     return true
 end
 
