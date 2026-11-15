@@ -151,6 +151,12 @@ local function buildAlphaSlider(anchor)
     local holder = CreateFrame("Frame", nil, F)
     holder:SetSize(A.LABEL_W + A.GAP + A.W, A.H)
     holder:SetPoint("RIGHT", anchor, "LEFT", -A.GAP_R, 0)
+    -- over the frame's art: the template's border (NineSlice) lies at level 500 over the window's own
+    -- children; the title bar's buttons sit higher, the slider with them
+    local level = F:GetFrameLevel() + 1
+    if F.NineSlice and F.NineSlice.GetFrameLevel then level = math.max(level, F.NineSlice:GetFrameLevel() + 1) end
+    if anchor and anchor.GetFrameLevel then level = math.max(level, anchor:GetFrameLevel()) end
+    holder:SetFrameLevel(level)
     holder.label = W.Text(holder, T.FONT.hint, A.LABEL_W)
     holder.label:SetPoint("LEFT", 0, 0)
     holder.label:SetJustifyH("RIGHT")

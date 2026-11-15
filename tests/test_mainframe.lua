@@ -50,6 +50,10 @@ local sl = AmisiaFrame.opacity and AmisiaFrame.opacity.slider
 assert(sl and sl:GetValue() == 100, "the slider at 100")
 local ap = AmisiaFrame.opacity.points and AmisiaFrame.opacity.points.RIGHT
 assert(ap and ap.rel == AmisiaFrame.minBtn and ap.relPoint == "LEFT", "left of the minimize button")
+-- over the frame's border art (the template's NineSlice at 500), else it is not seen (2026-11-15)
+local ns9 = AmisiaFrame.NineSlice
+assert(not ns9 or AmisiaFrame.opacity:GetFrameLevel() > ns9:GetFrameLevel(), "over the border art")
+assert(AmisiaFrame.opacity.slider:GetFrameLevel() > (ns9 and ns9:GetFrameLevel() or 0), "the slider too")
 assert(AmisiaFrame.opacity.label:GetText() == (NS.LANG == "enUS" and "Opacity" or "Deckkraft"))
 sl:SetValue(52)
 assert(NS.Get("ui.alpha") == 50 and math.abs(AmisiaFrame:GetAlpha() - 0.5) < 1e-6, "dragged to 52: 50 %")
