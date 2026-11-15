@@ -17,6 +17,12 @@
 -- öffnen"). While an own swap runs the grey line tells its stage, else the zone with a green " · Helfen"
 -- while helping is on (F-214). Folded, it stays through /reload (settings.layerWindow.mini, the bar on the
 -- window's place); hidden in instances.
+-- F-216: "Layer wechseln" also asks the zone; the grey line "Erreicht: n · gehört: m · auf anderem Layer: k"
+-- (LW.ZoneText) under the status; the button "Weiter fragen: <class>" while another click reaches new players;
+-- the grey line under the buttons names an invite pause; the bar's symbol gold while helping, grey with helping
+-- off, green while an own search runs (LW.MiniState); in an instance the bar names the place instead of
+-- vanishing; its right click menu lists the known layers to swap to and "Suche stoppen". /amisia layer swap
+-- [B|neu], gilde, stopp, helfen, kick (LW.Command).
 -- The chip: a small box "Layer B" ("Layer ?"), movable (settings.layerChip), a click opens the window;
 -- hidden in instances. A plain frame, nothing protected.
 local ADDON, ns = ...
@@ -188,6 +194,8 @@ local function build()
     F.hostInfo:SetJustifyV("TOP")
     F.helped = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD, true)
     F.helped:SetJustifyV("TOP")
+    F.zone = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD, true)
+    F.zone:SetJustifyV("TOP")
     F.status = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD, true)
     F.status:SetHeight(2 * S.LINE_H)
     F.status:SetJustifyV("TOP")
@@ -216,17 +224,32 @@ function LW.SubText(uid, zone)
     return L["Kennung %s"]:format(tostring(uid))
 end
 
--- The red button's word for SW.SwapStep's step, and whether it is enabled.
-function LW.SwapLabel(step)
+-- The red button's word for SW.SwapStep's step (with nextClass: the class another click asks), and whether it
+-- is enabled.
+function LW.SwapLabel(step, nextClass)
+    if (step == "wait" or step == "more") and nextClass then return L["Weiter fragen: %s"]:format(nextClass), true end
     if step == "wait" then return L["Warte ..."], false end
     if step == "channel" then return L["Im Kanal fragen"], true end
     return L["Layer wechseln"], step ~= "busy"
 end
 
--- The grey line under the buttons.
-function LW.HostText(on)
-    if on then return L["Helfen an: Amisia lädt Fragende ein, wie unter Einstellungen, Gilde, Layer eingestellt. Aus gilt bis zum Ausloggen."] end
-    return L["Helfen aus: Amisia antwortet niemandem und lädt niemanden ein, bis du es wieder anschaltest oder dich neu einloggst."]
+-- The grey line under the buttons: helping on or off, paused, or waiting out the invite limit (pause seconds).
+function LW.HostText(on, helping, pause)
+    if not on then return L["Helfen aus: Amisia antwortet niemandem und lädt niemanden ein, bis du es wieder anschaltest oder dich neu einloggst."] end
+    if (tonumber(pause) or 0) > 0 then
+        return L["Helfen an, Pause: sechs Einladungen in zehn Minuten, die nächste in %d Min."]:format(math.ceil(pause / 60))
+    end
+    if helping == false then return L["Helfen an, gerade pausiert (im Kampf oder in der Gruppensuche)."] end
+    return L["Helfen an: Amisia lädt Fragende ein, wie unter Einstellungen, Gilde, Layer eingestellt. Aus gilt bis zum Ausloggen."]
+end
+
+-- The grey line of the zone search, nil without one.
+function LW.ZoneText(z)
+    if not z then return nil end
+    local text = L["Erreicht: %d · gehört: %d · auf anderem Layer: %d"]:format(z.reached or 0, z.heardN or 0, z.other or 0)
+    if z.err then return text .. "\n" .. z.err end
+    if z.waiting then return L["Fragt das Spiel nach den Spielern der Zone ..."] end
+    return text
 end
 
 -- The green count of this session's helping, nil while nothing happened.
@@ -252,6 +275,7 @@ function LW.StatusText(st)
     if st.chatAll then return L["Im Kanal gefragt: eine Minute lang nimmt Amisia die nächste Einladung an."], false end
     if st.chat then return L["Im Gildenchat gefragt: eine Minute lang nimmt Amisia die Einladung eines Gildenmitglieds an."], false end
     if a and a.none and r and GetTime() - r.at <= SW.REQ_LIFE then
+        if st.zoneNext then return L["Niemand auf einem anderen Layer. Ein Klick fragt weiter: %s."]:format(st.zoneNext), false end
         if a.target then return L["Niemand aus der Gilde auf %s. Frag im Kanal."]:format(LY.Name(r.map, a.target)), false end
         return L["Keine Antwort von einem anderen Layer: frag im Kanal."], false
     end
@@ -337,14 +361,14 @@ function LW.Refresh()
     F.channelRow:Show()
     y = y - S.ASK_H - S.GAP
     local st = SW.State()
-    local label, enabled = LW.SwapLabel(st.step)
+    local label, enabled = LW.SwapLabel(st.step, st.zoneNext)
     F.swap:SetText(label)
     if enabled then F.swap:Enable() else F.swap:Disable() end
     F.host:SetText(st.hosting and L["Helfen: AN"] or L["Helfen: AUS"])
     W.Row(F, { F.swap, F.host }, S.GAP, S.PAD, y)
     y = y - T.BUTTON_H - S.GAP
     F.hostInfo:SetHeight(0)
-    F.hostInfo:SetText(LW.HostText(st.hosting))
+    F.hostInfo:SetText(LW.HostText(st.hosting, st.helping, st.pause))
     F.hostInfo:ClearAllPoints()
     F.hostInfo:SetPoint("TOPLEFT", S.PAD, y)
     local h = textHeight(F.hostInfo)
@@ -359,6 +383,17 @@ function LW.Refresh()
         F.helped:SetPoint("TOPLEFT", S.PAD, y)
         h = textHeight(F.helped)
         F.helped:SetHeight(h)
+        y = y - h - S.GAP
+    end
+    local zoneText = LW.ZoneText(st.zone)
+    F.zone:SetShown(zoneText ~= nil)
+    if zoneText then
+        F.zone:SetHeight(0)
+        F.zone:SetText(zoneText)
+        F.zone:ClearAllPoints()
+        F.zone:SetPoint("TOPLEFT", S.PAD, y)
+        h = textHeight(F.zone)
+        F.zone:SetHeight(h)
         y = y - h - S.GAP
     end
     local text, leave = LW.StatusText(st)
@@ -504,19 +539,55 @@ end
 -- The bar's right click menu.
 function LW.MiniMenu()
     local st = SW.State()
-    local label, enabled = LW.SwapLabel(st.step)
-    return {
-        { label, enabled and function() say(SW.Swap()) end or nil },
-        { st.hosting and L["Helfen ausschalten"] or L["Helfen anschalten"], function() SW.SetHosting(not SW.Hosting()) end },
-        { L["Fenster öffnen"], function() LW.Restore() end },
-    }
+    local label, enabled = LW.SwapLabel(st.step, st.zoneNext)
+    local out = { { label, enabled and function() say(SW.Swap()) end or nil } }
+    -- the other known layers of the zone, each a swap to exactly that one
+    if st.step == "ask" or st.step == "more" or st.step == "channel" then
+        for _, e in ipairs(LY.InInstance() and {} or LY.List()) do
+            if not e.current then
+                local uid = e.uid
+                out[#out + 1] = { L["Zu %s wechseln"]:format(e.name), function() say(SW.Swap(uid)) end }
+            end
+        end
+    end
+    if st.auto or st.zone or st.chat then out[#out + 1] = { L["Suche stoppen"], function() say(SW.Stop()) end } end
+    out[#out + 1] = { st.hosting and L["Helfen ausschalten"] or L["Helfen anschalten"], function() SW.SetHosting(not SW.Hosting()) end }
+    out[#out + 1] = { L["Fenster öffnen"], function() LW.Restore() end }
+    return out
+end
+
+-- The bar's symbol: "search" (green) while an own search or swap runs, "off" (grey) with helping off, else
+-- "host" (gold, the art as it is).
+function LW.MiniState(st)
+    if st.auto or st.zone or st.pending or st.swap or st.chat then return "search" end
+    if not st.hosting then return "off" end
+    return "host"
+end
+
+-- The place's name in an instance (the bar's first line there).
+local function placeName()
+    local f = rawget(_G, "GetInstanceInfo")
+    local ok, name = false, nil
+    if type(f) == "function" then ok, name = pcall(f) end
+    name = ok and ns.Plain(name) or nil
+    return type(name) == "string" and name ~= "" and name or L["Instanz"]
 end
 
 function LW.UpdateMini()
     if not mini or not mini:IsShown() then return end
+    local st = SW.State()
+    local look = LW.MiniState(st)
+    mini.state = look
+    if mini.icon.SetDesaturated then mini.icon:SetDesaturated(look == "off") end
+    if look == "search" then mini.icon:SetVertexColor(0.45, 1, 0.45) else mini.icon:SetVertexColor(1, 1, 1) end
+    if LY.InInstance() then
+        mini.name:SetText(placeName())
+        mini.sub:SetText(L["In Instanzen gibt es keine Layer."])
+        return
+    end
     local uid, _, name = LY.Current()
     mini.name:SetText(uid and name or L["Layer %s"]:format("?"))
-    mini.sub:SetText(LW.MiniSub(uid ~= nil, LY.Map(), SW.State()))
+    mini.sub:SetText(LW.MiniSub(uid ~= nil, LY.Map(), st))
 end
 
 function LW.MiniShown() return mini ~= nil and mini:IsShown() end
@@ -604,22 +675,56 @@ ns.Listen("SETTING", function(path)
 end)
 
 local function world()
-    if LY.InInstance() then
-        if F and F:IsShown() then F:Hide() end
-        if mini then mini:Hide() end
-    else
-        local st = state("layerWindow")
-        if st and st.mini and not LW.Shown() and not LW.MiniShown() then
-            buildMini()
-            mini:Show()
-            LW.UpdateMini()
-        end
+    -- in an instance the window closes; the bar stays and names the place (F-216)
+    if LY.InInstance() and F and F:IsShown() then F:Hide() end
+    local st = state("layerWindow")
+    if st and st.mini and not LW.Shown() and not LW.MiniShown() then
+        buildMini()
+        mini:Show()
     end
+    LW.UpdateMini()
     LW.UpdateChip()
 end
 ns.OnEvent("PLAYER_ENTERING_WORLD", world)
 ns.OnEvent("ZONE_CHANGED_NEW_AREA", world)
 
-ns.RegisterSlash("layer", { desc = L["Fenster Layer: dein Layer in dieser Zone, Wechsel in der Gilde und im Kanal"], forever = true,
-    run = function() LW.Toggle() end })
+-- "/amisia layer <words>": nothing toggles the window; swap [<letter>|neu], gilde, stopp, helfen, kick (and the
+-- English words swap, new, guild, stop, host). Returns what it did for the tests.
+local WORDS = { swap = "swap", wechseln = "swap", gilde = "guild", guild = "guild", stopp = "stop", stop = "stop",
+    helfen = "host", host = "host", kick = "kick" }
+function LW.Command(rest)
+    local word, arg = tostring(rest or ""):lower():match("^%s*(%S*)%s*(%S*)")
+    local what = WORDS[word or ""]
+    if not what then
+        if word ~= "" then ns.msg(L["/amisia layer: swap [B|neu], gilde, stopp, helfen, kick"]) return "help" end
+        LW.Toggle()
+        return "window"
+    end
+    if what == "swap" then
+        if arg == "neu" or arg == "new" then say(SW.Swap(nil, true)) return "swap-new" end -- l10n-ok: command words
+        if arg ~= "" then
+            for _, e in ipairs(LY.List()) do
+                if e.letter:lower() == arg then say(SW.Swap(e.uid)) return "swap-" .. e.letter end
+            end
+            ns.msg(L["Layer %s ist in dieser Zone nicht bekannt."]:format(arg:upper()))
+            return "unknown"
+        end
+        say(SW.Swap())
+        return "swap"
+    end
+    if what == "guild" then say(SW.AskChat()) return "guild" end
+    if what == "stop" then say(SW.Stop()) return "stop" end
+    if what == "host" then
+        local on = SW.SetHosting(not SW.Hosting())
+        ns.msg(on and L["Helfen ist an."] or L["Helfen ist aus, bis du dich neu einloggst."])
+        return "host"
+    end
+    local n, why = SW.Kick()
+    if not n and why then ns.msg(why) end
+    return "kick"
+end
+
+ns.RegisterSlash("layer", { desc = L["Fenster Layer: dein Layer in dieser Zone, Wechsel in Gilde, Zone und Kanal"], forever = true,
+    args = "[swap [B|neu]|gilde|stopp|helfen|kick]", -- l10n-ok: command words
+    run = function(rest) LW.Command(rest) end })
 end)

@@ -3824,3 +3824,31 @@ erst nach einem Update. Sonst ändert sich an Nachrichten und Drosseln nichts.
 **Durchgesetzt durch:** `tests/test_guild_calls.lua` (ein `EA` ohne gesuchten Spieler wird verworfen),
 `tests/test_guild_calls_page.lua` (keine Rolle zu wenig, eine reicht beim Laden, Eintippen mit Grenzen, leer und
 Escape, die Pfeile danach).
+
+## D-141 Layer: die Zone fragen wie ein Layer-Addon, Helfen ohne Frage
+
+**Datum:** 2026-11-15
+**Entscheidung:** "Layer wechseln" fragt neben der Gilde die Amisia-Nutzer der eigenen Zone (F-216, Spec
+`docs/specs/2026-11-15-layer-zone.md`; ändert D-117 und D-124 in einem Punkt): je Klick eine `/who`-Abfrage (das Spiel
+erlaubt sie nur nach einem Tastendruck), erst die Zone, dann je Klick eine Klasse; das Fenster "Wer" des Spiels hört
+diese eine Antwort nicht. An jeden Namen außerhalb der Gilde geht leise `ZQ`, jeder Amisia-Nutzer derselben Zone
+antwortet `ZA` (auch ohne zu helfen); eine helfende Antwort von einem anderen Layer geht in die Wahl von D-139, `YI`
+auch an diesen Fremden. Fremde dürfen nur `ZQ`, `ZA` und `YI` schicken, jedes Feld geprüft, 20 beantwortete `ZQ` je
+Minute, eine je Absender in 30 s; `YI` eines Fremden nur nach der eigenen helfenden `ZA`. Helfen wie dort: "Ohne Frage
+einladen" voreingestellt an (Bitten über Amisia, auch von Fremden; Chat-Bitten von Fremden fragen weiter), nur allein
+oder als Leiter einer Gruppe aus eigenen Gästen, nicht in der Gruppensuche, wahlweise nicht im Kampf; die Gruppe eines
+Wechsels "Jeder gegen jeden" (einmal; sperrt das Spiel es, nicht wieder); Helfen aus nimmt die Gäste aus der Gruppe.
+Nach dem Wechsel verlässt Amisia die Gruppe nach 5 s (voreingestellt an); hat der Host nicht bewegt (nach 15 s noch
+der alte Layer), sofort. Wer geantwortet hat, steht 7 Tage in `AmisiaDB.layerHosts` und wird zuerst gefragt; wer ohne
+Antwort blieb, 6 Stunden nicht wieder. Die Systemzeile "Kein Spieler namens ..." für so einen Namen bleibt aus dem Chat.
+**Grund:** Nutzer 2026-11-15: "layer soll genau so gehen wie das addon <ein anderes Layer-Addon> oder besser", dann
+"Passt, bauen" (alle vier Vorschläge). Dessen Projektseite beschreibt genau diesen Weg auf Forever.
+**Folge:** Amisia erreicht ohne Gilde alle Amisia-Nutzer der Zone; die Nutzer des anderen Addons nur über die
+Chat-Zeile "inv layer" (D-04: seine Nachrichten stehen nur in seinem Code). Die gespeicherten Namen bleiben lokal. Was
+der Client sperrt (`/who`, Beute), schaltet Amisia für die Sitzung ab; `/amisia selbsttest layer` zeigt es.
+**Durchgesetzt durch:** `tests/test_layer_zone.lua` (Zone ohne Gilde, Fenster "Wer" stumm, `ZQ` an alle außer sich,
+`ZA` von allen, Zähler, Wahl eines Fremden, Einladen ohne Frage, Jeder gegen jeden einmal, Verlassen nach 5 s, Liste
+der Hosts, nächste Klasse, nicht doppelt gefragt, Stopp, nicht bewegt, Gäste entfernen, nur eigene Gäste, fremde Zone,
+kaputte Felder, Flut, `YI` ohne Antwort, Offline-Zeile, Befehle, Liste beim Laden), `tests/test_layer_change.lua`
+(Voreinstellungen), `tests/test_layer.lua` (Leiste in der Instanz), `tests/test_selftest_layer.lua`,
+`tools/tests/test_contracts.py` (Nachrichten, Schlüssel).

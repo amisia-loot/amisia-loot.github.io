@@ -392,14 +392,18 @@ ns.RegisterSettings{ key = "layer", label = L["Layer"], order = 62, group = "gui
       tip = L["Diese Zeile öffnen \"Im Gildenchat fragen\" und \"Im Kanal fragen\" im Chat, du schickst sie mit Enter ab. Stell sie auf das, worauf die Layer-Addons der anderen hören."] },
     { key = "layer.channel", type = "slider", label = L["Kanal für \"Im Kanal fragen\""], default = 1, min = 1, max = 10,
       tip = L["Die Nummer des Chatkanals, in den \"Im Kanal fragen\" deine Bitte schreibt. 1 ist meist Allgemein, der Kanal deiner Zone."] },
-    { key = "layer.autoInvite", type = "toggle", label = L["Ohne Frage einladen"], default = false,
-      tip = L["Bittet dich ein Gildenmitglied, das du beantwortet hast, um eine Einladung auf deinen Layer, lädt Amisia es sofort ein. Aus: Amisia fragt dich erst. Nie in Instanzen, höchstens sechs Einladungen in zehn Minuten."] },
+    { key = "layer.autoInvite", type = "toggle", label = L["Ohne Frage einladen"], default = true,
+      tip = L["Bittet dich ein Spieler mit Amisia, den du beantwortet hast (aus der Gilde oder der Zone), um eine Einladung auf deinen Layer, lädt Amisia ihn sofort ein. Aus: Amisia fragt dich erst. Nie in Instanzen, höchstens sechs Einladungen in zehn Minuten."] },
     { key = "layer.autoAccept", type = "toggle", label = L["Einladung des Gefragten annehmen"], default = true,
       tip = L["Hast du ein Gildenmitglied um eine Einladung auf seinen Layer gebeten, nimmt Amisia genau seine Einladung an (eine Minute lang); nach \"Im Gildenchat fragen\" die Einladung eines Gildenmitglieds, nach \"Im Kanal fragen\" die nächste Einladung, egal von wem. Jede andere Einladung fragt das Spiel wie immer."] },
-    { key = "layer.autoLeave", type = "toggle", label = L["Gruppe nach dem Wechsel verlassen"], default = false,
-      tip = L["Ist der Wechsel gelungen, verlässt Amisia die Zweiergruppe mit dem Einladenden nach den eingestellten Sekunden. Nie eine Gruppe, in der du vorher warst oder in der mehr sind."] },
-    { key = "layer.leaveSeconds", type = "slider", label = L["Verlassen nach Sekunden"], default = 30, min = 5, max = 120,
+    { key = "layer.autoLeave", type = "toggle", label = L["Gruppe nach dem Wechsel verlassen"], default = true,
+      tip = L["Ist der Wechsel gelungen, verlässt Amisia die Gruppe des Einladenden nach den eingestellten Sekunden; hat er dich nicht bewegt, nach 15 Sekunden. Nie eine Gruppe, in der du vorher warst, und keinen Schlachtzug."] },
+    { key = "layer.leaveSeconds", type = "slider", label = L["Verlassen nach Sekunden"], default = 5, min = 3, max = 120,
       tip = L["So lange nach dem gelungenen Wechsel wartet Amisia, bevor es die Zweiergruppe verlässt."] },
+    { key = "layer.onlyNew", type = "toggle", label = L["Nur neue Layer"], default = false,
+      tip = L["\"Layer wechseln\" nimmt nur Antworten von Layern, die in der letzten Stunde in dieser Zone niemand gesehen hat."] },
+    { key = "layer.combatPause", type = "toggle", label = L["Helfen im Kampf pausieren"], default = false,
+      tip = L["Im Kampf beantwortet Amisia keine Layer-Fragen und lädt niemanden ein; danach geht es weiter."] },
 }}
 
 -- for the tests

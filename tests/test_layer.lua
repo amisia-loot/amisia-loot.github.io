@@ -184,7 +184,9 @@ NS.LayerChange.SetHosting(true)
 -- an instance hides both; the window will not open there
 STUB.instance = { name = "Die Todesminen", type = "party", id = 36 }
 STUB.fire("PLAYER_ENTERING_WORLD")
-assert(not F:IsShown() and not AmisiaLayerChip:IsShown() and not bar:IsShown(), "not in an instance")
+assert(not F:IsShown() and not AmisiaLayerChip:IsShown(), "no window and no chip in an instance")
+assert(bar:IsShown() and bar.name:GetText() == "Die Todesminen" and bar.sub:GetText() == "In Instanzen gibt es keine Layer.",
+    "the bar names the place (F-216): " .. tostring(bar.name:GetText()))
 NS.Dispatch("layer")
 assert(not F:IsShown() and has(STUB.messages[#STUB.messages], "nicht in Instanzen"))
 assert(LY.TooltipLine() == nil)

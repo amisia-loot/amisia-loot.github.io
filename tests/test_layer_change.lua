@@ -22,6 +22,11 @@ local function world(name, zone)
         _G.AcceptGroup = function() ACCEPTED = ACCEPTED + 1 end
         _G.StaticPopup_Hide = function(w) HIDDEN[#HIDDEN + 1] = w end]]):format(guid(zone, 1, "0A1"), guid(zone, 2, "0A2")))
 end
+-- the question first (layer.autoInvite is on by default since F-216)
+for _, n in ipairs({ A, V, K, U }) do
+    assert(C(n, "NS.Get('layer.autoLeave') == true and NS.Get('layer.leaveSeconds') == 5"), "leaving after 5 s by default")
+    C(n, "NS.Set('layer.autoInvite', false); NS.Set('layer.autoLeave', false)")
+end
 world(A, 4012)
 world(V, 3999)
 world(K, 4012)
@@ -100,7 +105,7 @@ assert(C(A, "NS.LayerChange.State().swap.changed ~= nil"), "the change is seen")
 assert(C(A, "STUB.messages[#STUB.messages]"):find("Gewechselt: Layer A", 1, true))
 -- without layer.autoLeave nothing leaves; the link does
 BUS.tick(40)
-assert(C(A, "LEFT") == 0, "no auto leave by default")
+assert(C(A, "LEFT") == 0, "no auto leave with layer.autoLeave off")
 assert(C(A, "return NS.LayerChange.Leave()") == true and C(A, "LEFT") == 1)
 assert(C(V, "LEFT") == 0, "the host changes nothing")
 
@@ -143,7 +148,7 @@ for _, n in ipairs({ A, V, K }) do C(n, "STUB.party = true; STUB.fire('GROUP_ROS
 C(A, [[STUB.targetGUID = "]] .. guid(3999, 11, "1C1") .. [["; STUB.fire("PLAYER_TARGET_CHANGED")]])
 assert(C(A, "NS.LayerChange.State().swap.changed ~= nil"))
 BUS.tick(11)
-assert(C(A, "LEFT") == 2, "three in the group: not left by itself")
+assert(C(A, "LEFT") == 3, "the host's party of three: left by itself too (F-216, a host may have several guests)")
 for _, n in ipairs({ A, V, K }) do C(n, "STUB.roster = {}; STUB.party = nil; STUB.fire('GROUP_ROSTER_UPDATE')") end
 BUS.setRaid({})
 
@@ -161,7 +166,7 @@ for _, n in ipairs({ A, V }) do C(n, "STUB.party = true; STUB.fire('GROUP_ROSTER
 BUS.tick(61)
 local text, leave = C(A, "return NS.LayerWindow.StatusText(NS.LayerChange.State())")
 assert(text == "Kein Wechsel: der Layer ist derselbe geblieben." and leave == true, tostring(text))
-assert(C(A, "LEFT") == 2, "no change: nothing left by itself")
+assert(C(A, "LEFT") == 3, "no change seen, no new read: nothing left by itself")
 
 -- the host's limit: six invites in ten minutes
 local refused = C(V, [[for i = 1, 6 do NS.LayerChange.Invite("Gast Nummer" .. string.char(64 + i)) end

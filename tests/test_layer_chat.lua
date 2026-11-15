@@ -41,7 +41,9 @@ _G.ChatFrame_OpenChat = function(text) OPENED[#OPENED + 1] = text end
 local function confirmShown() return AmisiaConfirmFrame ~= nil and AmisiaConfirmFrame:IsShown() end
 local function closeConfirm() if confirmShown() then AmisiaConfirmFrame:Hide() end end
 
--- a guild line of a member in the own zone: the question (no auto invite by default)
+-- a guild line of a member in the own zone: the question (with "Ohne Frage einladen" off; on by default since F-216)
+assert(NS.Get("layer.autoInvite") == true)
+NS.Set("layer.autoInvite", false)
 STUB.fire("CHAT_MSG_GUILD", "inv layer", "Anna Bergmann")
 STUB.tick(1)
 assert(confirmShown() and AmisiaConfirmFrame.text:GetText() == "Anna Bergmann bittet im Chat um einen Layer-Wechsel. Einladen?")

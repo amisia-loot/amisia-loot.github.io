@@ -13,7 +13,9 @@
 -- LeaveParty, which then do nothing: what counts is whether the client blocks Amisia
 -- (ADDON_ACTION_BLOCKED, ADDON_ACTION_FORBIDDEN). Nothing goes to chat or to another player; never in
 -- combat, a chat lockdown or an instance. The report goes into the self-test window and ends with the
--- verdicts in plain words and how to check a real change.
+-- verdicts in plain words and how to check a real change. F-216: the typed command is a key press, so it also
+-- asks the zone once (SW.ProbeZone): a /who of the zone, whether the client's who window stayed shut, one quiet
+-- question (ZQ) to the first name outside the guild and whether an Amisia answered ("Layer: Zone fragen").
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -37,6 +39,7 @@ LT.HISTORY = 10      -- layer changes listed at most
 LT.FLIP = 60         -- seconds: back on the layer before within this is a "back and forth"
 LT.FEW = 3           -- fewer creatures in sight say nothing about the id
 LT.INVITE_LIFE = 120 -- seconds a group invite is taken to be open after it came
+LT.ZONE_WAIT = 8     -- seconds the zone probe (F-216: /who, a quiet question, its answer) is waited for
 local STALE = 30
 local MAX_MESSAGES = 4
 local WATCH = { "CHAT_MSG_SYSTEM", "UI_ERROR_MESSAGE", "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN" }
@@ -409,6 +412,44 @@ end
 ---------------------------------------------------------------------------
 local LABELS = { invite = L["Einladen"], accept = L["Annehmen"], leave = L["Verlassen"] }
 
+local SKIPPED = { blocked = L["vom Spiel gesperrt (diese Sitzung)"], missing = L["die Funktion fehlt"], instance = L["in einer Instanz"],
+    friends = L["das Fenster Freunde ist offen"], zone = L["das Spiel nennt die Zone nicht"], error = L["Fehler beim Aufruf"] }
+
+-- The zone probe's lines (F-216) and the chat line's word.
+function LT.ZoneLines(R, p, tr)
+    K.section(R, L["Layer: Zone fragen"])
+    if not p then
+        add(R, "WERT", L["Wer-Abfrage"], L["nicht geprüft"])
+        return L["nicht geprüft"]
+    end
+    if p.skipped then
+        add(R, p.skipped == "missing" and FEHLT or "WERT", L["Wer-Abfrage"], L["übersprungen (%s)"]:format(SKIPPED[p.skipped] or p.skipped))
+        return L["übersprungen"]
+    end
+    if tr and tr.who and tr.who.blocked > 0 then
+        add(R, "FEHLER", L["Wer-Abfrage"], L["vom Spiel gesperrt: %s"]:format(show(tr.who.what)))
+        return L["gesperrt"]
+    end
+    if p.waiting or not p.count then
+        add(R, "WERT", L["Wer-Abfrage"], L["keine Liste in %d s"]:format(LT.ZONE_WAIT))
+        return L["keine Liste"]
+    end
+    add(R, "OK", L["Wer-Abfrage"], L["%d Spieler in der Zone"]:format(p.count))
+    add(R, p.frameShown and "FEHLER" or "OK", L["Fenster \"Wer\""], p.frameShown and L["ging auf"] or L["blieb zu"])
+    if not p.to then
+        add(R, "WERT", L["Leise Frage an Fremde"], L["niemand außerhalb der Gilde in der Liste"])
+        return L["erlaubt"]
+    end
+    add(R, p.sent and "OK" or "WERT", L["Leise Frage an Fremde"], p.sent and L["an %s gesendet"]:format(p.to) or L["an %s nicht gesendet"]:format(p.to))
+    if p.answer then
+        local layer = p.answer.uid > 0 and tostring(p.answer.uid) or L["unbekannt"]
+        add(R, "OK", L["Antwort"], L["%s hat Amisia (Kennung %s, hilft: %s)"]:format(p.to, layer, p.answer.helps and L["ja"] or L["nein"]))
+    else
+        add(R, "WERT", L["Antwort"], L["keine (%s hat wohl kein Amisia)"]:format(p.to))
+    end
+    return L["erlaubt"]
+end
+
 local function finishProbe(P)
     if P.finished then return end
     P.finished = true
@@ -423,6 +464,7 @@ local function finishProbe(P)
         add(R, mark, LABELS[kind], text)
         words[kind] = word
     end
+    local zoneWord = LT.ZoneLines(R, P.zone, SW.Trace())
     K.section(R, L["Layer: Ergebnis"])
     if P.plates then
         local mark, text = LT.IdVerdict(P.plates)
@@ -444,8 +486,8 @@ local function finishProbe(P)
     R = K.finish(R, L["Amisia-Layer-Prüfung %s | Client %s | %s"])
     LT.last = R
     ST.ShowText(R.text, function() LT.Start() end)
-    ns.msg(L["Layer-Prüfung fertig: Einladen %s, Annehmen %s, Verlassen %s. Der Bericht steht im Fenster."]:format(words.invite,
-        words.accept, words.leave))
+    ns.msg(L["Layer-Prüfung fertig: Einladen %s, Annehmen %s, Verlassen %s, Zone fragen %s. Der Bericht steht im Fenster."]:format(
+        words.invite, words.accept, words.leave, zoneWord))
 end
 
 local safe = K.safeWith(finishProbe)
@@ -466,12 +508,18 @@ function LT.Start()
         local ok, err = pcall(body, P)
         if not ok then add(P.R, "FEHLER", L["Abschnitt"], cut(tostring(err))) end
     end
-    ns.msg(L["Layer-Prüfung läuft (etwa %d s) ..."]:format(LT.WAIT + 2 * LT.STEP))
+    -- the typed command is a key press: the zone's /who may go now (F-216)
+    local okZ, probeZ = pcall(SW.ProbeZone)
+    P.zone = okZ and probeZ or { skipped = "error" }
+    SW.ForgetCall()   -- a block of the timed calls below is not the /who's
+    local total = LT.WAIT + 2 * LT.STEP
+    if P.zone.waiting then total = math.max(total, LT.ZONE_WAIT) end
+    ns.msg(L["Layer-Prüfung läuft (etwa %d s) ..."]:format(total))
     -- from timers: the swap's calls come from messages and events, never from a key press
     C_Timer.After(0.1, safe(P, function() step(P, "invite") end))
     C_Timer.After(0.1 + LT.WAIT, safe(P, function() step(P, "accept") end))
     C_Timer.After(0.1 + LT.WAIT + LT.STEP, safe(P, function() step(P, "leave") end))
-    C_Timer.After(0.1 + LT.WAIT + 2 * LT.STEP, function() finishProbe(P) end)
+    C_Timer.After(0.1 + total, function() finishProbe(P) end)
 end
 
 function LT.Running() return run ~= nil and not run.finished end

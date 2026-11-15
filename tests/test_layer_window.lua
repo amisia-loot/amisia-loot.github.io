@@ -22,6 +22,9 @@ local function world(name, zone)
         _G.GetChannelName = function(n) if n == 1 then return 1, "Allgemein - Wald von Elwynn" end return 0 end]]):format(
         guid(zone, 1, "0A1"), guid(zone, 2, "0A2")))
 end
+-- the question first (layer.autoInvite is on by default since F-216)
+assert(C(V, "NS.Get('layer.autoInvite')") == true)
+for _, n in ipairs({ A, V, Lk, K }) do C(n, "NS.Set('layer.autoInvite', false)") end
 world(A, 4012)
 world(V, 3999)
 world(Lk, 3998)

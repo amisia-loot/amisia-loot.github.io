@@ -35,12 +35,12 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, NV = 8, AC = 300, EA = 10, EQ = 300, TQ = 30 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, ZQ = 30, NV = 8, AC = 300, EA = 10, EQ = 300, TQ = 30 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
 -- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
 -- a feedback answer per report id; the group quest state per dungeon; a raid note question per note
-local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10, IV = 60, SQ = 5, FA = 5, QS = 3, NQ = 5, EJ = 5 }
+local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10, IV = 60, SQ = 5, FA = 5, QS = 3, NQ = 5, EJ = 5, ZA = 5 }
 local KEYED_MAX = 64        -- keyed gaps remembered per sender before the old ones are cleared
 
 -- PARTY only in an own home party (D-97: the routes and points shared with a group of five; D-110: the
@@ -547,6 +547,13 @@ local VALID = {
     YQ = function(f) return #f >= 3 and isNum(f[1], 1, 999999) and isNum(f[2], 1, 4294967295) and isHex(f[3], 4) end,
     YA = function(f) return #f >= 3 and isHex(f[1], 4) and isNum(f[2], 1, 999999) and isNum(f[3], 1, 4294967295) end,
     YI = function(f) return #f >= 3 and isHex(f[1], 4) and isNum(f[2], 1, 999999) and isNum(f[3], 1, 4294967295) end,
+    -- the zone (F-216, D-141): ZQ <request id> <zone map> <zoneUID|0> whispered to a player of the zone outside the
+    -- guild; ZA <request id> <zone map> <zoneUID|0> <1 helps|0> the answer of every Amisia user there
+    ZQ = function(f) return #f >= 3 and isHex(f[1], 4) and isNum(f[2], 1, 999999) and (f[3] == "0" or isNum(f[3], 1, 4294967295)) end,
+    ZA = function(f)
+        return #f >= 4 and isHex(f[1], 4) and isNum(f[2], 1, 999999) and (f[3] == "0" or isNum(f[3], 1, 4294967295))
+            and (f[4] == "0" or f[4] == "1")
+    end,
     -- the guild characters (Core/GuildChars.lua, F-210, D-135): AC <main> <name:itemlevel|name:->... (1 to 10
     -- characters); a field out of its bounds drops the whole message
     AC = function(f)
@@ -864,7 +871,8 @@ end
 -- key is replaced), opts.jitter (random delay of 0 to n seconds before the first try), opts.low
 -- (lowest priority: goes only while nothing else waits, ttl default 120), opts.when (a function; the
 -- entry waits while it does not return true), opts.sent (a function called once the message went),
--- opts.anyone (a whisper to a name outside group and guild: only Feedback's FB and FA, D-61).
+-- opts.anyone (a whisper to a name outside group and guild: only Feedback's FB and FA, D-61, and the layer's ZQ,
+-- ZA and YI to players of the zone, D-141).
 function ns.CommSend(kind, fields, chan, target, opts)
     if not available then return nil, L["Addon-Nachrichten sind nicht verfügbar."] end
     if kind == "BL" then return nil, L["Daten gehen über CommSendBlob."] end

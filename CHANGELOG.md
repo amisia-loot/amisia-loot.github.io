@@ -5,6 +5,17 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(layer): swap layers with every Amisia user in the zone, helping like a layer addon (F-216)
+
+    "Layer wechseln" now also asks the players of your zone outside the guild who use Amisia: each click looks up
+    the zone (then one class per further click) and asks them quietly, without chat and without opening the Who
+    window; the window counts how many were reached, heard it and stand on another layer. Helping now invites
+    requests made through Amisia without a question, sets the swap group to free for all and can pause in combat;
+    turning helping off removes your guests. After a swap Amisia leaves the group after 5 seconds, and at once if
+    the host did not move you. The bar keeps the place name in instances and its right click lists the known
+    layers; new commands: /amisia layer swap [B|neu], gilde, stopp, helfen, kick. Players of other layer addons are
+    still reached only through the chat line "inv layer".
+
 ## [v2.93.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.93.0) (2026-11-15)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.92.0...v2.93.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
