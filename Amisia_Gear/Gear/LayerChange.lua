@@ -57,7 +57,8 @@
 -- set to free for all (once, given up when the client blocks it); "Helfen" off and SW.Kick take the guests
 -- out. After a swap: leaving after layer.leaveSeconds (default on, 5 s); a host that did not move the player
 -- (a creature read 15 s or more after joining shows the old layer) makes Amisia leave and offer the swap
--- again. The server's "no player named ..." line for a name Amisia just whispered stays out of the chat.
+-- again. The server's "no player named ..." line for a name Amisia just whispered stays out of the chat
+-- (Core/Comm.lua, for every whisper of Amisia's).
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -91,7 +92,6 @@ SW.SILENT_KEEP = 6 * 3600  -- seconds a player asked without an answer is not as
 SW.ZQ_WINDOW, SW.ZQ_MAX = 60, 20   -- quiet questions answered per minute at most
 SW.STUCK_WAIT = 15      -- seconds after joining before a read of the old layer means "not moved"
 SW.NEW_AGE = 3600       -- "Nur neue Layer": a layer seen in the zone within this many seconds is not new
-SW.OFFLINE_WAIT = 60    -- seconds after a whisper in which the server's "not online" line is swallowed
 local ZONE_CHANNELS = { [1] = true, [22] = true }   -- the client's zone channels: General, LocalDefense
 local MAX_LINE_KEYS = 8
 local INVITE_WORDS = { inv = true, invite = true, einladen = true, pls = true, bitte = true }
@@ -117,7 +117,6 @@ local lootBlocked    -- the client blocked setting the loot: not tried again thi
 local lootDone       -- the swap party was set to free for all
 local silent = {}    -- asker: [lower name] = time a quiet question went without an answer yet
 local zqAt = {}      -- host: times of the quiet questions answered within ZQ_WINDOW
-local whispered = {} -- [lower name] = time of a quiet whisper (the server's "not online" line)
 local mutedFrame     -- the client's FriendsFrame while it does not hear WHO_LIST_UPDATE (one for all searches)
 local mutedAt
 
@@ -1058,10 +1057,8 @@ function SW._sendZone(z, names)
     for i = 1, math.min(#list, SW.ZONE_MAX) do
         local x = list[i]
         z.sent[x.low] = true
-        whispered[x.low] = t
         ns.CommSend("ZQ", { z.req.id, z.req.map, z.req.uid or 0 }, "WHISPER", x.name, { anyone = true, low = true,
             ttl = SW.ZQ_TTL, key = "ZQ:" .. x.low, sent = function()
-                whispered[x.low] = now()
                 if not silent[x.low] then silent[x.low] = now() end
                 z.reached = z.reached + 1
                 changed()
@@ -1113,7 +1110,6 @@ local function probeAnswer(p, names)
     map = map or LY.Map()
     if not p.to or not map then return end
     p.id = ("%04x"):format(math.random(0, 65535))
-    whispered[p.to:lower()] = now()
     ns.CommSend("ZQ", { p.id, map, uid or 0 }, "WHISPER", p.to, { anyone = true, ttl = 10,
         sent = function() p.sent = true end })
 end
@@ -1193,25 +1189,6 @@ end)
 
 -- for the tests: name counts as asked by the open search
 function SW._zoneSent(name) if zone then zone.sent[name:lower()] = true end end
-
--- The server's "no player named ..." line for a name Amisia whispered quietly a moment ago stays out of the chat.
-local function offlineLine(_, _, text)
-    text = ns.Plain(text)
-    local pattern = ns.TemplatePattern and ns.TemplatePattern(rawget(_G, "ERR_CHAT_PLAYER_NOT_FOUND_S"))
-    if type(text) ~= "string" or not pattern then return false end
-    local name = text:match(pattern)
-    name = name and ns.TemplateName and ns.TemplateName(name) or name
-    if type(name) ~= "string" then return false end
-    local low = name:lower()
-    local at = whispered[low] or whispered[(low:match("^(.-)%-[^%-]+$") or "")]
-    return at ~= nil and now() - at <= SW.OFFLINE_WAIT
-end
-SW._offlineLine = offlineLine
-do
-    local util = rawget(_G, "ChatFrameUtil")
-    local add = rawget(_G, "ChatFrame_AddMessageEventFilter") or (type(util) == "table" and util.AddMessageEventFilter) or nil
-    if type(add) == "function" then pcall(add, "CHAT_MSG_SYSTEM", offlineLine) end
-end
 
 ---------------------------------------------------------------------------
 -- "Layer wechseln" (part 8, F-214; the zone F-216)
@@ -1335,7 +1312,7 @@ function SW._reset(st)
     req, pending, swap, answered, invited, offered, chatAt = st.req, st.pending, st.swap, {}, {}, {}, st.chatAt
     chatAll, othersAt, lastCall, trace = st.chatAll, nil, nil, newTrace()
     hosting, helped, auto, question = true, { asked = 0, invited = 0, joined = 0 }, nil, nil
-    zone, whoBlocked, lootBlocked, lootDone, silent, zqAt, whispered, probe = nil, nil, nil, nil, {}, {}, {}, nil
+    zone, whoBlocked, lootBlocked, lootDone, silent, zqAt, probe = nil, nil, nil, nil, {}, {}, nil
     if mutedFrame then unmute() end
 end
 

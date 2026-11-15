@@ -607,6 +607,23 @@ end
 
 local homeRaid, inGuild = ns.HomeRaid, ns.InGuild
 
+-- Whispers to players who just went offline (2.94.1): the time of the last whisper to a name and the time
+-- the server said the name is offline (its "... ist jetzt offline." or "kein Spieler ... online" line).
+local OFFLINE_KEEP, GONE_FOR = 60, 120
+local whisperedAt, goneAt = {}, {}
+local function nameKey(name)
+    name = ns.Plain(name)
+    if type(name) ~= "string" or name == "" then return nil end
+    return (name:match("^(.-)%-[^%-]+$") or name):lower()
+end
+local function gone(target)
+    local k = nameKey(target)
+    local at = k and goneAt[k]
+    if at and GetTime() - at < GONE_FOR then return true end
+    if at then goneAt[k] = nil end
+    return false
+end
+
 -- Whether a channel can be used right now; nil and the reason otherwise. anyone: a whisper to a name
 -- outside group and guild (only the feedback to and from the author, D-61).
 local function channelOk(chan, target, anyone)
@@ -617,6 +634,7 @@ local function channelOk(chan, target, anyone)
     if chan == "WHISPER" then
         if type(target) ~= "string" or target == "" then return nil, L["Kein Empfänger."] end
         if not anyone and not knownTarget(target) then return nil, L["Der Empfänger ist weder in der Gruppe noch in der Gilde."] end
+        if gone(target) then return nil, L["Der Empfänger ist gerade offline gegangen."] end
     end
     return true
 end
@@ -702,6 +720,10 @@ local function attempt(i)
     if result == true then result = 0 end
     if result == 0 then
         stats.sent = stats.sent + 1
+        if e.chan == "WHISPER" then
+            local k = nameKey(e.target)
+            if k then whisperedAt[k] = GetTime() end
+        end
         msgTokens[e.prefix] = msgTokens[e.prefix] - 1
         byteTokens = byteTokens - cost(e)
         removeAt(i)
@@ -1174,6 +1196,60 @@ local function onMessage(prefix, text, chan, sender)
 end
 
 ns.OnEvent("CHAT_MSG_ADDON", onMessage)
+
+---------------------------------------------------------------------------
+-- A player went offline (2.94.1): the whispers to the name waiting in the queue go, new ones wait GONE_FOR
+-- seconds (a message from the name ends that), and the server's "no player named ... online" line for a
+-- name Amisia whispered within OFFLINE_KEEP stays out of the chat.
+---------------------------------------------------------------------------
+local function lineName(text, global)
+    text = ns.Plain(text)
+    local pattern = type(text) == "string" and ns.TemplatePattern(rawget(_G, global)) or nil
+    local name = pattern and text:match(pattern)
+    return name and nameKey(ns.TemplateName(name) or name) or nil
+end
+
+local function dropWhispers(k)
+    for i = #queue, 1, -1 do
+        local e = queue[i]
+        if e.chan == "WHISPER" and nameKey(e.target) == k then
+            stats.dropped = stats.dropped + 1
+            table.remove(queue, i)
+        end
+    end
+end
+
+-- Whether a system line is the server's answer to a whisper of Amisia's to a player who is offline.
+function ns.CommOfflineLine(text)
+    local k = lineName(text, "ERR_CHAT_PLAYER_NOT_FOUND_S")
+    local at = k and whisperedAt[k]
+    return at ~= nil and GetTime() - at <= OFFLINE_KEEP
+end
+
+ns.OnEvent("CHAT_MSG_SYSTEM", function(text)
+    local k = lineName(text, "ERR_FRIEND_OFFLINE_S")
+    if not k and ns.CommOfflineLine(text) then k = lineName(text, "ERR_CHAT_PLAYER_NOT_FOUND_S") end
+    if not k then return end
+    goneAt[k] = GetTime()
+    dropWhispers(k)
+end)
+-- a message from the name: it is back
+ns.OnEvent("CHAT_MSG_ADDON", function(_, _, _, sender)
+    local k = nameKey(sender)
+    if k then goneAt[k] = nil end
+end)
+
+do
+    local add = rawget(_G, "ChatFrame_AddMessageEventFilter")
+    local util = rawget(_G, "ChatFrameUtil")
+    if type(add) ~= "function" and type(util) == "table" then add = util.AddMessageEventFilter end
+    if type(add) == "function" then
+        pcall(add, "CHAT_MSG_SYSTEM", function(_, _, text)
+            local ok, ours = pcall(ns.CommOfflineLine, text)
+            return ok and ours or false
+        end)
+    end
+end
 
 ---------------------------------------------------------------------------
 -- Settings and the sync command

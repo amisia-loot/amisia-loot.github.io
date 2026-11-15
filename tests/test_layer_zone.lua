@@ -175,8 +175,8 @@ C(A, [[STUB.targetGUID = "]] .. guid(4012, 13, "1C1") .. [["; STUB.fire("PLAYER_
 assert(C(A, "return NS.LayerChange.Swap()") == true)
 C(A, everyone .. "; STUB.fire('WHO_LIST_UPDATE')")
 BUS.tick(1)
-assert(C(A, [[NS.LayerChange._offlineLine(nil, nil, "Kein Spieler namens 'Pia Offline' ist zurzeit online.")]]) == true)
-assert(C(A, [[NS.LayerChange._offlineLine(nil, nil, "Kein Spieler namens 'Otto Anders' ist zurzeit online.")]]) == false)
+assert(C(A, [[NS.CommOfflineLine("Kein Spieler namens 'Pia Offline' ist zurzeit online.")]]) == true)
+assert(C(A, [[NS.CommOfflineLine("Kein Spieler namens 'Otto Anders' ist zurzeit online.")]]) == false)
 
 -- 7. the commands
 C(A, "NS.LayerChange._reset()")
