@@ -383,7 +383,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: DECISIONS D-134. Das Land verrät das Spiel nicht; die Sprache nur von Spielern mit Amisia (6. Feld des Hallo).
 
 ### F-208 Fenster über dem Hauptfenster, Deckkraft-Regler
-- Version: 2.89.1
+- Version: 2.89.2
 - Status: gebaut
 - Prüfung: Wenn du unter Einstellungen > Oberfläche "Deckkraft des Hauptfensters (%)" auf 50 ziehst, dann scheint die Spielwelt durch das Amisia-Fenster; nach /reload bleibt es so, 100 macht es wieder ganz deckend.
 - Prüfung: Wenn das Hauptfenster offen ist und du ein anderes Amisia-Fenster öffnest (z. B. Talentrechner, Raid-Kalender, Lauf-Zeiten, Questgegenstände aufräumen, Layer), dann liegt es vor dem Hauptfenster; ein Klick auf das Hauptfenster holt dieses wieder nach vorn.
