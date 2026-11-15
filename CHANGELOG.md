@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(layer): one button to swap layers, helping on and off, the zone ID (F-214)
+
+    The Layer window has a red button "Layer wechseln": it asks the guild and, once an answer comes, asks that
+    member for the invite by itself (a layer you have not seen yet first); with no answer the next click opens the
+    channel line. A click on another layer under "Gesehen in dieser Zone" asks for exactly that layer. "Helfen: AN"
+    turns all helping of others off until you log out, and a green line counts who asked, was invited and joined.
+    Under your layer stands its zone ID; the folded bar shows the stage of a swap and opens a menu on right click.
+
 - feat(guild): the level in a column of its own on Members, more room between the columns (F-104)
 
     The Members page shows each player's level in its own column "Level" (it sorts by a click on the head),

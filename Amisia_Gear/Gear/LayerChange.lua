@@ -36,6 +36,15 @@
 -- accepted inside an instance; a second player's invite replaces the first one's that was not taken.
 -- SW.Trace(): what this session's invites, accepts and leaves did (tried, blocked by the client, joined)
 -- and how the swaps ended, for /amisia selbsttest layer (Core/SelfTestLayer.lua).
+-- Part 8 (F-214): "Helfen" (SW.Hosting/SW.SetHosting), a switch of this session over all helping: off,
+-- Amisia answers no YQ, takes no YI and no request line, asks nothing and invites nobody (an open
+-- "... Einladen?" closes); on after every login; the settings still say whom and whether with a question.
+-- SW.Helped(): this session's requests that reached the helping, invites sent, invited who joined.
+-- "Layer wechseln" (SW.Swap, SW.SwapStep): asks the guild (SW.Ask); PICK_WAIT after the first fitting
+-- answer (of the layer target when a row of the window was clicked) it asks for the invite by itself, at a
+-- layer the own client has not seen first (SW.Answers' order); without one within ANSWER_WAIT the next
+-- click opens the channel line (SW.AskChannel), outside a guild already the first. Never opens the chat
+-- by itself.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -59,6 +68,7 @@ SW.CHAT_MAX = 40        -- characters of a chat request line at most
 SW.OTHERS_GAP = 5       -- seconds between two questions or invites for players outside the guild
 SW.TRACE_WAIT = 2       -- seconds after a call in which the client's "blocked" event counts for it
 SW.JOIN_WAIT = 120      -- seconds after an invite in which the invited joining counts for it
+SW.PICK_WAIT = 2.5      -- seconds after the first fitting answer before "Layer wechseln" picks one
 local ZONE_CHANNELS = { [1] = true, [22] = true }   -- the client's zone channels: General, LocalDefense
 local MAX_LINE_KEYS = 8
 local INVITE_WORDS = { inv = true, invite = true, einladen = true, pls = true, bitte = true }
@@ -74,6 +84,10 @@ local chatAt         -- asker: time of the own "Im Gildenchat fragen" or "Im Kan
 local chatAll        -- asker: the request went to a channel, so anyone's invite counts
 local othersAt       -- host: time of the last question or invite for a player outside the guild
 local lastCall       -- { kind = "invite"|"accept"|"leave", at }: the newest call the client may block
+local hosting = true -- "Helfen" (F-214): off until the next login
+local helped = { asked = 0, invited = 0, joined = 0 }
+local auto           -- "Layer wechseln": { req, target, picking, picked, none }
+local question       -- host: { frame, fn } the open "... Einladen?"
 
 local function newTrace()
     return { invite = { tried = 0, blocked = 0, joined = 0 }, accept = { tried = 0, blocked = 0, joined = 0 },
@@ -194,14 +208,23 @@ function SW.Answers()
     return out
 end
 
+-- Whether the own character is asking for a layer change right now (a question to the guild, a request
+-- for an invite, a chat request): then it is nobody's host, or two askers would invite each other (F-214: two
+-- players pressing "Layer wechseln" together neither answer nor ask each other).
+local function asking()
+    local t = now()
+    return (chatAt ~= nil and t - chatAt <= SW.ACCEPT_WAIT) or (pending ~= nil and t - pending.at <= SW.ACCEPT_WAIT)
+        or (req ~= nil and t - req.at <= SW.ANSWER_WAIT) or swap ~= nil or (auto ~= nil and auto.picking == true)
+end
+
 -- Host: a guild member asks. Answers by whisper from another layer of the same map only.
 ns.CommOn("YQ", function(sender, f, chan)
-    if chan ~= "GUILD" or not ns.Get("layer.answer") then return end
+    if chan ~= "GUILD" or not hosting or not ns.Get("layer.answer") then return end
     local name = ns.TrustName(sender)
     if not name then return end
     local map, uid, id = tonumber(f[1]), tonumber(f[2]), f[3]
     ns.TrustWait(name, "member", function(member)
-        if not member or not ns.Get("layer.answer") then return end
+        if not member or not hosting or not ns.Get("layer.answer") or asking() then return end
         local mine, myMap = LY.Current()
         if not mine or myMap ~= map or mine == uid or not LY.Fresh() then return end
         if LY.InInstance() or not SW.CanInvite() then return end
@@ -235,6 +258,11 @@ ns.CommOn("YA", function(sender, f, chan)
         if #r.answers >= SW.MAX_ANSWERS then return end
         r.answers[#r.answers + 1] = { name = name, uid = uid, at = now() }
         LY.Heard(map, uid)
+        local a = auto
+        if a and a.req == r and not a.picking and not a.picked and not a.none and (not a.target or a.target == uid) then
+            a.picking = true
+            C_Timer.After(SW.PICK_WAIT, function() SW._pick(a) end)
+        end
         changed()
     end)
 end)
@@ -284,13 +312,14 @@ function SW.Invite(name, quiet)
     tried("invite")
     if not pcall(fn, name) then return nil, L["Das Spiel hat die Einladung abgelehnt."] end
     invited[#invited + 1] = { low = low, name = name, at = t }
+    helped.invited = helped.invited + 1
     ns.msg(L["%s eingeladen (Layer-Wechsel)."]:format(name))
     return true
 end
 
 -- Host: a guild member it answered asks for the invite.
 ns.CommOn("YI", function(sender, f, chan)
-    if chan ~= "WHISPER" then return end
+    if chan ~= "WHISPER" or not hosting then return end
     local name = ns.TrustName(sender)
     if not name then return end
     local low = name:lower()
@@ -309,24 +338,48 @@ end)
 -- player within DEDUPE (a YI and a chat line of the same member make one). quiet: no line when the
 -- invite cannot go (another addon may have invited already). setting: layer.autoInvite for the guild
 -- (the default), layer.othersAuto for players outside it.
-function SW.Offer(name, question, auto, quiet, setting)
+function SW.Offer(name, text, autoInvite, quiet, setting)
+    if not hosting or asking() then return false end
     local low, at = name:lower(), now()
     if offered[low] and at - offered[low] < SW.DEDUPE then return false end
     offered[low] = at
     for k, t in pairs(offered) do
         if at - t >= SW.DEDUPE then offered[k] = nil end
     end
-    if auto and ns.Get(setting or "layer.autoInvite") and not inCombat() then
+    helped.asked = helped.asked + 1
+    changed()
+    if autoInvite and ns.Get(setting or "layer.autoInvite") and not inCombat() then
         local ok, why = SW.Invite(name, quiet)
         if not ok and why then ns.msg(why) end
         return true
     end
-    ns.W.Confirm(L["Layer-Wechsel"], question, L["Einladen"], function()
+    local function ok()
+        question = nil
+        if not hosting then return end
         if now() - at > SW.REQ_LIFE then return ns.msg(L["Die Bitte ist älter als eine Minute."]) end
-        local ok, why = SW.Invite(name, quiet)
-        if not ok and why then ns.msg(why) end
-    end)
+        local done, why = SW.Invite(name, quiet)
+        if not done and why then ns.msg(why) end
+    end
+    question = { frame = ns.W.Confirm(L["Layer-Wechsel"], text, L["Einladen"], ok), fn = ok }
     return true
+end
+
+---------------------------------------------------------------------------
+-- "Helfen" (part 8, F-214)
+---------------------------------------------------------------------------
+function SW.Hosting() return hosting end
+function SW.Helped() return helped end
+
+-- Switches the helping; off closes an open "... Einladen?" of Amisia's.
+function SW.SetHosting(on)
+    hosting = on and true or false
+    local q = question
+    if not hosting and q then
+        question = nil
+        if q.frame and q.frame.IsShown and q.frame:IsShown() and q.frame.onOk == q.fn then q.frame:Hide() end
+    end
+    changed()
+    return hosting
 end
 
 ---------------------------------------------------------------------------
@@ -374,14 +427,6 @@ local function memberZone(name)
     return nil
 end
 
--- Whether the own character is asking for a layer change right now (a question to the guild, a request
--- for an invite, a chat request): then it is nobody's host, or two askers would invite each other.
-local function asking()
-    local t = now()
-    return (chatAt ~= nil and t - chatAt <= SW.ACCEPT_WAIT) or (pending ~= nil and t - pending.at <= SW.ACCEPT_WAIT)
-        or (req ~= nil and t - req.at <= SW.ANSWER_WAIT) or swap ~= nil
-end
-
 -- The trace: a request line was seen on chan (a channel by its base name), at most MAX_LINE_KEYS kinds.
 local function countLine(chan, base)
     local key = chan
@@ -402,6 +447,7 @@ end
 -- the guild chat needs layer.chat, one in a channel layer.others, a whisper either; a player outside the
 -- guild is only answered with layer.others.
 function SW.ChatLine(text, sender, chan, zoneChan, base)
+    if not hosting then return end
     local others = ns.Get("layer.others")
     if chan == "CHANNEL" then
         if not others then return end
@@ -419,7 +465,7 @@ function SW.ChatLine(text, sender, chan, zoneChan, base)
     local at = now()
     local function handle(member)
         -- the roster's answer may come late: an old line is nobody's request any more
-        if now() - at > SW.DEDUPE or LY.InInstance() or not SW.CanInvite() or ns.InMyGroup(name) or asking() then return end
+        if not hosting or now() - at > SW.DEDUPE or LY.InInstance() or not SW.CanInvite() or ns.InMyGroup(name) or asking() then return end
         local m = member and ns.GuildMember(name)
         if m and type(m.name) == "string" and m.name:lower() == name:lower() then
             -- the guild's way (layer.chat; in a channel layer.others let the line in): the roster's zone
@@ -482,7 +528,7 @@ function SW.AskChat()
     if inGroup() then return nil, L["Erst die Gruppe verlassen: nur wer allein ist, kann eingeladen werden."] end
     local ok, why = openChat("/g " .. (SW.ChatText(ns.Get("layer.chatText")) or "inv layer"))
     if not ok then return nil, why end
-    chatAt, chatAll, pending = now(), nil, nil
+    chatAt, chatAll, pending, auto = now(), nil, nil, nil
     changed()
     return true
 end
@@ -509,7 +555,7 @@ function SW.AskChannel()
     if not name then return nil, L["Du bist in keinem Kanal %d (Einstellungen, Layer: Kanal)."]:format(n) end
     local ok, why = openChat(("/%d %s"):format(n, SW.ChatText(ns.Get("layer.chatText")) or "inv layer"))
     if not ok then return nil, why end
-    chatAt, chatAll, pending = now(), true, nil
+    chatAt, chatAll, pending, auto = now(), true, nil, nil
     changed()
     return true
 end
@@ -631,6 +677,8 @@ ns.OnEvent("GROUP_ROSTER_UPDATE", function()
         if not x.joined and x.name and t - x.at <= SW.JOIN_WAIT and ns.InMyGroup(x.name) then
             x.joined = true
             trace.invite.joined = trace.invite.joined + 1
+            helped.joined = helped.joined + 1
+            changed()
         end
     end
     local p = pending
@@ -651,11 +699,74 @@ ns.OnEvent("GROUP_ROSTER_UPDATE", function()
     end
 end)
 
+---------------------------------------------------------------------------
+-- "Layer wechseln" (part 8, F-214)
+---------------------------------------------------------------------------
+-- What the button does now: "ask" (the guild), "wait" (asked, no answer picked yet), "channel" (no
+-- answer, or no guild: the channel line), "busy" (a request for an invite or a swap is open).
+function SW.SwapStep()
+    if swap or (pending and now() - pending.at <= SW.ACCEPT_WAIT) then return "busy" end
+    if not ns.InGuild() then return "channel" end
+    local a = auto
+    if a and req and a.req == req and now() - req.at <= SW.REQ_LIFE then
+        if a.none then return "channel" end
+        if not a.picked then return "wait" end
+    end
+    return "ask"
+end
+
+-- The pick PICK_WAIT after the first fitting answer: the invite of the first answer in SW.Answers' order
+-- (layers the own client has not seen first) of the layer a.target, else of any.
+function SW._pick(a)
+    if auto ~= a or req ~= a.req then return end
+    a.picking = nil
+    if pending or swap or inGroup() then a.picked = true return changed() end
+    for _, x in ipairs(SW.Answers()) do
+        if not a.target or x.uid == a.target then
+            a.picked = true
+            local ok, why = SW.RequestInvite(x.name)
+            if not ok and why then ns.msg(why) end
+            return changed()
+        end
+    end
+    a.none = true
+    changed()
+end
+
+-- "Layer wechseln" (target nil) or a click on a layer's row (target its zoneUID). Returns true, or nil
+-- and the reason.
+function SW.Swap(target)
+    target = tonumber(target)
+    local step = SW.SwapStep()
+    if step == "busy" then return nil, L["Ein Layer-Wechsel läuft schon."] end
+    if step == "wait" then return nil, L["Gefragt, warte auf Antworten ..."] end
+    if step == "channel" and (not target or not ns.InGuild()) then
+        auto = nil
+        return SW.AskChannel()
+    end
+    if target and LY.Current() == target then return nil, L["Du bist schon auf diesem Layer."] end
+    local ok, why = SW.Ask()
+    if not ok then return nil, why end
+    local a = { req = req, target = target }
+    auto = a
+    C_Timer.After(SW.ANSWER_WAIT, function()
+        if auto == a and not a.picking and not a.picked then
+            a.none = true
+            changed()
+        end
+    end)
+    changed()
+    return true
+end
+
 -- What the window shows: the open question, the request, the swap.
 function SW.State()
     local open = chatAt ~= nil and now() - chatAt <= SW.ACCEPT_WAIT
+    local a = auto
+    if a and a.req ~= req then a = nil end
     return { req = req, pending = pending, swap = swap, answers = SW.Answers(),
-        chat = open or nil, chatAll = open and chatAll or nil }
+        chat = open or nil, chatAll = open and chatAll or nil, auto = a, step = SW.SwapStep(),
+        hosting = hosting, helped = helped }
 end
 
 -- for the tests and the UI scene: st = { req, pending, swap } to start from (nil: nothing open)
@@ -663,5 +774,6 @@ function SW._reset(st)
     st = st or {}
     req, pending, swap, answered, invited, offered, chatAt = st.req, st.pending, st.swap, {}, {}, {}, st.chatAt
     chatAll, othersAt, lastCall, trace = st.chatAll, nil, nil, newTrace()
+    hosting, helped, auto, question = true, { asked = 0, invited = 0, joined = 0 }, nil, nil
 end
 end)

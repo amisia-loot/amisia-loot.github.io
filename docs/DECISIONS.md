@@ -3783,3 +3783,28 @@ eine Gruppen-Notiz verschwindet beim Verlassen der Gruppe. Im Raid gilt weiter D
 außerhalb der Gilde, Schalter, gefälschte Teile, Nachzügler, `/reload` ohne Neusenden, Verlassen),
 `tests/test_dungeon_notes.lua` (Fenster mit der eigenen Dungeon-Notiz beim Betreten, nicht nach `/reload`, Schalter),
 `tests/test_raidnote.lua`, `tools/tests/test_contracts.py` (Nachrichten, Abstände, Schlüssel, Abschnitt).
+
+## D-139 Layer: ein Knopf zum Wechseln, Helfen als Schalter der Sitzung
+
+**Datum:** 2026-11-15
+**Entscheidung:** Das Fenster Layer (F-214, Spec `docs/specs/2026-11-15-layer-fenster.md`) hat statt "Gilde fragen" und
+zwei Links einen Knopf "Layer wechseln": er fragt die Gilde (YQ wie bisher) und bittet 2,5 s nach der ersten passenden
+Antwort von selbst um die Einladung (YI), einen Layer, den der eigene Client nicht gesehen hat, zuerst; ein Klick auf
+die Zeile eines anderen Layers nimmt nur dessen Antwort. Ohne Antwort in 10 s öffnet erst der nächste Klick die
+Chatzeile des Kanals, ohne Gilde schon der erste; Amisia öffnet die Chatzeile nie von selbst. "Helfen: AN/AUS" ist ein
+Schalter über alles Helfen (Antwort auf YQ, YI, Chat-Bitten, Fragen, Einladungen): AUS schaltet alles ab und schließt
+Amisias offene Frage "... Einladen?", AN schaltet nichts ein, was in den Einstellungen aus ist. Er lebt nur in der
+Sitzung (nach jedem Login AN), kein `AmisiaDB`-Schlüssel. Die Zähler "Geholfen: ..." leben ebenso nur in der Sitzung.
+Das Fenster hat damit zwei rote Knöpfe nebeneinander (Ausnahme von D-67, `raider/layer` in
+`tools/ui_red_budget.json` auf 2): beide sind gleich wichtige Handlungen, wie im Bild, das der Nutzer gewählt hat.
+**Grund:** Nutzer 2026-11-15 zu einem Bild eines anderen Layer-Addons: "können wir das genauso machen ... oder
+besser", "Nur Fenster (A)", "Passt, bauen" (AUS bis zum Ausloggen, von selbst die erste Antwort, Kanal erst nach Klick,
+das Wort "Helfen").
+**Folge:** Keine neue Nachricht, keine neue Einstellung; D-117 und D-124 gelten weiter (Grenzen der Einladungen, nur die
+Chat-Zeile zu Fremden). Wer helfen nicht will, schaltet es mit einem Klick für die Sitzung ab, ohne seine Einstellungen
+zu ändern. Wer selbst fragt (auch während der Wahl), beantwortet keine Frage und bekommt keine Bitte, damit zwei, die
+zugleich "Layer wechseln" drücken, sich nicht gegenseitig wählen; eine Bitte im Gildenchat oder Kanal beendet die
+Wahl, damit nicht zwei Wege zugleich laufen.
+**Durchgesetzt durch:** `tests/test_layer_window.lua` (zwei Fragende, Chat statt Wahl, Warten, die Wahl nach 2,5 s, nur der Layer der Zeile, kein
+Kanal von selbst, der zweite Klick, ohne Gilde, Helfen aus für YQ, YI und Flüstern, die Frage schließt sich, eine
+fremde Frage bleibt, Zähler), `tests/test_layer.lua` (Kennung, Leiste, Menü).

@@ -1,17 +1,22 @@
--- The window "Layer" (F-185, D-117, ns.LayerWindow, AmisiaLayerFrame, tokens T.LAYER) and the layer chip
--- (AmisiaLayerChip, layer.chip). The window: large the current layer ("Layer B", else "unbekannt"), grey
--- under it the zone or "Ziele oder überfahre einen NPC."; "Gesehen in dieser Zone" with a row per layer of
--- the zone ("Layer A · hier · vor 3 Min.", "Gilde" for one only the guild reported); "Layer wechseln"
--- with the red button "Gilde fragen" and the link "Im Gildenchat fragen", under them the link "Im Kanal
--- fragen" (players outside the guild, F-191), a status line, the answers ("Name · Layer C" with the link
--- "Einladung erbitten") and "Gruppe verlassen" once a swap group stands (Gear/LayerChange.lua). Movable, its
--- place in settings.layerWindow, the x closes it; never shown in an instance (it closes on entering one).
+-- The window "Layer" (F-185, D-117, F-214, ns.LayerWindow, AmisiaLayerFrame, tokens T.LAYER) and the layer
+-- chip (AmisiaLayerChip, layer.chip). The window: "Dein Layer", large the current layer ("Layer B", else
+-- "unbekannt"), grey under it "Kennung <zoneUID> · <zone>" or "Ziele oder überfahre einen NPC.";
+-- "Gesehen in dieser Zone" with a row per layer of the zone ("Layer A · hier · vor 3 Min.", "Gilde" for one
+-- only the guild reported), a row of another layer a button (SW.Swap(uid)); two rows with a symbol, "Im
+-- Gildenchat fragen" (only in a guild) and "Im Kanal fragen" (players outside the guild, F-191); the red
+-- buttons "Layer wechseln" (SW.Swap; "Warte ...", "Im Kanal fragen" by SW.SwapStep) and "Helfen: AN/AUS"
+-- (SW.SetHosting) with a grey line under them and the green count "Geholfen: ..." (SW.Helped); a status
+-- line, the answers ("Name · Layer C" with the link "Einladung erbitten") and "Gruppe verlassen" once a swap
+-- group stands (Gear/LayerChange.lua). Movable, its place in settings.layerWindow, the x closes it; never
+-- shown in an instance (it closes on entering one).
 -- Opened by /amisia layer, the minimap menu (its own entry) and its row in the side bar of the tab Gilde.
 -- The client's "-" left of the x folds it to the bar AmisiaLayerMiniBar (F-204): the window's symbol, the
 -- layer ("Layer B", "Layer ?") over a grey line (the zone, "Antworten: 2" while answers wait, "Ziele einen
 -- NPC an." while the layer is unknown); a click opens the window again with its top right corner where the
--- bar's is, the x closes the bar. Folded, it stays through /reload (settings.layerWindow.mini, the bar on
--- the window's place); hidden in instances.
+-- bar's is, the x closes the bar, a right click opens a menu ("Layer wechseln", "Helfen an/aus", "Fenster
+-- öffnen"). While an own swap runs the grey line tells its stage, else the zone with a green " · Helfen"
+-- while helping is on (F-214). Folded, it stays through /reload (settings.layerWindow.mini, the bar on the
+-- window's place); hidden in instances.
 -- The chip: a small box "Layer B" ("Layer ?"), movable (settings.layerChip), a click opens the window;
 -- hidden in instances. A plain frame, nothing protected.
 local ADDON, ns = ...
@@ -108,32 +113,81 @@ local function buildMinButton()
     return b
 end
 
+-- A row of "Gesehen in dieser Zone": a button with its text; a click on another layer's row asks for it.
+local function buildSeen()
+    local r = CreateFrame("Button", nil, F)
+    r:SetSize(S.W - 2 * S.PAD, S.ROW_H)
+    r.text = W.Text(r, T.FONT.text, S.W - 2 * S.PAD)
+    r.text:SetPoint("LEFT", 0, 0)
+    r.hl = r:CreateTexture(nil, "HIGHLIGHT")
+    r.hl:SetAllPoints()
+    r.hl:SetColorTexture(1, 1, 1, S.HOVER)
+    r:SetScript("OnClick", function(self) if self.uid then say(SW.Swap(self.uid)) end end)
+    r:SetScript("OnEnter", function(self)
+        if not self.uid or not GameTooltip then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(self.name or L["Layer"])
+        GameTooltip:AddLine(L["Klick: die Gilde fragen, wer auf %s ist, und dorthin wechseln."]:format(self.name or "?"), 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    return r
+end
+
+-- A row with a symbol, a gold title and a grey line under it; a click runs fn.
+local function buildAskRow(art, title, line, tip, fn)
+    local r = CreateFrame("Button", nil, F)
+    r:SetSize(S.W - 2 * S.PAD, S.ASK_H)
+    r.icon = r:CreateTexture(nil, "ARTWORK")
+    r.icon:SetSize(S.ASK_ICON, S.ASK_ICON)
+    r.icon:SetPoint("LEFT", 0, 0)
+    if art and art.file then r.icon:SetTexture(art.file) else r.icon:Hide() end
+    r.title = W.Text(r, T.FONT.head, S.W - 2 * S.PAD - S.ASK_TEXT_X)
+    r.title:SetPoint("TOPLEFT", S.ASK_TEXT_X, -S.ASK_TITLE_Y)
+    r.title:SetText(title)
+    r.line = W.Text(r, T.FONT.hint, S.W - 2 * S.PAD - S.ASK_TEXT_X)
+    r.line:SetPoint("TOPLEFT", r.title, "BOTTOMLEFT", 0, -S.ASK_LINE_GAP)
+    r.line:SetText(line)
+    r.hl = r:CreateTexture(nil, "HIGHLIGHT")
+    r.hl:SetAllPoints()
+    r.hl:SetColorTexture(1, 1, 1, S.HOVER)
+    r:SetScript("OnClick", function() say(fn()) end)
+    W.Tooltip(r, title, tip)
+    return r
+end
+
 local function build()
     if F then return F end
     F = W.Window("AmisiaLayerFrame", S.W, S.TOP + S.BOTTOM, { title = L["Layer"], strata = "MEDIUM",
         onDragStop = function(f) W.SaveWindowPlace(f, state("layerWindow")) end,
         -- its row in the side bar of the tab Gilde lights while it is open (D-68)
         onVisibility = function() if ns.UpdateSideTabs then ns.UpdateSideTabs() end end })
+    F.head = W.Text(F, T.FONT.head, S.W - 2 * S.PAD)
+    F.head:SetText(L["Dein Layer"])
+    F.head:SetPoint("TOPLEFT", S.PAD, -S.TOP)
     F.value = W.Text(F, T.FONT.big, S.W - 2 * S.PAD)
-    F.value:SetPoint("TOPLEFT", S.PAD, -S.TOP)
+    F.value:SetPoint("TOPLEFT", S.PAD, -(S.TOP + S.HEAD_H))
     F.sub = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD)
-    F.sub:SetPoint("TOPLEFT", S.PAD, -(S.TOP + S.VALUE_H))
+    F.sub:SetPoint("TOPLEFT", S.PAD, -(S.TOP + S.HEAD_H + S.VALUE_H))
     F.seenHead = W.Text(F, T.FONT.head, S.W - 2 * S.PAD)
     F.seenHead:SetText(L["Gesehen in dieser Zone"])
     F.seen = {}
-    for i = 1, S.ROWS do
-        F.seen[i] = W.Text(F, T.FONT.text, S.W - 2 * S.PAD)
-    end
+    for i = 1, S.ROWS do F.seen[i] = buildSeen() end
     F.more = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD)
-    F.swapHead = W.Text(F, T.FONT.head, S.W - 2 * S.PAD)
-    F.swapHead:SetText(L["Layer wechseln"])
-    F.ask = W.Button(F, L["Gilde fragen"], nil, function() say(SW.Ask()) end)
-    W.FitChip(F.ask)
-    W.Tooltip(F.ask, L["Gilde fragen"], L["Fragt die Gildenmitglieder mit Amisia, wer in dieser Zone auf einem anderen Layer ist. Nur wer allein ist, kann danach eingeladen werden."])
-    F.chat = W.Link(F, L["Im Gildenchat fragen"], function() say(SW.AskChat()) end)
-    W.Tooltip(F.chat, L["Im Gildenchat fragen"], L["Öffnet den Gildenchat mit deiner Bitte (Einstellung \"Text für Im Gildenchat fragen\"); du schickst sie mit Enter ab. So erreichst du Gildenmitglieder mit anderen Layer-Addons. Eine Minute lang nimmt Amisia dann die Einladung eines Gildenmitglieds an."])
-    F.channel = W.Link(F, L["Im Kanal fragen"], function() say(SW.AskChannel()) end)
-    W.Tooltip(F.channel, L["Im Kanal fragen"], L["Öffnet den Chatkanal aus den Einstellungen (Layer: Kanal, sonst 1, meist Allgemein) mit deiner Bitte; du schickst sie mit Enter ab. So erreichst du alle Spieler der Zone, mit und ohne Layer-Addon. Eine Minute lang nimmt Amisia dann die nächste Einladung an, egal von wem."])
+    F.guildRow = buildAskRow(T.TAB_ICONS.guild, L["Im Gildenchat fragen"], L["Der Gildenchat erreicht jeden Layer."],
+        L["Öffnet den Gildenchat mit deiner Bitte (Einstellung \"Text für Im Gildenchat fragen\"); du schickst sie mit Enter ab. So erreichst du Gildenmitglieder mit anderen Layer-Addons. Eine Minute lang nimmt Amisia dann die Einladung eines Gildenmitglieds an."],
+        function() return SW.AskChat() end)
+    F.channelRow = buildAskRow(T.NAV_ICONS.calls, L["Im Kanal fragen"], L["Erreicht alle Spieler der Zone, mit und ohne Addon."],
+        L["Öffnet den Chatkanal aus den Einstellungen (Layer: Kanal, sonst 1, meist Allgemein) mit deiner Bitte; du schickst sie mit Enter ab. So erreichst du alle Spieler der Zone, mit und ohne Layer-Addon. Eine Minute lang nimmt Amisia dann die nächste Einladung an, egal von wem."],
+        function() return SW.AskChannel() end)
+    F.swap = W.Button(F, L["Layer wechseln"], S.BTN_W, function() say(SW.Swap()) end)
+    W.Tooltip(F.swap, L["Layer wechseln"], L["Fragt die Gildenmitglieder mit Amisia, wer in dieser Zone auf einem anderen Layer ist, und bittet den ersten um die Einladung, einen Layer, den du noch nicht gesehen hast, zuerst. Antwortet niemand, öffnet der nächste Klick die Chatzeile des Kanals. Nur wer allein ist, kann eingeladen werden."])
+    F.host = W.Button(F, L["Helfen: AN"], S.BTN_W, function() SW.SetHosting(not SW.Hosting()) end)
+    W.Tooltip(F.host, L["Helfen"], L["An: Amisia beantwortet Layer-Fragen und lädt Fragende ein, wie unter Einstellungen, Gilde, Layer eingestellt. Aus: Amisia antwortet niemandem und lädt niemanden ein, bis du es wieder anschaltest oder dich neu einloggst."])
+    F.hostInfo = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD, true)
+    F.hostInfo:SetJustifyV("TOP")
+    F.helped = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD, true)
+    F.helped:SetJustifyV("TOP")
     F.status = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD, true)
     F.status:SetHeight(2 * S.LINE_H)
     F.status:SetJustifyV("TOP")
@@ -156,9 +210,34 @@ end
 ---------------------------------------------------------------------------
 -- Filling
 ---------------------------------------------------------------------------
+-- The grey line under the layer: "Kennung 105 · Un'Goro-Krater" (a long zone is cut, never the number).
+function LW.SubText(uid, zone)
+    if zone and zone ~= "" then return L["Kennung %s · %s"]:format(tostring(uid), zone) end
+    return L["Kennung %s"]:format(tostring(uid))
+end
+
+-- The red button's word for SW.SwapStep's step, and whether it is enabled.
+function LW.SwapLabel(step)
+    if step == "wait" then return L["Warte ..."], false end
+    if step == "channel" then return L["Im Kanal fragen"], true end
+    return L["Layer wechseln"], step ~= "busy"
+end
+
+-- The grey line under the buttons.
+function LW.HostText(on)
+    if on then return L["Helfen an: Amisia lädt Fragende ein, wie unter Einstellungen, Gilde, Layer eingestellt. Aus gilt bis zum Ausloggen."] end
+    return L["Helfen aus: Amisia antwortet niemandem und lädt niemanden ein, bis du es wieder anschaltest oder dich neu einloggst."]
+end
+
+-- The green count of this session's helping, nil while nothing happened.
+function LW.HelpedText(h)
+    if not h or (h.asked == 0 and h.invited == 0 and h.joined == 0) then return nil end
+    return GREEN .. L["Geholfen: %d haben gefragt, %d eingeladen, %d gekommen."]:format(h.asked, h.invited, h.joined) .. "|r"
+end
+
 -- The status line of the swap and whether the link "Gruppe verlassen" shows.
 function LW.StatusText(st)
-    local s, p, r = st.swap, st.pending, st.req
+    local s, p, r, a = st.swap, st.pending, st.req, st.auto
     if s then
         if s.changed then return GREEN .. L["Gewechselt: %s"]:format(LY.Name(s.map, s.target)) .. "|r", true end
         if s.failed then return L["Kein Wechsel: der Layer ist derselbe geblieben."], true end
@@ -172,6 +251,10 @@ function LW.StatusText(st)
     end
     if st.chatAll then return L["Im Kanal gefragt: eine Minute lang nimmt Amisia die nächste Einladung an."], false end
     if st.chat then return L["Im Gildenchat gefragt: eine Minute lang nimmt Amisia die Einladung eines Gildenmitglieds an."], false end
+    if a and a.none and r and GetTime() - r.at <= SW.REQ_LIFE then
+        if a.target then return L["Niemand aus der Gilde auf %s. Frag im Kanal."]:format(LY.Name(r.map, a.target)), false end
+        return L["Keine Antwort von einem anderen Layer: frag im Kanal."], false
+    end
     if r and GetTime() - r.at <= SW.REQ_LIFE then
         if #st.answers > 0 then return L["Antworten von anderen Layern: %d"]:format(#st.answers), false end
         if GetTime() - r.at < SW.ANSWER_WAIT then return L["Gefragt, warte auf Antworten ..."], false end
@@ -184,36 +267,48 @@ function LW.StatusText(st)
     return L["Frag die Gilde, wer auf einem anderen Layer ist."], false
 end
 
+-- The height a wrapping text takes: the client's, at least its width over the line's in LINE_H lines.
+local function textHeight(fs)
+    local h = tonumber(fs:GetStringHeight()) or 0
+    local lines = math.ceil((tonumber(fs:GetStringWidth()) or 0) / (S.W - 2 * S.PAD))
+    return math.max(S.LINE_H, math.ceil(h), lines * S.LINE_H)
+end
+
 function LW.Refresh()
     if not F or not F:IsShown() then return end
     local uid, _, name = LY.Current()
     local zone = LY.Map()
     if uid then
         F.value:SetText(name)
-        F.sub:SetText(zoneName(zone))
+        F.sub:SetText(LW.SubText(uid, zoneName(zone)))
     else
         F.value:SetText(L["unbekannt"])
         F.sub:SetText(L["Ziele oder überfahre einen NPC."])
     end
-    local y = -(S.TOP + S.VALUE_H + S.LINE_H + S.GAP)
+    local y = -(S.TOP + S.HEAD_H + S.VALUE_H + S.LINE_H + S.GAP)
     F.seenHead:ClearAllPoints()
     F.seenHead:SetPoint("TOPLEFT", S.PAD, y)
     y = y - S.HEAD_H
     local list = LY.List(zone)
-    for i, fs in ipairs(F.seen) do
+    for i, r in ipairs(F.seen) do
         local e = list[i]
         if e then
             local parts = { e.name }
             if e.current then parts[#parts + 1] = L["hier"] end
             if not e.own then parts[#parts + 1] = L["Gilde"] end
             parts[#parts + 1] = LY.Age(e.age)
-            fs:SetText((e.current and "" or GREY) .. table.concat(parts, " · ") .. (e.current and "" or "|r"))
-            fs:ClearAllPoints()
-            fs:SetPoint("TOPLEFT", S.PAD, y)
-            fs:Show()
+            r.text:SetText((e.current and "" or GREY) .. table.concat(parts, " · ") .. (e.current and "" or "|r"))
+            -- another layer's row asks for it; the own one is no button
+            -- (outside a guild nobody can be asked for one layer: no button)
+            r.uid, r.name = (not e.current and ns.InGuild()) and e.uid or nil, e.name
+            r:EnableMouse(r.uid ~= nil)
+            r:ClearAllPoints()
+            r:SetPoint("TOPLEFT", S.PAD, y)
+            r:Show()
             y = y - S.ROW_H
         else
-            fs:Hide()
+            r.uid, r.name = nil, nil
+            r:Hide()
         end
     end
     if #list == 0 then
@@ -230,17 +325,42 @@ function LW.Refresh()
         y = y - S.ROW_H
     end
     y = y - S.GAP
-    F.swapHead:ClearAllPoints()
-    F.swapHead:SetPoint("TOPLEFT", S.PAD, y)
-    y = y - S.HEAD_H
+    local guild = ns.InGuild()
+    F.guildRow:SetShown(guild and true or false)
+    if guild then
+        F.guildRow:ClearAllPoints()
+        F.guildRow:SetPoint("TOPLEFT", S.PAD, y)
+        y = y - S.ASK_H
+    end
+    F.channelRow:ClearAllPoints()
+    F.channelRow:SetPoint("TOPLEFT", S.PAD, y)
+    F.channelRow:Show()
+    y = y - S.ASK_H - S.GAP
     local st = SW.State()
-    W.Row(F, { F.ask, F.chat }, S.GAP, S.PAD, y)
-    F.chat:ClearAllPoints()
-    F.chat:SetPoint("LEFT", F.ask, "RIGHT", S.GAP, 0)
+    local label, enabled = LW.SwapLabel(st.step)
+    F.swap:SetText(label)
+    if enabled then F.swap:Enable() else F.swap:Disable() end
+    F.host:SetText(st.hosting and L["Helfen: AN"] or L["Helfen: AUS"])
+    W.Row(F, { F.swap, F.host }, S.GAP, S.PAD, y)
     y = y - T.BUTTON_H - S.GAP
-    F.channel:ClearAllPoints()
-    F.channel:SetPoint("TOPLEFT", S.PAD, y)
-    y = y - S.ROW_H
+    F.hostInfo:SetHeight(0)
+    F.hostInfo:SetText(LW.HostText(st.hosting))
+    F.hostInfo:ClearAllPoints()
+    F.hostInfo:SetPoint("TOPLEFT", S.PAD, y)
+    local h = textHeight(F.hostInfo)
+    F.hostInfo:SetHeight(h)
+    y = y - h - S.GAP
+    local helped = LW.HelpedText(st.helped)
+    F.helped:SetShown(helped ~= nil)
+    if helped then
+        F.helped:SetHeight(0)
+        F.helped:SetText(helped)
+        F.helped:ClearAllPoints()
+        F.helped:SetPoint("TOPLEFT", S.PAD, y)
+        h = textHeight(F.helped)
+        F.helped:SetHeight(h)
+        y = y - h - S.GAP
+    end
     local text, leave = LW.StatusText(st)
     F.status:SetText(text or "")
     F.status:ClearAllPoints()
@@ -314,8 +434,10 @@ local function buildMini()
         self:StopMovingOrSizing()
         W.SaveWindowPlace(self, state("layerWindow"))
     end)
-    bar:SetScript("OnClick", function(self)
+    bar:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    bar:SetScript("OnClick", function(self, button)
         if self.moved then self.moved = nil return end
+        if button == "RightButton" then return W.Menu(self, LW.MiniMenu()) end
         LW.Restore()
     end)
     bar.icon = bar:CreateTexture(nil, "ARTWORK")
@@ -342,7 +464,7 @@ local function buildMini()
         bar:Hide()
     end)
     W.Tooltip(x, L["Schließen"], L["Schließt die Leiste; /amisia layer öffnet das Fenster wieder."])
-    W.Tooltip(bar, L["Layer"], L["Klick: das Fenster Layer wieder öffnen. Ziehen: die Leiste verschieben."])
+    W.Tooltip(bar, L["Layer"], L["Klick: das Fenster Layer wieder öffnen. Rechtsklick: Layer wechseln, Helfen an oder aus. Ziehen: die Leiste verschieben."])
     bar.close = x
     local acc = 0
     bar:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate LayerMiniBar", function(_, elapsed)
@@ -357,14 +479,37 @@ local function buildMini()
     return bar
 end
 
--- The bar's grey line: answers waiting, else the zone, else how to learn the layer.
+-- The bar's grey line: the stage of an own swap while one runs, else the zone (or how to learn the layer)
+-- with a green " · Helfen" while helping is on.
 function LW.MiniSub(known, zone, st)
-    local r = st and st.req
-    if r and not st.swap and not st.pending and #st.answers > 0 and GetTime() - r.at <= SW.REQ_LIFE then
-        return GREEN .. L["Antworten: %d"]:format(#st.answers) .. "|r"
+    st = st or {}
+    local s, p, r, a = st.swap, st.pending, st.req, st.auto
+    if s then
+        if s.changed then return GREEN .. L["Gewechselt"] .. "|r" end
+        if s.failed then return L["Kein Wechsel"] end
+        if not s.unknown then return L["Einladung kam"] end
+    elseif p then
+        return p.invited and L["Einladung kam"] or L["Einladung erbeten"]
+    elseif st.chat then
+        return L["Gefragt ..."]
+    elseif r and GetTime() - r.at <= SW.REQ_LIFE and not (a and a.none) then
+        if st.answers and #st.answers > 0 then return GREEN .. L["Antworten: %d"]:format(#st.answers) .. "|r" end
+        if GetTime() - r.at < SW.ANSWER_WAIT then return L["Gefragt ..."] end
     end
-    if known then return zoneName(zone) end
-    return L["Ziele einen NPC an."]
+    local text = known and zoneName(zone) or L["Ziele einen NPC an."]
+    if st.hosting and not s then text = text .. GREEN .. " · " .. L["Helfen"] .. "|r" end
+    return text
+end
+
+-- The bar's right click menu.
+function LW.MiniMenu()
+    local st = SW.State()
+    local label, enabled = LW.SwapLabel(st.step)
+    return {
+        { label, enabled and function() say(SW.Swap()) end or nil },
+        { st.hosting and L["Helfen ausschalten"] or L["Helfen anschalten"], function() SW.SetHosting(not SW.Hosting()) end },
+        { L["Fenster öffnen"], function() LW.Restore() end },
+    }
 end
 
 function LW.UpdateMini()
