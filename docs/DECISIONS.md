@@ -786,7 +786,8 @@ Login, die übrigen Fragen nach den Vorschlägen); Prüfungen 17 bis 20 im Spiel
 (Gildenereignisse lesbar, `offsetMonths`, `OpenEvent` aus einem Timer ohne Sperre, nur
 `CALENDAR_OPEN_EVENT`, Namen mit Nachnamen, keine Antwortzeit).
 **Folge:** Amisia schreibt nie in den Kalender des Offiziers (kein Einladen, kein Status, kein Ereignis
-anlegen, ändern oder löschen). Das Eintragen des Spielers selbst in den Spielkalender (Teil H3) ist seit 2026-10-11 gebaut
+anlegen, ändern oder löschen; seit 2026-11-15 legt der Spieler mit eigenem Klick auf der Kalender-Seite einen
+Gildentermin an, D-142). Das Eintragen des Spielers selbst in den Spielkalender (Teil H3) ist seit 2026-10-11 gebaut
 (siehe oben). Kein `AT` (Raidtermin in Amisia), keine Erinnerung im Chat, die Notiz nie in einem Chat oder im Export. Die Einstellung "Alle Arten
 von Gildenereignissen zeigen" (`lineup.calendarAll`) der Spec entfällt: es zählt ohnehin jede Art. Der
 Kalender-Lesecode ist einer (`Raid/Calendar.lua`) für Aufstellung, Anmeldung und die Kalender-Prüfung.
@@ -3852,3 +3853,36 @@ der Hosts, nächste Klasse, nicht doppelt gefragt, Stopp, nicht bewegt, Gäste e
 kaputte Felder, Flut, `YI` ohne Antwort, Offline-Zeile, Befehle, Liste beim Laden), `tests/test_layer_change.lua`
 (Voreinstellungen), `tests/test_layer.lua` (Leiste in der Instanz), `tests/test_selftest_layer.lua`,
 `tools/tests/test_contracts.py` (Nachrichten, Schlüssel).
+
+## D-142 Kalender in beide Richtungen: Gildentermine aus Amisia anlegen, alle Spieltermine zeigen, Text für Discord
+
+**Datum:** 2026-11-15
+**Entscheidung:** Auf der Seite Gilde > Kalender legt "Termin anlegen ..." mit dem Klick auf "Anlegen" einen Termin im
+Spielkalender an (F-217, Spec `docs/specs/2026-11-15-kalender-termin-anlegen.md`; ändert die "Folge" von D-42 in
+diesem einen Punkt): ein Gildenereignis mit Anmeldung (jedes Gildenmitglied, wie im Spiel) oder, nur mit dem Recht des
+Spiels (`CanEditGuildEvent`), eine Gildenankündigung; Typ, bei Schlachtzug und Dungeon die Instanz des Spiels, Uhrzeit,
+Titel (31 Zeichen), Beschreibung (255, ohne Farbcodes und Links). Alle Aufrufe des Spiels im selben Klick, `AddEvent`
+zuletzt (es braucht einen Tastendruck); nie im Kampf, bei offenem Kalenderfenster des Spiels, während Amisia ein Ereignis
+liest oder schreibt oder eine Antwort aussteht, nie für einen vergangenen Tag, eine Uhrzeit, die heute schon vorbei ist, oder
+nach `GetMaxCreateDate`, nie aus einem Timer, einer Nachricht oder als zweiter Versuch. Antwort: `CALENDAR_NEW_EVENT`
+(Chatzeile "Termin im Spielkalender angelegt: ..."), ein Kalenderfehler mit dem Text des Spiels, eine Sperre des Spiels
+für Amisia (der Knopf bleibt bis /reload aus) oder nach 10 Sekunden keine Antwort; danach wird der Entwurf geschlossen.
+Das Monatsblatt zeigt zusätzlich alle Gildenereignisse, Gildenankündigungen und eigenen Termine bzw. Einladungen des
+gezeigten Monats (`GetDayEvent`), vorwärts bis zum letzten Tag, den das Spiel zum Anlegen nimmt; einen Monat, den das
+Spiel erst setzen muss (`SetAbsMonth`), liest Amisia nur bei geschlossenem Kalenderfenster, nicht im Kampf und nicht
+während eines eigenen Lesens, und stellt danach den vorher gesetzten Monat wieder ein. "Für Discord" zeigt den gewählten
+Termin als Text zum Kopieren (Discord-Zeitstempel, Titel maskiert). Gespeichert wird nur das letzte Formular ohne Titel
+und Beschreibung (`AmisiaDB.calForm`).
+**Grund:** Nutzer 2026-11-15: "können wir es auch machen das man in addon kalender einen termin erstellen kann und aus
+den ingame blizzards Kalender also das beide wege gehen", "vllt auch mit discord / bot", dann "Passt" (alle sechs
+Vorschläge der Spec). `AddEvent` ist laut Spiel ein #hwevent (kein #protected): aus einem Klick geht es.
+**Folge:** Keine neue Addon-Nachricht: das Spiel verteilt den Termin an die ganze Gilde, Amisia liest ihn wie jeden
+anderen. Weiter nicht in Amisia: Bearbeiten, Löschen, Kopieren, Einladen, Masseneinladen, Sperren, eigene (nicht
+Gilden-)Termine anlegen, Feiertage und Raid-Resets auf dem Blatt, eine Verbindung zu einem Discord-Bot (dafür bräuchte
+es dessen Schlüssel und einen Server: eigene Spec, falls gewünscht). Anmeldung, Aufstellung und Raid-Kalender bleiben
+bei "heute bis 14 Tage, nur Gildenereignisse".
+**Durchgesetzt durch:** `tests/test_calendar_create.lua` (Monat ohne Feiertage, Gildenereignis einmal, Ankündigung und
+Einladung mit Art und Ersteller, fremder Monat mit `SetAbsMonth` und zurück, nicht bei offenem Kalenderfenster,
+Formular, Aufrufe im Klick mit Datum, Zeit, Typ und Instanz, Codes entfernt, Chatzeile, gemerktes Formular, Pfeile,
+Prüfungen, Fehler, Sperre bis /reload, keine Antwort, Discord-Text, `calForm` beim Laden),
+`tests/test_calendar_page.lua`, `tools/tests/test_contracts.py` (Schlüssel, Dateien).

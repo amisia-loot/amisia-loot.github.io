@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(calendar): create guild events from Amisia's calendar, see every game calendar event, copy a date for Discord (F-217)
+
+    Guild > Kalender has "Termin anlegen ...": pick guild event or (with the guild rank's right) guild announcement,
+    the type, the raid or dungeon, time, title and description, and "Anlegen" puts it into the game calendar with that
+    click, so the whole guild sees it there, with or without Amisia. The month sheet now also shows guild events after
+    the next 14 days, guild announcements and your own events and invitations from the game calendar, and you can
+    page forward as far as the game takes new events. "Für Discord" gives the chosen date as text with Discord
+    timestamps to paste into your server.
+
 ## [v2.94.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.94.1) (2026-11-15)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.94.0...v2.94.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

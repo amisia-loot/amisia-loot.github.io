@@ -295,6 +295,10 @@ T.CALPAGE = {
     ROLE_LETTER_X = 17,
     COMPACT_HEAD = true,  -- the groups' heads as flat one-line bars in the small gold font (RaidCalendar.lua)
     BUTTON_W = 110,       -- "Anmelden ..." / "Ändern ..." and "Zur Aufstellung" (at least; FitChip)
+    -- the new event's form in the day's inset (F-217): a label FORM_LABEL_H over each field, FORM_GAP
+    -- between the rows, the description DESC_H high, "Anlegen" at the inset's bottom right
+    FORM_LABEL_H = 14, FORM_GAP = 6, TIME_W = 60, DESC_H = 70, FORM_BUTTON_W = 90,
+    DISCORD_H = 150,      -- the Discord text to copy
 }
 
 -- the round class icons (W.SetClassIcon: the members page, the duels page): the client's class circles
@@ -1030,6 +1034,10 @@ T.RAIDCAL = {
     EMPTY_Y = 40,         -- the empty state below the list's top
     BOTTOM = 14,          -- the button row from the window's bottom edge
     BUTTON_W = 110,       -- "Anmelden ..." / "Ändern ..." and "Zur Aufstellung" (at least; FitChip)
+    -- the new event's form in the day's inset (F-217): a label FORM_LABEL_H over each field, FORM_GAP
+    -- between the rows, the description DESC_H high, "Anlegen" at the inset's bottom right
+    FORM_LABEL_H = 14, FORM_GAP = 6, TIME_W = 60, DESC_H = 70, FORM_BUTTON_W = 90,
+    DISCORD_H = 150,      -- the Discord text to copy
 }
 
 -- the page Feedback (F-130, UI/Pages/Feedback.lua): "Neue Meldung" (Bug/Wunsch, "Abschicken", the

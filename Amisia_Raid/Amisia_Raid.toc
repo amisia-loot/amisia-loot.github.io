@@ -44,6 +44,7 @@ Raid\RollWatch.lua
 Raid\Handover.lua [AllowLoadGameType camelot]
 Raid\Calendar.lua
 Raid\CalendarWrite.lua
+Raid\CalendarCreate.lua
 Raid\Lineup.lua
 Raid\LineupInvite.lua
 Raid\LineupSort.lua

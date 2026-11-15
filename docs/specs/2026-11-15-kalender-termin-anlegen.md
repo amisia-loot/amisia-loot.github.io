@@ -1,6 +1,6 @@
 # Spec: Kalender in beide Richtungen (Termin in Amisia anlegen, alle Spieltermine zeigen, Discord)
 
-Stand: 2026-11-15 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-15 · Status: freigegeben ·
 Feature: F-217
 
 ## Ziel
@@ -46,11 +46,11 @@ liest den Spielkalender. Es braucht dafür keine neue Addon-Nachricht.
   - Gildenereignisse, Gildenankündigungen und eigene Termine bzw. Einladungen;
   - vergangene Tage des Monats ebenfalls;
   - vorwärts bis zum letzten Tag, den das Spiel zum Anlegen erlaubt.
-- Ein Tag zeigt wie bisher Uhrzeit und Titel. Gildenankündigungen und eigene Termine sind am Typ-Zeichen und an der
-  Farbe zu erkennen. Rechts stehen Art, Ersteller und Typ. Die Teilnehmerliste gibt es weiter nur bei
+- Ein Tag zeigt wie bisher Uhrzeit und Titel. Gildenankündigungen (hellblau) und eigene Termine (grün) sind an der
+  Farbe zu erkennen (beim Bau: ein eigenes Zeichen passt nicht in die kleine Zelle). Rechts stehen Art, Ersteller und Typ. Die Teilnehmerliste gibt es weiter nur bei
   Gildenereignissen mit Anmeldung (der bisherige Leser).
-- Einen anderen Monat lädt Amisia mit `SetAbsMonth` und `OpenCalendar`, liest ihn nach
-  `CALENDAR_UPDATE_EVENT_LIST` und stellt danach den laufenden Monat wieder ein. Das geschieht nie, solange das
+- Einen anderen Monat lädt Amisia mit `SetAbsMonth`, liest ihn nach
+  `CALENDAR_UPDATE_EVENT_LIST` und stellt danach den vorher gesetzten Monat wieder ein. Das geschieht nie, solange das
   Kalenderfenster des Spiels offen ist, im Kampf oder während Amisia ein Ereignis liest oder schreibt (`Cal.Busy`).
 
 **C. Discord**
@@ -163,4 +163,6 @@ liest den Spielkalender. Es braucht dafür keine neue Addon-Nachricht.
 
 ## Entscheidungen
 
-Noch keine.
+- 2026-11-15: Nutzer: "Passt" -> alle Vorschläge übernommen: Frage 1 jedes Gildenmitglied ein Gildenereignis, eine
+  Ankündigung nur mit dem Recht des Spiels; Frage 2 keine eigenen Termine; Frage 3 kein Bearbeiten und Löschen;
+  Frage 4 keine Feiertage; Frage 5 nur der Kopiertext für Discord; Frage 6 kein Schalter.

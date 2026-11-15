@@ -2242,6 +2242,120 @@ function STUB.calendar(opts)
             act("RemoveEvent", cal.open, function(e) if e.modStatus ~= "CREATOR" then setOwn(e, 7) end end)
         end
     end
+    -- opts.month: the month view (F-217): a list of day events { title, at (epoch) or days, hour,
+    -- minute, calendarType, eventType, inviteStatus, modStatus, invitedBy, id, inviteType, sequenceType }.
+    -- GetMonthInfo/GetNumDayEvents/GetDayEvent count from the set month (cal.setY, cal.setM; this month
+    -- at first); SetAbsMonth sets it and fires CALENDAR_UPDATE_EVENT_LIST after 0.5 s (opts.monthSilent:
+    -- not). cal.monthSets: every SetAbsMonth { m, y }.
+    if opts.month then
+        local d0 = os.date("*t", STUB.now)
+        cal.setY, cal.setM, cal.monthSets, cal.month = d0.year, d0.month, {}, {}
+        function cal.setMonthEvents(list)
+            cal.month = {}
+            for i, e in ipairs(list or {}) do
+                local at = e.at or os.time({ year = d0.year, month = d0.month, day = d0.day + (e.days or 1), hour = e.hour or 20, min = e.minute or 0 })
+                local t = os.date("*t", at)
+                cal.month[i] = { eventID = e.id or (5000 + i), title = e.title or "Termin", isCustomTitle = true,
+                    startTime = { year = t.year, month = t.month, monthDay = t.day, hour = t.hour, minute = t.min, weekday = t.wday },
+                    calendarType = e.calendarType or "GUILD_EVENT", sequenceType = e.sequenceType or "", eventType = e.eventType or 4,
+                    inviteStatus = e.inviteStatus or 7, modStatus = e.modStatus or "", invitedBy = e.invitedBy or "",
+                    inviteType = e.inviteType or 1, iconTexture = 0 }
+            end
+        end
+        cal.setMonthEvents(opts.month)
+        local function ym(off)
+            local i = cal.setY * 12 + cal.setM - 1 + (off or 0)
+            return math.floor(i / 12), i % 12 + 1
+        end
+        local function onDay(off, day)
+            local y, m = ym(off)
+            local out = {}
+            for _, e in ipairs(cal.month) do
+                local s = e.startTime
+                if s.year == y and s.month == m and s.monthDay == day then out[#out + 1] = e end
+            end
+            return out
+        end
+        C.GetMonthInfo = function(off)
+            local y, m = ym(off)
+            local days = tonumber(os.date("%d", os.time({ year = y, month = m + 1, day = 0, hour = 12 })))
+            return { year = y, month = m, numDays = days, firstWeekday = os.date("*t", os.time({ year = y, month = m, day = 1, hour = 12 })).wday }
+        end
+        C.SetAbsMonth = function(m, y)
+            log("SetAbsMonth")
+            cal.setY, cal.setM = y, m
+            cal.monthSets[#cal.monthSets + 1] = { m = m, y = y }
+            if not opts.monthSilent then C_Timer.After(0.5, function() STUB.fire("CALENDAR_UPDATE_EVENT_LIST") end) end
+        end
+        C.GetNumDayEvents = function(off, day) return #onDay(off, day) end
+        C.GetDayEvent = function(off, day, i) return onDay(off, day)[i] end
+    end
+    -- opts.create: the entry of a new event (F-217). opts.textures[type] = { { title }, ... } of
+    -- EventGetTextures; opts.maxDays: GetMaxCreateDate that many days ahead; opts.createFail: AddEvent
+    -- answers CALENDAR_UPDATE_ERROR; opts.createSilent: no answer; opts.hw: AddEvent outside a click
+    -- (STUB.inClick) is ADDON_ACTION_BLOCKED for Amisia. cal.draft the event being made, cal.made every
+    -- AddEvent { draft fields, inClick }; a made event joins the month (opts.month) after its answer.
+    if opts.create then
+        cal.made = {}
+        local function new(kind)
+            return function()
+                log("Create" .. kind)
+                cal.draft = { calendarType = kind, inClick = STUB.inClick }
+            end
+        end
+        C.CreateGuildSignUpEvent = new("GUILD_EVENT")
+        C.CreateGuildAnnouncementEvent = new("GUILD_ANNOUNCEMENT")
+        local function set(name, fn)
+            C[name] = function(...)
+                log(name)
+                if not cal.draft then error("no event being made: " .. name) end
+                fn(cal.draft, ...)
+            end
+        end
+        set("EventSetDate", function(d, m, day, y) d.month, d.monthDay, d.year = m, day, y end)
+        set("EventSetTitle", function(d, t) d.title = t end)
+        set("EventSetDescription", function(d, t) d.description = t end)
+        set("EventSetTime", function(d, h, mi) d.hour, d.minute = h, mi end)
+        set("EventSetType", function(d, t) d.eventType = t end)
+        set("EventSetTextureID", function(d, i) d.textureIndex = i end)
+        C.EventGetTextures = function(t) return (opts.textures or {})[t] or {} end
+        C.CanAddEvent = function() return cal.draft ~= nil and cal.draft.title ~= nil and cal.draft.title ~= "" end
+        C.IsActionPending = function() return cal.pending == true end
+        C.GetMaxCreateDate = function()
+            local t = os.date("*t", STUB.now + (opts.maxDays or 365) * 86400)
+            return { year = t.year, month = t.month, monthDay = t.day, hour = 0, minute = 0 }
+        end
+        C.CloseEvent = function() log("CloseEvent") cal.open = nil cal.draft = nil cal.closes = cal.closes + 1 end
+        C.AddEvent = function()
+            log("AddEvent")
+            local d = cal.draft
+            local rec = {}
+            for k, v in pairs(d or {}) do rec[k] = v end
+            rec.inClick = STUB.inClick
+            cal.made[#cal.made + 1] = rec
+            if opts.hw and not STUB.inClick then
+                STUB.fire("ADDON_ACTION_BLOCKED", "Amisia", "C_Calendar.AddEvent()")
+                return
+            end
+            if opts.createFail then
+                C_Timer.After(0.3, function() STUB.fire("CALENDAR_UPDATE_ERROR", "CALENDAR_ERROR_EVENT_INVALID") end)
+                return
+            end
+            if opts.createSilent then return end
+            cal.pending = true
+            C_Timer.After(0.3, function()
+                cal.pending = false
+                if cal.month and d then
+                    cal.month[#cal.month + 1] = { eventID = 9000 + #cal.made, title = d.title, isCustomTitle = true,
+                        startTime = { year = d.year, month = d.month, monthDay = d.monthDay, hour = d.hour, minute = d.minute },
+                        calendarType = d.calendarType, sequenceType = "", eventType = d.eventType or 4, inviteStatus = 6,
+                        modStatus = "CREATOR", invitedBy = STUB.player, inviteType = 1, iconTexture = 0 }
+                end
+                STUB.fire("CALENDAR_NEW_EVENT", false)
+                STUB.fire("CALENDAR_UPDATE_EVENT_LIST")
+            end)
+        end
+    end
     _G.C_Calendar = C
     return cal
 end

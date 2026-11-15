@@ -10,8 +10,13 @@
 -- opens the sign-up window, officers have "Zur Aufstellung". The dates are those Amisia reads anyway
 -- (tonight to 14 days, ns.SignupTerms); the participants are read through the same reader as the
 -- window (ns.Cal.Read: never while the client's calendar window shows another event, not in combat,
--- always CloseEvent). Months go back to the first recorded raid and forward to the last day read.
--- Nothing here writes into the calendar.
+-- always CloseEvent). Months go back to the first recorded raid and forward to the last day read or
+-- the last day the game takes an event on (C_Calendar.GetMaxCreateDate).
+-- F-217 (D-142): the shown month also lists every guild event, guild announcement and own event or
+-- invite of the game calendar (ns.Cal.Month), the latter two in their own colour and without a
+-- participant list. "Termin anlegen ..." turns the right inset into a form whose "Anlegen" makes a guild
+-- event or announcement in the game calendar with the same click (ns.CalCreate); "Für Discord" shows the
+-- chosen date as Discord text to copy. Nothing else here writes into the calendar.
 local ADDON, ns = ...
 ns.Load(function()
 local L, N_ = ns.L, ns.N_
@@ -40,6 +45,13 @@ local chosenAuto          -- chosen by the page (the next date), not by a click:
 local chosenTerm          -- the chosen date of that day (its index in the day's dates)
 local asked               -- the dates were asked for once (ns.SignupLoadTerms)
 local reader
+local mode                -- the right inset: nil the day, "form" a new event, "discord" the text to copy
+local months = {}         -- [y * 12 + m - 1] = { list (ns.Cal.Month), at = GetTime(), dirty, far }
+local monthAsking         -- the month being read
+local form = {}           -- the form's values (kind, type, tex, texTitle, time, title, desc)
+local formError, formWait -- the form's last reason; an entry runs
+local KIND_COLOR = { GUILD_ANNOUNCEMENT = { 0.55, 0.78, 1 }, PLAYER = { 0.62, 0.86, 0.62 } }
+local CC = function() return ns.CalCreate end
 
 ---------------------------------------------------------------------------
 -- Dates and months
@@ -78,12 +90,27 @@ local function sheet(y, m)
 end
 ns.CalendarSheet = sheet
 
--- The guild events by night (ns.SignupTerms: tonight to 14 days) and the recorded raids by night.
+-- The guild events by night (ns.SignupTerms: tonight to 14 days; they carry the sign-up and the
+-- participants), the other events of the months read (ns.Cal.Month: marked extra) and the recorded
+-- raids by night.
 local function byNight()
     local terms, raids = {}, {}
+    local seen = {}
     for _, t in ipairs(ns.SignupTerms() or {}) do
         terms[t.night] = terms[t.night] or {}
         table.insert(terms[t.night], t)
+        if t.id then seen[t.id] = true end
+        seen[t.at .. "\t" .. tostring(t.title)] = true
+    end
+    for _, mo in pairs(months) do
+        for _, e in ipairs(mo.list or {}) do
+            if not (e.id and seen[e.id]) and not seen[e.at .. "\t" .. tostring(e.title)] then
+                if e.id then seen[e.id] = true end
+                e.extra = true
+                terms[e.night] = terms[e.night] or {}
+                table.insert(terms[e.night], e)
+            end
+        end
     end
     for _, list in pairs(terms) do
         table.sort(list, function(a, b) return a.at < b.at end)
@@ -107,7 +134,13 @@ local function range()
         if y then lo = math.min(lo, monthIndex(tonumber(y), tonumber(m))) end
     end
     local last = date("*t", now + ns.Cal.DAYS * DAY)
-    return lo, monthIndex(last.year, last.month)
+    local hi = monthIndex(last.year, last.month)
+    local max = CC() and CC().MaxDay()
+    if max then
+        local t2 = date("*t", max)
+        hi = math.max(hi, monthIndex(t2.year, t2.month))
+    end
+    return lo, hi
 end
 
 local function showMonth(y, m)
@@ -137,9 +170,14 @@ local function ensureChosen()
     chosenAuto = true
 end
 
-local function currentTerm()
+-- The chosen date (any event of the day) and the chosen sign-up date (the reader's: never an extra).
+local function currentItem()
     local terms = byNight()
     return termOf(terms)
+end
+local function currentTerm()
+    local t = currentItem()
+    return t and not t.extra and t or nil
 end
 
 -- A text cut to width px with "..." (the game font has no ellipsis character, D-07).
@@ -157,8 +195,15 @@ end
 -- The colour of the own state of a date (its dot): the sign-up from Amisia, else the calendar's.
 local function ownColor(t)
     local V = ns.RaidCalView
+    if t.extra and t.kind ~= "GUILD_EVENT" then return KIND_COLOR[t.kind] or V.RGB.grey end
     local _, color = V.OwnState(t)
     return V.RGB[color] or V.RGB.grey
+end
+
+-- The colour of a date's title: a raid gold, an announcement or own event in its kind's colour, else grey.
+local function titleColor(t)
+    if t.extra and KIND_COLOR[t.kind] then return KIND_COLOR[t.kind] end
+    return t.raid and { 1, 0.82, 0 } or { 0.8, 0.8, 0.8 }
 end
 
 ---------------------------------------------------------------------------
@@ -166,9 +211,150 @@ end
 ---------------------------------------------------------------------------
 local function choose(night, index)
     chosen, chosenTerm, chosenAuto = night, index, false
+    -- the Discord text belongs to one date; the form follows the chosen day
+    if mode == "discord" then mode = nil end
+    formError = nil
     if reader then reader.Reset() end
     ns.Refresh()
     if reader then reader.Read(false) end
+end
+
+---------------------------------------------------------------------------
+-- The months of the game calendar (ns.Cal.Month)
+---------------------------------------------------------------------------
+local MONTH_AGAIN = 120   -- seconds: a month is read again after this long
+local MONTH_DIRTY = 2     -- after a change in the calendar: the set month and its neighbours this soon
+local MONTH_FAR = 30      -- a month the client has to set (SetAbsMonth) at most this often
+
+local function setIndex()
+    local info = ns.Cal.call("GetMonthInfo", 0)
+    local y, m = type(info) == "table" and ns.Plain(info.year), type(info) == "table" and ns.Plain(info.month)
+    return type(y) == "number" and type(m) == "number" and monthIndex(y, m) or nil
+end
+
+-- Reads the shown month when it was never read, is old, or the calendar changed since.
+local function askMonth()
+    if not view.y or monthAsking or not IsInGuild() or not ns.Cal.CanReadMonth() then return end
+    local i = monthIndex(view.y, view.m)
+    local mo = months[i]
+    local now = GetTime()
+    if mo then
+        local age = now - mo.at
+        local soon = mo.far and MONTH_FAR or MONTH_DIRTY
+        if not (age > MONTH_AGAIN or (mo.dirty and age >= soon)) then return end
+    end
+    local set = setIndex()
+    local far = not set or math.abs(i - set) > 1
+    local y, m = view.y, view.m
+    monthAsking = i
+    ns.Cal.Month(y, m, function(list, partial)
+        monthAsking = nil
+        local old = months[i]
+        -- not read now (busy, combat, the client's window) or not whole: the old list stays or the
+        -- new one counts until it is read again
+        months[i] = { list = list or (old and old.list), at = GetTime(), far = far, dirty = (list == nil or partial == true) or nil }
+        if page and page:IsVisible() and ns.CurrentPage() == "calendar" then ns.Refresh() end
+    end)
+end
+
+-- A change in the calendar: every month read is read again when shown.
+ns.Listen("CALENDAR_CHANGED", function()
+    for _, mo in pairs(months) do mo.dirty = true end
+    if page and page:IsVisible() and ns.CurrentPage() == "calendar" then
+        C_Timer.After(MONTH_DIRTY, function()
+            if page and page:IsVisible() and ns.CurrentPage() == "calendar" then ns.Refresh() end
+        end)
+    end
+end)
+
+---------------------------------------------------------------------------
+-- The new event's form (F-217)
+---------------------------------------------------------------------------
+local TYPE_ORDER = { 0, 1, 2, 3, 4 }
+
+local function chosenNoon()
+    if not chosen then return nil end
+    return noon(tonumber(chosen:sub(1, 4)) or 2000, tonumber(chosen:sub(6, 7)) or 1, tonumber(chosen:sub(9, 10)) or 1)
+end
+
+-- Whether a day can take a new event (today up to the client's last day), and why not.
+local function dayOpen()
+    local day = chosenNoon()
+    if not day then return false end
+    local today = CC().Today()
+    if day < today - 3600 then return false, "past" end
+    local max = CC().MaxDay()
+    if max and day > max + 3600 then return false, "late" end
+    return true
+end
+
+local function openForm()
+    local last = CC().Form()
+    form = { kind = last.kind, type = last.type, time = last.time, texTitle = last.tex }
+    if form.kind == "announce" and not CC().CanAnnounce() then form.kind = "signup" end
+    form.tex = nil
+    for _, x in ipairs(CC().Textures(form.type)) do
+        if x.title == form.texTitle then form.tex = x.index end
+    end
+    if not form.tex then form.texTitle = nil end
+    formError, formWait = nil, nil
+    mode = "form"
+    if page then
+        page.titleBox:SetText(form.texTitle or "")
+        page.descBox.box:SetText("")
+        page.timeBox:SetText(ns.FormatTime(form.time))
+    end
+    ns.Refresh()
+end
+
+-- The typed time, held; nil when it cannot be read.
+local function typedTime()
+    local v = ns.ParseTime(page.timeBox:GetText())
+    if v then form.time = v end
+    return v
+end
+
+local function stepTime(dir)
+    local v = typedTime() or form.time or CC().DEFAULT_TIME
+    v = (math.floor(v / CC().STEP) + dir) * CC().STEP
+    form.time = v % (24 * 60)
+    page.timeBox:SetText(ns.FormatTime(form.time))
+end
+
+-- "Anlegen": the whole entry inside this click (AddEvent needs a hardware event).
+local function create()
+    if formWait then return end
+    formError = nil
+    if not typedTime() then
+        formError = CC().Why("time")
+        return ns.Refresh()
+    end
+    local f = {
+        kind = form.kind, type = form.type, tex = form.tex, texTitle = form.texTitle, time = form.time,
+        day = chosenNoon(), title = page.titleBox:GetText(), desc = page.descBox.box:GetText(),
+    }
+    local started, why = CC().Create(f, function(ok, reason, detail)
+        formWait = nil
+        if ok then
+            ns.msg(L["Termin im Spielkalender angelegt: %s"]:format(("%s %s %s"):format(ns.RaidCalView.DayText(f.at),
+                date("%H:%M", f.at), f.cleanTitle or "")))
+            mode = nil
+            for _, mo in pairs(months) do mo.dirty = true end
+        else
+            local text = CC().Why(reason)
+            if detail and reason == "error" then text = text .. " " .. tostring(detail) end
+            if reason ~= "blocked" and reason ~= "refused" then text = text .. " " .. L["Lege ihn bitte im Spielkalender an."] end
+            formError = text
+        end
+        ns.Refresh()
+    end)
+    if not started then
+        formError = CC().Why(why)
+    elseif formWait == nil and mode == "form" and not formError then
+        -- still waiting for the client's answer (an answer at once has cleared it already)
+        formWait = CC().Busy() or nil
+    end
+    ns.Refresh()
 end
 
 -- Opens the page at a night (default: the next date, else today).
@@ -261,7 +447,7 @@ local function fillCell(cell, d, terms, raids, today)
             if e.raid then t = e break end
         end
         lines[1] = { WHITE .. date("%H:%M", t.at) .. "|r" }
-        lines[2] = { t.title or "?", t.raid and { 1, 0.82, 0 } or { 0.8, 0.8, 0.8 } }
+        lines[2] = { t.title or "?", titleColor(t) }
         if #list > 1 then lines[3] = { GREY .. L["+%d weitere"]:format(#list - 1) .. "|r" } end
         local c = ownColor(t)
         cell.dot:SetVertexColor(c[1], c[2], c[3])
@@ -369,6 +555,101 @@ local function build(parent)
     f.empty = W.Text(f.right, T.FONT.dim, C.RIGHT_W - 4 * C.INNER, true)
     f.empty:SetJustifyH("CENTER")
     f.empty:SetPoint("TOP", f.right, "TOP", 0, -C.LIST_Y - 10)
+    -- an event that is no guild event with sign-up (or one after the 14 days): its kind, type, creator
+    f.info = W.Text(f.right, T.FONT.text, C.RIGHT_W - 2 * C.INNER, true)
+    f.info:SetPoint("TOPLEFT", C.INNER, -C.TOTALS_Y)
+
+    -- the new event's form (F-217) in the right inset, over the day's view
+    local FW = C.RIGHT_W - 2 * C.INNER
+    f.form = CreateFrame("Frame", nil, f.right)
+    f.form:SetPoint("TOPLEFT", 0, -C.TERM_Y)
+    f.form:SetPoint("BOTTOMRIGHT", 0, 0)
+    f.form:Hide()
+    local F = f.form
+    local y = 0
+    local function label(text)
+        local fs = W.Text(F, T.FONT.dim, FW)
+        fs:SetPoint("TOPLEFT", C.INNER, -y)
+        fs:SetText(text)
+        y = y + C.FORM_LABEL_H
+        return fs
+    end
+    local function field(w, h)
+        w:SetPoint("TOPLEFT", C.INNER, -y)
+        y = y + (h or T.FIELD_H) + C.FORM_GAP
+        return w
+    end
+    f.kindLabel = label(L["Art"])
+    f.kind = field(W.Picker(F, FW, function(v)
+        form.kind = v or "signup"
+        ns.Refresh()
+    end))
+    f.typeLabel = label(L["Typ"])
+    f.typePick = field(W.Picker(F, FW, function(v)
+        local before = form.texTitle
+        form.type = v or 4
+        form.tex, form.texTitle = nil, nil
+        if f.titleBox:GetText() == (before or "") then f.titleBox:SetText("") end
+        ns.Refresh()
+    end))
+    f.texY = y
+    f.texLabel = label(L["Instanz##Termin"])
+    f.texPick = field(W.Picker(F, FW, function(v)
+        local before = form.texTitle
+        form.tex, form.texTitle = v, nil
+        for _, x in ipairs(CC().Textures(form.type)) do
+            if x.index == v then form.texTitle = x.title end
+        end
+        -- the title follows the instance until the player typed one of his own
+        local text = f.titleBox:GetText()
+        if text == "" or text == before then f.titleBox:SetText(CC().Clean(form.texTitle, CC().TITLE_CHARS) or "") end
+        ns.Refresh()
+    end))
+    f.restY = y
+    f.timeLabel = W.Text(F, T.FONT.dim, FW)
+    f.timeLabel:SetText(L["Uhrzeit"])
+    f.timeMinus = W.ArrowButton(F, "left", T.ARROW_SMALL, function() stepTime(-1) end)
+    f.timeBox = W.TimeBox(F, C.TIME_W, function() if not typedTime() then page.timeBox:SetText(ns.FormatTime(form.time)) end end)
+    if f.timeBox.SetMaxLetters then f.timeBox:SetMaxLetters(5) end
+    f.timePlus = W.ArrowButton(F, "right", T.ARROW_SMALL, function() stepTime(1) end)
+    W.Tooltip(f.timeMinus, L["15 Minuten früher"])
+    W.Tooltip(f.timePlus, L["15 Minuten später"])
+    f.titleLabel = W.Text(F, T.FONT.dim, FW)
+    f.titleLabel:SetText(L["Titel"])
+    f.titleBox = W.LineEdit(F, FW)
+    if f.titleBox.SetMaxLetters then f.titleBox:SetMaxLetters(CC().TITLE_CHARS) end
+    f.descLabel = W.Text(F, T.FONT.dim, FW)
+    f.descLabel:SetText(L["Beschreibung"])
+    f.descBox = W.EditArea(F)
+    f.descBox:SetSize(FW, C.DESC_H)
+    f.descBox.box:SetMaxLetters(CC().DESC_CHARS)
+    f.formHint = W.Text(F, T.FONT.hint, FW, true)
+    f.formAdd = W.Button(F, L["Anlegen##Termin"], C.FORM_BUTTON_W, create)
+    f.formCancel = W.Link(F, L["Abbrechen"], function()
+        mode, formError = nil, nil
+        ns.Refresh()
+    end)
+    W.FitChip(f.formCancel)
+    f.formAdd:SetPoint("BOTTOMRIGHT", -C.INNER, C.INNER)
+    f.formCancel:SetPoint("RIGHT", f.formAdd, "LEFT", -T.LAYOUT.ITEM_GAP, 0)
+
+    -- the chosen date as Discord text (part C)
+    f.discordBox = W.EditArea(f.right)
+    f.discordBox:SetPoint("TOPLEFT", C.INNER, -C.TERM_Y)
+    f.discordBox:SetPoint("TOPRIGHT", -C.INNER, -C.TERM_Y)
+    f.discordBox:SetHeight(C.DISCORD_H)
+    f.discordBox:Hide()
+    f.discordHint = W.Text(f.right, T.FONT.hint, FW, true)
+    f.discordHint:SetPoint("TOPLEFT", f.discordBox, "BOTTOMLEFT", 0, -C.FORM_GAP)
+    f.discordHint:SetText(L["Strg+A, Strg+C, dann in Discord einfügen. Discord zeigt jedem die Zeit in seiner Zeitzone."])
+    f.discordHint:Hide()
+    f.discordClose = W.Link(f.right, L["Schließen"], function()
+        mode = nil
+        ns.Refresh()
+    end)
+    W.FitChip(f.discordClose)
+    f.discordClose:SetPoint("BOTTOMRIGHT", -C.INNER, C.INNER)
+    f.discordClose:Hide()
 
     -- the bottom row: the read's state, the buttons; the hint under it
     f:Footer({ { "hint", help = true } })
@@ -383,7 +664,16 @@ local function build(parent)
     end)
     W.FitChip(f.lineup)
     W.Tooltip(f.lineup, L["Zur Aufstellung"], L["Öffnet die Seite Aufstellung mit der Nacht dieses Termins (nur Offiziere)."])
-    f:BottomRow({ { f.status, fill = true } }, { f.lineup, f.signup }, { shown = true })
+    f.discord = W.Link(f, L["Für Discord"], function()
+        mode = mode ~= "discord" and "discord" or nil
+        ns.Refresh()
+    end)
+    W.FitChip(f.discord)
+    W.Tooltip(f.discord, L["Für Discord"], L["Der gewählte Termin als Text für Discord, zum Kopieren."])
+    f.create = W.Button(f, L["Termin anlegen ..."], C.BUTTON_W, openForm)
+    W.FitChip(f.create, C.BUTTON_W)
+    W.Tooltip(f.create, L["Termin anlegen"], L["Legt an diesem Tag einen Gildentermin im Spielkalender an. Die ganze Gilde sieht ihn dort, auch ohne Amisia."])
+    f:BottomRow({ { f.status, fill = true } }, { f.discord, f.lineup, f.signup, f.create }, { shown = true })
     f.hint:SetText(L["Klick auf einen Tag: seine Termine und wer kommt. Der Punkt zeigt deinen Stand."])
 
     -- shown: on the screen, not only the open page of a closed window (that read the calendar on every
@@ -403,13 +693,78 @@ local function build(parent)
     return f
 end
 
+-- The form's fields as the values stand (the instance row only for a raid or a dungeon).
+local function fillForm(f)
+    local FL, G = C.FORM_LABEL_H, C.FORM_GAP
+    local kinds = { { value = "signup", text = L["Gildenereignis (mit Anmeldung)"] } }
+    if CC().CanAnnounce() then kinds[2] = { value = "announce", text = L["Gildenankündigung"] } end
+    f.kind:SetValues(kinds)
+    f.kind:SetValue(form.kind)
+    local types = {}
+    for _, t in ipairs(TYPE_ORDER) do types[#types + 1] = { value = t, text = L[ns.Cal.TYPE_WORD[t]] } end
+    f.typePick:SetValues(types)
+    f.typePick:SetValue(form.type)
+    local texs = CC().Textures(form.type)
+    local withTex = form.type == 0 or form.type == 1
+    f.texLabel:SetShown(withTex)
+    f.texPick:SetShown(withTex)
+    if withTex then
+        local vals = {}
+        for _, x in ipairs(texs) do vals[#vals + 1] = { value = x.index, text = x.title } end
+        f.texPick:SetValues(vals)
+        f.texPick:SetValue(form.tex)
+        if not form.tex then f.texPick.label:SetText(T.GREY .. (#vals > 0 and L["Instanz wählen"] or L["Das Spiel nennt keine Instanzen."]) .. "|r") end
+    end
+    local y = withTex and f.restY or f.texY
+    local function at(w, dy, x) w:ClearAllPoints() w:SetPoint("TOPLEFT", x or C.INNER, -(y + (dy or 0))) end
+    at(f.timeLabel)
+    at(f.timeMinus, FL)
+    f.timeBox:ClearAllPoints()
+    f.timeBox:SetPoint("LEFT", f.timeMinus, "RIGHT", 2, 0)
+    f.timePlus:ClearAllPoints()
+    f.timePlus:SetPoint("LEFT", f.timeBox, "RIGHT", 2, 0)
+    y = y + FL + T.FIELD_H + G
+    at(f.titleLabel)
+    at(f.titleBox, FL)
+    y = y + FL + T.FIELD_H + G
+    at(f.descLabel)
+    at(f.descBox, FL)
+    y = y + FL + C.DESC_H + G
+    at(f.formHint)
+    local blocker = CC().Blocker()
+    if formWait then
+        f.formHint:SetText(L["Wird im Spielkalender angelegt ..."])
+    elseif formError then
+        f.formHint:SetText(T.RED .. formError .. "|r")
+    elseif blocker then
+        f.formHint:SetText(T.RED .. CC().Why(blocker) .. "|r")
+    else
+        f.formHint:SetText(GREY .. L["Die ganze Gilde sieht den Termin im Spielkalender und kann sich anmelden."] .. "|r")
+    end
+    f.formAdd:SetEnabled(not formWait and blocker == nil)
+end
+
 local function fillRight(f, terms, raids)
     local V = ns.RaidCalView
     local day = chosen and terms[chosen]
     local recorded = chosen and raids[chosen]
-    local at = chosen and noon(tonumber(chosen:sub(1, 4)) or 2000, tonumber(chosen:sub(6, 7)) or 1, tonumber(chosen:sub(9, 10)) or 1)
-    f.dayTitle:SetText(at and V.DayText(at) or "")
+    local at = chosenNoon()
     local t = termOf(terms)
+    -- the form needs a day it can take; the Discord text a date
+    if mode == "form" and not (dayOpen() or formWait) then mode = nil end
+    if mode == "discord" and not t then mode = nil end
+    f.dayTitle:SetText(at and (mode == "form" and L["Neuer Termin: %s"]:format(V.DayText(at)) or V.DayText(at)) or "")
+    local inDay = mode == nil
+    f.form:SetShown(mode == "form")
+    if mode == "form" then fillForm(f) end
+    f.discordBox:SetShown(mode == "discord")
+    f.discordHint:SetShown(mode == "discord")
+    f.discordClose:SetShown(mode == "discord")
+    if mode == "discord" then
+        local text = CC().DiscordText(t)
+        if f.discordBox.box:GetText() ~= text then f.discordBox.box:SetText(text) end
+        f.discordBox.box:HighlightText()
+    end
     -- the dates of the day, else its recorded raids
     local rows = {}
     for i, e in ipairs(day or {}) do rows[#rows + 1] = { term = e, index = i } end
@@ -417,7 +772,7 @@ local function fillRight(f, terms, raids)
         for _, s in ipairs(recorded or {}) do rows[#rows + 1] = { raid = s } end
     end
     for i, b in ipairs(f.terms) do
-        local r = rows[i]
+        local r = inDay and rows[i]
         b.term, b.raid, b.index = r and r.term, r and r.raid, r and r.index
         if r and r.term then
             local c = ownColor(r.term)
@@ -435,14 +790,16 @@ local function fillRight(f, terms, raids)
             b:Hide()
         end
     end
+    local sign = t and not t.extra and t or nil
     local list, n, groups = {}, 0, {}
-    if t then
-        local rows2, _, count, byGroup = ns.RaidCal.Rows(t.night, t)
+    if sign and inDay then
+        local rows2, _, count, byGroup = ns.RaidCal.Rows(sign.night, sign)
         list, n, groups = rows2, count, byGroup
     end
     f.list:SetItems(list)
+    f.list:SetShown(inDay)
     -- the totals of the chosen date: signed up and tentative (the bench when someone is on it)
-    if t then
+    if sign and inDay then
         local parts = {}
         for _, g in ipairs(ns.RaidCal.GROUPS) do
             local k = groups[g.key] or 0
@@ -454,8 +811,26 @@ local function fillRight(f, terms, raids)
     else
         f.totals:SetText("")
     end
+    -- an event of the month read (no sign-up list here): its kind, type and creator
+    local info
+    if inDay and t and t.extra then
+        local lines = {}
+        local kind = t.kind == "PLAYER" and not t.creator and t.by and L["Einladung von %s"]:format(t.by)
+            or CC().KIND_WORD[t.kind] and L[CC().KIND_WORD[t.kind]] or "?"
+        lines[1] = ("%s%s:|r %s"):format(GREY, L["Art"], kind)
+        if t.type and ns.Cal.TYPE_WORD[t.type] then lines[#lines + 1] = ("%s%s:|r %s"):format(GREY, L["Typ"], L[ns.Cal.TYPE_WORD[t.type]]) end
+        if t.by and t.kind ~= "PLAYER" then lines[#lines + 1] = ("%s%s:|r %s"):format(GREY, L["Angelegt von"], t.by) end
+        if t.kind == "GUILD_EVENT" then
+            lines[#lines + 1] = GREY .. L["Anmelden in Amisia geht ab 14 Tage vorher, im Spielkalender jederzeit."] .. "|r"
+        end
+        info = table.concat(lines, "\n")
+    end
+    f.info:SetText(info or "")
+    f.info:SetShown(info ~= nil)
     local empty
-    if not chosen then
+    if not inDay then
+        empty = nil
+    elseif not chosen then
         empty = L["Klick auf einen Tag."]
     elseif not t then
         if #rows > 0 then
@@ -469,18 +844,22 @@ local function fillRight(f, terms, raids)
         else
             empty = L["Kein Termin an diesem Tag."]
         end
-    elseif n == 0 then
+    elseif sign and n == 0 then
         empty = L["Noch niemand angemeldet."]
     end
     f.empty:SetText(empty or "")
     f.empty:SetShown(empty ~= nil)
     -- the bottom row
-    local rec = t and ns.SignupOf()[t.night]
+    local rec = sign and ns.SignupOf()[sign.night]
     f.signup:SetText(rec and L["Ändern ..."] or L["Anmelden ..."])
     W.FitChip(f.signup, C.BUTTON_W)
-    f.signup:SetShown(t ~= nil)
-    f.lineup:SetShown(t ~= nil and ns.LineupAllowed ~= nil and ns.LineupAllowed() or false)
-    f.status:SetText(t and reader.Status(t) or "")
+    f.signup:SetShown(sign ~= nil and mode == nil)
+    f.lineup:SetShown(sign ~= nil and mode == nil and ns.LineupAllowed ~= nil and ns.LineupAllowed() or false)
+    f.discord:SetShown(t ~= nil and mode ~= "form")
+    local open = dayOpen()
+    f.create:SetShown(mode ~= "form" and IsInGuild() and CC().Available() and open and true or false)
+    f.create:SetEnabled(CC().Refused() == nil)
+    f.status:SetText(sign and inDay and reader.Status(sign) or "")
     f:BottomRow()
 end
 
@@ -498,6 +877,7 @@ local function refresh(f)
         local t = date("*t", now)
         showMonth(t.year, t.month)
     end
+    askMonth()
     local terms, raids = byNight()
     ensureChosen()
     f.title:SetText(("%s %d"):format(L[MONTHS[view.m]], view.y))

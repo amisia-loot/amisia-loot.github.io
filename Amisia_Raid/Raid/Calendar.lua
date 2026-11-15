@@ -415,6 +415,120 @@ function Cal.Read(ev, fn)
     openFor(ev, Cal.ReadOpen, fn)
 end
 
+---------------------------------------------------------------------------
+-- A whole month (F-217, D-142): every guild event, guild announcement and own event or invite of
+-- the game calendar on the month sheet of the calendar page, read only
+---------------------------------------------------------------------------
+-- the calendar types the sheet shows (no holidays, no raid resets: spec 2026-11-15, questions 4)
+Cal.MONTH_KINDS = { GUILD_EVENT = true, GUILD_ANNOUNCEMENT = true, PLAYER = true }
+Cal.MONTH_WAIT = 3        -- seconds to wait for the events of a month loaded with SetAbsMonth
+Cal.DAY_MAX = 20          -- events read per day
+
+function Cal.CanReadMonth()
+    for _, n in ipairs({ "GetMonthInfo", "GetNumDayEvents", "GetDayEvent", "SetAbsMonth", "OpenCalendar" }) do
+        if not api(n) then return false end
+    end
+    return true
+end
+
+-- The month the client's calendar has set (offset 0): its index y * 12 + m - 1, or nil.
+local function setMonth()
+    local info = call("GetMonthInfo", 0)
+    local y, m = type(info) == "table" and plain(info.year), type(info) == "table" and plain(info.month)
+    if type(y) ~= "number" or type(m) ~= "number" then return nil end
+    return y * 12 + (m - 1), y, m
+end
+
+-- The events of the month at offset (from the set month), which is y, m (and true when an event could
+-- not be read: a secret value in a lockdown, the list is not whole):
+-- { { id, at, night, title, kind (calendarType), type, raid, own (status code), status, by, signup,
+--   creator, tex } } by time.
+function Cal.ReadMonth(offset, y, m)
+    local out, partial = {}, false
+    local info = call("GetMonthInfo", offset)
+    local days = type(info) == "table" and tonumber(plain(info.numDays)) or nil
+    if not days or days < 28 or days > 31 then days = tonumber(date("%d", time({ year = y, month = m + 1, day = 0, hour = 12 }))) or 31 end
+    for d = 1, days do
+        local n = tonumber(plain(call("GetNumDayEvents", offset, d))) or 0
+        for i = 1, math.min(n, Cal.DAY_MAX) do
+            local e = call("GetDayEvent", offset, d, i)
+            local kind = type(e) == "table" and plain(e.calendarType)
+            if not kind then partial = true end
+            -- an event of several days shows on its first only (the client marks the others)
+            local seq = type(e) == "table" and plain(e.sequenceType)
+            if kind and Cal.MONTH_KINDS[kind] and (seq == nil or seq == "" or seq == "START") then
+                local at = Cal.Epoch(e.startTime)
+                local t = at and date("*t", at)
+                -- the day the client listed it under: an event read under another day is not this month's
+                if t and t.year == y and t.month == m then
+                    local id, typ, st = plain(e.eventID), plain(e.eventType), plain(e.inviteStatus)
+                    local mod, itype, tex = plain(e.modStatus), plain(e.inviteType), plain(e.iconTexture)
+                    out[#out + 1] = { id = type(id) == "number" and ("%.0f"):format(id) or nil, at = at,
+                        night = ns.NightOf and ns.NightOf(at) or date("%Y-%m-%d", at), title = Cal.Clean(e.title) or "?",
+                        kind = kind, type = type(typ) == "number" and typ or nil, raid = typ == 0 and kind == "GUILD_EVENT",
+                        status = type(st) == "number" and st or nil, own = type(st) == "number" and Cal.STATUS[st] and Cal.STATUS[st][2] or nil,
+                        by = Cal.Clean(e.invitedBy, 48), signup = itype == 1, creator = mod == "CREATOR",
+                        tex = type(tex) == "number" and tex > 0 and tex or nil }
+                end
+            end
+        end
+    end
+    table.sort(out, function(a, b)
+        if a.at ~= b.at then return a.at < b.at end
+        return (a.id or "") < (b.id or "")
+    end)
+    return out, partial
+end
+
+-- Reads the month y, m (m 1-12) of the game calendar: fn(list, partial) (Cal.ReadMonth; partial: not
+-- whole, read again soon) or fn(nil, why) with why "off", "busy", "combat", "window". The set month and the ones beside it are loaded already and
+-- read at once. Another one is set with SetAbsMonth, read after CALENDAR_UPDATE_EVENT_LIST (at most
+-- Cal.MONTH_WAIT seconds, then what the client has), and the month set before comes back; never while
+-- the client's calendar window is shown (it shows the set month), in combat or while an event is open
+-- or a probe holds the calendar (their offsets count from the set month).
+function Cal.Month(y, m, fn)
+    if not Cal.CanReadMonth() then return fn(nil, "off") end
+    unstick()
+    local cur, cy, cm = setMonth()
+    if not cur then return fn(nil, "off") end
+    local off = y * 12 + (m - 1) - cur
+    if off >= -1 and off <= 1 then return fn(Cal.ReadMonth(off, y, m)) end
+    if busy or waiter or held then return fn(nil, "busy") end
+    if InCombatLockdown() then return fn(nil, "combat") end
+    if Cal.WindowShown() then return fn(nil, "window") end
+    busy, busyAt = true, GetTime()
+    local function back()
+        -- the client's calendar window opened meanwhile sets its own month (its OnShow): left as it is
+        if not Cal.WindowShown() then pcall(C_Calendar.SetAbsMonth, cm, cy) end
+        busy = false
+        quietUntil = GetTime() + Cal.QUIET
+    end
+    if not pcall(C_Calendar.SetAbsMonth, m, y) then
+        back()
+        return fn(nil, "off")
+    end
+    local set, token = { CALENDAR_UPDATE_EVENT_LIST = true }, {}
+    local finished = false
+    local function done(event)
+        if finished then return end
+        finished = true
+        if waiter and waiter.token == token then waiter = nil end
+        C_Timer.After(0, function()
+            -- the client's window set its own month meanwhile: nothing read
+            if setMonth() ~= y * 12 + (m - 1) then
+                back()
+                return fn(nil, "window")
+            end
+            local list, partial = Cal.ReadMonth(0, y, m)
+            back()
+            -- without the client's answer the month may still be on its way: read again soon
+            fn(list, partial or event == nil)
+        end)
+    end
+    waiter = { want = set, done = done, token = token, at = GetTime() }
+    C_Timer.After(Cal.MONTH_WAIT, done)
+end
+
 -- The chat text of a reason of Cal.Read / Cal.Load.
 local WHY = {
     off = N_("Kalender nicht verfügbar."),

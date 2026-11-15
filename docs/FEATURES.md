@@ -1329,6 +1329,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Gilde
 
+### F-217 Kalender in beide Richtungen: Termin anlegen, alle Spieltermine, Text für Discord
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du unter Gilde > Kalender auf einen Tag klickst, "Termin anlegen ..." wählst, Gildenereignis, Schlachtzug, eine Instanz und eine Zeit einstellst und "Anlegen" klickst, dann steht der Termin im Spielkalender und auf Amisias Blatt, und im Chat steht "Termin im Spielkalender angelegt: ...".
+- Notiz: Spec docs/specs/2026-11-15-kalender-termin-anlegen.md; DECISIONS D-142. Nutzer 2026-11-15: "können wir es auch machen das man in addon kalender einen termin erstellen kann und aus den ingame blizzards Kalender also das beide wege gehen", "vllt auch mit discord / bot".
+
 ### F-033 Gildenbank: Bestand, Bedarf, Zusagen und Protokoll
 - Version: 2.10.0
 - Status: gebaut
