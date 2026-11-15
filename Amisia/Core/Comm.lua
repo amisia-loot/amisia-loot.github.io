@@ -35,12 +35,12 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, NV = 8, AC = 300 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, NV = 8, AC = 300, EA = 10, EQ = 300 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
 -- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
 -- a feedback answer per report id; the group quest state per dungeon; a raid note question per note
-local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10, IV = 60, SQ = 5, FA = 5, QS = 3, NQ = 5 }
+local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10, IV = 60, SQ = 5, FA = 5, QS = 3, NQ = 5, EJ = 5 }
 local KEYED_MAX = 64        -- keyed gaps remembered per sender before the old ones are cleared
 
 -- PARTY only in an own home party (D-97: the routes and points shared with a group of five; D-110: the
@@ -371,6 +371,18 @@ local function questStates(v)
     return true
 end
 
+-- the guild calls (F-211): the art, a role, a title or note (no bar, no control character), "T/H/S"
+-- counts of 0-40 each
+local CALL_ART = { D = true, Q = true, H = true, S = true }
+local CALL_ROLE = { T = true, H = true, S = true }
+local function callText(v, max) return type(v) == "string" and v ~= "" and #v <= max and not v:find("[%c|]") end
+local function roleTriple(v)
+    local t, h, s = (type(v) == "string" and v or ""):match("^(%d%d?)/(%d%d?)/(%d%d?)$")
+    t, h, s = tonumber(t), tonumber(h), tonumber(s)
+    if not t or t > 40 or h > 40 or s > 40 then return nil end
+    return t, h, s
+end
+
 local VALID = {
     HI = function(f) return #f >= 4 and f[1]:match("^%d+%.%d+%.%d+$") and isNum(f[2], 0, 9) and isFlags(f[3], "OL")
                          and (f[4] == "-" or isKey(f[4])) end,
@@ -536,6 +548,23 @@ local VALID = {
         end
         return true
     end,
+    -- the guild calls (Raid/GuildCalls.lua, F-211, D-136): EA <call id> <rev> <D|Q|H|S> <dungeon key|-> <title>
+    -- <level from> <epoch|0> <wanted T/H/S> <signed T/H/S> <in group T/H/S> <O|F> <note|->; EJ <call id> <T|H|S>
+    -- <level> or <call id> -; EX <call id>; EQ <nonce>; a field out of its bounds drops the whole message
+    EA = function(f)
+        if #f < 12 or not isHex(f[1], 4) or not isNum(f[2], 1, 999999) or not CALL_ART[f[3]] then return false end
+        if not (f[4] == "-" or dungeonKey(f[4])) or not callText(f[5], 120) or not isNum(f[6], 1, 99) then return false end
+        if not (f[7] == "0" or isNum(f[7], 1, 4294967295)) or not (f[11] == "O" or f[11] == "F") then return false end
+        if not (f[12] == "-" or callText(f[12], 240)) then return false end
+        local t, h, s = roleTriple(f[8])
+        if not t or t + h + s < 2 or t + h + s > 40 then return false end
+        t, h, s = roleTriple(f[9])
+        if not t or t + h + s > 30 then return false end
+        return roleTriple(f[10]) ~= nil
+    end,
+    EJ = function(f) return #f >= 2 and isHex(f[1], 4) and (f[2] == "-" or (CALL_ROLE[f[2]] == true and isNum(f[3], 1, 99))) end,
+    EX = function(f) return #f >= 1 and isHex(f[1], 4) end,
+    EQ = function(f) return #f >= 1 and isHex(f[1], 4) end,
 }
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end

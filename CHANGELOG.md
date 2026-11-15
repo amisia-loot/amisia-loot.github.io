@@ -13,6 +13,17 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
     (yd)" under Settings, Map and waypoint moves the foot down by so many yards; set it once so the ring
     lies on the ground.
 
+- feat(guild): guild calls to find a group with sign-ups (F-211)
+
+    The Guild tab has a new page "Calls": put up a call for a dungeon, a group quest, help or anything
+    else with the roles you need, a level and a time, and every guild member with Amisia sees it on the
+    page and once as a chat line with [Sign up]. Members sign up with a role in one click; as the creator
+    you see the sign-ups with level, role and item level and invite them one by one or with "Invite all"
+    (in sign-up order, as many as the roles need; more than five turn the group into a raid). Whoever is in
+    your group counts as in, and a call with every role filled shows as full. A call ends with "End", when
+    its creator logs out, or two hours after its time; it survives a /reload. Nothing is sent during a boss
+    fight's chat lockdown; your action waits and goes once it is over.
+
 - feat(guild): alts under their main with item levels on Members, and an Amisia button at the guild window (F-210)
 
     The Members page now lists each player's alts indented under their main, with every character's item

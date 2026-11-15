@@ -50,7 +50,7 @@ ICONS = {
     # Dungeons & Raids
     'dungeons': 'castle', 'raidjournal': 'skull', 'quests': 'flag', 'map': 'map',
     # Gilde, Amisia
-    'members': 'users', 'calendar': 'calendar-days', 'bank': 'landmark', 'duels': 'swords', 'tools': 'wrench',
+    'members': 'users', 'calls': 'megaphone', 'calendar': 'calendar-days', 'bank': 'landmark', 'duels': 'swords', 'tools': 'wrench',
     'settings': 'settings', 'about': 'info', 'feedback': 'message-square',
     # the side windows
     'win_talents': 'network', 'win_rolls': 'dice-5', 'win_softres': 'clipboard-list', 'win_layer': 'layers',

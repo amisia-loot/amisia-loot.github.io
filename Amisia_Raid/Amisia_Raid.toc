@@ -50,6 +50,7 @@ Raid\LineupSort.lua
 Raid\LineupRoles.lua
 Raid\GroupAccept.lua
 Raid\OnlineInvite.lua
+Raid\GuildCalls.lua
 Raid\PullTimer.lua
 Raid\Signup.lua
 Raid\RaidCalendar.lua
@@ -71,6 +72,7 @@ UI\SoftResImport.lua
 UI\Pages\Export.lua [AllowLoadGameType camelot]
 UI\Pages\Bank.lua
 UI\Pages\Members.lua
+UI\Pages\Calls.lua
 UI\Setup.lua
 UI\Signup.lua
 UI\RaidCalendar.lua

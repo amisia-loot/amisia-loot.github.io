@@ -228,6 +228,7 @@ T.NAV_ICONS = {
     quests = own("quests"),
     map = own("map"),
     members = own("members"),
+    calls = own("calls"),
     calendar = own("calendar"),
     bank = own("bank"),
     duels = own("duels"),
@@ -335,6 +336,25 @@ T.MEMBERS = {
     NUM_FONT = "NumberFontNormalSmall",            -- the skill on the icon
     -- the column heads (sort on click; Berufe sorts by the skill), x and width on the list
     COLS = { { "name", 48, 60 }, { "level", 110, 56 }, { "zone", 176, 60 }, { "last", 238, 78 }, { "prof", 320, 120 } },
+}
+
+-- the page Aufrufe (UI/Pages/Calls.lua, tab Gilde, F-211): the head row (the filters as text tabs, or "Zurück";
+-- the one red button), then one view: the calls as ROWS rows of ROW_H (four lines: title and time, art,
+-- creator and level, the roles with the sign-ups and the time left, the note; the action "Anmelden" /
+-- "Abmelden" at the right), 26 + 5 x 80 + 20 = 446 of 478; the form (five rows of fields, a hint line); the
+-- creator's view (two lines, the column heads, the sign-ups with "Einladen" and "Ablehnen" under the mouse).
+T.CALLS = {
+    ROWS = 5, ROW_H = 80, PAD = 8,
+    LINE1_Y = -8, LINE2_Y = -28, LINE3_Y = -44, LINE4_Y = -60,
+    TITLE_W = 400, WHEN_W = 160, INFO_W = 440, NOTE_W = 560,
+    ACTION_Y = -42,                                -- the action's centre below the row's top
+    FULL = "|cff4fbf7a",                           -- "voll"
+    -- the form: field widths
+    ART_W = 130, DUNGEON_W = 280, LEVEL_W = 100, TIME_MODE_W = 110, TIME_W = 60, ROLE_W = 90, LABEL_GAP = 6,
+    -- the creator's view: column heads (x, width on the list) and rows
+    MINE_ROWS = 14, MINE_ROW_H = 22,
+    COLS = { { "name", 6, 170 }, { "level", 180, 44 }, { "role", 228, 80 }, { "il", 312, 50 }, { "status", 366, 110 } },
+    ACTION_GAP = 10,                               -- between the row actions "Einladen" and "Ablehnen"
 }
 
 -- the page Karte (tab Ausrüstung, F-045): the head row (zone picker, the chips Ziele, Wünsche,
@@ -505,8 +525,8 @@ T.QUESTITEMS = { W = 460, PAD = 12, TOP = 30, HEAD_H = 24, LIST_GAP = 6, ROWS = 
 T.TARGETWIN = { W = 250, H = 84, COMPACT_W = 190, SHADE = 0.78, RING = 64, ARROW = 36, PAD = 10, GAP = 10,
     TOP = 8, LINE_GAP = 2, ETA_GAP = 6, BTN = 16, BTN_GAP = 2 }
 
--- The light over the map pin (F-206, Gear/MapBeacon.lua, AmisiaBeacon): a column BEAM_H high, its bright core
--- BEAM_W and its soft glow GLOW_W wide (GLOW_ALPHA), in COLOR and added to the world behind it; the ring at its
+-- The light over the map pin (F-206, Gear/MapBeacon.lua, AmisiaBeacon): at the size of reference a column BEAM_H
+-- high, its bright core BEAM_W and its soft glow GLOW_W wide (GLOW_ALPHA), in COLOR and added to the world behind it; the ring at its
 -- foot RING_W x RING_H (an ellipse); BOX_GAP over the column the box BOX_H high, BOX_MIN to BOX_MAX wide (PAD
 -- left and right of the longer line, PAD_Y over the name and under the distance), on a dark ground (SHADE)
 -- with a gold edge. TICK: how often the distance follows. REFOLLOW: at most that often (seconds) Amisia

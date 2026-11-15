@@ -203,6 +203,33 @@ function S.members()
     STUB.tick(11)
 end
 
+-- The page Aufrufe (F-211): three calls of the guild (a dungeon by its key with a note, a quest with a time, a
+-- full call for help); the form; the own call with four sign-ups (one in the group, one invited, one offline).
+local callsDone
+function S.calls(mode)
+    S.members()
+    if not callsDone then
+        callsDone = true
+        local at = GetServerTime() + 5400
+        STUB.fire("CHAT_MSG_ADDON", "Amisia", "1EA\tabcd\t2\tD\tsmcath\tKathedrale\t38\t0\t1/1/3\t0/1/2\t0/0/1\tO\tQuest Herod, bitte mit Schlüssel", "GUILD", "Fraktur")
+        STUB.fire("CHAT_MSG_ADDON", "Amisia", "1EA\tbeef\t1\tQ\t-\tDie Feste von Grim Batol\t45\t" .. at .. "\t0/1/2\t0/0/1\t0/0/0\tO\t-", "GUILD", "Chorf")
+        STUB.fire("CHAT_MSG_ADDON", "Amisia", "1EA\tcafe\t5\tH\t-\tHilfe bei der Elitequest\t30\t0\t0/1/2\t0/1/2\t0/1/2\tF\tAm Turm", "GUILD", "Anna Bergmann")
+        STUB.tick(1)
+    end
+    NS.ShowPage("calls")
+    if mode == "mine" and not NS.GuildCalls.Own() then
+        NS.GuildCalls.Create({ art = "D", key = "smcath", title = "Scharlachrotes Kloster: Kathedrale", min = 38, at = 0,
+            need = { T = 1, H = 1, S = 3 }, note = "Quest Herod" })
+        local own = NS.GuildCalls.Own()
+        own.signups = {
+            { n = "Fraktur", r = "H", l = 40, c = "SHAMAN", t = time() }, { n = "Chorf", r = "T", l = 41, c = "WARRIOR", t = time() },
+            { n = "Anna Bergmann", r = "S", l = 39, c = "PRIEST", t = time() }, { n = "Kimtaro", r = "S", l = 38, c = "ROGUE", t = time() },
+        }
+    end
+    NS.GuildCalls.PageMode(mode or "list")
+    NS.Refresh()
+end
+
 -- The duels page (F-106): an evening at the duel spot of Durotar: duels of strangers and own ones,
 -- a flight, players without a class, a tournament of three duels; the view chosen by the caller.
 local duelsDone
@@ -857,6 +884,10 @@ S.STATES = {
     -- the members page with the lineup's guild: zones, offline members with their last time online,
     -- a note, professions from the recipe exchange (main and secondary) and the own ones
     { page = "members", name = "members-guild", open = function() S.members(); NS.ShowPage("members") end },
+    -- the page Aufrufe (F-211): the guild's calls, the form, the own call with its sign-ups
+    { page = "calls", name = "calls-list", open = function() S.calls("list") end },
+    { page = "calls", name = "calls-form", open = function() S.calls("form") end },
+    { page = "calls", name = "calls-mine", open = function() S.calls("mine") end },
     -- the duels page: the history, the leaderboard, the classes and one class against the others
     { page = "duels", name = "duels-hist", open = function() S.duels("hist") end },
     { page = "duels", name = "duels-board", open = function() S.duels("board") end },

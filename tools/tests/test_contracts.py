@@ -271,7 +271,7 @@ def test_every_settings_section_is_listed(arch):
             # two sections per row: the first and the third cell
             cells = [c.strip() for c in line.strip().strip('|').split('|')]
             for c in cells[0::2]:
-                m = re.fullmatch(r'`([a-z]+)`', c)
+                m = re.fullmatch(r'`([a-z][A-Za-z]*)`', c)
                 if m:
                     doc.add(m.group(1))
     assert code, 'no settings sections found'

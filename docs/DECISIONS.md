@@ -3708,3 +3708,35 @@ schlechtes Feld, Absender außerhalb der Gilde, Namen außerhalb des Rosters, ei
 Filter, Sortierung, Tooltip, Laden beider Schlüssel, Knopf am Gildenfenster), `tests/test_guild_button_noraid.lua`,
 `tests/test_unit_info.lua` (Itemlevel eines Mitglieds gemerkt), `tools/tests/test_contracts.py` (Nachricht, Abstand,
 Schlüssel).
+
+## D-136 Aufrufe der Gilde: Ablauf, Vertrauen, Drosseln
+
+**Datum:** 2026-11-15
+**Entscheidung:** Jedes Gildenmitglied mit Amisia kann einen Aufruf einstellen (F-211, Spec
+`docs/specs/2026-11-15-gilde-aufrufe.md`), höchstens einen zur Zeit. Vier neue Nachrichten (Präfix Steuerung):
+`EA` (der Aufruf mit Id, Fassung, Art, Dungeon-Schlüssel, Titel, Stufe, Zeit, gesucht/angemeldet/dabei je Rolle,
+Zustand, Notiz; GUILD bei jeder Änderung, höchstens alle 10,5 s, Lebenszeichen alle 5 Minuten, nach einem `/reload`
+5-10 s später; WHISPER als Antwort auf `EQ`), `EJ` (Anmeldung mit Rolle und Stufe oder Abmeldung, WHISPER an den
+Ersteller), `EX` (Ende, GUILD), `EQ` (Frage nach laufenden Aufrufen, GUILD 20-40 s nach dem Login). Vertrauen: nur
+Mitglieder der eigenen Gilde (`ns.TrustWait` "member"); ein Aufruf hängt am Absender, den der Server nennt (nie an
+einem Feld), also ändert oder beendet ihn nur sein Ersteller; eine Anmeldung gilt immer für ihren Absender und kommt
+nur per WHISPER; jedes Feld wird geprüft, ein falsches verwirft die Nachricht. Drosseln: `EA` 10 s je Absender,
+`EJ` 5 s je Absender und Aufruf (KEYED_GAP), `EQ` 300 s; höchstens 20 fremde Aufrufe (der am längsten nicht gehörte
+fällt), 30 Anmeldungen; ein fremder Aufruf fällt nach 10 Minuten ohne `EA` und 2 Stunden nach seiner Zeit. "Dabei"
+zählt der Ersteller aus seiner Gruppe (angemeldet und in der Gruppe, je Rolle); voll heißt jede Rolle besetzt.
+"Alle einladen" nimmt die Angemeldeten in Anmeldereihenfolge, online, so viele je Rolle wie noch fehlen, erst bis
+fünf, dann (sobald einer da ist) `ConvertToRaid`; nie im Kampf, im Bosskampf oder auf dem Schlachtfeld, in einer
+Gruppe nur als Leiter. In der Chat-Sperre geht nichts raus; die Handlung wartet mit einer Chatzeile. Gespeichert
+wird nur der eigene Aufruf (`AmisiaDB.guildCall`); die Chatzeile kommt je Aufruf einmal (`guildCalls.chat`).
+**Grund:** Nutzer 2026-11-15 (Spec freigegeben): "Jedes Mitglied", "Chatzeile mit Link", "Ersteller wählt". Eine
+Gruppe soll ohne Hin und Her im Gildenchat zustande kommen, und keiner darf fremde Aufrufe ändern, fremde Namen
+anmelden oder die Gilde fluten.
+**Folge:** Nur Mitglieder mit Amisia sehen Aufrufe; ältere Versionen verwerfen die vier Nachrichten. Ein Abgelehnter
+bekommt keine Nachricht, er sieht nur die Zahl der Angemeldeten sinken. Die Uhrzeit ist eine Epoche
+(`GetServerTime`); eingegeben und gezeigt wird sie in der Uhr des eigenen Rechners. Nach einem `/reload` eines
+Empfängers kommt die Chatzeile eines laufenden Aufrufs noch einmal (das Gedächtnis ist weg).
+**Durchgesetzt durch:** `tests/test_guild_calls.lua` (Aufruf, eine Chatzeile mit Link, Anmelden und Abmelden per
+Flüstern, nur der Absender, nur der Ersteller, Fremder, falsche Felder, Abstände, `EQ` nach dem Login, Lebenszeichen
+und Wegfall, `/reload`, Alle einladen mit Reihenfolge, Rollen, Schlachtzug, Kampf und Leiter, Kampfsperre),
+`tests/test_guild_calls_page.lua` (Seite, Filter, Rollenmenü, Formular und seine Prüfungen, Ersteller-Ansicht,
+250 Bytes, Laden), `tools/tests/test_contracts.py` (Nachrichten, Abstände, Schlüssel, Abschnitt).
