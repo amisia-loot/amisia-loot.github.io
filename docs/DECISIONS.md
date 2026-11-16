@@ -3813,6 +3813,10 @@ Wahl, damit nicht zwei Wege zugleich laufen.
 **Durchgesetzt durch:** `tests/test_layer_window.lua` (zwei Fragende, Chat statt Wahl, Warten, die Wahl nach 2,5 s, nur der Layer der Zeile, kein
 Kanal von selbst, der zweite Klick, ohne Gilde, Helfen aus für YQ, YI und Flüstern, die Frage schließt sich, eine
 fremde Frage bleibt, Zähler), `tests/test_layer.lua` (Kennung, Leiste, Menü).
+**Geändert durch D-146 (2026-11-16):** Helfen ist kein Schalter der Sitzung mehr: "aus" bleibt über `/reload`
+(`AmisiaDB.layerHelp`), nur ein echtes Einloggen schaltet es an; eine eigene Frage hält es an, ein gelungener Wechsel
+noch 4 Minuten; der Knopf "Layer wechseln" wird während der Suche zu "Suche stoppen", in der Gruppe zu "Gruppe
+verlassen".
 
 ## D-140 Aufrufe: ein gesuchter Spieler reicht
 
@@ -3979,3 +3983,61 @@ Selbsttest-Zeile, Offline-Zeile, abgelehntes Flüstern), `tests/test_layer.lua` 
 `tools/tests/test_contracts.py::test_the_named_exception_stays_narrow` (der Name genau in einer Zeile, in keinem
 Dokument), `tools/tests/test_contracts.py::test_two_prefixes_and_one_sender` (nur `Core/Comm.lua` sendet, nur
 `Gear/LayerForeign.lua` spricht das fremde Format).
+**Berichtigt durch D-146 (2026-11-16):** Jenes Addon nutzt Gildenbitten auf Forever weiter (eine Zeile im Gildenchat
+mit `<LS ...>`); Amisia schreibt diese Zeile bei "Im Gildenchat fragen" und beantwortet sie mit `heard` über GUILD.
+Ein `SHARD_TRANSFER` allein ist kein Wechsel mehr (erst ein anderer Layer), und "h" heißt "hilft und kann einladen".
+
+## D-146 Layer: sich verhalten wie das verbreitete Layer-Addon (Helfen-Sperre, Lesen, Fragen, Urteil, Leiste)
+
+**Datum:** 2026-11-16
+**Entscheidung:** Amisia verhält sich beim Fragen, Helfen und Wechseln wie das meistgenutzte Layer-Addon (F-221,
+Spec `docs/specs/2026-11-16-layer-genau-so.md`); eigener Code, Amisias Namen, deutsche Texte, Amisias Fensterstil.
+Ändert D-139 und berichtigt D-145.
+- **Helfen:** jede eigene Frage schaltet Helfen an, solange sie läuft, und 4 Minuten nach einem gelungenen Wechsel
+  (`AmisiaDB.layerHelp.lock`, je Charakter, nach der Uhr, verlängert sich nicht; ein `/reload` oder Ausloggen in der
+  Gruppe des Helfers mit offenem Urteil zählt als gelungen). "Aus" wird währenddessen abgelehnt ("Helfen bleibt noch
+  3:41 an."); danach geht es wieder aus, wenn Amisia es angeschaltet hatte. Während die eigene Frage auf eine
+  Einladung wartet, lädt Amisia niemanden ein. "Aus" bleibt über `/reload`; nur ein echtes Einloggen schaltet an.
+  Der Knopf zeigt "Helfen: AN 3:41" und "Helfen: PAUSIERT" mit dem Grund. Einladungen höchstens eine je Sekunde,
+  offene zählen 60 s zur vollen Gruppe, "schon in einer Gruppe" gibt den Platz frei, eine späte Annahme nach "aus"
+  (5 Minuten) wird entfernt, die Beute geht zurück, wenn ein Nicht-Gast beitritt. Das "h" der Antwort heißt "hilft
+  und kann gerade einladen", unabhängig vom Layer der Frage.
+- **Lesen:** ein bekannter Layer bleibt bis Zonenwechsel, Neustart oder Einloggen (nicht nur 5 Minuten); 2 der letzten
+  5 Kreaturen setzen einen unbekannten, 3 ändern einen bekannten; Kreaturen in Sicht beim `SHARD_TRANSFER` zählen
+  10 s nicht; Namensplaketten, Ziel und Maus werden 2, 5 und 12 s nach Einloggen und Wechsel, bei einer Frage mit
+  unbekanntem eigenem Layer und (bis zu dreimal) bei einer Frage ohne Layer nachgelesen, nie 15 s nach einer
+  Zonengrenze. Die gesehenen Layer bleiben über `/reload` (`AmisiaDB.layerSeen`, 1 Stunde).
+- **Fragen:** `/who` mit dem Kartenfilter der Zone, dann je Suche eine Klasse (sonst das Zonen-Kürzel des Clients
+  und Stufenbereiche), höchstens 49 Namen, die eigene Zone zuerst; die Wer-Listen des Spiels hören die Antwort nicht,
+  außer sie sind offen; Gilde zuletzt (aus: gar nicht auf diese Art); gefragt ohne Antwort 6 h (`AmisiaDB.layerAsked`,
+  3000), bekannte Helfer zuerst (`layerHosts` 300, mit "hilft"); "Kein Spieler namens ..." lässt den Namen 10 Minuten
+  ruhen; ein Helfer, der von unserem Layer einlud, 20 s nicht; die erste Einladung beendet die Flüsterer; die Frage
+  ohne Layer nach 3 und 10 s; eine Frage gilt 120 s; "Im Gildenchat fragen" schreibt die Zeile `inv layer <LS ...>`,
+  Amisia-Helfer beantworten sie von Gildenmitgliedern mit `heard` über GUILD (dafür spricht `ns.CommSendPlain` auch
+  GUILD; die strenge Prüfung und die 40-Zeichen-Regel für schlichte Zeilen bleiben).
+- **Urteil:** nach dem Beitritt Lesen nach 0, 1, 3 s und alle 2 s; "kein Wechsel" frühestens nach 5 s ohne Wechsel
+  des Spiels und 3 frisch gelesenen Kreaturen des alten Layers, Verlassen frühestens nach 15 s; nach 5 s zählt der
+  echte Gruppenleiter; `SHARD_TRANSFER` allein ist kein Erfolg, ein Neustart auf demselben Layer ist "nicht
+  gewechselt", nach dem Ende der Gruppe gilt ein Wechsel noch 30 s; Verlassen nach 4 s, von selbst nur, wenn der
+  Helfer auf die Frage antwortete; Warnungen bei Einladungen (hat nicht bewegt, nannte unseren Layer, gesehener Layer).
+- **Fenster und Leiste:** "Suche stoppen" (ab der 1. Sekunde), "Gruppe verlassen", "Verlassen und neu fragen"; die
+  Zeilen "Gesehen in dieser Zone" für alle klickbar; die Leiste steht für sich ("Leiste zeigen", an, Hintergrund
+  55 %) mit dem Stand in Zeile 2; in Instanzen "Keine Layer in <Instanz>"; `/amisia layer an|aus|status`.
+- **Bleibt:** Buchstaben je Zone nach Kennung (dort zählt jeder für sich); Amisia nimmt die Einladung eines
+  Antwortenden weiter selbst an (abschaltbar); kein Protokoll im Speicher, kein Kanal, kein eigenes Minimap-Symbol.
+**Grund:** Nutzer 2026-11-16 mit dem eingefügten Quelltext jenes Addons: "mach das layer genau so"; zur Spec mit
+ihren vier Vorschlägen (die 4-Minuten-Sperre auch bei Helfen aus, die Leiste von Anfang an, Einladungen von
+Antwortenden weiter selbst annehmen, alles in einem Release): "Passt, bauen".
+**Folge:** Wer beide Addons kennt, merkt beim Fragen, Helfen und Wechseln keinen Unterschied im Ablauf. Wer Helfen
+aus hat, hilft 4 Minuten nach jedem eigenen Wechsel trotzdem (die Grenzen bleiben: sechs in zehn Minuten, einer je
+Minute, nie in Instanzen, nicht in der Gruppensuche, eigene Zone). Drei neue `AmisiaDB`-Schlüssel (`layerHelp`,
+`layerAsked`, `layerSeen`), eine neue Einstellung ("Leiste zeigen"), zwei neue Vorgaben (Leiste 55 %, Verlassen nach
+4 s); `layerHosts` speichert Einträge statt Zahlen (alte werden beim Laden umgesetzt). Ob `SendWho` den Kartenfilter
+nimmt, sagt nur das Spiel; lehnt es ab, fragt Amisia still nach dem Zonennamen.
+**Durchgesetzt durch:** `tests/test_layer_help.lua` (Sperre, `/reload`, Einloggen, Charakter, Pause, späte Annahme,
+Urteil, Leiter, nach der Gruppe, Nachlesen, Gildenzeile, Listen), `tests/test_layer.lua` (Abstimmung, Nachlesen,
+`SHARD_TRANSFER`, gespeicherte Layer, Leiste), `tests/test_layer_zone.lua` (Kartenfilter, Klassen, Stufenbereiche,
+gefragt ohne Antwort, offene Liste, Beute zurück, 4 s), `tests/test_layer_foreign.lua` (Antwort "h", Runden ohne
+Layer, Warnung, Wechsel erst nach dem Layer), `tests/test_layer_change.lua` (offene Einladungen, eine je Sekunde,
+120 s), `tests/test_layer_window.lua` (Knopf "Suche stoppen", "Gruppe verlassen"),
+`tools/tests/test_contracts.py::test_two_prefixes_and_one_sender`.

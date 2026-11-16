@@ -135,6 +135,8 @@ STUB.fire("GROUP_ROSTER_UPDATE")
 STUB.tick(1)
 STUB.targetGUID = "Creature-0-5555-0-5250-501-0E1"; STUB.fire("PLAYER_TARGET_CHANGED")
 STUB.targetGUID = "Creature-0-5555-0-5250-502-0E2"; STUB.fire("PLAYER_TARGET_CHANGED")
+-- F-221: a known layer changes on 3 of the last 5 creatures
+STUB.targetGUID = "Creature-0-5555-0-5250-503-0E3"; STUB.fire("PLAYER_TARGET_CHANGED")
 assert(LY.Current() == 5555)
 local calls = { #CALLS.invite, CALLS.accept, CALLS.leave }
 LT.Start()
@@ -146,7 +148,7 @@ assert(has(line(r, "Bekannte Layer dieser Zone"), "A=4711") and has(line(r, "Bek
 assert(has(line(r, "In Sicht"), "12 Plaketten: 9 Kreaturen, 1 von Spielern gesteuert, 1 geheim, 1 anderes"), line(r, "In Sicht"))
 assert(has(line(r, "Server-Teile"), "4711 x8, 4802 x1"), line(r, "Server-Teile"))
 assert(has(line(r, "Kennung je Zonenkopie"), "8 von 9 Kreaturen tragen die Kennung 4711"))
-assert(has(line(r, "Gelesen"), "Ziel 3 von 3") and has(line(r, "Gelesen"), "geheime GUIDs 1"), line(r, "Gelesen"))
+assert(has(line(r, "Gelesen"), "Ziel 4 von 4") and has(line(r, "Gelesen"), "geheime GUIDs 1"), line(r, "Gelesen"))
 assert(has(line(r, "Layer-Wechsel ohne Zonenwechsel"), "1, davon 1 in einer Gruppe, 0 Hin und Her"))
 assert(has(r, "Karte 1429, Kennung 5555, in einer Gruppe") and has(r, "Karte 1429, Kennung 4711, allein"))
 assert(has(line(r, "Kennung folgt dem Layer"), "ja:") and has(line(r, "Kennung folgt dem Layer"), "OK"))

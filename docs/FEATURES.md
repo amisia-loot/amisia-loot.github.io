@@ -44,6 +44,10 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Status: geplant
 - Braucht: Gruppe
 - Prüfung: Wenn du mit Helfen aus "Layer wechseln" klickst und der Wechsel gelingt, dann zeigt der Knopf "Helfen: AN" mit einer Uhr ab 4:00, ein Klick darauf schaltet nicht aus, und nach Ablauf ist Helfen wieder aus.
+- Prüfung: Wenn du Helfen ausschaltest und `/reload` machst, dann bleibt es aus; nach neuem Einloggen ist es an.
+- Prüfung: Wenn du "Layer wechseln" klickst, dann wird der Knopf zu "Suche stoppen"; in der Gruppe des Helfers zu "Gruppe verlassen".
+- Prüfung: Wenn du nach einem Wechsel 10 Minuten still stehst und ein Nutzer des anderen Layer-Addons fragt, dann lädt Amisia ihn ein (der Layer ist noch bekannt).
+- Prüfung: Wenn du "Im Gildenchat fragen" klickst, dann steht `inv layer <LS ...>` in der Chatzeile, und ein Helfer des anderen Layer-Addons aus der Gilde lädt ein.
 - Notiz: Spec docs/specs/2026-11-16-layer-genau-so.md; DECISIONS D-146. Nutzer 2026-11-16 mit dem eingefügten Quelltext jenes Addons: "mach das layer genau so", dann "Passt, bauen".
 
 ### F-220 Layer-Wechsel mit den Nutzern des verbreiteten Layer-Addons

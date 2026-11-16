@@ -582,4 +582,5 @@ L["%s hat Amisia (Kennung %s, hilft: %s)"] = "%s has Amisia (ID %s, helps: %s)"
 L["übersprungen"] = "skipped"
 L["vom Spiel gesperrt (diese Sitzung)"] = "blocked by the game (this session)"
 L["Wer-Abfrage"] = "Who query"
+L["Nachlesen"] = "rescans"
 end)

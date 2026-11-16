@@ -28,7 +28,8 @@ local function world(name, zone)
         _G.UnitIsGroupLeader = function(u) return STUB.leader == true end
         _G.AcceptGroup = function() ACCEPTED = ACCEPTED + 1 end
         _G.StaticPopup_Hide = function() end
-        C_FriendList.SendWho = function(f) WHO[#WHO + 1] = f end
+        WHOF = {}
+        C_FriendList.SendWho = function(f, origin, filter) WHO[#WHO + 1] = f; WHOF[#WHO] = filter end
         C_FriendList.SetWhoToUi = function(v) WHOUI = v end
         C_FriendList.GetNumWhoResults = function() return #WHORESULT, #WHORESULT end
         C_FriendList.GetWhoInfo = function(i)
@@ -53,8 +54,10 @@ local everyone = ([[WHORESULT = { %q, %q, %q, %q, "Pia Offline" }]]):format(A, U
 assert(not C(A, "NS.InGuild()") and step(A) == "ask", "the zone can be asked without a guild")
 assert(C(A, "return NS.LayerChange.Swap()") == true)
 assert(C(A, "WHO[1]") == 'z-"Wald von Elwynn"' and C(A, "WHOUI") == true, tostring(C(A, "WHO[1]")))
+-- F-221: the map filter of the zone (SendWho's third argument), no class at first
+assert(C(A, "WHOF[1].uiMapIDs[1]") == 1429 and C(A, "#WHOF[1].classIDs") == 0 and C(A, "#WHOF[1].raceIDs") == 0)
 assert(C(A, "FriendsFrame.ev.WHO_LIST_UPDATE") == nil, "the client's who window does not hear this answer")
-assert(step(A) == "wait")
+assert(step(A) == "stop")
 C(A, everyone .. "; STUB.fire('WHO_LIST_UPDATE')")
 assert(C(A, "FriendsFrame.ev.WHO_LIST_UPDATE") == nil, "the answer itself still goes past the window")
 BUS.tick(1)
@@ -81,39 +84,67 @@ for _, n in ipairs({ A, U }) do C(n, "STUB.party = true; STUB.fire('GROUP_ROSTER
 assert(C(U, "LOOT[1]") == 0 and C(U, "#LOOT") == 1, "the swap party set to free for all (Enum.LootMethod.Freeforall), once")
 for _, n in ipairs({ A, U }) do C(n, "STUB.fire('GROUP_ROSTER_UPDATE')") end
 assert(C(U, "#LOOT") == 1, "not twice")
--- the change, then leaving after 5 s by itself
-C(A, [[STUB.targetGUID = "]] .. guid(3999, 7, "0C1") .. [["; STUB.fire("PLAYER_TARGET_CHANGED")]])
+-- F-221: a player Amisia did not invite joins: the loot as before, once
+BUS.setRaid({ U, A, K })
+C(U, "STUB.fire('GROUP_ROSTER_UPDATE')")
+assert(C(U, "LOOT[2]") == 3 and C(U, "#LOOT") == 2, "the loot back: " .. tostring(C(U, "LOOT[2]")))
+BUS.setRaid({ U, A })
+C(U, "STUB.fire('GROUP_ROSTER_UPDATE')")
+assert(C(U, "#LOOT") == 2)
+-- the change (three creatures of the new layer, F-221), then leaving after 4 s by itself (Udo answered the ask)
+for i = 1, 3 do C(A, [[STUB.targetGUID = "]] .. guid(3999, 6 + i, "0C" .. i) .. [["; STUB.fire("PLAYER_TARGET_CHANGED")]]) end
 assert(C(A, "NS.LayerChange.State().swap.changed ~= nil"))
-BUS.tick(4)
+assert(C(A, "NS.LayerChange.LockLeft()") == 240, "Helfen held on for four minutes")
+BUS.tick(3)
 assert(C(A, "LEFT") == 0)
 BUS.tick(2)
-assert(C(A, "LEFT") == 1, "left 5 s after the change")
+assert(C(A, "LEFT") == 1, "left 4 s after the change")
 for _, n in ipairs({ A, U }) do C(n, "STUB.party = nil; STUB.roster = {}; STUB.fire('GROUP_ROSTER_UPDATE')") end
 BUS.setRaid({})
 C(U, "STUB.leader = false")
 local hosts = C(A, "AmisiaDB.layerHosts")
 assert(hosts["udo fremd"] and hosts["kai lindner"] and hosts["lena kraus"] and not hosts["pia offline"], "who answered is kept")
 
--- 2. nobody helps: no answer from another layer, the next click asks the next class
+-- 2. nobody helps: no answer from another layer, the next search asks the next class (F-221: one /who per search,
+-- the map and a class; who did not answer within 6 h is not asked again, kept through /reload)
 C(A, "NS.LayerChange._reset(); WHO = {}")
 C(A, [[STUB.fire("ZONE_CHANGED_NEW_AREA"); STUB.targetGUID = "]] .. guid(4012, 8, "0D1") .. [["; STUB.fire("PLAYER_TARGET_CHANGED")]])
+C(A, [[STUB.targetGUID = "]] .. guid(4012, 9, "0D2") .. [["; STUB.fire("PLAYER_TARGET_CHANGED")]])
 C(U, "NS.LayerChange.SetHosting(false)")
-BUS.tick(11)
+-- (ZQ's receive gap is 30 s)
+BUS.tick(31)
 assert(C(A, "return NS.LayerChange.Swap()") == true)
 C(A, everyone .. "; STUB.fire('WHO_LIST_UPDATE')")
 BUS.tick(4)
 BUS.tick(8)
 local first = C(A, "NS.LayerChange.ZoneNext()")
-assert(step(A) == "more" and type(first) == "string", "no answer: the next class: " .. tostring(step(A)))
-assert(C(A, "NS.LayerWindow.SwapLabel(NS.LayerChange.SwapStep(), NS.LayerChange.ZoneNext())") == "Weiter fragen: " .. first)
-assert(C(A, "NS.LayerWindow.StatusText(NS.LayerChange.State())"):find("Ein Klick fragt weiter", 1, true))
-local zqBefore = BUS.count({ kind = "ZQ", sender = A })
+assert(step(A) == "more" and type(first) == "string" and first ~= "Wald von Elwynn", "no answer: the next class: " .. tostring(step(A)) .. " " .. tostring(first))
+local lbl = C(A, "NS.LayerWindow.SwapLabel(NS.LayerChange.SwapStep(), NS.LayerChange.ZoneNext())")
+assert(lbl == "Weiter fragen: " .. first, tostring(lbl))
+local stx = C(A, "NS.LayerWindow.StatusText(NS.LayerChange.State())")
+assert(stx:find("Klick noch einmal, um mehr Spieler zu fragen", 1, true), stx)
+assert(C(A, "AmisiaDB.layerAsked['pia offline']") ~= nil, "asked without an answer: kept")
+C(A, "NS.LayerChange._loaded()")
+assert(C(A, "AmisiaDB.layerAsked['pia offline']") ~= nil, "through /reload")
+local toPia = BUS.count({ kind = "ZQ", sender = A, target = "Pia Offline" })
 assert(C(A, "return NS.LayerChange.Swap()") == true)
-assert(C(A, "WHO[2]") == ('z-"Wald von Elwynn" c-"%s"'):format(first), tostring(C(A, "WHO[2]")))
+assert(C(A, "WHO[2]") == 'z-"Wald von Elwynn"' and C(A, "WHOF[2].classIDs[1]") == 1, tostring(C(A, "WHO[2]")))
 C(A, everyone .. "; STUB.fire('WHO_LIST_UPDATE')")
 BUS.tick(1)
-assert(BUS.count({ kind = "ZQ", sender = A }) == zqBefore, "nobody asked twice in one search")
+assert(BUS.count({ kind = "ZQ", sender = A, target = "Pia Offline" }) == toPia, "not asked again within 6 h")
+assert(BUS.count({ kind = "ZQ", sender = A, target = K }) == 3, "who answered is asked again")
 assert(C(A, "return NS.LayerChange.Stop()") == true and C(A, "NS.LayerChange.State().zone") == nil, "Stopp ends the search")
+-- the map filter refused: the zone by name with the client's zone word and level bands
+C(A, [[NS.LayerChange._reset(); WHO = {}; _G.WHO_TAG_ZONE = "zone-"
+    C_FriendList.SendWho = function(f, origin, filter) if filter then error("no map") end WHO[#WHO + 1] = f end]])
+BUS.tick(11)
+assert(C(A, "return NS.LayerChange.Swap()") == true and C(A, "WHO[1]") == 'zone-"Wald von Elwynn"', tostring(C(A, "WHO[1]")))
+C(A, "NS.LayerChange.Stop()")
+assert(C(A, "NS.LayerChange.ZoneNext()") == "Stufe 1-10", tostring(C(A, "NS.LayerChange.ZoneNext()")))
+BUS.tick(11)
+assert(C(A, "return NS.LayerChange.Swap()") == true and C(A, "WHO[2]") == 'zone-"Wald von Elwynn" 1-10', tostring(C(A, "WHO[2]")))
+C(A, [[NS.LayerChange.Stop(); NS.LayerChange._reset(); _G.WHO_TAG_ZONE = nil
+    C_FriendList.SendWho = function(f, origin, filter) WHO[#WHO + 1] = f; WHOF[#WHO] = filter end]])
 C(U, "NS.LayerChange.SetHosting(true)")
 
 -- 3. a host that does not move the player: after 15 s with the old layer Amisia leaves
@@ -207,14 +238,13 @@ assert(C(A, "return NS.LayerChange.Swap()") == true and C(A, "FriendsFrame.ev.WH
 assert(C(A, "return NS.LayerChange.Stop()") == true)
 BUS.tick(6)
 assert(C(A, "FriendsFrame.ev.WHO_LIST_UPDATE") == true and C(A, "WHOUI") == false, "stopped while waiting: the window hears again")
--- the Friends window open: no /who; closed: the next click asks the zone
+-- F-221: the Friends window open: the /who goes, the open window keeps its event (it shows the answer)
 C(A, "NS.LayerChange._reset(); WHO = {}; SHOWN = true")
 BUS.tick(11)
 C(A, [[STUB.targetGUID = "]] .. guid(4012, 15, "1E2") .. [["; STUB.fire("PLAYER_TARGET_CHANGED")]])
-assert(C(A, "return NS.LayerChange.Swap()") == true and C(A, "#WHO") == 0, "the Friends window open: no /who")
+assert(C(A, "return NS.LayerChange.Swap()") == true and C(A, "#WHO") == 1, "the Friends window open: the /who goes")
+assert(C(A, "FriendsFrame.ev.WHO_LIST_UPDATE") == true, "an open window is not muted")
 C(A, "SHOWN = false")
-assert(C(A, "NS.LayerChange.ZoneNext()") == "Wald von Elwynn", "the zone is still to ask")
-assert(C(A, "return NS.LayerChange.Swap()") == true and C(A, "WHO[1]") == 'z-"Wald von Elwynn"', "the next click asks it")
 -- a helping answer after "none" still picks
 C(U, "NS.LayerChange._reset(); INVITED = {}")
 C(U, [[STUB.targetGUID = "]] .. guid(3999, 16, "1F1") .. [["; STUB.fire("PLAYER_TARGET_CHANGED")]])

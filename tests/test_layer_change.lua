@@ -8,6 +8,12 @@
 local A, V, K, U = "Anna Bergmann", "Vulo Sturmwind", "Kai Lindner", "Udo Fremd"
 BUS.setGuild({ { A, 3 }, { V, 3 }, { K, 3 } })
 local function guid(zone, npc, spawn) return ("Creature-0-%d-0-5250-%d-%s"):format(zone, npc, spawn) end
+-- F-221: three creatures of a layer (a known layer changes on 3 of the last 5, an unknown one on 2)
+local function reads(name, zone, npc, spawn)
+    for i = 1, 3 do
+        C(name, ([[STUB.targetGUID = "%s"; STUB.fire("PLAYER_TARGET_CHANGED")]]):format(guid(zone, npc + i, spawn .. i)))
+    end
+end
 -- every client in Elwynn Forest; each reads two creatures of its layer
 local function world(name, zone)
     C(name, ([[STUB.instance = { name = "Elwynn Forest", type = "none", id = 0 }
@@ -24,7 +30,7 @@ local function world(name, zone)
 end
 -- the question first (layer.autoInvite is on by default since F-216)
 for _, n in ipairs({ A, V, K, U }) do
-    assert(C(n, "NS.Get('layer.autoLeave') == true and NS.Get('layer.leaveSeconds') == 5"), "leaving after 5 s by default")
+    assert(C(n, "NS.Get('layer.autoLeave') == true and NS.Get('layer.leaveSeconds') == 4"), "leaving after 4 s by default (F-221)")
     C(n, "NS.Set('layer.autoInvite', false); NS.Set('layer.autoLeave', false)")
 end
 world(A, 4012)
@@ -60,7 +66,7 @@ assert(C(A, "AmisiaLayerFrame.answers[1]:IsShown() and AmisiaLayerFrame.answers[
 C(V, [[STUB.fire("CHAT_MSG_ADDON", "Amisia", "1YQ\t1429\t4012\tbeef", "GUILD", "Udo Fremd")
        STUB.fire("CHAT_MSG_ADDON", "AnderesAddon", "1YQ\t1429\t4012\tbeef", "GUILD", "Kai Lindner")
        STUB.fire("CHAT_MSG_ADDON", "AnderesAddon", "LAYER?", "GUILD", "Kai Lindner")]])
-BUS.tick(65)
+BUS.tick(125)
 assert(BUS.count({ kind = "YA", sender = V }) == 1, "no answer to a stranger or another addon")
 
 -- a request of someone Vulo did not answer is dropped
@@ -68,9 +74,9 @@ C(V, [[STUB.fire("CHAT_MSG_ADDON", "Amisia", "1YI\tbeef\t1429\t3999", "WHISPER",
 BUS.tick(1)
 assert(C(V, "#INVITED") == 0 and not C(V, "AmisiaConfirmFrame ~= nil and AmisiaConfirmFrame:IsShown()"), "nobody asked Kai")
 
--- the answers are older than a minute now: ask again
+-- the answers are older than two minutes now (F-221: a search lives 120 s): ask again
 local ok3, why3 = C(A, "return NS.LayerChange.RequestInvite('Vulo Sturmwind')")
-assert(not ok3 and why3:find("älter als eine Minute", 1, true), tostring(why3))
+assert(not ok3 and why3:find("älter als zwei Minuten", 1, true), tostring(why3))
 -- the layers must be fresh: read again
 for _, n in ipairs({ A, V, K }) do C(n, [[STUB.targetGUID = STUB.targetGUID:gsub("0A2$", "0B2"); STUB.fire("PLAYER_TARGET_CHANGED")]]) end
 assert(C(A, "return NS.LayerChange.Ask()") == true)
@@ -85,7 +91,8 @@ local q = C(V, "AmisiaConfirmFrame.text:GetText()")
 assert(q == "Anna Bergmann möchte auf deinen Layer wechseln (Layer A). Einladen?", q)
 C(V, "AmisiaConfirmFrame.ok:Click()")
 assert(C(V, "INVITED[1]") == A and C(V, "#INVITED") == 1, "invited")
--- a second invite of the same player within a minute is refused
+-- a second invite of the same player within a minute is refused (F-221: one invite a second, so a second later)
+BUS.tick(1.1)
 local okI, whyI = C(V, "return NS.LayerChange.Invite('Anna Bergmann')")
 assert(not okI and whyI:find("gerade erst eingeladen", 1, true), tostring(whyI))
 
@@ -100,7 +107,7 @@ for _, n in ipairs({ A, V }) do C(n, "STUB.party = true; STUB.fire('GROUP_ROSTER
 assert(C(A, "NS.LayerChange.State().swap.host") == V)
 assert(C(A, "NS.LayerWindow.StatusText(NS.LayerChange.State())"):find("In der Gruppe mit Vulo Sturmwind", 1, true))
 -- the change: Anna reads a creature of Vulo's id (known from the answer: one is enough)
-C(A, [[STUB.targetGUID = "]] .. guid(3999, 7, "0C1") .. [["; STUB.fire("PLAYER_TARGET_CHANGED")]])
+reads(A, 3999, 70, "0C1")
 assert(C(A, "NS.LayerChange.State().swap.changed ~= nil"), "the change is seen")
 assert(C(A, "STUB.messages[#STUB.messages]"):find("Gewechselt: Layer A", 1, true))
 -- without layer.autoLeave nothing leaves; the link does
@@ -116,7 +123,8 @@ assert(C(A, "NS.LayerChange.State().swap") == nil)
 C(V, "NS.Set('layer.autoInvite', true)")
 C(A, "NS.Set('layer.autoLeave', true); NS.Set('layer.leaveSeconds', 10)")
 -- Anna is back on her old layer (a new zone resets, her id is known)
-C(A, [[STUB.fire("ZONE_CHANGED_NEW_AREA"); STUB.targetGUID = "]] .. guid(4012, 8, "0D1") .. [["; STUB.fire("PLAYER_TARGET_CHANGED")]])
+C(A, [[STUB.fire("ZONE_CHANGED_NEW_AREA")]])
+reads(A, 4012, 80, "0D1")
 BUS.tick(61)
 for _, n in ipairs({ V }) do C(n, [[STUB.targetGUID = STUB.targetGUID:gsub("0B2$", "0E2"); STUB.fire("PLAYER_TARGET_CHANGED")]]) end
 assert(C(A, "return NS.LayerChange.Ask()") == true)
@@ -128,13 +136,14 @@ C(A, [[STUB.fire("PARTY_INVITE_REQUEST", "Vulo Sturmwind")]])
 assert(C(A, "ACCEPTED") == 2)
 BUS.setRaid({ A, V })
 for _, n in ipairs({ A, V }) do C(n, "STUB.party = true; STUB.fire('GROUP_ROSTER_UPDATE')") end
-C(A, [[STUB.targetGUID = "]] .. guid(3999, 9, "0F1") .. [["; STUB.fire("PLAYER_TARGET_CHANGED")]])
+reads(A, 3999, 90, "0F1")
 BUS.tick(11)
 assert(C(A, "LEFT") == 2, "left the two-player group by itself")
 -- a group of three is never left by itself
 for _, n in ipairs({ A, V }) do C(n, "STUB.roster = {}; STUB.party = nil; STUB.fire('GROUP_ROSTER_UPDATE')") end
 BUS.setRaid({})
-C(A, [[STUB.fire("ZONE_CHANGED_NEW_AREA"); STUB.targetGUID = "]] .. guid(4012, 10, "1A1") .. [["; STUB.fire("PLAYER_TARGET_CHANGED")]])
+C(A, [[STUB.fire("ZONE_CHANGED_NEW_AREA")]])
+reads(A, 4012, 100, "1A1")
 BUS.tick(61)
 C(V, [[STUB.targetGUID = STUB.targetGUID:gsub("0E2$", "1B2"); STUB.fire("PLAYER_TARGET_CHANGED")]])
 assert(C(A, "return NS.LayerChange.Ask()") == true)
@@ -145,7 +154,7 @@ assert(C(V, "#INVITED") == 3)
 C(A, [[STUB.fire("PARTY_INVITE_REQUEST", "Vulo Sturmwind")]])
 BUS.setRaid({ A, V, K })
 for _, n in ipairs({ A, V, K }) do C(n, "STUB.party = true; STUB.fire('GROUP_ROSTER_UPDATE')") end
-C(A, [[STUB.targetGUID = "]] .. guid(3999, 11, "1C1") .. [["; STUB.fire("PLAYER_TARGET_CHANGED")]])
+reads(A, 3999, 110, "1C1")
 assert(C(A, "NS.LayerChange.State().swap.changed ~= nil"))
 BUS.tick(11)
 assert(C(A, "LEFT") == 3, "the host's party of three: left by itself too (F-216, a host may have several guests)")
@@ -153,7 +162,8 @@ for _, n in ipairs({ A, V, K }) do C(n, "STUB.roster = {}; STUB.party = nil; STU
 BUS.setRaid({})
 
 -- no change after a minute: "Kein Wechsel"
-C(A, [[STUB.fire("ZONE_CHANGED_NEW_AREA"); STUB.targetGUID = "]] .. guid(4012, 12, "1D1") .. [["; STUB.fire("PLAYER_TARGET_CHANGED")]])
+C(A, [[STUB.fire("ZONE_CHANGED_NEW_AREA")]])
+reads(A, 4012, 120, "1D1")
 BUS.tick(61)
 C(V, [[STUB.targetGUID = STUB.targetGUID:gsub("1B2$", "1E2"); STUB.fire("PLAYER_TARGET_CHANGED")]])
 assert(C(A, "return NS.LayerChange.Ask()") == true)
@@ -168,8 +178,29 @@ local text, leave = C(A, "return NS.LayerWindow.StatusText(NS.LayerChange.State(
 assert(text == "Kein Wechsel: der Layer ist derselbe geblieben." and leave == true, tostring(text))
 assert(C(A, "LEFT") == 3, "no change seen, no new read: nothing left by itself")
 
+for _, n in ipairs({ A, V }) do C(n, "STUB.roster = {}; STUB.party = nil; STUB.fire('GROUP_ROSTER_UPDATE')") end
+BUS.setRaid({})
+
+-- F-221: open invites take room (60 s): alone, four open invites fill the group; the game's "already in a group"
+-- frees one; one invite a second
+C(V, [[NS.LayerChange._reset(); INVITED = {}
+    _G.ERR_ALREADY_IN_GROUP_S = "%s ist bereits in einer Gruppe."
+    for i = 1, 4 do NS.LayerChange.Invite("Gast Offen" .. string.char(64 + i)); STUB.tick(1.1) end]])
+assert(C(V, "#INVITED") == 4 and C(V, "NS.LayerChange.CanInvite()") == false, "four open invites: the group is full")
+assert(C(V, [[NS.LayerChange.Invite("Gast Fuenf"); return #INVITED]]) == 4)
+C(V, [[STUB.fire("CHAT_MSG_SYSTEM", "Gast OffenB ist bereits in einer Gruppe.")]])
+assert(C(V, "NS.LayerChange.CanInvite()") == true, "a refused invite frees its place")
+C(V, "STUB.tick(61)")
+C(V, [[INVITED = {}; NS.LayerChange.Invite("Gast Sechs"); NS.LayerChange.Invite("Gast Sieben")]])
+assert(C(V, "#INVITED") == 1, "the second within a second waits")
+C(V, "STUB.tick(1.1)")
+assert(C(V, "INVITED[2]") == "Gast Sieben", "and goes a second later")
+C(V, "STUB.tick(61)")
+assert(C(V, "NS.LayerChange.CanInvite()") == true, "after a minute open invites count no more")
+
 -- the host's limit: six invites in ten minutes
-local refused = C(V, [[for i = 1, 6 do NS.LayerChange.Invite("Gast Nummer" .. string.char(64 + i)) end
+local refused = C(V, [[NS.LayerChange._reset()
+    for i = 1, 6 do NS.LayerChange.Invite("Gast Nummer" .. string.char(64 + i)); STUB.tick(61) end
     local ok, why = NS.LayerChange.Invite("Gast Zuviel")
     return why]])
 assert(type(refused) == "string" and refused:find("sechs Layer-Einladungen", 1, true), tostring(refused))

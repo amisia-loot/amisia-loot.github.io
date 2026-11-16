@@ -928,19 +928,28 @@ function ns.CommPlainPrefix(prefix)
 end
 
 -- One whisper of plain text on a prefix of CommPlainPrefix: never in the chat lockdown, a battleground or
--- an arena, never to a name that just went offline, one line without codes. Returns the client's result
--- (0 sent, 3 throttled, 4 refused for this chat type, 11 lockdown, ...) or nil and the reason.
-function ns.CommSendPlain(prefix, text, target)
+-- an arena, never to a name that just went offline, one line without codes. chan "GUILD" (F-221, D-146: the
+-- answer to the other layer addon's guild line): to the own guild instead, target unused. Returns the client's
+-- result (0 sent, 3 throttled, 4 refused for this chat type, 11 lockdown, ...) or nil and the reason.
+function ns.CommSendPlain(prefix, text, target, chan)
     if not available or not (plain[prefix] and plain[prefix].ok) then return nil, "prefix" end
     if type(text) ~= "string" or text == "" or #text > MAX_TEXT or text:find("[%c]") then return nil, "text" end
-    if type(target) ~= "string" or target == "" or gone(target) then return nil, "target" end
+    local guild = chan == "GUILD"
+    if guild then
+        if not inGuild() then return nil, "guild" end
+        target = nil
+    elseif chan ~= nil and chan ~= "WHISPER" then
+        return nil, "chan"
+    elseif type(target) ~= "string" or target == "" or gone(target) then
+        return nil, "target"
+    end
     if lockedNow() then return 11 end
     if inPvP() then return nil, "pvp" end
-    local okCall, result = pcall(C_ChatInfo.SendAddonMessage, prefix, text, "WHISPER", target)
+    local okCall, result = pcall(C_ChatInfo.SendAddonMessage, prefix, text, guild and "GUILD" or "WHISPER", target)
     if not okCall then return 9 end
     result = ns.Plain(result)
     if result == true or result == nil then result = 0 end
-    if result == 0 then
+    if result == 0 and not guild then
         local k = nameKey(target)
         if k then whisperedAt[k] = GetTime() end
     end
@@ -1260,11 +1269,12 @@ local function dropWhispers(k)
     end
 end
 
--- Whether a system line is the server's answer to a whisper of Amisia's to a player who is offline.
+-- Whether a system line is the server's answer to a whisper of Amisia's to a player who is offline; and that
+-- player's name key (lower case, no realm; F-221: the layer search lets the name rest).
 function ns.CommOfflineLine(text)
     local k = lineName(text, "ERR_CHAT_PLAYER_NOT_FOUND_S")
     local at = k and whisperedAt[k]
-    return at ~= nil and GetTime() - at <= OFFLINE_KEEP
+    return at ~= nil and GetTime() - at <= OFFLINE_KEEP, k
 end
 
 ns.OnEvent("CHAT_MSG_SYSTEM", function(text)

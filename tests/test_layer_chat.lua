@@ -104,9 +104,15 @@ STUB.fire("CHAT_MSG_GUILD", "inv layer", "Eva Zweite")
 STUB.tick(1)
 assert(not confirmShown(), "the chat line right after the YI makes no second question")
 
--- the asker: "Im Gildenchat fragen" opens the chat box with the setting's text
+-- the asker: "Im Gildenchat fragen" opens the chat box with the other layer addon's tagged line (F-221: zone, layer,
+-- place; its helpers skip a guild line without it), without that way with the setting's text
 NS.Set("layer.chatText", "layer inv bitte")
-assert(SW.AskChat() == true and OPENED[1] == "/g layer inv bitte", tostring(OPENED[1]))
+assert(SW.AskChat() == true and OPENED[1] == "/g inv layer <LS 1429 not 3999-5250>", tostring(OPENED[1]))
+NS.Set("layer.foreign", false)
+assert(SW.AskChat() == true and OPENED[2] == "/g layer inv bitte", tostring(OPENED[2]))
+NS.Set("layer.foreign", true)
+SW.Stop()
+assert(SW.AskChat() == true)
 assert(NS.Get("layer.chatText") == "layer inv bitte")
 NS.Set("layer.chatText", "eine viel zu lange Zeile für den Gildenchat, die keiner liest")
 assert(NS.Get("layer.chatText") == "layer inv bitte", "too long is refused")
@@ -124,6 +130,8 @@ STUB.fire("GROUP_ROSTER_UPDATE")
 assert(SW.State().swap and SW.State().swap.host == "Kai Lindner")
 STUB.targetGUID = "Creature-0-7777-0-5250-3-0B1"; STUB.fire("PLAYER_TARGET_CHANGED")
 STUB.targetGUID = "Creature-0-7777-0-5250-4-0B2"; STUB.fire("PLAYER_TARGET_CHANGED")
+-- F-221: a known layer changes on 3 of the last 5 creatures
+STUB.targetGUID = "Creature-0-7777-0-5250-5-0B3"; STUB.fire("PLAYER_TARGET_CHANGED")
 assert(SW.State().swap.changed and SW.State().swap.target == 7777, "changed")
 STUB.party, STUB.roster = nil, {}
 STUB.fire("GROUP_ROSTER_UPDATE")
