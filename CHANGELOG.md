@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.95.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.95.0) (2026-11-16)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.94.1...v2.95.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(calendar): create guild events from Amisia's calendar, see every game calendar event, copy a date for Discord (F-217)
 
     Guild > Kalender has "Termin anlegen ...": pick guild event or (with the guild rank's right) guild announcement,
