@@ -1330,8 +1330,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Gilde
 
 ### F-219 Eigenen Aufruf ändern, Aufrufe für jetzt im Kalender
-- Version: -
-- Status: geplant
+- Version: 2.97.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn du unter Gilde > Aufrufe bei deinem Aufruf "Ändern" klickst, Titel oder Rollen änderst und "Speichern" klickst, dann sehen die anderen Gildenmitglieder mit Amisia nach spätestens 15 Sekunden die Änderung, und deine Anmeldungen sind noch da.
 - Prüfung: Wenn ein Aufruf für "jetzt" läuft, dann steht er unter Gilde > Kalender heute mit "jetzt"; "Zum Aufruf" öffnet bei deinem eigenen dessen Ansicht.
