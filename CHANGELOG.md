@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.97.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.97.0) (2026-11-16)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.96.0...v2.97.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(calls): change your own call after sending it, calls for now on the calendar (F-219)
 
     Your running call under Gilde > Aufrufe has "Ändern" beside "Beenden": the form opens with its values, and
