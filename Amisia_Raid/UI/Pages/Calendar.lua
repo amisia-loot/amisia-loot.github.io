@@ -17,6 +17,9 @@
 -- participant list. "Termin anlegen ..." turns the right inset into a form whose "Anlegen" makes a guild
 -- event or announcement in the game calendar with the same click (ns.CalCreate); "Für Discord" shows the
 -- chosen date as Discord text to copy. Nothing else here writes into the calendar.
+-- F-218 (D-143): the guild's calls with a time still ahead (ns.GuildCalls: the own and the others') stand on
+-- their day in their own colour; the inset names art, creator, level and roles, "Zum Aufruf" opens the page
+-- Aufrufe at that call. A call for "jetzt" does not show here, and no call goes into the game calendar.
 local ADDON, ns = ...
 ns.Load(function()
 local L, N_ = ns.L, ns.N_
@@ -50,8 +53,9 @@ local months = {}         -- [y * 12 + m - 1] = { list (ns.Cal.Month), at = GetT
 local monthAsking         -- the month being read
 local form = {}           -- the form's values (kind, type, tex, texTitle, time, title, desc)
 local formError, formWait -- the form's last reason; an entry runs
-local KIND_COLOR = { GUILD_ANNOUNCEMENT = { 0.55, 0.78, 1 }, PLAYER = { 0.62, 0.86, 0.62 } }
+local KIND_COLOR = { GUILD_ANNOUNCEMENT = { 0.55, 0.78, 1 }, PLAYER = { 0.62, 0.86, 0.62 }, CALL = { 0.86, 0.68, 1 } }
 local CC = function() return ns.CalCreate end
+local GC = function() return ns.GuildCalls end
 
 ---------------------------------------------------------------------------
 -- Dates and months
@@ -90,9 +94,28 @@ local function sheet(y, m)
 end
 ns.CalendarSheet = sheet
 
+-- The guild's calls with a time still ahead (F-218): { call, own, at, night, title, kind = "CALL", extra }.
+local function callItems()
+    local G = GC()
+    if not G then return {} end
+    local now = GetServerTime()
+    local out = {}
+    local function add(c, own)
+        local at = tonumber(c.at) or 0
+        if at > now then
+            out[#out + 1] = { call = c, own = own, low = not own and c.low or nil, at = at, title = G.Title(c),
+                night = ns.NightOf and ns.NightOf(at) or key(at), kind = "CALL", extra = true }
+        end
+    end
+    local mine = G.Own()
+    if mine then add(mine, true) end
+    for _, c in ipairs(G.List()) do add(c, false) end
+    return out
+end
+
 -- The guild events by night (ns.SignupTerms: tonight to 14 days; they carry the sign-up and the
--- participants), the other events of the months read (ns.Cal.Month: marked extra) and the recorded
--- raids by night.
+-- participants), the other events of the months read (ns.Cal.Month: marked extra), the calls with a
+-- time (F-218) and the recorded raids by night.
 local function byNight()
     local terms, raids = {}, {}
     local seen = {}
@@ -111,6 +134,10 @@ local function byNight()
                 table.insert(terms[e.night], e)
             end
         end
+    end
+    for _, e in ipairs(callItems()) do
+        terms[e.night] = terms[e.night] or {}
+        table.insert(terms[e.night], e)
     end
     for _, list in pairs(terms) do
         table.sort(list, function(a, b) return a.at < b.at end)
@@ -195,6 +222,7 @@ end
 -- The colour of the own state of a date (its dot): the sign-up from Amisia, else the calendar's.
 local function ownColor(t)
     local V = ns.RaidCalView
+    if t.call and not t.own and GC().MySignup(t.low) then return V.RGB.green end
     if t.extra and t.kind ~= "GUILD_EVENT" then return KIND_COLOR[t.kind] or V.RGB.grey end
     local _, color = V.OwnState(t)
     return V.RGB[color] or V.RGB.grey
@@ -670,10 +698,18 @@ local function build(parent)
     end)
     W.FitChip(f.discord)
     W.Tooltip(f.discord, L["Für Discord"], L["Der gewählte Termin als Text für Discord, zum Kopieren."])
+    f.toCall = W.Link(f, L["Zum Aufruf"], function()
+        local t = currentItem()
+        if not (t and t.call) then return end
+        GC().SetFocus(t.low)
+        ns.ShowPage("calls")
+    end)
+    W.FitChip(f.toCall)
+    W.Tooltip(f.toCall, L["Zum Aufruf"], L["Öffnet die Seite Aufrufe bei diesem Aufruf: dort meldest du dich an."])
     f.create = W.Button(f, L["Termin anlegen ..."], C.BUTTON_W, openForm)
     W.FitChip(f.create, C.BUTTON_W)
     W.Tooltip(f.create, L["Termin anlegen"], L["Legt an diesem Tag einen Gildentermin im Spielkalender an. Die ganze Gilde sieht ihn dort, auch ohne Amisia."])
-    f:BottomRow({ { f.status, fill = true } }, { f.discord, f.lineup, f.signup, f.create }, { shown = true })
+    f:BottomRow({ { f.status, fill = true } }, { f.toCall, f.discord, f.lineup, f.signup, f.create }, { shown = true })
     f.hint:SetText(L["Klick auf einen Tag: seine Termine und wer kommt. Der Punkt zeigt deinen Stand."])
 
     -- shown: on the screen, not only the open page of a closed window (that read the calendar on every
@@ -813,7 +849,25 @@ local function fillRight(f, terms, raids)
     end
     -- an event of the month read (no sign-up list here): its kind, type and creator
     local info
-    if inDay and t and t.extra then
+    if inDay and t and t.call then
+        local G, c = GC(), t.call
+        local by = t.own and (UnitName("player") or "?") or ns.ClassColored(c.by, c.class)
+        local lines = {}
+        lines[1] = ("%s%s:|r %s (%s)"):format(GREY, L["Art"], L["Aufruf"], G.ART_NAMES[c.art] or "?")
+        lines[2] = ("%s%s:|r %s"):format(GREY, L["Angelegt von"], by)
+        lines[3] = ("%s%s:|r %d"):format(GREY, L["Stufe ab"], tonumber(c.min) or 1)
+        local roles = G.RolesText(c)
+        if roles ~= "" then lines[#lines + 1] = roles end
+        if c.note then lines[#lines + 1] = GREY .. c.note .. "|r" end
+        if t.own then
+            lines[#lines + 1] = GREY .. L["Dein Aufruf. Einladen auf der Seite Aufrufe."] .. "|r"
+        else
+            local role = G.MySignup(t.low)
+            lines[#lines + 1] = GREY .. (role and L["Du bist angemeldet als %s."]:format(G.ROLE_NAMES[role] or "?")
+                or L["Anmelden auf der Seite Aufrufe."]) .. "|r"
+        end
+        info = table.concat(lines, "\n")
+    elseif inDay and t and t.extra then
         local lines = {}
         local kind = t.kind == "PLAYER" and not t.creator and t.by and L["Einladung von %s"]:format(t.by)
             or CC().KIND_WORD[t.kind] and L[CC().KIND_WORD[t.kind]] or "?"
@@ -855,7 +909,8 @@ local function fillRight(f, terms, raids)
     W.FitChip(f.signup, C.BUTTON_W)
     f.signup:SetShown(sign ~= nil and mode == nil)
     f.lineup:SetShown(sign ~= nil and mode == nil and ns.LineupAllowed ~= nil and ns.LineupAllowed() or false)
-    f.discord:SetShown(t ~= nil and mode ~= "form")
+    f.discord:SetShown(t ~= nil and not t.call and mode ~= "form")
+    f.toCall:SetShown(t ~= nil and t.call ~= nil and mode == nil)
     local open = dayOpen()
     f.create:SetShown(mode ~= "form" and IsInGuild() and CC().Available() and open and true or false)
     f.create:SetEnabled(CC().Refused() == nil)
@@ -900,7 +955,7 @@ ns.RegisterPanel{ key = "calendar", label = L["Kalender"], sub = L["Die Termine 
     end,
     refresh = function(f) refresh(f) end }
 
-for _, msg in ipairs({ "RAIDCAL", "SIGNUP", "SIGNUP_SEEN" }) do
+for _, msg in ipairs({ "RAIDCAL", "SIGNUP", "SIGNUP_SEEN", "GUILD_CALLS" }) do
     ns.Listen(msg, function()
         if page and page:IsShown() and ns.CurrentPage() == "calendar" then ns.Refresh() end
     end)

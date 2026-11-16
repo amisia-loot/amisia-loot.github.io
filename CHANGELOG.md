@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(calendar): show the guild's calls with a time on the calendar sheet (F-218)
+
+    A call of the guild for later today or tomorrow (Gilde > Aufrufe) now stands on its day in Gilde > Kalender, in
+    lilac, the dot green once you signed up. Click it to see art, creator, level and roles; "Zum Aufruf" opens the
+    page Aufrufe at that call, where you sign up. Calls for "jetzt" stay off the sheet, and no call goes into the game
+    calendar.
+
 ## [v2.95.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.95.0) (2026-11-16)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.94.1...v2.95.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

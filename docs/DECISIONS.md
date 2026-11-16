@@ -3886,3 +3886,22 @@ Einladung mit Art und Ersteller, fremder Monat mit `SetAbsMonth` und zurück, ni
 Formular, Aufrufe im Klick mit Datum, Zeit, Typ und Instanz, Codes entfernt, Chatzeile, gemerktes Formular, Pfeile,
 Prüfungen, Fehler, Sperre bis /reload, keine Antwort, Discord-Text, `calForm` beim Laden),
 `tests/test_calendar_page.lua`, `tools/tests/test_contracts.py` (Schlüssel, Dateien).
+
+## D-143 Aufrufe mit Uhrzeit auf Amisias Kalenderblatt, nicht im Spielkalender
+
+**Datum:** 2026-11-16
+**Entscheidung:** Das Monatsblatt unter Gilde > Kalender zeigt die Aufrufe der Gilde (F-211, D-136) mit einer Uhrzeit,
+die noch kommt, an ihrem Tag (F-218): den eigenen und die der anderen, die Amisia gerade kennt, in eigener Farbe (lila),
+der Punkt grün, wenn du angemeldet bist. Rechts stehen Art, Ersteller, Stufe ab, Rollen, Notiz und der eigene Stand;
+"Zum Aufruf" öffnet die Seite Aufrufe bei diesem Aufruf. Ein Aufruf für "jetzt" (oder dessen Uhrzeit vorbei ist) steht
+nicht auf dem Blatt. Kein Aufruf geht in den Spielkalender, angemeldet wird nur auf der Seite Aufrufe, "Für Discord"
+gibt es für Aufrufe nicht.
+**Grund:** Nutzer 2026-11-16: "können wir aufrufe im kalender anzeigen oder ist das eine schlechte idee?", dann "Ja, so
+bauen" zum Vorschlag: nur mit Uhrzeit, nur auf Amisias Blatt. Aufrufe leben kurz (verworfen nach 10 Minuten ohne
+Lebenszeichen, spätestens 2 Stunden nach ihrer Zeit); im Spielkalender blieben sie als tote Termine stehen und
+bräuchten je einen eigenen Klick.
+**Folge:** Keine neue Addon-Nachricht und kein gespeicherter Schlüssel: das Blatt liest, was `ns.GuildCalls` ohnehin
+im Speicher hat. Ein Aufruf erscheint erst, wenn Amisia ihn gehört hat (nach dem Einloggen bis zu 40 Sekunden).
+**Durchgesetzt durch:** `tests/test_calendar_calls.lua` (Aufruf mit Uhrzeit an seinem Tag in eigener Farbe, keiner
+für "jetzt", der eigene, Angaben rechts, kein Anmelden und kein Discord-Text, Punkt grün nach dem Anmelden,
+"Zum Aufruf" öffnet die Seite beim Aufruf, nichts im Spielkalender, ein beendeter Aufruf verschwindet).

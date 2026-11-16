@@ -1704,4 +1704,10 @@ L["Termin im Spielkalender angelegt: %s"] = "Event created in the game calendar:
 L["Typ"] = "Type"
 L["Unbekannter Typ."] = "Unknown type."
 L["Wird im Spielkalender angelegt ..."] = "Creating in the game calendar ..."
+-- F-218
+L["Zum Aufruf"] = "To the call"
+L["Öffnet die Seite Aufrufe bei diesem Aufruf: dort meldest du dich an."] = "Opens the page Calls at this call: you sign up there."
+L["Dein Aufruf. Einladen auf der Seite Aufrufe."] = "Your call. Invite on the page Calls."
+L["Du bist angemeldet als %s."] = "You are signed up as %s."
+L["Anmelden auf der Seite Aufrufe."] = "Sign up on the page Calls."
 end)
