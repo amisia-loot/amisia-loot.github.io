@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-221 Layer verhält sich genau wie das verbreitete Layer-Addon
-- Version: -
-- Status: geplant
+- Version: 2.99.0
+- Status: gebaut
 - Braucht: Gruppe
 - Prüfung: Wenn du mit Helfen aus "Layer wechseln" klickst und der Wechsel gelingt, dann zeigt der Knopf "Helfen: AN" mit einer Uhr ab 4:00, ein Klick darauf schaltet nicht aus, und nach Ablauf ist Helfen wieder aus.
 - Prüfung: Wenn du Helfen ausschaltest und `/reload` machst, dann bleibt es aus; nach neuem Einloggen ist es an.
