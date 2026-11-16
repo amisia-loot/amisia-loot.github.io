@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(calls): change your own call after sending it, calls for now on the calendar (F-219)
+
+    Your running call under Gilde > Aufrufe has "Ändern" beside "Beenden": the form opens with its values, and
+    "Speichern" sends the change to the guild as the same call, so everyone who signed up stays signed up. A call for
+    "jetzt" now also stands on today's day in Gilde > Kalender, with "jetzt" instead of a time; "Zum Aufruf" on your
+    own call opens its view.
+
 ## [v2.96.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.96.0) (2026-11-16)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.95.0...v2.96.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

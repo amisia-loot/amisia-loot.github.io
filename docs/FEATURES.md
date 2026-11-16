@@ -1329,12 +1329,20 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Gilde
 
+### F-219 Eigenen Aufruf ändern, Aufrufe für jetzt im Kalender
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du unter Gilde > Aufrufe bei deinem Aufruf "Ändern" klickst, Titel oder Rollen änderst und "Speichern" klickst, dann sehen die anderen Gildenmitglieder mit Amisia nach spätestens 15 Sekunden die Änderung, und deine Anmeldungen sind noch da.
+- Prüfung: Wenn ein Aufruf für "jetzt" läuft, dann steht er unter Gilde > Kalender heute mit "jetzt"; "Zum Aufruf" öffnet bei deinem eigenen dessen Ansicht.
+- Notiz: DECISIONS D-144 (ändert D-143). Nutzer 2026-11-16: "wird mir nicht im kalender angezeigt und ich will es bearbeiten können nachdem ich es erstellt hab".
+
 ### F-218 Aufrufe mit Uhrzeit im Kalender
 - Version: 2.96.0
 - Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn ein Gildenmitglied einen Aufruf für morgen 20:30 erstellt, dann steht er unter Gilde > Kalender an diesem Tag in Lila; ein Klick darauf zeigt rechts Art, Ersteller, Stufe und Rollen, und "Zum Aufruf" öffnet die Seite Aufrufe bei diesem Aufruf.
-- Prüfung: Wenn ein Aufruf für "jetzt" läuft, dann steht er nicht im Kalender, und kein Aufruf erscheint im Spielkalender.
+- Prüfung: Wenn ein Aufruf läuft, dann erscheint er nicht im Spielkalender (seit F-219 steht einer für "jetzt" heute auf Amisias Blatt).
 - Notiz: DECISIONS D-143. Nutzer 2026-11-16: "können wir aufrufe im kalender anzeigen oder ist das eine schlechte idee?", dann "Ja, so bauen".
 
 ### F-217 Kalender in beide Richtungen: Termin anlegen, alle Spieltermine, Text für Discord

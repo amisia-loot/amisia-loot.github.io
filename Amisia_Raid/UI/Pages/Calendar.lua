@@ -17,9 +17,10 @@
 -- participant list. "Termin anlegen ..." turns the right inset into a form whose "Anlegen" makes a guild
 -- event or announcement in the game calendar with the same click (ns.CalCreate); "Für Discord" shows the
 -- chosen date as Discord text to copy. Nothing else here writes into the calendar.
--- F-218 (D-143): the guild's calls with a time still ahead (ns.GuildCalls: the own and the others') stand on
--- their day in their own colour; the inset names art, creator, level and roles, "Zum Aufruf" opens the page
--- Aufrufe at that call. A call for "jetzt" does not show here, and no call goes into the game calendar.
+-- F-218 (D-143): the guild's running calls (ns.GuildCalls: the own and the others') stand on their day in their
+-- own colour, one for "jetzt" (or whose time has come) tonight with "jetzt" instead of a time (F-219, D-144); the
+-- inset names art, creator, level and roles, "Zum Aufruf" opens the page Aufrufe at that call (the own one: its
+-- creator's view). No call goes into the game calendar.
 local ADDON, ns = ...
 ns.Load(function()
 local L, N_ = ns.L, ns.N_
@@ -94,7 +95,8 @@ local function sheet(y, m)
 end
 ns.CalendarSheet = sheet
 
--- The guild's calls with a time still ahead (F-218): { call, own, at, night, title, kind = "CALL", extra }.
+-- The guild's running calls (F-218, F-219): { call, own, at, when, night, title, kind = "CALL", extra }; one
+-- for "jetzt" or whose time has come stands tonight at the present time with "jetzt" (when).
 local function callItems()
     local G = GC()
     if not G then return {} end
@@ -102,10 +104,10 @@ local function callItems()
     local out = {}
     local function add(c, own)
         local at = tonumber(c.at) or 0
-        if at > now then
-            out[#out + 1] = { call = c, own = own, low = not own and c.low or nil, at = at, title = G.Title(c),
-                night = ns.NightOf and ns.NightOf(at) or key(at), kind = "CALL", extra = true }
-        end
+        local when
+        if at <= now then at, when = now, L["jetzt"] end
+        out[#out + 1] = { call = c, own = own, low = not own and c.low or nil, at = at, when = when, title = G.Title(c),
+            night = ns.NightOf and ns.NightOf(at) or key(at), kind = "CALL", extra = true }
     end
     local mine = G.Own()
     if mine then add(mine, true) end
@@ -446,7 +448,7 @@ local function buildCell(f, i)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine(ns.RaidCalView.DayText(info.at), 1, 0.82, 0)
         for _, t in ipairs(info.terms or {}) do
-            GameTooltip:AddLine(("%s %s"):format(date("%H:%M", t.at), t.title or "?"), 1, 1, 1)
+            GameTooltip:AddLine(("%s %s"):format(t.when or date("%H:%M", t.at), t.title or "?"), 1, 1, 1)
         end
         for _, s in ipairs(info.raids or {}) do
             GameTooltip:AddLine(L["Aufgezeichnet: %s"]:format(s.zone or "?"), 0.6, 0.6, 0.6)
@@ -474,7 +476,7 @@ local function fillCell(cell, d, terms, raids, today)
         for _, e in ipairs(list) do
             if e.raid then t = e break end
         end
-        lines[1] = { WHITE .. date("%H:%M", t.at) .. "|r" }
+        lines[1] = { WHITE .. (t.when or date("%H:%M", t.at)) .. "|r" }
         lines[2] = { t.title or "?", titleColor(t) }
         if #list > 1 then lines[3] = { GREY .. L["+%d weitere"]:format(#list - 1) .. "|r" } end
         local c = ownColor(t)
@@ -702,6 +704,7 @@ local function build(parent)
         local t = currentItem()
         if not (t and t.call) then return end
         GC().SetFocus(t.low)
+        if t.own and GC().PageMode then GC().PageMode("mine") end
         ns.ShowPage("calls")
     end)
     W.FitChip(f.toCall)
@@ -814,7 +817,7 @@ local function fillRight(f, terms, raids)
             local c = ownColor(r.term)
             b.dot:SetVertexColor(c[1], c[2], c[3])
             b.dot:Show()
-            fit(b.text, ("%s %s"):format(date("%H:%M", r.term.at), r.term.title or "?"), C.RIGHT_W - 2 * C.INNER - C.DOT - 8)
+            fit(b.text, ("%s %s"):format(r.term.when or date("%H:%M", r.term.at), r.term.title or "?"), C.RIGHT_W - 2 * C.INNER - C.DOT - 8)
             b.sel:SetShown(r.term == t)
             b:Show()
         elseif r and r.raid then

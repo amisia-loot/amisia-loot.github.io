@@ -9,7 +9,8 @@
 -- own guild count; a call is its sender's (keyed by the server's sender name), a sign-up its sender's. The
 -- own running call with its sign-ups is saved (AmisiaDB.guildCall) and goes out again after a /reload; a
 -- call ends with "Beenden", 2 hours after its time, or (for the others) 10 minutes without an EA. Nothing is
--- sent during the chat lockdown: the action waits with one chat line.
+-- sent during the chat lockdown: the action waits with one chat line. The creator may change the own call
+-- (GC.Edit, F-219, D-144): a new revision of the same call, its sign-ups kept.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -282,13 +283,9 @@ local function newId()
     return ("%04x"):format(math.random(0, 65535))
 end
 
--- Puts up the own call. spec: { art, key, title, min, at (0 now, else an epoch), need = { T, H, S }, note }.
--- true, or nil and the reason.
-function GC.Create(spec)
-    if type(AmisiaDB) ~= "table" then return nil, L["Noch nicht geladen."] end
-    if own() then return nil, L["Du hast schon einen Aufruf. Erst beenden."] end
-    if not ns.InGuild() then return nil, L["Du bist in keiner Gilde."] end
-    if not ns.CommAvailable() then return nil, L["Addon-Nachrichten sind nicht verfügbar."] end
+-- The checked fields of a call's spec, or nil and the reason. keepAt: the time the call has (a change may
+-- keep it even when it is past).
+local function checked(spec, keepAt)
     spec = type(spec) == "table" and spec or {}
     local art = VALID_ART[spec.art] and spec.art or nil
     if not art then return nil, L["Wähle eine Art."] end
@@ -305,9 +302,23 @@ function GC.Create(spec)
     end
     if sum < 1 or sum > 40 then return nil, L["Rollen: zusammen 1 bis 40."] end
     local at = tonumber(spec.at) or 0
-    if at ~= 0 and (at < GetServerTime() or at > GetServerTime() + 86400) then return nil, L["Die Uhrzeit fehlt oder ist falsch (z. B. 20:30)."] end
-    AmisiaDB.guildCall = { v = 1, id = newId(), rev = 1, art = art, key = key, title = title, min = min, at = at,
-        created = time(), need = need, note = GC.Clean(spec.note, NOTE_CHARS, NOTE_BYTES), signups = {}, declined = {} }
+    if at ~= 0 and at ~= keepAt and (at < GetServerTime() or at > GetServerTime() + 86400) then
+        return nil, L["Die Uhrzeit fehlt oder ist falsch (z. B. 20:30)."]
+    end
+    return { art = art, key = key, title = title, min = min, at = at, need = need, note = GC.Clean(spec.note, NOTE_CHARS, NOTE_BYTES) }
+end
+
+-- Puts up the own call. spec: { art, key, title, min, at (0 now, else an epoch), need = { T, H, S }, note }.
+-- true, or nil and the reason.
+function GC.Create(spec)
+    if type(AmisiaDB) ~= "table" then return nil, L["Noch nicht geladen."] end
+    if own() then return nil, L["Du hast schon einen Aufruf. Erst beenden."] end
+    if not ns.InGuild() then return nil, L["Du bist in keiner Gilde."] end
+    if not ns.CommAvailable() then return nil, L["Addon-Nachrichten sind nicht verfügbar."] end
+    local x, why = checked(spec)
+    if not x then return nil, why end
+    AmisiaDB.guildCall = { v = 1, id = newId(), rev = 1, art = x.art, key = x.key, title = x.title, min = x.min, at = x.at,
+        created = time(), need = x.need, note = x.note, signups = {}, declined = {} }
     lastDigest = nil
     announceDue = now()
     if locked() then
@@ -316,6 +327,24 @@ function GC.Create(spec)
         sendOwn()
     end
     changed()
+    return true
+end
+
+-- Changes the own call (F-219, D-144): the same id, its sign-ups and declined names kept, a new revision to the
+-- guild (EA at most every 10.5 s; in the lockdown once it is over). The time may stay as it is even when past.
+-- true (also when nothing changed), or nil and the reason.
+function GC.Edit(spec)
+    local c = own()
+    if not c then return nil, L["Du hast keinen Aufruf."] end
+    local x, why = checked(spec, c.at)
+    if not x then return nil, why end
+    local same = x.art == c.art and x.key == c.key and x.title == c.title and x.min == c.min and x.at == (c.at or 0)
+        and x.note == c.note
+    for _, r in ipairs(GC.ROLES) do same = same and x.need[r] == (c.need[r] or 0) end
+    if same then return true end
+    c.art, c.key, c.title, c.min, c.at, c.need, c.note = x.art, x.key, x.title, x.min, x.at, x.need, x.note
+    ownChanged()
+    if locked() then ns.msg(L["Kampfsperre: Die Änderung geht an die Gilde, sobald sie vorbei ist."]) end
     return true
 end
 

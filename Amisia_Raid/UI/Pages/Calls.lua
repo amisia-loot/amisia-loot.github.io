@@ -6,6 +6,7 @@
 -- the roles, the note); the creator's view of the own call (the sign-ups with name, level, role, item level
 -- and status, "Einladen" and "Ablehnen" under the mouse, "Alle einladen" as the red button with the reason
 -- when inviting is off, "Beenden"). A click on [Anmelden] in the chat opens the page at that call.
+-- "Ändern" (F-219, D-144) opens the form with the own call's values; "Speichern" sends them as its new revision.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -17,6 +18,7 @@ local mode = "list"          -- "list", "form" or "mine"
 local filter = "all"
 local form = {}              -- the form's values while it is open
 local formError
+local editing                -- the form changes the own call (F-219)
 
 local function GC() return ns.GuildCalls end
 
@@ -188,7 +190,11 @@ local function submit(f)
     form.note = f.noteBox:GetText()
     form.clock = f.timeBox:GetText()
     local at = 0
-    if form.time == "clock" then
+    local mine = editing and GC().Own()
+    if form.time == "clock" and mine and (mine.at or 0) > 0 and form.clock:match("^%s*(.-)%s*$") == date("%H:%M", mine.at) then
+        -- the time left as it was: the call keeps it (even when it is past)
+        at = mine.at
+    elseif form.time == "clock" then
         at = GC().ParseTime(form.clock)
         if not at then
             formError = L["Die Uhrzeit fehlt oder ist falsch (z. B. 20:30)."]
@@ -196,18 +202,37 @@ local function submit(f)
             return
         end
     end
-    local ok, why = GC().Create({ art = form.art, key = form.art == "D" and form.key or nil, title = form.title, min = form.min,
-        at = at, need = form.need, note = form.note })
+    local spec = { art = form.art, key = form.art == "D" and form.key or nil, title = form.title, min = form.min,
+        at = at, need = form.need, note = form.note }
+    local ok, why
+    if editing then ok, why = GC().Edit(spec) else ok, why = GC().Create(spec) end
     if not ok then
         formError = why
         ns.Refresh()
         return
     end
     resetForm()
+    editing = nil
     f.titleBox:SetText("")
     f.noteBox:SetText("")
     f.timeBox:SetText("")
     mode = "mine"
+    ns.Refresh()
+end
+
+-- "Ändern": the form with the own call's values.
+local function startEdit(f)
+    local c = GC().Own()
+    if not c then return end
+    local timed = (c.at or 0) > 0
+    form = { art = c.art, key = c.key, min = c.min, time = timed and "clock" or "now",
+             need = { T = c.need.T or 0, H = c.need.H or 0, S = c.need.S or 0 } }
+    formError = nil
+    editing = true
+    f.titleBox:SetText(c.title or "")
+    f.noteBox:SetText(c.note or "")
+    f.timeBox:SetText(timed and date("%H:%M", c.at) or "")
+    mode = "form"
     ns.Refresh()
 end
 
@@ -316,10 +341,22 @@ local function build(parent)
         end)
     end
     f.back = W.Link(f, L["Zurück"], function()
-        mode = "list"
+        -- back from a change: to the own call, the form as new
+        if editing then
+            editing = nil
+            resetForm()
+            f.titleBox:SetText("")
+            f.noteBox:SetText("")
+            f.timeBox:SetText("")
+            mode = GC().Own() and "mine" or "list"
+        else
+            mode = "list"
+        end
         formError = nil
         ns.Refresh()
     end)
+    f.editLink = W.Link(f, L["Ändern##Aufruf"], function() startEdit(f) end)
+    W.Tooltip(f.editLink, L["Aufruf ändern"], L["Titel, Zeit, Stufe, Rollen und Notiz ändern. Die Anmeldungen bleiben."])
     f.endLink = W.Link(f, L["Beenden##Aufruf"], function()
         W.Confirm(L["Aufruf beenden"], L["Der Aufruf verschwindet bei allen; die Anmeldungen gehen verloren."], L["Beenden##Aufruf"], function()
             GC().End()
@@ -343,6 +380,7 @@ local function build(parent)
         end
     end)
     W.Tooltip(f.main, L["Aufrufe"], function()
+        if mode == "form" and editing then return L["Schickt die Änderung an die Gildenmitglieder mit Amisia. Die Anmeldungen bleiben."] end
         if mode == "form" then return L["Schickt den Aufruf an die Gildenmitglieder mit Amisia."] end
         if mode == "mine" then
             local _, why = GC().InviteBlocked()
@@ -377,7 +415,8 @@ end
 local function refresh(f)
     local own = GC().Own()
     if mode == "mine" and not own then mode = "list" end
-    if mode == "form" and own then mode = "mine" end
+    if editing and not own then editing = nil end
+    if mode == "form" and own and not editing then mode = "mine" end
     -- a click on [Anmelden] in the chat: the list at that call
     local focus = GC().Focus()
     if focus and mode ~= "list" and not f.focusSeen then mode = "list" end
@@ -391,9 +430,10 @@ local function refresh(f)
     end
     f.back:SetShown(mode ~= "list")
     f.endLink:SetShown(mode == "mine")
+    f.editLink:SetShown(mode == "mine")
     local blocked, why
     if mode == "form" then
-        f.main:SetText(L["Aufruf senden"])
+        f.main:SetText(editing and L["Speichern"] or L["Aufruf senden"])
         f.main:Enable()
     elseif mode == "mine" then
         blocked, why = GC().InviteBlocked()
@@ -414,11 +454,12 @@ local function refresh(f)
     f.main:Show()
     W.FitChip(f.main, nil, C.DUNGEON_W)
     local left = mode == "list" and { f.tabs.all, f.tabs.D, f.tabs.Q, f.tabs.H, f.tabs.S } or { f.back }
-    f:Place(1, left, mode == "mine" and { f.endLink, f.main } or { f.main }, { shown = true })
+    f:Place(1, left, mode == "mine" and { f.editLink, f.endLink, f.main } or { f.main }, { shown = true })
 
     if mode == "form" then
         refreshForm(f)
-        f.data:SetText(L["Höchstens ein eigener Aufruf zur Zeit."])
+        f.data:SetText(editing and L["Die Anmeldungen bleiben; wer eine Rolle hat, die nicht mehr gesucht wird, bleibt angemeldet."]
+            or L["Höchstens ein eigener Aufruf zur Zeit."])
         return
     end
 

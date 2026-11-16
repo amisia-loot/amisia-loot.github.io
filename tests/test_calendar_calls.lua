@@ -1,7 +1,7 @@
--- F-218 (D-143): the guild's calls with a time still ahead stand on Amisia's calendar sheet (the own and
--- the others', in their own colour), a call for "jetzt" does not; the inset names art, creator, level and
--- roles, "Zum Aufruf" opens the page Aufrufe at that call, "Für Discord" and "Anmelden ..." stay hidden.
--- Nothing goes into the game calendar.
+-- F-218 (D-143), F-219 (D-144): the guild's running calls stand on Amisia's calendar sheet (the own and the
+-- others', in their own colour), one for "jetzt" tonight with "jetzt" instead of a time; the inset names art,
+-- creator, level and roles, "Zum Aufruf" opens the page Aufrufe at that call (the own one: its creator's view),
+-- "Für Discord" and "Anmelden ..." stay hidden. Nothing goes into the game calendar.
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local GC = NS.GuildCalls
 
@@ -17,7 +17,7 @@ STUB.fire("GUILD_ROSTER_UPDATE"); STUB.tick(11)
 
 local now = os.date("*t", STUB.now)
 local annaAt = os.time({ year = now.year, month = now.month, day = now.day + 1, hour = 20, min = 30 })
--- Anna: a dungeon tomorrow 20:30; Bert: help "jetzt" (no time: not on the sheet)
+-- Anna: a dungeon tomorrow 20:30; Bert: help "jetzt" (tonight, "jetzt")
 STUB.fire("CHAT_MSG_ADDON", "Amisia", "1EA\tabcd\t1\tD\tsmcath\tCathedral\t38\t" .. annaAt .. "\t1/1/3\t0/1/1\t0/0/1\tO\tQuest Herod", "GUILD", "Anna Berg")
 STUB.fire("CHAT_MSG_ADDON", "Amisia", "1EA\tbeef\t1\tH\t-\tHilfe bei Elite\t30\t0\t0/1/1\t0/0/0\t0/0/0\tO\t-", "GUILD", "Bert Stein")
 STUB.tick(2)
@@ -41,22 +41,29 @@ for _, fs in ipairs(ca.lines) do if fs:IsShown() and has(fs:GetText(), name:sub(
 assert(found, "Anna's call on its day: " .. tostring(ca.lines[2]:GetText()))
 local r, g, b = unpack(ca.dot.vertexColor)
 assert(math.abs(r - 0.86) < 0.01 and math.abs(g - 0.68) < 0.01 and math.abs(b - 1) < 0.01, "the dot in the calls' colour")
--- Bert's call for "jetzt" stands nowhere
-for _, c in ipairs(P.cells) do
-    for _, fs in ipairs(c.lines) do assert(not has(fs:GetText(), "Hilfe bei"), "no call for jetzt on the sheet") end
-end
+-- Bert's call for "jetzt" stands tonight with "jetzt"
+local tonight = NS.NightOf(time())
+NS.ShowCalendar(tonight)
+STUB.tick(1)
+local ct = assert(cellOf(tonight))
+ct:Click(); STUB.tick(1)
+local jetzt
+for _, bt in ipairs(P.terms) do if bt:IsShown() and has(bt.text:GetText(), "jetzt Hilfe bei") then jetzt = true end end
+assert(jetzt, "the call for jetzt tonight with jetzt")
 -- the own call on its day
 NS.ShowCalendar(NS.NightOf(ownAt))
 STUB.tick(1)
 local co = assert(cellOf(NS.NightOf(ownAt)))
-local own
-for _, fs in ipairs(co.lines) do if has(fs:GetText(), "Ruf der") then own = true end end
-assert(own, "the own call on its day")
 co:Click(); STUB.tick(1)
 local idx
-for i, bt in ipairs(P.terms) do if bt:IsShown() and has(bt.text:GetText(), "Ruf der Elite") then idx = i end end
+for i, bt in ipairs(P.terms) do if bt:IsShown() and has(bt.text:GetText(), date("%H:%M", ownAt) .. " Ruf der Elite") then idx = i end end
+assert(idx, "the own call on its day with its time")
 P.terms[idx]:Click(); STUB.tick(1)
 assert(has(P.info:GetText(), "Dein Aufruf"), P.info:GetText())
+-- "Zum Aufruf" of the own call: the creator's view
+P.toCall:Click(); STUB.tick(1)
+assert(NS.CurrentPage() == "calls" and GC.PageMode() == "mine", "the own call's view")
+GC.PageMode("list")
 
 -- Anna's call chosen: the inset, no sign-up and no Discord text, "Zum Aufruf"
 NS.ShowCalendar(NS.NightOf(annaAt))

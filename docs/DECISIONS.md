@@ -3905,3 +3905,23 @@ im Speicher hat. Ein Aufruf erscheint erst, wenn Amisia ihn gehört hat (nach de
 **Durchgesetzt durch:** `tests/test_calendar_calls.lua` (Aufruf mit Uhrzeit an seinem Tag in eigener Farbe, keiner
 für "jetzt", der eigene, Angaben rechts, kein Anmelden und kein Discord-Text, Punkt grün nach dem Anmelden,
 "Zum Aufruf" öffnet die Seite beim Aufruf, nichts im Spielkalender, ein beendeter Aufruf verschwindet).
+
+## D-144 Den eigenen Aufruf ändern; Aufrufe für "jetzt" auch im Kalender
+
+**Datum:** 2026-11-16
+**Entscheidung:** Der Ersteller ändert seinen laufenden Aufruf (F-219): "Ändern" neben "Beenden" öffnet das Formular mit
+den Werten des Aufrufs, "Speichern" schickt sie als neue Revision desselben Aufrufs (`GC.Edit`: dieselbe Kennung, die
+Anmeldungen und Abgelehnten bleiben, `EA` an die Gilde höchstens alle 10,5 s, in der Kampfsperre danach). Es gelten die
+Prüfungen von "Aufruf senden"; eine Uhrzeit, die unverändert bleibt, darf schon vorbei sein, eine neue muss kommen.
+Wer sich für eine Rolle angemeldet hat, die nicht mehr gesucht wird, bleibt angemeldet. Ändert D-143 in einem Punkt:
+ein Aufruf für "jetzt" (oder dessen Uhrzeit gekommen ist) steht auf dem Kalenderblatt heute mit "jetzt" statt einer
+Uhrzeit; "Zum Aufruf" öffnet beim eigenen Aufruf dessen Ansicht.
+**Grund:** Nutzer 2026-11-16 mit Bild des eigenen Aufrufs ("Ragefire Chasm · Dungeon · ab Stufe 13 · jetzt"): "wird mir
+nicht im kalender angezeigt und ich will es bearbeiten können nachdem ich es erstellt hab".
+**Folge:** Keine neue Addon-Nachricht: `EA` trägt schon alle Felder mit Revision, die anderen übernehmen die neue
+Revision (auch ältere Amisia-Versionen), ohne zweite Chatzeile. Beenden und neu erstellen ist nicht mehr nötig, um
+etwas zu korrigieren.
+**Durchgesetzt durch:** `tests/test_guild_calls_edit.lua` (Formular mit den Werten, "Zurück", Speichern mit derselben
+Kennung und neuer Revision, Anmeldungen bleiben, `EA` mit den neuen Feldern, vergangene Uhrzeit bleibt, falsche
+Uhrzeit abgelehnt, "jetzt", keine Revision ohne Änderung, die anderen übernehmen sie ohne Chatzeile),
+`tests/test_calendar_calls.lua` (Aufruf für "jetzt" heute mit "jetzt", "Zum Aufruf" beim eigenen Aufruf).

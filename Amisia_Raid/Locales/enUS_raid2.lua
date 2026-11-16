@@ -1710,4 +1710,12 @@ L["Öffnet die Seite Aufrufe bei diesem Aufruf: dort meldest du dich an."] = "Op
 L["Dein Aufruf. Einladen auf der Seite Aufrufe."] = "Your call. Invite on the page Calls."
 L["Du bist angemeldet als %s."] = "You are signed up as %s."
 L["Anmelden auf der Seite Aufrufe."] = "Sign up on the page Calls."
+-- F-219
+L["Ändern##Aufruf"] = "Change"
+L["Aufruf ändern"] = "Change call"
+L["Titel, Zeit, Stufe, Rollen und Notiz ändern. Die Anmeldungen bleiben."] = "Change title, time, level, roles and note. The sign-ups stay."
+L["Schickt die Änderung an die Gildenmitglieder mit Amisia. Die Anmeldungen bleiben."] = "Sends the change to the guild members with Amisia. The sign-ups stay."
+L["Die Anmeldungen bleiben; wer eine Rolle hat, die nicht mehr gesucht wird, bleibt angemeldet."] = "The sign-ups stay; whoever has a role no longer wanted stays signed up."
+L["Du hast keinen Aufruf."] = "You have no call."
+L["Kampfsperre: Die Änderung geht an die Gilde, sobald sie vorbei ist."] = "Combat lockdown: the change goes to the guild once it is over."
 end)
