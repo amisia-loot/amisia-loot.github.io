@@ -40,8 +40,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Grundlagen
 
 ### F-220 Layer-Wechsel mit den Nutzern des verbreiteten Layer-Addons
-- Version: -
-- Status: geplant
+- Version: 2.98.0
+- Status: gebaut
 - Braucht: Gruppe
 - Prüfung: Wenn du in einer belebten Zone "Layer wechseln" klickst, dann steht im Fenster "gehört: n" mit n > 0, auch ohne andere Amisia-Nutzer, und ein Helfer auf einem anderen Layer lädt dich ein; nach einem angezielten NPC steht "Gewechselt: Layer B".
 - Prüfung: Wenn ein Nutzer des anderen Layer-Addons in deiner Zone wechseln will und du hilfst, dann lädt Amisia ihn ein und er verlässt die Gruppe nach dem Wechsel von selbst; stehst du auf seinem Layer, lädt Amisia ihn nicht ein.
