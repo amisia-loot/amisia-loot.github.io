@@ -1,6 +1,6 @@
 # Spec: Termin des Anmelde-Bots aus Discord in den Kalender einfügen
 
-Stand: 2026-11-16 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-16 · Status: freigegeben ·
 Feature: F-223
 
 ## Ziel
@@ -125,4 +125,8 @@ Termin (siehe Frage 1).
 
 ## Entscheidungen
 
-Noch keine.
+- 2026-11-16: Nutzer: "Passt, beide bauen" -> alle sechs Vorschläge übernommen: Frage 1 ein echter Termin zum Prüfen
+  (gebaut wird nach der Dokumentation des Bots; die ID oder das JSON eines echten Termins steht noch aus und wird vor
+  dem Release geprüft); Frage 2 die Anmeldungen über "Einfügen" der Aufstellung; Frage 3 kein Schlüssel, Termin für
+  Termin; Frage 4 kein Umweg über die Website; Frage 5 immer "Gildenereignis (mit Anmeldung)", änderbar; Frage 6 kein
+  Hinweis in der Beschreibung.

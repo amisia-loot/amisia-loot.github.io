@@ -1346,6 +1346,20 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Gilde
 
+### F-223 Termin des Anmelde-Bots aus Discord in den Kalender einfügen
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du das JSON eines Bot-Termins unter Gilde > Kalender, "Termin anlegen ...", "Aus Discord ..." einfügst, dann zeigt das Blatt den Tag des Termins, und das Formular hat Titel, Uhrzeit und Beschreibung.
+- Notiz: Spec docs/specs/2026-11-16-kalender-termin-aus-discord.md; DECISIONS D-148. Nutzer 2026-11-16: "können wir auch von hier termine (discord bot) in den kalender einfügen", dann "Passt, beide bauen".
+
+### F-222 Termine im Kalender bearbeiten und löschen
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du unter Gilde > Kalender deinen Termin wählst, "Bearbeiten" klickst, Titel und Uhrzeit änderst und "Speichern" klickst, dann steht im Chat "Termin geändert: ...", und Blatt und Spielkalender zeigen die neuen Werte.
+- Notiz: Spec docs/specs/2026-11-16-kalender-bearbeiten-loeschen.md; DECISIONS D-147. Nutzer 2026-11-16: "können wir die sachen im Kalender auch bearbeiten und löschen", dann "Passt, beide bauen".
+
 ### F-219 Eigenen Aufruf ändern, Aufrufe für jetzt im Kalender
 - Version: 2.97.0
 - Status: gebaut

@@ -1,6 +1,6 @@
 # Spec: Termine im Kalender bearbeiten und löschen
 
-Stand: 2026-11-16 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-16 · Status: freigegeben ·
 Feature: F-222
 
 ## Ziel
@@ -129,4 +129,6 @@ Kalender liest oder schreibt oder eine Antwort aussteht; dann sind die Links gra
 
 ## Entscheidungen
 
-Noch keine.
+- 2026-11-16: Nutzer: "Passt, beide bauen" -> alle sechs Vorschläge übernommen: Frage 1 genau wer es im Spielkalender
+  darf; Frage 2 Gildenereignisse, Gildenankündigungen und eigene Termine; Frage 3 kein Verschieben des Tages; Frage 4
+  immer die Rückfrage vor dem Löschen; Frage 5 keine Nachricht an die Gilde; Frage 6 kein Kopieren.
