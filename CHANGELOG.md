@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.99.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.99.0) (2026-11-16)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.98.0...v2.99.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(layer): layer swaps and helping now behave like the widely used layer addon (F-221)
 
     Every own ask turns "Helfen" on while it runs and for four minutes after a swap that worked; "Helfen: AN 3:41"
