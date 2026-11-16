@@ -208,9 +208,16 @@ function CE.Refused() return refused end
 
 -- Ends the session without a change (the form's "Abbrechen", another day, another page, the question's
 -- "Abbrechen").
+-- A write still running is not stopped (the game has it); its answer then always ends the session.
+-- An event the client is still opening is closed once it came open (its answer would open it with
+-- nobody left to close it).
 function CE.Cancel()
     local s = session
-    if not s or s.job then return end
+    if not s then return end
+    if s.job or s.stage == "opening" then
+        s.cancelled = true
+        return
+    end
     release(s)
 end
 
@@ -270,15 +277,26 @@ local function finishJob(s, ok, why, detail)
         local text = tostring(detail)
         if detail == true or text:find("Calendar") or text:find("UpdateEvent") or text:find("EventRemove") then refused = detail end
     end
-    local keep = not ok and why == "error" and s.what == "edit" and session == s and stillOpen(s)
+    local keep = not ok and why == "error" and s.what == "edit" and session == s and not s.cancelled and stillOpen(s)
     if not keep then release(s) end
     j.fn(ok, why, detail)
 end
 
--- Whether the wanted change shows: the event gone (delete) or the client done with its answer (edit).
+-- Whether the wanted change shows. A delete: the event gone from its day, looked up only while the
+-- month the place was counted from is still the set one (the client's calendar window sets its own).
+-- An edit: the client done with the action it took (seen pending, or its own event updated), so a
+-- calendar event of someone else is no answer.
 local function answered(s)
-    if s.what == "remove" then return locate(s.item, s.offset) == nil end
-    return not (api("IsActionPending") and plain(call("IsActionPending")) == true)
+    if s.what == "remove" then
+        if setMonth() ~= s.monthSet then return false end
+        return locate(s.item, s.offset) == nil
+    end
+    local j = s.job
+    if api("IsActionPending") and plain(call("IsActionPending")) == true then
+        if j then j.sawPending = true end
+        return false
+    end
+    return j ~= nil and (j.sawPending or j.gotUpdate) or false
 end
 
 onEvent = function(event, ...)
@@ -311,8 +329,10 @@ onEvent = function(event, ...)
     elseif ANSWER[event] then
         if s.stage == "month" and event == "CALENDAR_UPDATE_EVENT_LIST" then
             if s.onMonth then s.onMonth() end
+        elseif j and j.called and event == "CALENDAR_ACTION_PENDING" and plain((...)) == true then
+            j.sawPending = true
         elseif j and j.called and not j.settling then
-            if event == "CALENDAR_ACTION_PENDING" and plain((...)) == true then return end
+            if event == "CALENDAR_UPDATE_EVENT" then j.gotUpdate = true end
             -- on the next frames: the client fills its lists after the event, and its error still counts
             j.settling = true
             C_Timer.After(CE.SETTLE, function()
@@ -361,7 +381,7 @@ function CE.Begin(item, what, fn)
         if session ~= s then return end
         local index, _, day = locate(item, offset)
         if not index then return abort(s, "gone") end
-        s.offset, s.day, s.index = offset, day, index
+        s.offset, s.day, s.index, s.monthSet = offset, day, index, (setMonth())
         local can = plain(call(what == "edit" and "ContextMenuEventCanEdit" or "ContextMenuEventCanRemove", offset, day, index))
         if can ~= true then return abort(s, "right") end
         if what == "remove" then
@@ -374,10 +394,13 @@ function CE.Begin(item, what, fn)
             if finished or session ~= s then return end
             finished = true
             s.onOpen = nil
+            -- cancelled while the client was opening it: closed now, nobody told
+            if s.cancelled then return release(s) end
             if not event then return abort(s, "open") end
             -- on the next frame: the client fills the event after its handlers
             C_Timer.After(0, function()
                 if session ~= s then return end
+                if s.cancelled then return release(s) end
                 local info = readOpen()
                 if not info then return abort(s, "read") end
                 if info.at ~= item.at or (item.title and Cal.Clean(info.title) ~= item.title) then
@@ -422,7 +445,11 @@ function CE.Begin(item, what, fn)
             found(0)
         end)
     end
-    s.onMonth = loaded
+    -- a list event of something else may come before the month's: only one that shows the event counts
+    -- before the wait is over
+    s.onMonth = function()
+        if setMonth() == t.year * 12 + (t.month - 1) and locate(item, 0) then loaded() end
+    end
     C_Timer.After(Cal.MONTH_WAIT, loaded)
     if not pcall(C_Calendar.SetAbsMonth, t.month, t.year) then
         finished = true
@@ -464,7 +491,7 @@ function CE.Changes(form)
     if form.time ~= info.time then out.time, any = form.time, true end
     if form.type ~= info.type then out.type, any = form.type, true end
     local withTex = form.type == 0 or form.type == 1
-    if withTex and (out.type ~= nil or form.tex ~= info.tex) then out.tex, any = form.tex, true end
+    if withTex and form.tex ~= nil and (out.type ~= nil or form.tex ~= info.tex) then out.tex, any = form.tex, true end
     return any and out or nil
 end
 
@@ -475,7 +502,8 @@ function CE.Check(form)
     if b then return b end
     if s.what ~= "edit" then return "closed" end
     if not ns.Int(form.type, 0, 4) then return "type" end
-    if (form.type == 0 or form.type == 1) and not ns.Int(form.tex, 1) then return "instance" end
+    -- an instance is needed for a new type; an event whose instance the game does not name keeps it
+    if (form.type == 0 or form.type == 1) and not ns.Int(form.tex, 1) and (form.type ~= s.info.type or form.tex ~= nil) then return "instance" end
     if not ns.Int(form.time, 0, 23 * 60 + 59) then return "time" end
     local d = date("*t", s.item.at)
     local at = time({ year = d.year, month = d.month, day = d.day, hour = math.floor(form.time / 60), min = form.time % 60 })
@@ -536,6 +564,7 @@ function CE.Save(form, fn)
     end
     if j.blocked then finishJob(s, false, "blocked", j.blocked) return true end
     if j.error then finishJob(s, false, "error", j.error) return true end
+    if api("IsActionPending") and plain(call("IsActionPending")) == true then j.sawPending = true end
     C_Timer.After(CE.WAIT, function()
         if j.done then return end
         if j.blocked then return finishJob(s, false, "blocked", j.blocked) end
@@ -581,7 +610,7 @@ function CE.Remove(fn)
         if j.done then return end
         if j.blocked then return finishJob(s, false, "blocked", j.blocked) end
         -- the list's event may have got lost: the event gone is the answer
-        if session == s and locate(s.item, s.offset) == nil then return finishJob(s, true) end
+        if session == s and answered(s) then return finishJob(s, true) end
         finishJob(s, false, "timeout")
     end)
     return true

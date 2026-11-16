@@ -4005,8 +4005,10 @@ die Fragen seines Rechtsklick-Menüs) und gibt niemandem ein eigenes Recht.
 - **Ferner Monat:** die Aufrufe des Spiels zählen vom gesetzten Monat und kennen nur ihn und seine Nachbarn. Für einen
   Termin weiter weg setzt Amisia dessen Monat (`SetAbsMonth`) und danach den vorigen zurück, wie beim Lesen (D-142).
   Bis dahin zeigt es die Links für die eigenen Termine (Ersteller) und fragt das Spiel, sobald der Monat gesetzt ist.
-- **Antwort:** die Kalender-Ereignisse des Spiels ohne Fehler (Bearbeiten: keine Aktion mehr offen; Löschen: der Termin
-  ist aus der Liste), ein Kalenderfehler mit dem Text des Spiels (das Formular bleibt für einen weiteren Versuch
+- **Antwort:** die Kalender-Ereignisse des Spiels ohne Fehler (Bearbeiten: die eigene Aktion war offen oder der eigene
+  Termin wurde aktualisiert, und nichts ist mehr offen; ein Kalender-Ereignis eines anderen ist keine Antwort. Löschen:
+  der Termin ist aus der Liste seines Tages, solange der Monat noch gesetzt ist, von dem aus gezählt wurde), ein
+  Kalenderfehler mit dem Text des Spiels (das Formular bleibt für einen weiteren Versuch
   offen), eine Sperre des Spiels für Amisia (beide Links bis /reload aus) oder nach 10 Sekunden keine Antwort. Im Chat
   "Termin geändert: ..." bzw. "Termin gelöscht: ...".
 **Grund:** Nutzer 2026-11-16, mit einem Bild seines in Amisia angelegten Termins: "können wir die sachen im Kalender
@@ -4019,7 +4021,9 @@ und neu anlegen), Kopieren, Einladen, einzelne Teilnehmer entfernen, Sperren, Mo
 Uhrzeit; nach dem Löschen zeigt eine übernommene Aufstellung wie bisher "Ereignis nicht mehr im Kalender".
 **Durchgesetzt durch:** `tests/test_calendar_edit.lua` (Links nur mit dem Recht des Spiels, grau bei offenem
 Kalenderfenster und im Kampf, Formular mit den Werten, Art fest, nur geänderte Felder im Klick, Instanz nach dem Typ,
-Chatzeilen, Abbrechen, anderer Tag, andere Seite, Kampf, Kalenderfenster, Fehler mit zweitem Versuch, vergangener
+Chatzeilen, Abbrechen, anderer Tag, andere Seite, Kampf, Kalenderfenster, Fehler mit zweitem Versuch, Seite während
+des Speicherns verlassen, fremdes Kalender-Ereignis ist keine Antwort, Titel und Instanz beim Bearbeiten, Termin ohne
+Instanz, ferner Monat beim Bearbeiten, Monatswechsel während des Löschens, Abbrechen während des Öffnens, vergangener
 Termin, Rückfrage, Löschen im Klick, inzwischen gelöschter Termin, ferner Monat mit `SetAbsMonth` und zurück, Sperre
 bis /reload, keine Antwort), `tools/tests/test_contracts.py` (Dateien).
 

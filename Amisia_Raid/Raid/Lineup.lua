@@ -300,7 +300,21 @@ local function parseBot(data)
         if n > MAX_LINES then break end
         local e
         if type(su) == "table" and type(su.name) == "string" then
-            e = parseWords(lineWords(cleanLine(su.name)))
+            local ws = lineWords(cleanLine(su.name))
+            e = parseWords(ws)
+            if not e then
+                -- the field holds a name and nothing else: one that is a role, class or heading word
+                -- ("Holy", "Hunt", "Info") or has three words is still a name (its first two words)
+                local nameWords = {}
+                for _, w in ipairs(ws) do
+                    if w ~= "," and #nameWords < 2 then
+                        if not nameWord(w) then nameWords = {} break end
+                        nameWords[#nameWords + 1] = w
+                    end
+                end
+                local name = table.concat(nameWords, " ")
+                if #nameWords > 0 and #name <= NAME_MAX then e = { n = name } end
+            end
         end
         if e then
             for _, key in ipairs({ "roleName", "className", "specName", "status" }) do

@@ -53,7 +53,7 @@ assert(select(2, CB.Read("Black Temple 19:45")) == "not")
 assert(select(2, CB.Read('{"startTime":"bald","title":"x"}')) == "not", "a start that is no time")
 assert(select(2, CB.Read('{"startTime":12,"title":"x"}')) == "not", "a start that is no sensible moment")
 assert(select(2, CB.Read('{"startTime":' .. start .. ',"x":"' .. ("a"):rep(CB.MAX_JSON) .. '"}')) == "big")
-assert(select(2, CB.Read('{"startTime":' .. start .. ',"x":' .. ("["):rep(30) .. ("]"):rep(30) .. '}')) == "not", "nested too deep")
+assert(select(2, CB.Read('{"startTime":' .. start .. ',"x":' .. ("["):rep(30) .. ("]"):rep(30) .. '}')) == "big", "nested too deep")
 assert(CB.Start({ startTime = start * 1000 }) == start, "a start in milliseconds")
 assert(CB.Plain("**Hallo** <:Tank:123> <@&99> [Plan](https://example.org/a) ~~alt~~ :smile:", 80) == "Hallo Plan alt", CB.Plain("**Hallo** <:Tank:123> <@&99> [Plan](https://example.org/a) ~~alt~~ :smile:", 80))
 
@@ -119,6 +119,22 @@ assert(m.year == sd.year and m.month == sd.month and m.monthDay == sd.day, "on t
 assert(m.calendarType == "GUILD_EVENT" and m.description == "Bitte Feuerresi mitbringen Infos:")
 STUB.tick(2)
 
+-- an event before the night's start stands under the night before: the same-time hint finds it
+local early = os.time({ year = now.year, month = now.month, day = now.day + 8, hour = 1, min = 30 })
+cal.setMonthEvents({ { title = "Nachtraid", at = early, eventType = 0, id = 72, calendarType = "GUILD_EVENT" } })
+STUB.fire("CALENDAR_UPDATE_EVENT_LIST"); STUB.tick(6)
+NS.ShowCalendar(NS.NightOf(epochIn(2)))
+STUB.tick(5)
+P.create:Click()
+P.formBot:Click()
+P.botBox.box:SetText(json(early, "Gildentreffen"))
+P.botTake:Click()
+STUB.tick(5)
+NS.Refresh()
+assert(P.form:IsShown() and P.timeBox:GetText() == "01:30", P.timeBox:GetText())
+assert(has(P.formHint:GetText(), "Nachtraid"), "the early event of that calendar day: " .. tostring(P.formHint:GetText()))
+P.formCancel:Click()
+
 -- "Zurück" leaves the paste field for the form
 NS.ShowCalendar(NS.NightOf(epochIn(2)))
 STUB.tick(1)
@@ -145,6 +161,19 @@ assert(key == NS.NightOf(start), tostring(key) .. " " .. tostring(line))
 local n = 0
 for _ in ipairs(NS.LineupNight(key).list) do n = n + 1 end
 assert(n == 6, "the night's list: " .. n)
+-- a name that is a role, class or heading word, or has three words, is still a name
+local odd = assert(NS.ParseLineup(('{"startTime":%d,"title":"x","signUps":[{"name":"Holy","className":"Priest","roleName":"Healers"},'
+    .. '{"name":"Hunt","className":"Hunter","roleName":"Ranged"},{"name":"Info","className":"Mage"},'
+    .. '{"name":"Anna vom Berg","className":"Warrior","roleName":"Melee"},{"name":"|cffff0000Rot|r","className":"Rogue"},'
+    .. '{"name":{"x":1}},7,{"name":"Vulo Pala","className":"Paladin","roleName":"Tanks"}]}'):format(start)))
+local ob = {}
+for _, e in ipairs(odd.list) do ob[e.n] = e end
+assert(ob.Holy and ob.Holy.r == "H" and ob.Holy.c == "PRIEST", "a name that is a spec word")
+assert(ob.Hunt and ob.Hunt.c == "HUNTER" and ob.Info and ob.Info.c == "MAGE", "a class word and a heading word")
+assert(ob["Anna vom"] and ob["Anna vom"].r == "M", "three words: the first two")
+assert(ob["Vulo Pala"] and ob["Vulo Pala"].r == "T", "a surname that is a class word")
+assert(odd.skipped == 2, "a table and a number are no sign-ups: " .. odd.skipped)
+for _, e in ipairs(odd.list) do assert(not e.n:find("|", 1, true), "no codes in a name") end
 -- an event without sign-ups, and a broken paste
 assert(select(2, NS.ParseLineup(json(start):gsub('"signUps":%b[]', '"signUps":[]'))) ~= nil)
 assert(NS.ParseLineup('{"startTime":"x","signUps":[]}') == nil)

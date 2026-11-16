@@ -65,15 +65,15 @@ function CB.Start(data)
     return n
 end
 
--- The pasted event as a table, or nil and why: "not" (no event of the bot), "big", "api" (the client
--- cannot read JSON).
+-- The pasted event as a table, or nil and why: "not" (no event of the bot), "big" (too long or nested
+-- too deep), "api" (the client cannot read JSON).
 function CB.Read(text)
     if type(text) ~= "string" then return nil, "not" end
     if #text > CB.MAX_JSON then return nil, "big" end
     if not CB.Looks(text) then return nil, "not" end
     if not CB.Available() then return nil, "api" end
     text = text:gsub("^\239\187\191", "")
-    if tooDeep(text, CB.MAX_DEPTH) then return nil, "not" end
+    if tooDeep(text, CB.MAX_DEPTH) then return nil, "big" end
     local ok, data = pcall(C_EncodingUtil.DeserializeJSON, text)
     if not ok or type(data) ~= "table" then return nil, "not" end
     if not CB.Start(data) then return nil, "not" end

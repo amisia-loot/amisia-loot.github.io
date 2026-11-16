@@ -528,6 +528,8 @@ local function save()
             if detail and reason == "error" then text = text .. " " .. tostring(detail) end
             if reason ~= "same" then text = text .. " " .. L["Ändere ihn bitte im Spielkalender."] end
             formError = text
+            -- the player left the form meanwhile: the session ends with the answer
+            if mode ~= "edit" then CE().Cancel() end
             left(text)
         end
         ns.Refresh()
@@ -854,7 +856,8 @@ local function build(parent)
         local before = form.texTitle
         form.type = v or 4
         form.tex, form.texTitle, form.texShown = nil, nil, nil
-        if f.titleBox:GetText() == (before or "") then f.titleBox:SetText("") end
+        -- a new event's title follows its instance; an event being changed keeps its title
+        if mode ~= "edit" and f.titleBox:GetText() == (before or "") then f.titleBox:SetText("") end
         ns.Refresh()
     end))
     f.texY = y
@@ -865,9 +868,19 @@ local function build(parent)
         for _, x in ipairs(CC().Textures(form.type)) do
             if x.index == v then form.texTitle = x.title end
         end
-        -- the title follows the instance until the player typed one of his own
-        local text = f.titleBox:GetText()
-        if text == "" or text == before then f.titleBox:SetText(CC().Clean(form.texTitle, CC().TITLE_CHARS) or "") end
+        if mode == "edit" then
+            -- the event's own instance picked again: its own index (another difficulty of the same name stays)
+            local es = CE().Session()
+            local info = es and es.info
+            if info and info.type == form.type and info.tex then
+                local _, shown = CC().TextureAt(info.type, info.tex)
+                if shown == v then form.tex, form.texShown = info.tex, v end
+            end
+        else
+            -- the title follows the instance until the player typed one of his own
+            local text = f.titleBox:GetText()
+            if text == "" or text == before then f.titleBox:SetText(CC().Clean(form.texTitle, CC().TITLE_CHARS) or "") end
+        end
         ns.Refresh()
     end))
     f.restY = y
@@ -1106,7 +1119,19 @@ local function fillRight(f, terms, raids)
     local inDay = mode == nil
     local inForm = mode == "form" or mode == "edit"
     f.form:SetShown(inForm)
-    if inForm then fillForm(f, day) end
+    if inForm then
+        -- the dates of the chosen calendar day (the day's list is the night's: an event before the
+        -- night's start stands under the night before)
+        local same = {}
+        if chosen and at then
+            for _, k in ipairs({ key(at - DAY), chosen }) do
+                for _, e in ipairs(terms[k] or {}) do
+                    if not e.call and date("%Y-%m-%d", e.at) == chosen then same[#same + 1] = e end
+                end
+            end
+        end
+        fillForm(f, same)
+    end
     local inBot = mode == "bot"
     f.botBox:SetShown(inBot)
     f.botHint:SetShown(inBot)

@@ -199,6 +199,72 @@ click(P.formAdd)
 STUB.tick(2)
 assert(monthEvent(41).startTime.minute == 45 and not CE.Session(), "the second try")
 
+-- the player leaves the form while "Speichern" waits and the game answers with an error: nothing stays held
+show(epochIn(5))
+P.terms[1]:Click(); STUB.tick(1)
+click(P.edit); STUB.tick(1)
+cal.fail.UpdateEvent = true
+P.timeBox:SetText("19:50")
+NS.Refresh()
+click(P.formAdd)
+NS.ShowPage("overview")
+STUB.tick(2)
+assert(not CE.Session() and not Cal.Busy() and cal.open == nil, "the session ends with the answer")
+cal.fail.UpdateEvent = nil
+NS.ShowPage("calendar")
+STUB.tick(1)
+show(epochIn(5))
+P.terms[1]:Click(); STUB.tick(1)
+assert(P.edit:IsShown() and P.edit:IsEnabled(), "Bearbeiten works again")
+
+-- a calendar event of someone else is no answer: without the game's own answer the save times out
+click(P.edit); STUB.tick(1)
+cal.quiet.UpdateEvent = true
+P.timeBox:SetText("19:55")
+NS.Refresh()
+local told = #STUB.messages
+click(P.formAdd)
+STUB.fire("CALENDAR_UPDATE_EVENT_LIST")
+STUB.tick(2)
+for i = told + 1, #STUB.messages do assert(not has(STUB.messages[i], "Termin geändert"), "no success from a stray list event") end
+assert(CE.Session() and CE.Session().job, "still waiting for the game")
+STUB.tick(CE.WAIT)
+assert(not CE.Session() and said("nicht geantwortet"), "the timeout")
+cal.quiet.UpdateEvent = nil
+cal.open, cal.pendingEdit = nil, nil
+NS.Refresh()
+
+-- an event that is its instance's name keeps its title when type or instance change; the event's own
+-- instance picked again keeps its index (another difficulty of the same name)
+monthEvent(41).title, monthEvent(41).textureIndex = "Molten Core", 3
+STUB.fire("CALENDAR_UPDATE_EVENT_LIST"); STUB.tick(6)
+show(epochIn(5))
+P.terms[1]:Click(); STUB.tick(1)
+click(P.edit); STUB.tick(1)
+assert(P.form:IsShown() and P.titleBox:GetText() == "Molten Core" and P.texPick:GetValue() == 1)
+P.texPick.onPick(1)
+assert(CE.Changes({ type = 0, tex = CE.Session().info.tex, time = CE.Session().info.time, title = "Molten Core", desc = "Bitte Feuerresi" }) == nil)
+NS.Refresh()
+assert(not P.formAdd:IsEnabled(), "the same instance is no change")
+P.texPick.onPick(2)
+assert(P.titleBox:GetText() == "Molten Core", "the title stays: " .. P.titleBox:GetText())
+P.typePick.onPick(3)
+assert(P.titleBox:GetText() == "Molten Core", "also when the type changes")
+P.formCancel:Click()
+-- an event whose instance the game does not name: time and title can still be saved
+monthEvent(41).textureIndex = nil
+STUB.fire("CALENDAR_UPDATE_EVENT_LIST"); STUB.tick(6)
+show(epochIn(5))
+P.terms[1]:Click(); STUB.tick(1)
+click(P.edit); STUB.tick(1)
+P.timeBox:SetText("20:15")
+NS.Refresh()
+assert(P.formAdd:IsEnabled())
+local nu = #cal.updates
+click(P.formAdd)
+STUB.tick(2)
+assert(#cal.updates == nu + 1 and cal.updates[nu + 1].changes.textureIndex == nil and monthEvent(41).startTime.minute == 15, "saved without an instance")
+
 -- a past event: no edit, the delete is the game's call; an own (not guild) event names the invited
 show(epochIn(-1))
 STUB.tick(1)
@@ -218,11 +284,11 @@ assert(not CE.Session() and #cal.removed == 0, "Abbrechen: nothing deleted")
 show(epochIn(5))
 P.terms[1]:Click(); STUB.tick(1)
 click(P.remove); STUB.tick(1)
-assert(confirm():IsShown() and has(confirm().text:GetText(), "ganze Gilde") and has(confirm().text:GetText(), "MC Feuer"), confirm().text:GetText())
+assert(confirm():IsShown() and has(confirm().text:GetText(), "ganze Gilde") and has(confirm().text:GetText(), "Molten Core"), confirm().text:GetText())
 click(confirm().ok)
 assert(#cal.removed == 1 and cal.removed[1].id == 41 and cal.removed[1].inClick and cal.removed[1].selectedInClick, "selected and removed in the click")
 STUB.tick(2)
-assert(said("Termin gelöscht") and said("MC Feuer"), "the chat line")
+assert(said("Termin gelöscht") and has(STUB.messages[#STUB.messages], "20:15 Molten Core"), "the chat line: " .. tostring(STUB.messages[#STUB.messages]))
 assert(monthEvent(41) == nil and not CE.Session() and not Cal.Busy())
 STUB.tick(5)
 assert(has(P.terms[1].text:GetText(), "Fremder Raid"), "the sheet read again: " .. tostring(P.terms[1].text:GetText()))
@@ -249,6 +315,45 @@ click(confirm().ok)
 STUB.tick(2)
 assert(#cal.removed == 2 and cal.removed[2].id == 46 and monthEvent(46) == nil, "deleted")
 assert(cal.setM == now.month and cal.setY == now.year, "the month set before is back")
+
+-- a far month's delete while the client's calendar window takes the month back: no "gelöscht" for an
+-- event that still stands
+cal = world()
+CE._reset(); CC._reset()
+cal.quiet.ContextMenuEventRemove = true
+local farItem = { id = "46", at = farAt, title = "Zul'Gurub", kind = "GUILD_EVENT", creator = true }
+local ready
+assert(CE.Begin(farItem, "remove", function(ok) ready = ok end))
+STUB.tick(2)
+assert(ready == true and cal.setM == far.month)
+local gone
+assert(CE.Remove(function(ok, why) gone = { ok, why } end))
+C_Calendar.SetAbsMonth(now.month, now.year)   -- the client's window opens: its own month
+STUB.tick(CE.WAIT + 1)
+assert(gone and gone[1] == false and gone[2] == "timeout", "not deleted: " .. tostring(gone and gone[2]))
+assert(monthEvent(46) ~= nil and not CE.Session())
+-- an edit of a far month's event: the month set while the form shows, back afterwards; a cancel while
+-- the client is still opening the event closes it once it came open
+ready = nil
+assert(CE.Begin(farItem, "edit", function(ok, _, info) ready = info end))
+STUB.tick(2)
+assert(ready and ready.title == "Zul'Gurub" and cal.setM == far.month and cal.open and cal.open.eventID == 46, "the far event open")
+local saved
+assert(CE.Save({ type = 0, tex = nil, time = 21 * 60, title = "Zul'Gurub", desc = "" }, function(ok) saved = ok end))
+STUB.tick(2)
+assert(saved == true and monthEvent(46).startTime.hour == 21 and cal.setM == now.month and cal.open == nil, "saved, the month back")
+
+-- "Abbrechen" while the client is still opening the event: closed once the wait is over, nobody told
+cal = world({ silent = true })
+CE._reset(); CC._reset()
+Cal.Month(os.date("*t", epochIn(5)).year, os.date("*t", epochIn(5)).month, function(l) list = l end)
+local late
+assert(CE.Begin(item(41), "edit", function(ok) late = ok end))
+assert(cal.open and CE.Session(), "the client is opening it")
+CE.Cancel()
+assert(CE.Session(), "held until the client answered")
+STUB.tick(CE.WAIT + 1)
+assert(not CE.Session() and cal.open == nil and late == nil and not Cal.Busy(), "closed, the page not called")
 
 -- the game refuses (UpdateEvent blocked for Amisia): off until /reload
 cal = world({ hw = true })
