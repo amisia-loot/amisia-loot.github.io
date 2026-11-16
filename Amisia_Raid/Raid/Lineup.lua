@@ -1,5 +1,6 @@
 -- Amisia lineup (Raid-Aufstellung, D-41): an officer pastes the sign-up list of a raid night (the
--- block #AMISIA-RAID, plain "Name Rolle" lines, or the text of a sign-up bot), Amisia matches every
+-- block #AMISIA-RAID, plain "Name Rolle" lines, the text of a sign-up bot or the JSON of one of its events,
+-- F-223), Amisia matches every
 -- name against the guild roster (then the group and the friend list), guesses missing roles,
 -- divides the sign-ups into groups by simple rules, keeps what the officer holds in place, and puts
 -- the bench on the evening's bench (ns.BenchAdd). Saved per raid night in AmisiaDB.lineup.
@@ -279,7 +280,49 @@ local function parseBlock(text)
     return res
 end
 
--- Reads a pasted list: the block, else plain lines and a bot's text. Returns { list = { entry },
+-- The sign-ups of a pasted event of the sign-up bot (its JSON, F-223, D-148; ns.CalBot.Read): each
+-- { name, className, specName, roleName, status }. The name is read like a line of the bot's text
+-- (parseWords); role, class and state come from the bot's own fields where the list knows the word
+-- (its role first, then the class, then the spec). The bot's "class" also names the state (absence,
+-- tentative, bench, late), "queued" is its waiting list. The night is the event's.
+local BOT_WORD = { absence = "absent", queued = "bench", tentative = "tentative", late = "late" }
+local function parseBot(data)
+    local res = { list = {}, skipped = 0, bot = true }
+    local start = ns.CalBot.Start(data)
+    if start then
+        local at = start + ns.CalCreate.Skew()
+        res.date = ns.NightOf and ns.NightOf(at) or date("%Y-%m-%d", at)
+    end
+    res.title = ns.CalBot.Plain(data.title, 40)
+    local n = 0
+    for _, su in ipairs(type(data.signUps) == "table" and data.signUps or {}) do
+        n = n + 1
+        if n > MAX_LINES then break end
+        local e
+        if type(su) == "table" and type(su.name) == "string" then
+            e = parseWords(lineWords(cleanLine(su.name)))
+        end
+        if e then
+            for _, key in ipairs({ "roleName", "className", "specName", "status" }) do
+                local v = su[key]
+                if type(v) == "string" and #v <= 40 then
+                    -- "Holy1", "Protection1": the bot numbers specs of the same name
+                    for w in cleanLine(v):gsub("%d+", " "):gmatch("%S+") do
+                        local kw = keyword(BOT_WORD[w:lower()] or w)
+                        if kw then applyWord(e, kw) end
+                    end
+                end
+            end
+            res.list[#res.list + 1] = blankEntry(e, nil)
+        else
+            res.skipped = res.skipped + 1
+        end
+    end
+    return res
+end
+
+-- Reads a pasted list: the block, the JSON of a sign-up bot's event, else plain lines and a bot's
+-- text. Returns { list = { entry },
 -- date (block), title (block), skipped, over (sign-ups past 80), block } or nil and the reason.
 -- An entry: { n = name, r, c, b, a (absent), m (maybe), n1/c1 (the name without a surname that is a
 -- class word) }. A name written twice counts once (the first line).
@@ -290,6 +333,10 @@ function ns.ParseLineup(text)
         local blocks = ns.SiteBlocks and ns.SiteBlocks(text) or {}
         res, why = parseBlock(blocks.raid or text)
         if not res then return nil, why end
+    elseif ns.CalBot and ns.CalBot.Looks(text) then
+        local data, reason = ns.CalBot.Read(text)
+        if not data then return nil, ns.CalBot.Why(reason) end
+        res = parseBot(data)
     else
         res = { list = {}, skipped = 0 }
         local sec, read = nil, 0
