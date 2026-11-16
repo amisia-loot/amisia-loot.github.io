@@ -5,9 +5,9 @@
 -- apart; a few string operations per event, nothing per frame), never in an instance, a boss fight or
 -- the chat lockdown, never from anything a player controls (UnitPlayerControlled, UnitIsOtherPlayersPet,
 -- UnitIsPlayer), a secret value skipped. Per zone map (the player's map lifted to its zone, as the map
--- page does it): a zoneUID becomes the current layer once it was seen on two different creatures
--- (spawn) within CAND_WINDOW, or on one when it is already known for the map (an own one or one the
--- guild reported, Gear/LayerChange.lua): a creature over the zone border carries its neighbour's id. A
+-- page does it): an id is listed as seen once it was read on two different creatures (spawn) within
+-- CAND_WINDOW; which one is current, the votes decide (F-221, below): a creature over the zone border
+-- carries its neighbour's id. A
 -- zone change and entering or leaving an instance make the layer unknown until creatures are read
 -- again. Kept in memory only (a server restart hands out new ids); entries not seen for LIFE seconds
 -- fall out. Names "Layer A", "Layer B" ...: the known ids of a map in ascending order, so guild members
@@ -23,6 +23,15 @@
 -- GetEvictionTimeRemaining): LY.Refresh() counts down, then "gleich" for REFRESH_SOON seconds;
 -- SHARD_TRANSFER (the move itself) makes the layer unknown until a creature is read again,
 -- SHARD_TRANSFER_CANCELLED reads the time again or clears it.
+-- F-221 (D-146), read as the other layer addon reads it: the current layer is the one the last VOTES readings
+-- agree on (each creature votes once until the next zone or move): 2 of them while it is unknown, 3 to leave a
+-- known one, so a stray creature over the border flips nothing. It stays known until a zone change, a move
+-- (SHARD_TRANSFER) or entering the world (no time limit any more: LY.Known). The creatures in view at
+-- SHARD_TRANSFER are the old layer's and count STALE_FOR seconds not. LY.Scan reads the 40 name plates, the
+-- target and the mouseover; LY.Rescan does it unless a zone border was crossed within BORDER_QUIET seconds
+-- (a creature carried over it is the zone left behind), by itself RESCAN seconds after entering the world and
+-- after a move. LY.onRead (one function, Gear/LayerChange.lua) hears every reading. The layers of a zone seen
+-- within SEEN_KEEP seconds stay through /reload (AmisiaDB.layerSeen, written at PLAYER_LOGOUT).
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -32,7 +41,13 @@ ns.Layer = LY
 
 LY.CAND_WINDOW = 120    -- seconds in which two creatures of a new id must be seen
 LY.LIFE = 6 * 3600      -- seconds an id lives without being seen again
-LY.FRESH = 300          -- seconds a current layer counts as fresh (the guild answers only then)
+LY.VOTES = 5            -- F-221: the readings that vote for the current layer
+LY.STALE_FOR = 10       -- seconds the creatures in view at SHARD_TRANSFER do not count
+LY.BORDER_QUIET = 15    -- seconds after a zone border without a rescan
+LY.RESCAN = { 2, 5, 12 }   -- seconds after entering the world and after a move: a rescan
+LY.SEEN_KEEP = 3600     -- seconds a layer stays in AmisiaDB.layerSeen
+local SEEN_MAPS, SEEN_LAYERS = 40, 20   -- AmisiaDB.layerSeen: zones and layers per zone at most
+local PLATES = 40
 LY.GAP = { mouseover = 0.25, plate = 0.1 }   -- throttle per source
 local MAX_ZONE_UID = 4294967295
 local MAX_CAND = 20     -- candidate spawns kept per id
@@ -48,6 +63,10 @@ local evictAt           -- the time the announced world restart comes (GetEvicti
 local zoneMap           -- the player's zone map (cached until a zone event), false: none
 local lastAt = {}       -- source -> time of its last read
 local sweptAt = 0
+local votes = {}        -- F-221: the last VOTES readings (server parts), newest last
+local voted = {}        -- [guid] = true: the creatures that voted since the last zone change or move
+local stale             -- { untilAt, guid = { [guid] = true } }: the creatures in view at SHARD_TRANSFER
+local borderAt          -- the time of the last zone border (ZONE_CHANGED_NEW_AREA)
 -- for /amisia selbsttest layer (Core/SelfTestLayer.lua), this session only: how many units each source
 -- read (read) and how many gave a zoneUID (ok), secret GUIDs, and the current layer's changes
 -- ({ at, map, uid, grouped } and { at, zone = true } for a zone change between two of them), newest last
@@ -196,37 +215,96 @@ local function setCurrent(map, uid, t, zuid)
     ns.Fire("LAYER", "current")
 end
 
--- A creature of map with server part uid, spawn and zoneUID zuid was read at t.
-local function note(map, uid, spawn, t, zuid)
+-- A creature of map with server part uid, spawn and zoneUID zuid (GUID guid) was read at t. The list: an id is
+-- seen by the own client after two spawns within CAND_WINDOW (or once it is the current one). The current one:
+-- the votes (see the head).
+local function note(map, uid, spawn, t, zuid, guid)
     sweep()
     local m = mapState(map)
     local e = m.layers[uid]
-    if not e then
+    if not (e and e.own) then
         local c = m.cand[uid] or {}
         m.cand[uid] = c
+        local room = true
         if not c[spawn] then
             local n = 0
             for s, at in pairs(c) do
                 if t - at > LY.CAND_WINDOW then c[s] = nil else n = n + 1 end
             end
-            if n >= MAX_CAND then return end
+            room = n < MAX_CAND
         end
-        c[spawn] = t
-        local n = 0
-        for _ in pairs(c) do n = n + 1 end
-        if n < 2 then return end
-        m.cand[uid] = nil
-        e = { first = t, last = t, own = true }
-        m.layers[uid] = e
-        ns.Fire("LAYER", "list")
+        if room then
+            c[spawn] = t
+            local n = 0
+            for _ in pairs(c) do n = n + 1 end
+            if n >= 2 then
+                m.cand[uid] = nil
+                if not e then
+                    e = { first = t, last = t }
+                    m.layers[uid] = e
+                end
+                e.own = true
+                ns.Fire("LAYER", "list")
+            end
+        end
     end
-    e.last = math.max(e.last, t)
-    e.zuid = zuid or e.zuid
+    if e then
+        e.last = math.max(e.last, t)
+        e.zuid = zuid or e.zuid
+    end
+    local mine = cur and cur.map == map
+    if mine and cur.uid == uid then
+        cur.at = t
+        cur.zuid = zuid or cur.zuid
+    end
+    if voted[guid] then return end
+    voted[guid] = true
+    votes[#votes + 1] = uid
+    if #votes > LY.VOTES then table.remove(votes, 1) end
+    if mine and cur.uid == uid then return end
+    local n = 0
+    for _, v in ipairs(votes) do if v == uid then n = n + 1 end end
+    if n < (mine and 3 or 2) then return end
+    if not e then
+        e = { first = t, last = t, zuid = zuid }
+        m.layers[uid] = e
+    end
+    m.cand[uid] = nil
     if not e.own then
         e.own = true
         ns.Fire("LAYER", "list")
     end
     setCurrent(map, uid, t, zuid)
+end
+
+-- One reading of unit (nothing checked but the unit itself): the server part, or nil.
+local function readOne(unit, key, t)
+    stats.read[key] = (stats.read[key] or 0) + 1
+    local okG, guid = pcall(rawget(_G, "UnitGUID") or error, unit)
+    if not okG then return nil end
+    if guid ~= nil and ns.Plain(guid) == nil then stats.secret = stats.secret + 1 end
+    local _, uid, _, spawn, zuid = LY.Parse(guid)
+    if not uid then return nil end
+    -- F-221: a creature of the layer just left, still in view
+    if stale and t < stale.untilAt and stale.guid[guid] then return nil end
+    -- anything a player controls (a guardian carries a creature GUID too)
+    for _, name in ipairs({ "UnitPlayerControlled", "UnitIsOtherPlayersPet", "UnitIsPlayer" }) do
+        local f = rawget(_G, name)
+        if type(f) == "function" then
+            local ok, v = pcall(f, unit)
+            -- an error or a secret answer counts as controlled: nothing is read
+            if not ok or (v ~= nil and ns.Plain(v) == nil) or v then return nil end
+        end
+    end
+    local map = LY.Map()
+    if not map then return nil end
+    note(map, uid, spawn, t, zuid, guid)
+    stats.ok[key] = (stats.ok[key] or 0) + 1
+    if LY.onRead then
+        local ok, err = pcall(LY.onRead, uid, map, guid, t)
+        if not ok then ns.ReportError(err) end
+    end
+    return uid
 end
 
 -- Reads unit (target, mouseover, a name plate's unit); source "target", "mouseover" or "plate" (the
@@ -239,35 +317,39 @@ function LY.ReadUnit(unit, source)
         lastAt[source] = t
     end
     if type(unit) ~= "string" or blocked() then return nil end
-    local key = source or "other"
-    stats.read[key] = (stats.read[key] or 0) + 1
-    local okG, guid = pcall(rawget(_G, "UnitGUID") or error, unit)
-    if not okG then return nil end
-    if guid ~= nil and ns.Plain(guid) == nil then stats.secret = stats.secret + 1 end
-    local _, uid, _, spawn, zuid = LY.Parse(guid)
-    if not uid then return nil end
-    -- anything a player controls (a guardian carries a creature GUID too)
-    for _, name in ipairs({ "UnitPlayerControlled", "UnitIsOtherPlayersPet", "UnitIsPlayer" }) do
-        local f = rawget(_G, name)
-        if type(f) == "function" then
-            local ok, v = pcall(f, unit)
-            -- an error or a secret answer counts as controlled: nothing is read
-            if not ok or (v ~= nil and ns.Plain(v) == nil) or v then return nil end
-        end
+    return readOne(unit, source or "other", t)
+end
+
+-- F-221: reads the units in view now: the 40 name plates, the target, the mouseover (unthrottled). Returns how
+-- many gave a layer.
+function LY.Scan()
+    if blocked() then return 0 end
+    local t, n = now(), 0
+    for i = 1, PLATES do
+        if readOne("nameplate" .. i, "scan", t) then n = n + 1 end
     end
-    local map = LY.Map()
-    if not map then return nil end
-    note(map, uid, spawn, t, zuid)
-    stats.ok[key] = (stats.ok[key] or 0) + 1
-    return uid
+    if readOne("target", "scan", t) then n = n + 1 end
+    if readOne("mouseover", "scan", t) then n = n + 1 end
+    return n
+end
+
+-- The scan, but never within BORDER_QUIET seconds of a zone border. Returns whether it ran.
+function LY.Rescan()
+    if borderAt and now() - borderAt < LY.BORDER_QUIET then return false end
+    LY.Scan()
+    return true
+end
+
+local function rescanSoon()
+    for _, s in ipairs(LY.RESCAN) do C_Timer.After(s, function() LY.Rescan() end) end
 end
 
 -- This session's reads and the current layer's changes, for the self-test (see the tables above).
 function LY.Stats() return stats, history end
 
 -- A layer of map the guild reported (an answer to "Gilde fragen") or a player of the zone named (zuid: the
--- zoneUID of its wire id, F-220): known from now on, so one own creature makes it current; its letter
--- counts for everyone who knows the same ids.
+-- zoneUID of its wire id, F-220): listed from now on (the votes still decide the current one, F-221); its
+-- letter counts for everyone who knows the same ids.
 function LY.Heard(map, uid, zuid)
     map, uid = tonumber(map), tonumber(uid)
     if not map or not uid or uid <= 0 or uid > MAX_ZONE_UID then return end
@@ -336,10 +418,9 @@ function LY.Current()
     return cur.uid, cur.map, LY.Name(cur.map, cur.uid), now() - cur.at
 end
 
--- Whether the current layer was read within limit seconds (default FRESH).
-function LY.Fresh(limit)
-    local uid, _, _, age = LY.Current()
-    return uid ~= nil and age <= (limit or LY.FRESH)
+-- Whether the current layer is known (F-221: until a zone change, a move or entering the world).
+function LY.Known()
+    return LY.Current() ~= nil
 end
 
 -- The layers of map (default the player's zone), by letter: { { uid, letter, name, first, last, age,
@@ -409,17 +490,24 @@ ns.OnEvent("PLAYER_TARGET_CHANGED", function() LY.ReadUnit("target", "target") e
 ns.OnEvent("UPDATE_MOUSEOVER_UNIT", function() LY.ReadUnit("mouseover", "mouseover") end)
 ns.OnEvent("NAME_PLATE_UNIT_ADDED", function(unit) LY.ReadUnit(unit, "plate") end)
 
--- A new zone or world: the zone map is read again and the current layer is unknown.
+-- A new zone or world: the zone map is read again and the current layer is unknown; the votes start anew.
 local function zoneChanged()
     zoneMap = nil
+    votes, voted = {}, {}
     if #history > 0 and not history[#history].zone then remember({ at = now(), zone = true }) end
     if cur then
         cur = nil
         ns.Fire("LAYER", "current")
     end
 end
-ns.OnEvent("ZONE_CHANGED_NEW_AREA", zoneChanged)
-ns.OnEvent("PLAYER_ENTERING_WORLD", zoneChanged)
+ns.OnEvent("ZONE_CHANGED_NEW_AREA", function()
+    borderAt = now()
+    zoneChanged()
+end)
+ns.OnEvent("PLAYER_ENTERING_WORLD", function()
+    zoneChanged()
+    rescanSoon()
+end)
 -- inside a zone only the sub zone changes: its zone map stays, the cache is read again
 ns.OnEvent("ZONE_CHANGED", function() zoneMap = nil end)
 ns.OnEvent("ZONE_CHANGED_INDOORS", function() zoneMap = nil end)
@@ -469,12 +557,104 @@ ns.OnEvent("SHARD_TRANSFER_CANCELLED", readEviction)
 -- the change of an own swap)
 ns.OnEvent("SHARD_TRANSFER", function()
     evictAt = nil
+    -- F-221: the creatures in view (and every one that voted) are the old layer's for STALE_FOR seconds
+    local guids = {}
+    for g in pairs(voted) do guids[g] = true end
+    local get = rawget(_G, "UnitGUID")
+    local function add(unit)
+        local ok, g = pcall(get or error, unit)
+        g = ok and ns.Plain(g) or nil
+        if type(g) == "string" then guids[g] = true end
+    end
+    for i = 1, PLATES do add("nameplate" .. i) end
+    add("target")
+    add("mouseover")
+    stale = { untilAt = now() + LY.STALE_FOR, guid = guids }
+    votes, voted = {}, {}
+    rescanSoon()
     if cur then
         cur = nil
         ns.Fire("LAYER", "current")
     end
     ns.Fire("LAYER", "transfer")
 end)
+
+---------------------------------------------------------------------------
+-- The layers seen, through /reload (F-221): AmisiaDB.layerSeen = { [map] = { [uid] = { f, l, z, o, h } } }
+-- (epochs of the first and last sighting, the zoneUID, own and heard as 1), SEEN_KEEP seconds
+---------------------------------------------------------------------------
+-- The saved list kept clean (on load): numbers only, recent, SEEN_MAPS zones and SEEN_LAYERS layers at most.
+function LY.LoadedSeen(DB)
+    local db = DB and DB.layerSeen
+    if db == nil then return end
+    if type(db) ~= "table" then DB.layerSeen = nil return end
+    local cut, maps_ = time() - LY.SEEN_KEEP, 0
+    for map, list in pairs(db) do
+        local keep = type(map) == "number" and map > 0 and map <= 999999 and type(list) == "table" and maps_ < SEEN_MAPS
+        local n = 0
+        if keep then
+            for uid, e in pairs(list) do
+                if type(uid) ~= "number" or uid <= 0 or uid > MAX_ZONE_UID or type(e) ~= "table" or type(e.l) ~= "number"
+                    or e.l < cut or e.l > time() + 60 or n >= SEEN_LAYERS then
+                    list[uid] = nil
+                else
+                    n = n + 1
+                    e.f = type(e.f) == "number" and math.min(e.f, e.l) or e.l
+                    e.z = type(e.z) == "number" and e.z > 0 and e.z <= MAX_ZONE_UID and e.z or nil
+                    e.o = e.o == 1 and 1 or nil
+                    e.h = e.h == 1 and 1 or nil
+                end
+            end
+        end
+        if not keep or n == 0 then db[map] = nil else maps_ = maps_ + 1 end
+    end
+end
+
+-- The saved list into the memory (once, while nothing was read).
+local function restoreSeen(DB)
+    local db = DB and DB.layerSeen
+    if type(db) ~= "table" or next(maps) ~= nil then return end
+    local t, epoch = now(), time()
+    for map, list in pairs(db) do
+        local m = mapState(map)
+        for uid, e in pairs(list) do
+            m.layers[uid] = { first = t - (epoch - e.f), last = t - (epoch - e.l), zuid = e.z, own = e.o == 1 or nil,
+                heard = e.h == 1 or nil }
+        end
+    end
+end
+
+-- The memory into the saved list (at PLAYER_LOGOUT, also before a /reload).
+function LY.SaveSeen()
+    if type(AmisiaDB) ~= "table" then return end
+    local t, epoch = now(), time()
+    local out, n = {}, 0
+    for map, m in pairs(maps) do
+        local list, k = {}, 0
+        for uid, e in pairs(m.layers) do
+            if t - e.last <= LY.SEEN_KEEP and k < SEEN_LAYERS then
+                k = k + 1
+                list[uid] = { f = math.floor(epoch - (t - e.first)), l = math.floor(epoch - (t - e.last)), z = e.zuid,
+                    o = e.own and 1 or nil, h = e.heard and 1 or nil }
+            end
+        end
+        if k > 0 and n < SEEN_MAPS then
+            n = n + 1
+            out[map] = list
+        end
+    end
+    AmisiaDB.layerSeen = n > 0 and out or nil
+end
+ns.OnEvent("PLAYER_LOGOUT", function() LY.SaveSeen() end)
+
+local function loadSeen()
+    if type(AmisiaDB) ~= "table" then return end
+    LY.LoadedSeen(AmisiaDB)
+    restoreSeen(AmisiaDB)
+end
+loadSeen()
+ns.OnEvent("ADDON_LOADED", function(name) if name == ns.ADDON then loadSeen() end end)
+LY._loadSeen = loadSeen   -- for the tests: a /reload
 
 ns.RegisterSettings{ key = "layer", label = L["Layer"], order = 62, group = "guild", forever = true, items = {
     { key = "layer.chip", type = "toggle", label = L["Layer-Chip zeigen"], default = false,
@@ -498,8 +678,8 @@ ns.RegisterSettings{ key = "layer", label = L["Layer"], order = 62, group = "gui
     { key = "layer.autoAccept", type = "toggle", label = L["Einladung des Gefragten annehmen"], default = true,
       tip = L["Hast du ein Gildenmitglied um eine Einladung auf seinen Layer gebeten, nimmt Amisia genau seine Einladung an (eine Minute lang); nach \"Im Gildenchat fragen\" die Einladung eines Gildenmitglieds, nach \"Im Kanal fragen\" die nächste Einladung, egal von wem. Jede andere Einladung fragt das Spiel wie immer."] },
     { key = "layer.autoLeave", type = "toggle", label = L["Gruppe nach dem Wechsel verlassen"], default = true,
-      tip = L["Ist der Wechsel gelungen, verlässt Amisia die Gruppe des Einladenden nach den eingestellten Sekunden; hat er dich nicht bewegt, nach 15 Sekunden. Nie eine Gruppe, in der du vorher warst, und keinen Schlachtzug."] },
-    { key = "layer.leaveSeconds", type = "slider", label = L["Verlassen nach Sekunden"], default = 5, min = 3, max = 120,
+      tip = L["Ist der Wechsel gelungen, verlässt Amisia die Gruppe des Helfers nach den eingestellten Sekunden, wenn er auf deine Frage geantwortet hat; hat er dich nicht bewegt, frühestens nach 15 Sekunden. Nie eine Gruppe, in der du vorher warst, und keinen Schlachtzug."] },
+    { key = "layer.leaveSeconds", type = "slider", label = L["Verlassen nach Sekunden"], default = 4, min = 3, max = 120,
       tip = L["So lange nach dem gelungenen Wechsel wartet Amisia, bevor es die Zweiergruppe verlässt."] },
     { key = "layer.onlyNew", type = "toggle", label = L["Nur neue Layer"], default = false,
       tip = L["\"Layer wechseln\" nimmt nur Antworten von Layern, die in der letzten Stunde in dieser Zone niemand gesehen hat."] },
@@ -509,20 +689,24 @@ ns.RegisterSettings{ key = "layer", label = L["Layer"], order = 62, group = "gui
     { key = "layer.foreign", type = "toggle", label = L["Mit dem anderen Layer-Addon zusammenarbeiten"], default = true,
       tip = L["\"Layer wechseln\" fragt die Spieler der Zone auch so, wie das meistgenutzte Layer-Addon fragt, und Helfen antwortet und lädt dessen Nutzer ein. Aus: nur Amisias eigene Fragen. Ist das andere Addon selbst geladen, überlässt Amisia ihm diesen Teil."] },
     { key = "layer.guildLast", type = "toggle", label = L["Gilde zuletzt fragen"], default = true,
-      tip = L["Gildenmitglieder aus der Wer-Liste fragt \"Layer wechseln\" auf die Art des anderen Layer-Addons erst, wenn sonst niemand von einem anderen Layer antwortet. Amisia-Nutzer der Gilde fragt Amisia immer gleich."] },
+      tip = L["Gildenmitglieder aus der Wer-Liste fragt \"Layer wechseln\" auf die Art des anderen Layer-Addons erst nach den anderen Spielern, wenn bis dahin niemand eingeladen hat und kein Helfer von einem anderen Layer geantwortet hat; stehen nur Gildenmitglieder in der Liste, sofort. Aus: Gildenmitglieder bekommen diese Frage gar nicht. Amisia-Nutzer der Gilde fragt Amisia immer gleich."] },
     { key = "layer.skipNear", type = "toggle", label = L["Fragende in der Nähe überspringen"], default = false,
       tip = L["Helfen lädt niemanden ein, der näher als die eingestellten Meter bei dir steht (er wäre wohl auf deinem Layer). Nennt eine Bitte keine Position, lädt Amisia dann nicht ein."] },
     { key = "layer.skipNearYards", type = "slider", label = L["Nähe in Metern"], default = 150, min = 50, max = 200, step = 10,
       tip = L["So nah muss ein Fragender stehen, damit \"Fragende in der Nähe überspringen\" ihn auslässt."] },
+    -- F-221: the bar of its own, from the start
+    { key = "layer.bar", type = "toggle", label = L["Leiste zeigen"], default = true,
+      tip = L["Eine kleine Leiste mit deinem Layer und darunter dem Stand (Helfen, Frage, Neustart) bleibt auf dem Bildschirm, auch ohne das Fenster. Klick: das Fenster Layer. Rechtsklick auf das Symbol: die Layer der Zone. Rechtsklick sonst: ausblenden."] },
     { key = "layer.barOneLine", type = "toggle", label = L["Leiste in einer Zeile"], default = false,
-      tip = L["Die zusammengeklappte Leiste des Fensters Layer zeigt Layer und Zeile darunter nebeneinander, flacher."] },
-    { key = "layer.barShade", type = "slider", label = L["Leiste abdunkeln (Prozent)"], default = 90, min = 0, max = 100, step = 5,
-      tip = L["Wie dunkel der Hintergrund der zusammengeklappten Leiste ist; 0 ist durchsichtig."] },
+      tip = L["Die Leiste Layer zeigt Layer und Stand nebeneinander, flacher."] },
+    { key = "layer.barShade", type = "slider", label = L["Leiste abdunkeln (Prozent)"], default = 55, min = 0, max = 100, step = 5,
+      tip = L["Wie dunkel der Hintergrund der Leiste Layer ist; 0 ist durchsichtig."] },
 }}
 
 -- for the tests
 function LY._reset()
     maps, cur, zoneMap, lastAt, sweptAt, evictAt = {}, nil, nil, {}, 0, nil
+    votes, voted, stale, borderAt = {}, {}, nil, nil
     stats, history = { read = {}, ok = {}, secret = 0 }, {}
 end
 end)

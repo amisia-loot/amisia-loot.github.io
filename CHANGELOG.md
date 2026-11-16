@@ -5,6 +5,19 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(layer): layer swaps and helping now behave like the widely used layer addon (F-221)
+
+    Every own ask turns "Helfen" on while it runs and for four minutes after a swap that worked; "Helfen: AN 3:41"
+    shows the clock, "Helfen: PAUSIERT" says why it waits, and "off" now lasts through /reload until the next login.
+    The layer stays known until you change zone (no five-minute limit), is read again from the name plates by
+    itself, and a stray creature no longer flips it. "Layer wechseln" asks the whole zone by its map and one class
+    per click, turns into "Suche stoppen" while it asks and "Gruppe verlassen" in the helper's group, waits up to
+    two minutes for an invite, judges the swap by the creatures around you (a world restart alone is no swap) and
+    leaves the group after 4 s. "Im Gildenchat fragen" writes the line the other layer addon's helpers answer, and
+    Amisia answers that line too. The Layer bar now stands on its own (setting "Leiste zeigen") with the layer over
+    the current state; in an instance the window says there are no layers; new commands `/amisia layer an`, `aus`
+    and `status`.
+
 - feat(calendar): paste an event of the Discord sign-up bot into the calendar (F-223)
 
     The form of "Termin anlegen ..." under Gilde > Kalender has "Aus Discord ...": paste the JSON of an event of

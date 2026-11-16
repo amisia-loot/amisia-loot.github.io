@@ -46,7 +46,7 @@ LT.ZONE_WAIT = 8     -- seconds the zone probe (F-216: /who, a quiet question, i
 local STALE = 30
 local MAX_MESSAGES = 4
 local WATCH = { "CHAT_MSG_SYSTEM", "UI_ERROR_MESSAGE", "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN" }
-local SOURCES = { { "target", L["Ziel"] }, { "mouseover", L["Maus"] }, { "plate", L["Plaketten"] } }
+local SOURCES = { { "target", L["Ziel"] }, { "mouseover", L["Maus"] }, { "plate", L["Plaketten"] }, { "scan", L["Nachlesen"] } }
 
 -- The functions the layer parts need, per use; only looked up ("a|b": either).
 LT.FUNCTIONS = {

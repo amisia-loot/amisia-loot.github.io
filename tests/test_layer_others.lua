@@ -140,6 +140,8 @@ STUB.fire("GROUP_ROSTER_UPDATE")
 assert(SW.State().swap and SW.State().swap.host == "Udo Fremd" and SW.Trace().accept.joined == 1)
 STUB.targetGUID = "Creature-0-7777-0-5250-3-0B1"; STUB.fire("PLAYER_TARGET_CHANGED")
 STUB.targetGUID = "Creature-0-7777-0-5250-4-0B2"; STUB.fire("PLAYER_TARGET_CHANGED")
+-- F-221: a known layer changes on 3 of the last 5 creatures
+STUB.targetGUID = "Creature-0-7777-0-5250-5-0B3"; STUB.fire("PLAYER_TARGET_CHANGED")
 assert(SW.State().swap.changed and SW.Trace().changed == 1, "changed")
 assert(SW.Leave() == true and LEFT == 1)
 STUB.party, STUB.roster = nil, {}
