@@ -59,6 +59,7 @@ import json
 import os
 import re
 import sys
+import shutil
 import time
 import urllib.request
 
@@ -1443,7 +1444,15 @@ def main(argv=None):
     if wowsrc:
         sources.append('wowsrc.com')
     rep = client_reputation(args.wago)
-    qtags = update_quest_tags(dbs)
+    # a build into another file keeps its own copy of the quest type archive beside it (a test's trial build
+    # with the synced SavedVariables once wrote their new quest types into tools/quest_tag_archive.json on every
+    # check, and the release refused the changed tree, 2026-11-16)
+    tag_path = QUEST_TAGS
+    if os.path.abspath(args.out) != os.path.abspath(OUT):
+        tag_path = os.path.join(os.path.dirname(os.path.abspath(args.out)), 'quest_tag_archive.json')
+        if not os.path.exists(tag_path) and os.path.exists(QUEST_TAGS):
+            shutil.copyfile(QUEST_TAGS, tag_path)
+    qtags = update_quest_tags(dbs, path=tag_path)
     # the quest scan by id (D-104): levels where the sources have none, types the quest log did not teach
     qinfo = scan_quest_info(id_scans)
     took = apply_quest_scan(src, qinfo)

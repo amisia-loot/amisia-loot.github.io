@@ -219,6 +219,7 @@ def test_a_build_after_the_trim_gives_the_same_data(tmp_path):
     if os.path.isdir(os.path.join(att_data.ATT_CACHE, 'dungeons & raids')):
         outs = []
         shipped = open(build_gear.NOSRC_OUT, 'rb').read() if os.path.exists(build_gear.NOSRC_OUT) else None
+        tags_before = open(build_gear.QUEST_TAGS, 'rb').read() if os.path.exists(build_gear.QUEST_TAGS) else None
         for name, path in (('before', REAL_SV), ('after', str(trimmed_path))):
             out = tmp_path / f'GearData.{name}.lua'
             build_gear.main(['--sv', path, '--scan-archive', str(archive), '--out', str(out), '--no-wowsrc'])
@@ -229,6 +230,10 @@ def test_a_build_after_the_trim_gives_the_same_data(tmp_path):
         assert (tmp_path / 'GearNoSource.lua').exists()
         now = open(build_gear.NOSRC_OUT, 'rb').read() if os.path.exists(build_gear.NOSRC_OUT) else None
         assert now == shipped, 'a trial build replaced Amisia_Gear/Data/GearNoSource.lua'
+        # nor the committed quest type archive (it took the synced quest types on every check, 2026-11-16)
+        assert (tmp_path / 'quest_tag_archive.json').exists()
+        tags_now = open(build_gear.QUEST_TAGS, 'rb').read() if os.path.exists(build_gear.QUEST_TAGS) else None
+        assert tags_now == tags_before, 'a trial build changed tools/quest_tag_archive.json'
 
     # data/forever.js, built by build_scan.py from each (no icons; the drop archive a copy)
     outs = []
