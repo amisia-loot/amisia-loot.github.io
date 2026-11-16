@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.96.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.96.0) (2026-11-16)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.95.0...v2.96.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(calendar): show the guild's calls with a time on the calendar sheet (F-218)
 
     A call of the guild for later today or tomorrow (Gilde > Aufrufe) now stands on its day in Gilde > Kalender, in
