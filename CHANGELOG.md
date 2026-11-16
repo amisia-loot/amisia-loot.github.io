@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.98.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.98.0) (2026-11-16)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.97.0...v2.98.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(layer): swap layers with the users of the most widely used layer addon (F-220)
 
     "Layer wechseln" now also asks the players of your zone the way the most widely used layer addon does, so its
