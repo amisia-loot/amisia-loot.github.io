@@ -1,6 +1,6 @@
 # Spec: Layer-Wechsel mit den Nutzern des verbreiteten Layer-Addons
 
-Stand: 2026-11-16 · Status: Entwurf ·
+Stand: 2026-11-16 · Status: freigegeben ·
 Feature: F-220
 
 ## Ziel
@@ -124,4 +124,6 @@ Fenster zeigen "Neustart in m:ss", danach 2 Minuten "gleich"; währenddessen lä
 
 ## Entscheidungen
 
-- (offen)
+- 2026-11-16: alle vier Fragen: "Passt, bauen" -> Layer über den Server-Teil vergleichen, der Selbsttest zeigt beide
+  Teile; `ZQ` an Fremde nur noch an bekannte Amisia-Helfer, sonst nur die Bitte im fremden Format; die Einladung eines
+  Helfers jenes Addons von selbst annehmen, nur von Antwortenden; alles in einem Release mit dem Selbsttest.

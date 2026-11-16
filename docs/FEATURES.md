@@ -39,6 +39,12 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-220 Layer-Wechsel mit den Nutzern des verbreiteten Layer-Addons
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du in einer belebten Zone "Layer wechseln" klickst, dann steht im Fenster "gehört: n" mit n > 0, auch ohne andere Amisia-Nutzer, und ein Helfer auf einem anderen Layer lädt dich ein; nach einem angezielten NPC steht "Gewechselt: Layer B".
+- Notiz: Spec docs/specs/2026-11-16-layer-verbreitetes-addon.md; DECISIONS D-145. Nutzer 2026-11-16: "will es genauso wie <das verbreitete Layer-Addon> und es soll damit auch gehen", "Ja, Ausnahme erlauben", "Passt, bauen".
+
 ### F-216 Layer-Wechsel mit allen Amisia-Nutzern der Zone
 - Version: 2.94.0
 - Status: gebaut
