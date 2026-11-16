@@ -39,6 +39,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 
+### F-221 Layer verhält sich genau wie das verbreitete Layer-Addon
+- Version: -
+- Status: geplant
+- Braucht: Gruppe
+- Prüfung: Wenn du mit Helfen aus "Layer wechseln" klickst und der Wechsel gelingt, dann zeigt der Knopf "Helfen: AN" mit einer Uhr ab 4:00, ein Klick darauf schaltet nicht aus, und nach Ablauf ist Helfen wieder aus.
+- Notiz: Spec docs/specs/2026-11-16-layer-genau-so.md; DECISIONS D-146. Nutzer 2026-11-16 mit dem eingefügten Quelltext jenes Addons: "mach das layer genau so", dann "Passt, bauen".
+
 ### F-220 Layer-Wechsel mit den Nutzern des verbreiteten Layer-Addons
 - Version: 2.98.0
 - Status: gebaut

@@ -1,6 +1,6 @@
 # Spec: Layer verhält sich genau wie das verbreitete Layer-Addon
 
-Stand: 2026-11-16 · Status: Entwurf ·
+Stand: 2026-11-16 · Status: freigegeben ·
 Feature: F-221
 
 ## Ziel
@@ -147,4 +147,6 @@ Ablauf merkt; Aussehen und Texte bleiben Amisias (eigener Code, deutsche Texte, 
 
 ## Entscheidungen
 
-- (offen)
+- 2026-11-16: alle vier Fragen: "Passt, bauen" -> die 4-Minuten-Sperre von Helfen nach einem eigenen Wechsel wie dort
+  (auch wenn Helfen aus war); die Leiste von Anfang an zeigen; Einladungen von Antwortenden weiter von selbst annehmen
+  (abschaltbar); alles in einem Release.
