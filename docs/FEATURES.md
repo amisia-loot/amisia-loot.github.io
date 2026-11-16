@@ -1330,8 +1330,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Gilde
 
 ### F-218 Aufrufe mit Uhrzeit im Kalender
-- Version: -
-- Status: geplant
+- Version: 2.96.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn ein Gildenmitglied einen Aufruf für morgen 20:30 erstellt, dann steht er unter Gilde > Kalender an diesem Tag in Lila; ein Klick darauf zeigt rechts Art, Ersteller, Stufe und Rollen, und "Zum Aufruf" öffnet die Seite Aufrufe bei diesem Aufruf.
 - Prüfung: Wenn ein Aufruf für "jetzt" läuft, dann steht er nicht im Kalender, und kein Aufruf erscheint im Spielkalender.
