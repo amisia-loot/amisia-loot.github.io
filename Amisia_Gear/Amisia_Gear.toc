@@ -82,6 +82,7 @@ Gear\QuestItemsWindow.lua
 Gear\QuestStart.lua
 Gear\Layer.lua
 Gear\LayerChange.lua
+Gear\LayerForeign.lua
 Gear\LayerWindow.lua
 UI\Pages\Gear.lua
 UI\Pages\JournalParts.lua

@@ -42,7 +42,11 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ### F-220 Layer-Wechsel mit den Nutzern des verbreiteten Layer-Addons
 - Version: -
 - Status: geplant
+- Braucht: Gruppe
 - Prüfung: Wenn du in einer belebten Zone "Layer wechseln" klickst, dann steht im Fenster "gehört: n" mit n > 0, auch ohne andere Amisia-Nutzer, und ein Helfer auf einem anderen Layer lädt dich ein; nach einem angezielten NPC steht "Gewechselt: Layer B".
+- Prüfung: Wenn ein Nutzer des anderen Layer-Addons in deiner Zone wechseln will und du hilfst, dann lädt Amisia ihn ein und er verlässt die Gruppe nach dem Wechsel von selbst; stehst du auf seinem Layer, lädt Amisia ihn nicht ein.
+- Prüfung: Wenn das Spiel einen Neustart der Welt ankündigt, dann zeigt die Leiste "Neustart in m:ss".
+- Prüfung: Wenn du `/amisia selbsttest layer` tippst, dann zeigt der Bericht Server-Teil und Zonen-Kennung des Ziels und unter "Anderes Layer-Addon", ob Bitten in seinem Format rausgehen.
 - Notiz: Spec docs/specs/2026-11-16-layer-verbreitetes-addon.md; DECISIONS D-145. Nutzer 2026-11-16: "will es genauso wie <das verbreitete Layer-Addon> und es soll damit auch gehen", "Ja, Ausnahme erlauben", "Passt, bauen".
 
 ### F-216 Layer-Wechsel mit allen Amisia-Nutzern der Zone

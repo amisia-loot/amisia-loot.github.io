@@ -113,6 +113,10 @@ Loot-Addons". Kein anderes Addon wird genannt.
 geschrieben in genau einer Codezeile, der Liste `OTHER_DUNGEON_ADDONS` in `Gear/DungeonBar.lua`, nach der die
 Dungeon-Leiste sucht. Kein Text, kein Kommentar, kein Commit, keine Chatzeile nennt sie; das Spiel sagt "ein anderes
 Addon". Nutzer 2026-11-14 auf die Frage, ob dafür ihre Namen in den Code dürfen: "Automatisch erkennen".
+**Ausnahme (2026-11-16, F-220, D-145):** Der Name des meistgenutzten Layer-Addons steht genau in einer Codezeile, der
+Präfix-Konstante `OTHER_PREFIX` in `Gear/LayerForeign.lua` (dieselbe Zeichenkette ist sein Ordnername für
+`C_AddOns.IsAddOnLoaded`). Kein Text, kein Kommentar, kein Test, kein Dokument, kein Commit nennt ihn; überall sonst
+heißt es "das andere Layer-Addon".
 **Durchgesetzt durch:** `tools/tests/test_contracts.py::test_other_addons_are_not_named_in_the_addon`
 (Liste bekannter Addon-Namen; die Ausnahme `NAMED_HERE` erlaubt "gargul" nur in acht Dateien und dort
 nur in Kommentaren und Texten von `L[...]`),
@@ -3057,7 +3061,7 @@ Farben, Klickziel Dungeon und Raid, Shift, Menü, Einstellung, neu nach Annahme 
 - **Namen:** "Layer A", "Layer B" ... nach aufsteigender Kennung je Karte, damit Gildenmitglieder mit denselben Kennungen denselben Buchstaben sagen; ein Buchstabe kann sich verschieben, wenn eine kleinere Kennung bekannt wird.
 - **Wechsel in der Gilde:** eigene Nachrichten auf Amisias Präfix: `YQ` (GUILD: Karte, Kennung, Anfrage; 10 s), `YA` (Flüstern, nur von einem anderen frischen Layer derselben Karte, wer einladen kann, `layer.answer`), `YI` (Flüstern an einen, der geantwortet hat; 10 s). Der Gastgeber fragt (`W.Confirm`) oder lädt mit `layer.autoInvite` außerhalb des Kampfes ein; nie in einer Instanz, einmal je Minute und Spieler, sechs in zehn Minuten, nur für eine eigene Antwort der letzten 60 s mit unverändertem Layer. Der Fragende muss allein sein; mit `layer.autoAccept` nimmt Amisia genau die Einladung des Gebetenen binnen 60 s an. Ein erkannter Wechsel sagt "Gewechselt: Layer C"; `layer.autoLeave` verlässt nach `layer.leaveSeconds` nur die Zweiergruppe aus der eigenen Bitte, nie in einer Instanz.
 - **Chat-Bitten (Teil 6):** die schlichte Chat-Übereinkunft anderer Layer-Addons ("inv layer", "layer 1,3") versteht Amisia nur im Gildenchat und im Flüstern von Mitgliedern der eigenen Gilde (`layer.chat`, an): Regel `SW.IsRequestLine` (höchstens 40 Zeichen, kein "?", kein "[" am Anfang, "layer" mit einem Einladewort oder "layer" allein mit Zahlen, kein Fragewort; Zahlen zählen nicht, es gibt keine gemeinsame Nummerierung); dieselbe Frage oder Einladung und dieselben Grenzen wie `YI`, ohne Frage nur, wenn die Gildenliste dieselbe Zone nennt; `YI` und Chatzeile desselben Mitglieds binnen 10 s ergeben eine Frage. "Im Gildenchat fragen" öffnet die Chatzeile mit "/g " und `layer.chatText` ("inv layer"); der Spieler sendet selbst. Danach nimmt Amisia 60 s lang die Einladung eines Gildenmitglieds an, sonst keine.
-- **Neben anderen Layer-Addons (Regel):** Amisia benutzt nur sein eigenes Präfix und seine eigenen Nachrichtenarten, meldet keinen Slash-Befehl außer `/amisia` an, liest und beantwortet keine verborgenen Nachrichten (Präfixe) anderer Addons und fasst keine fremden Fenster an; es versteht nur ihre schlichten Chatzeilen im Gildenchat und im Flüstern von Gildenmitgliedern, nie öffentliche Kanäle, Sagen oder Schreien. Es nimmt keine Einladung an, um die es nicht selbst gebeten hat, und verlässt keine Gruppe, die nicht aus der eigenen Bitte entstand. Lädt ein anderes Addon zugleich ein, scheitert die zweite Einladung still.
+- **Neben anderen Layer-Addons (Regel):** Amisia benutzt nur sein eigenes Präfix und seine eigenen Nachrichtenarten, meldet keinen Slash-Befehl außer `/amisia` an, liest und beantwortet keine verborgenen Nachrichten (Präfixe) anderer Addons und fasst keine fremden Fenster an; es versteht nur ihre schlichten Chatzeilen im Gildenchat und im Flüstern von Gildenmitgliedern, nie öffentliche Kanäle, Sagen oder Schreien. Es nimmt keine Einladung an, um die es nicht selbst gebeten hat, und verlässt keine Gruppe, die nicht aus der eigenen Bitte entstand. Lädt ein anderes Addon zugleich ein, scheitert die zweite Einladung still. **Geändert durch D-145 (2026-11-16):** das Präfix des meistgenutzten Layer-Addons registriert und spricht Amisia (nur dessen Format, Flüstern), und der Layer ist seitdem der Server-Teil der GUID, nicht mehr die Zonen-Kennung.
 
 **Grund:** Nutzer 2026-11-12 über ein anderes Addon, das den Layer zeigt und beim Wechsel hilft: "kannst du dir das addon ganz genau anschauen und das in amisia einbinden und es soll mit dem addon kombatipel sein und mit ähnlichen"; Rückfrage: Umfang "Anzeige + Wechsel in der Gilde", Verträglichkeit "Nebeneinander, eigenes Format". Nachtrag zu einem zweiten Addon dieser Art, das mit Chatzeilen arbeitet: "damit soll es auch kompatibel sein". Kein Code und keine Daten anderer Addons (D-03, D-04); nur öffentlich bekannte Beschreibungen ihrer Chatzeilen.
 
@@ -3925,3 +3929,53 @@ etwas zu korrigieren.
 Kennung und neuer Revision, Anmeldungen bleiben, `EA` mit den neuen Feldern, vergangene Uhrzeit bleibt, falsche
 Uhrzeit abgelehnt, "jetzt", keine Revision ohne Änderung, die anderen übernehmen sie ohne Chatzeile),
 `tests/test_calendar_calls.lua` (Aufruf für "jetzt" heute mit "jetzt", "Zum Aufruf" beim eigenen Aufruf).
+
+## D-145 Layer: das Format des meistgenutzten Layer-Addons sprechen, der Layer ist der Server-Teil
+
+**Datum:** 2026-11-16
+**Entscheidung:** Amisia arbeitet mit dem meistgenutzten Layer-Addon zusammen (F-220, Spec
+`docs/specs/2026-11-16-layer-verbreitetes-addon.md`, Modul `Gear/LayerForeign.lua`). Ausnahme von D-04, D-05 und
+D-117: dessen Nachrichtenformat ist aus seinem Code gelesen (nur das Format, kein Code übernommen; die Notiz liegt
+außerhalb des Repos), sein Präfix wird registriert und gesprochen, sein Name steht nur in der Präfix-Konstante.
+- **Fragen:** "Layer wechseln" schickt an jeden Namen der `/who`-Liste, den `AmisiaDB.layerHosts` nicht als
+  Amisia-Nutzer kennt, dessen leise Bitte `inv layer <LS Zone not Layer x,y>` (Flüstern, Klartext; `want` für die
+  Zeile eines Layers, mehrere `not` mit "Nur neue Layer"); `ZQ` geht nur noch an bekannte Amisia-Nutzer. Höchstens ein
+  Flüstern je Name und Suche (dazu einmal die Bitte ohne Layer an einen Helfer, der keinen Layer nannte), höchstens 8
+  je Sekunde. Antworten `heard` und `same` zählen wie `ZA`; wer so antwortet, steht mit negativer Zeit in
+  `layerHosts`. Gildenmitglieder der Liste bekommen diese Bitte mit "Gilde zuletzt fragen" erst nach 5 s, wenn kein
+  Helfer eines anderen Layers geantwortet hat. Mit "Einladung annehmen" nimmt Amisia die erste Einladung eines
+  Antwortenden an (nie eines anderen, nie eines, der den eigenen Layer nannte).
+- **Helfen:** jede gültige Bitte aus der eigenen Zone bekommt `heard` (auch mit Helfen aus, dann ohne `h`), wer auf
+  dem verlassenen Layer steht, dazu `same`; mit Helfen lädt Amisia ein, mit seinen Grenzen (sechs in zehn Minuten,
+  einmal je Spieler und Minute, nie in Instanzen, nicht in der Gruppensuche, `layer.combatPause`, nur allein oder
+  mit eigenen Gästen, nicht während des angekündigten Neustarts der Welt, `layer.skipNear`). Gäste werden nie von
+  selbst entfernt. Streng geprüft: höchstens 120 Zeichen, Zone zuerst, nur `want`/`not` mit Kennungen, Position
+  zuletzt; alles andere wird still verworfen; `heard` höchstens einmal je Fragendem in 10 s, 20 je Minute.
+- **Nicht doppelt:** Ist das andere Addon selbst geladen oder `layer.foreign` aus, fragt und antwortet Amisia nicht
+  in seinem Format (dann `ZQ` an alle wie zuvor).
+- **Der Layer ist der Server-Teil** der Kreatur-GUID (drittes Feld), wie dort seit 1.14; die Zonen-Kennung ändert
+  sich bei einem Neustart der Welt. Buchstaben und Anzeige bleiben; auf dem Draht `<Server>-<Zonen-Kennung>`.
+  Amisias eigene Nachrichten (`YQ`, `YA`, `ZQ`, `ZA`, `YI`) tragen seitdem den Server-Teil im Feld der Kennung.
+- **Neustart der Welt:** `SHARD_TRANSFER_IMMINENT` mit `GetEvictionTimeRemaining` zeigt "Neustart in m:ss", danach
+  2 Minuten "Neustart gleich"; währenddessen lädt Helfen nicht ein. `SHARD_TRANSFER` während eines eigenen Wechsels
+  ist der Wechsel.
+- **Kleines:** "Gilde zuletzt fragen" (an), "Fragende in der Nähe überspringen" (aus, 50-200 Meter, 150), Leiste "in
+  einer Zeile" (aus) und "abdunkeln" (90 %), "Mit dem anderen Layer-Addon zusammenarbeiten" (an).
+**Grund:** Nutzer 2026-11-16: "und können wir das layer bei uns genau so machen wie bei <dem verbreiteten
+Layer-Addon>", "will es genauso wie <es> und es soll damit auch gehen", zum Lesen seines Codes (nur das Format):
+"Ja, Ausnahme erlauben"; zu den vier Vorschlägen der Spec: "Passt, bauen". Jenes Addon hat in fast jeder Zone einen
+Helfer, Amisia erreichte nur Amisia-Nutzer.
+**Folge:** Amisia erreicht dessen Helfer und hilft dessen Nutzern. Ältere Amisia-Versionen (bis 2.97) hören die neue
+Bitte nicht und vergleichen die Zonen-Kennung: gemischt kann ein Helfer vom selben Layer einladen, die Regel "nach
+15 s kein Wechsel, verlassen" fängt es. Ändert jenes Addon sein Format, werden seine Zeilen still verworfen; der
+Selbsttest ("Anderes Layer-Addon") und "gehört: 0" im Fenster zeigen es. Lehnt das Spiel das Flüstern auf dem Präfix
+ab (Ergebnis 4), ist es für die Sitzung aus. Zwei Einladungen zugleich: die erste eines Antwortenden zählt.
+**Durchgesetzt durch:** `tests/test_layer_foreign.lua` (Voreinstellungen, Server-Teil, `ZQ` nur an bekannte
+Amisia-Nutzer und die Bitte an alle anderen, je Name einmal, `heard`/`same` gezählt, Bitte ohne Layer, Annehmen nur
+von Antwortenden, `SHARD_TRANSFER` als Wechsel, Helfer: `heard`, `same`, Einladung, `want`, kaputte Zeilen, Flut,
+das andere Addon geladen, Schalter aus, Helfen aus, Nähe, Neustart, Leiste in einer Zeile, Gilde zuletzt,
+Selbsttest-Zeile, Offline-Zeile, abgelehntes Flüstern), `tests/test_layer.lua` (GUID mit beiden Teilen),
+`tests/test_selftest_layer.lua`, `tests/test_layer_zone.lua` (ohne die Zusammenarbeit wie zuvor),
+`tools/tests/test_contracts.py::test_the_named_exception_stays_narrow` (der Name genau in einer Zeile, in keinem
+Dokument), `tools/tests/test_contracts.py::test_two_prefixes_and_one_sender` (nur `Core/Comm.lua` sendet, nur
+`Gear/LayerForeign.lua` spricht das fremde Format).

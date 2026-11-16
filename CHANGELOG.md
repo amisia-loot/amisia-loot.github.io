@@ -5,6 +5,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(layer): swap layers with the users of the most widely used layer addon (F-220)
+
+    "Layer wechseln" now also asks the players of your zone the way the most widely used layer addon does, so its
+    helpers hear you and invite you, and Amisia accepts only the invite of a player who answered. With "Helfen" on,
+    Amisia answers and invites that addon's users within its usual limits. The layer is now told apart by the
+    creature's server part, a world restart counts down in the window and the bar ("Neustart in 4:12") and pauses
+    helping, and the Layer settings gain "Mit dem anderen Layer-Addon zusammenarbeiten", "Gilde zuletzt fragen",
+    "Fragende in der Nähe überspringen" and the bar's one-line and darkness options. `/amisia selbsttest layer`
+    shows both parts of the target's GUID and whether the requests go out.
+
 ## [v2.97.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.97.0) (2026-11-16)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.96.0...v2.97.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

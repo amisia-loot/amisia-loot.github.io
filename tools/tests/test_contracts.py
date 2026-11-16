@@ -177,6 +177,9 @@ def test_two_prefixes_and_one_sender(comm):
             continue
         assert 'SendAddonMessage' not in text, f'{rel} sends addon messages past Comm.lua'
         assert 'RegisterAddonMessagePrefix' not in text, f'{rel} registers a prefix of its own'
+        # D-145: the third prefix in plain text, the other layer addon's, spoken by one file only
+        if rel != 'Gear/LayerForeign.lua':
+            assert 'CommSendPlain' not in text and 'CommPlainPrefix' not in text, f'{rel} speaks the other layer addon\'s format'
 
 
 # ---------------------------------------------------------------- export
@@ -504,13 +507,15 @@ def test_no_foreign_libraries_menus_or_combat_log():
 # other addons are never named in what ships (AllTheThings only where its licence asks; see D-04)
 OTHER_ADDONS = ('gargul', 'rclootcouncil', 'questie', 'atlasloot', 'oneforall', 'restedxp', 'tomtom', 'weakauras',
                 'bigwigs', 'deadly boss mods', 'cepgp', 'monolithdkp', 'essentialdkp', 'zygor', 'guidelime',
-                'fojji', 'foreverdungeonjournal')
+                'fojji', 'foreverdungeonjournal', 'layerswap')
 
 # D-05, exception of 2026-11-14 (F-205, D-131): the folder names of the addons that show a dungeon's bosses
 # and time stand in one line of code, the list the dungeon bar looks for; nowhere else, no text, no comment.
+# D-145 (F-220): the other layer addon's prefix (also its folder name) in one constant line of Gear/LayerForeign.lua.
 NAMED_IN_CODE = {
     'fojji': ('Gear/DungeonBar.lua', 'local OTHER_DUNGEON_ADDONS = {'),
     'foreverdungeonjournal': ('Gear/DungeonBar.lua', 'local OTHER_DUNGEON_ADDONS = {'),
+    'layerswap': ('Gear/LayerForeign.lua', 'local OTHER_PREFIX = "'),
 }
 
 
@@ -568,7 +573,17 @@ def test_other_addons_are_not_named_in_the_addon():
 
 def test_the_named_exception_stays_narrow():
     assert set(NAMED_HERE) == {'gargul'}
-    assert set(NAMED_IN_CODE) == {'fojji', 'foreverdungeonjournal'}
+    assert set(NAMED_IN_CODE) == {'fojji', 'foreverdungeonjournal', 'layerswap'}
+    assert _named_where_allowed('Gear/LayerForeign.lua', 'local OTHER_PREFIX = "X"', 'layerswap')
+    assert not _named_where_allowed('Gear/LayerForeign.lua', '-- X', 'layerswap')
+    assert not _named_where_allowed('Gear/LayerChange.lua', 'local OTHER_PREFIX = "X"', 'layerswap')
+    # exactly one line names it, and no document either (D-05, D-145)
+    lines = [ln for rel, text in addon_files(exts=('.lua', '.toc', '.xml'), skip=('Data/',))
+             for ln in text.splitlines() if 'layerswap' in ln.lower()]
+    assert len(lines) == 1, lines
+    for doc in (DECISIONS, os.path.join(ROOT, 'docs', 'ARCHITECTURE.md'), os.path.join(ROOT, 'docs', 'FEATURES.md'),
+                os.path.join(ROOT, 'CHANGELOG.md')):
+        assert 'layerswap' not in read(doc).lower(), f'{doc} names the other layer addon'
     assert _named_where_allowed('Gear/DungeonBar.lua', 'local OTHER_DUNGEON_ADDONS = { "fojjicore" }', 'fojji')
     assert not _named_where_allowed('Gear/DungeonBar.lua', '-- fojjicore', 'fojji')
     assert not _named_where_allowed('Gear/RunTimer.lua', 'local OTHER_DUNGEON_ADDONS = { "fojjicore" }', 'fojji')

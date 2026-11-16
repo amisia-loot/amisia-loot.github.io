@@ -7,7 +7,7 @@
 -- foreign prefix is ignored; the host's limits (once a minute per player, six in ten minutes).
 local A, V, K, U = "Anna Bergmann", "Vulo Sturmwind", "Kai Lindner", "Udo Fremd"
 BUS.setGuild({ { A, 3 }, { V, 3 }, { K, 3 } })
-local function guid(zone, npc, spawn) return ("Creature-0-5250-0-%d-%d-%s"):format(zone, npc, spawn) end
+local function guid(zone, npc, spawn) return ("Creature-0-%d-0-5250-%d-%s"):format(zone, npc, spawn) end
 -- every client in Elwynn Forest; each reads two creatures of its layer
 local function world(name, zone)
     C(name, ([[STUB.instance = { name = "Elwynn Forest", type = "none", id = 0 }

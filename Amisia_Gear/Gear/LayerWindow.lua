@@ -23,6 +23,9 @@
 -- off, green while an own search runs (LW.MiniState); in an instance the bar names the place instead of
 -- vanishing; its right click menu lists the known layers to swap to and "Suche stoppen". /amisia layer swap
 -- [B|neu], gilde, stopp, helfen, kick (LW.Command).
+-- F-220: the world restart (LY.RefreshText: "Neustart in 4:12", then "Neustart gleich") in the grey line under
+-- the buttons (helping pauses meanwhile) and in the bar's grey line; the bar on one line (layer.barOneLine:
+-- "Layer B · Wald von Elwynn", MINI_ONE_H high) and its ground as dark as layer.barShade (percent).
 -- The chip: a small box "Layer B" ("Layer ?"), movable (settings.layerChip), a click opens the window;
 -- hidden in instances. A plain frame, nothing protected.
 local ADDON, ns = ...
@@ -36,6 +39,7 @@ local LW = {}
 ns.LayerWindow = LW
 
 local F, chip, mini
+local styleMini
 local GREY, GREEN = T.GREY, T.GREEN
 
 local function state(key)
@@ -207,7 +211,7 @@ local function build()
     local acc = 0
     F:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate LayerWindow", function(_, elapsed)
         acc = acc + (elapsed or 0)
-        if acc < S.TICK then return end
+        if acc < (LY.Refresh() and 1 or S.TICK) then return end
         acc = 0
         LW.Refresh()
     end))
@@ -233,9 +237,11 @@ function LW.SwapLabel(step, nextClass)
     return L["Layer wechseln"], step ~= "busy"
 end
 
--- The grey line under the buttons: helping on or off, paused, or waiting out the invite limit (pause seconds).
-function LW.HostText(on, helping, pause)
+-- The grey line under the buttons: helping on or off, paused, or waiting out the invite limit (pause seconds);
+-- refresh: the world restart's text (F-220).
+function LW.HostText(on, helping, pause, refresh)
     if not on then return L["Helfen aus: Amisia antwortet niemandem und lädt niemanden ein, bis du es wieder anschaltest oder dich neu einloggst."] end
+    if refresh then return L["%s: Helfen lädt bis nach dem Neustart der Welt niemanden ein."]:format(refresh) end
     if (tonumber(pause) or 0) > 0 then
         return L["Helfen an, Pause: sechs Einladungen in zehn Minuten, die nächste in %d Min."]:format(math.ceil(pause / 60))
     end
@@ -368,7 +374,7 @@ function LW.Refresh()
     W.Row(F, { F.swap, F.host }, S.GAP, S.PAD, y)
     y = y - T.BUTTON_H - S.GAP
     F.hostInfo:SetHeight(0)
-    F.hostInfo:SetText(LW.HostText(st.hosting, st.helping, st.pause))
+    F.hostInfo:SetText(LW.HostText(st.hosting, st.helping, st.pause, st.refresh))
     F.hostInfo:ClearAllPoints()
     F.hostInfo:SetPoint("TOPLEFT", S.PAD, y)
     local h = textHeight(F.hostInfo)
@@ -454,7 +460,7 @@ local function buildMini()
     local ok, bar = pcall(CreateFrame, "Button", "AmisiaLayerMiniBar", UIParent, "TooltipBackdropTemplate")
     if not ok or not bar then
         bar = CreateFrame("Button", "AmisiaLayerMiniBar", UIParent)
-        W.Flat(bar, 0.05, 0.05, 0.06, 0.95)
+        bar.flat = W.Flat(bar, 0.05, 0.05, 0.06, 0.95)
     end
     bar:SetSize(S.MINI_W, S.MINI_H)
     bar:SetFrameStrata("MEDIUM")
@@ -504,12 +510,14 @@ local function buildMini()
     local acc = 0
     bar:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate LayerMiniBar", function(_, elapsed)
         acc = acc + (elapsed or 0)
-        if acc < S.TICK then return end
+        -- the world restart's countdown (F-220) every second
+        if acc < (LY.Refresh() and 1 or S.TICK) then return end
         acc = 0
         LW.UpdateMini()
     end))
     bar:Hide()
     mini = bar
+    styleMini()
     place()
     return bar
 end
@@ -531,10 +539,40 @@ function LW.MiniSub(known, zone, st)
         if st.answers and #st.answers > 0 then return GREEN .. L["Antworten: %d"]:format(#st.answers) .. "|r" end
         if GetTime() - r.at < SW.ANSWER_WAIT then return L["Gefragt ..."] end
     end
+    -- F-220: the world restart counts down
+    if st.refresh then return st.refresh end
     local text = known and zoneName(zone) or L["Ziele einen NPC an."]
     if st.hosting and not s then text = text .. GREEN .. " · " .. L["Helfen"] .. "|r" end
     return text
 end
+
+-- The bar's look (F-220): one line or two (layer.barOneLine), the ground's darkness (layer.barShade, percent).
+styleMini = function()
+    if not mini then return end
+    local one = ns.Get("layer.barOneLine") and true or false
+    if mini.oneLine ~= one then
+        mini.oneLine = one
+        mini:SetHeight(one and S.MINI_ONE_H or S.MINI_H)
+        mini.name:ClearAllPoints()
+        mini.name:SetPoint("LEFT", S.MINI_TEXT_X, one and 0 or S.MINI_NAME_Y)
+        mini.sub:SetShown(not one)
+    end
+    local a = math.max(0, math.min(100, tonumber(ns.Get("layer.barShade")) or 90)) / 100
+    if mini.shade ~= a then
+        mini.shade = a
+        -- the template's own colour, only its alpha changed
+        if not mini.rgb then
+            local ok, r, g, b = false, nil, nil, nil
+            if mini.GetBackdropColor then ok, r, g, b = pcall(mini.GetBackdropColor, mini) end
+            mini.rgb = (ok and tonumber(r) and tonumber(g) and tonumber(b)) and { r, g, b } or { 0, 0, 0 }
+        end
+        local c = mini.rgb
+        if mini.SetBackdropColor then pcall(mini.SetBackdropColor, mini, c[1], c[2], c[3], a) end
+        if type(mini.NineSlice) == "table" and mini.NineSlice.SetCenterColor then pcall(mini.NineSlice.SetCenterColor, mini.NineSlice, c[1], c[2], c[3], a) end
+        if mini.flat and mini.flat.SetAlpha then mini.flat:SetAlpha(a) end
+    end
+end
+LW.StyleMini = styleMini
 
 -- The bar's right click menu.
 function LW.MiniMenu()
@@ -586,8 +624,14 @@ function LW.UpdateMini()
         return
     end
     local uid, _, name = LY.Current()
-    mini.name:SetText(uid and name or L["Layer %s"]:format("?"))
-    mini.sub:SetText(LW.MiniSub(uid ~= nil, LY.Map(), st))
+    local first, sub = uid and name or L["Layer %s"]:format("?"), LW.MiniSub(uid ~= nil, LY.Map(), st)
+    if mini.oneLine then
+        mini.name:SetText(first .. " · " .. sub)
+        mini.sub:SetText("")
+    else
+        mini.name:SetText(first)
+        mini.sub:SetText(sub)
+    end
 end
 
 function LW.MiniShown() return mini ~= nil and mini:IsShown() end
@@ -672,6 +716,10 @@ ns.Listen("LAYER_CHANGE", function()
 end)
 ns.Listen("SETTING", function(path)
     if path == "layer.chip" then LW.UpdateChip() end
+    if path == "layer.barOneLine" or path == "layer.barShade" then
+        styleMini()
+        LW.UpdateMini()
+    end
 end)
 
 local function world()

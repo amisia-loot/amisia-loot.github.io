@@ -906,6 +906,47 @@ function ns.CommSend(kind, fields, chan, target, opts)
     return true
 end
 
+-- A third prefix in plain text (D-145, F-220): the wire format of the other layer addon, spoken by
+-- Gear/LayerForeign.lua alone. Registered here, so that Comm.lua stays the only file that registers and
+-- sends; nothing of Amisia's envelope, queue or limits: the caller keeps its own throttle. Returns whether
+-- the client took the prefix and its result (the layer self-test shows it; never listed by name in a report).
+local plain = {}
+function ns.CommPlainPrefix(prefix)
+    if type(prefix) ~= "string" or prefix == "" or #prefix > 16 or prefix == PREFIX_CTRL or prefix == PREFIX_DATA then return false end
+    if plain[prefix] ~= nil then return plain[prefix].ok, plain[prefix].result end
+    local info = _G.C_ChatInfo
+    local register = type(info) == "table" and info.RegisterAddonMessagePrefix
+    if type(register) ~= "function" or type(info.SendAddonMessage) ~= "function" then
+        plain[prefix] = { ok = false, result = "missing" }
+        return false, "missing"
+    end
+    local okCall, result = pcall(register, prefix)
+    result = okCall and ns.Plain(result) or result
+    local ok = okCall and (result == 0 or result == 1 or result == true)
+    plain[prefix] = { ok = ok, result = result }
+    return ok, result
+end
+
+-- One whisper of plain text on a prefix of CommPlainPrefix: never in the chat lockdown, a battleground or
+-- an arena, never to a name that just went offline, one line without codes. Returns the client's result
+-- (0 sent, 3 throttled, 4 refused for this chat type, 11 lockdown, ...) or nil and the reason.
+function ns.CommSendPlain(prefix, text, target)
+    if not available or not (plain[prefix] and plain[prefix].ok) then return nil, "prefix" end
+    if type(text) ~= "string" or text == "" or #text > MAX_TEXT or text:find("[%c]") then return nil, "text" end
+    if type(target) ~= "string" or target == "" or gone(target) then return nil, "target" end
+    if lockedNow() then return 11 end
+    if inPvP() then return nil, "pvp" end
+    local okCall, result = pcall(C_ChatInfo.SendAddonMessage, prefix, text, "WHISPER", target)
+    if not okCall then return 9 end
+    result = ns.Plain(result)
+    if result == true or result == nil then result = 0 end
+    if result == 0 then
+        local k = nameKey(target)
+        if k then whisperedAt[k] = GetTime() end
+    end
+    return result
+end
+
 -- The blob counter starts from the clock, not at 1: receivers remember a finished set (art:key:seq
 -- of a sender) for DONE_KEEP seconds, so after a quick /reload a counter from 1 would repeat a recent
 -- id and its first blob would be dropped as a late double. The clock moves ten steps a second, faster

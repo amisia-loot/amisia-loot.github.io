@@ -91,8 +91,8 @@ assert(#INVITED == 2, "not in an instance")
 
 -- one question for a YI and a chat line of the same member: an Amisia request first
 NS.Set("layer.autoInvite", false)
-STUB.targetGUID = "Creature-0-5250-0-3999-1-0A1"; STUB.fire("PLAYER_TARGET_CHANGED")
-STUB.targetGUID = "Creature-0-5250-0-3999-2-0A2"; STUB.fire("PLAYER_TARGET_CHANGED")
+STUB.targetGUID = "Creature-0-3999-0-5250-1-0A1"; STUB.fire("PLAYER_TARGET_CHANGED")
+STUB.targetGUID = "Creature-0-3999-0-5250-2-0A2"; STUB.fire("PLAYER_TARGET_CHANGED")
 assert(LY.Current() == 3999)
 STUB.fire("CHAT_MSG_ADDON", "Amisia", "1YQ\t1429\t4012\tbeef", "GUILD", "Eva Zweite")
 STUB.tick(3)
@@ -122,8 +122,8 @@ STUB.party = true
 STUB.roster = { { name = "Vuloo" }, { name = "Kai Lindner" } }
 STUB.fire("GROUP_ROSTER_UPDATE")
 assert(SW.State().swap and SW.State().swap.host == "Kai Lindner")
-STUB.targetGUID = "Creature-0-5250-0-7777-3-0B1"; STUB.fire("PLAYER_TARGET_CHANGED")
-STUB.targetGUID = "Creature-0-5250-0-7777-4-0B2"; STUB.fire("PLAYER_TARGET_CHANGED")
+STUB.targetGUID = "Creature-0-7777-0-5250-3-0B1"; STUB.fire("PLAYER_TARGET_CHANGED")
+STUB.targetGUID = "Creature-0-7777-0-5250-4-0B2"; STUB.fire("PLAYER_TARGET_CHANGED")
 assert(SW.State().swap.changed and SW.State().swap.target == 7777, "changed")
 STUB.party, STUB.roster = nil, {}
 STUB.fire("GROUP_ROSTER_UPDATE")

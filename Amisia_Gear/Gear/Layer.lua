@@ -13,8 +13,16 @@
 -- fall out. Names "Layer A", "Layer B" ...: the known ids of a map in ascending order, so guild members
 -- who know the same ids say the same letter (a letter can shift when a lower id becomes known).
 -- Fires LAYER ("current" when the current layer changes, "list" when a map's list does). Sends nothing.
--- Other layer addons run beside it untouched: no prefix, no hidden message, no frame of theirs; their plain
--- chat convention ("inv layer") is understood by Gear/LayerChange.lua (D-117).
+-- Other layer addons run beside it untouched: no frame of theirs; their plain chat convention ("inv layer")
+-- is understood by Gear/LayerChange.lua (D-117), the hidden whispers of the most widely used one by
+-- Gear/LayerForeign.lua (F-220, D-145).
+-- F-220 (D-145, changes D-117 in one point): the layer is the GUID's server part (its third field), as the
+-- other layer addon counts it on Forever: "6843-8" and "6843-3" are one layer, the zoneUID changes with a
+-- world restart. Every id of this file (uid) is that server part; the zoneUID last read with it is kept
+-- (zuid) for the wire id "<server>-<zoneUID>" (LY.Wire). The world restart (SHARD_TRANSFER_IMMINENT with
+-- GetEvictionTimeRemaining): LY.Refresh() counts down, then "gleich" for REFRESH_SOON seconds;
+-- SHARD_TRANSFER (the move itself) makes the layer unknown until a creature is read again,
+-- SHARD_TRANSFER_CANCELLED reads the time again or clears it.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -32,8 +40,11 @@ local SWEEP_GAP = 60
 local ZONE = (Enum and Enum.UIMapType and Enum.UIMapType.Zone) or 3
 local LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-local maps = {}         -- [map] = { layers = { [uid] = { first, last, own, heard } }, cand = { [uid] = { [spawn] = t } } }
-local cur               -- { map, uid, at = the last time a creature of uid was read }
+LY.REFRESH_SOON = 120   -- seconds "Neustart gleich" shows after the countdown reached 0
+
+local maps = {}         -- [map] = { layers = { [uid] = { first, last, own, heard, zuid } }, cand = { [uid] = { [spawn] = t } } }
+local cur               -- { map, uid, zuid, at = the last time a creature of uid was read }
+local evictAt           -- the time the announced world restart comes (GetEvictionTimeRemaining), nil: none
 local zoneMap           -- the player's zone map (cached until a zone event), false: none
 local lastAt = {}       -- source -> time of its last read
 local sweptAt = 0
@@ -69,16 +80,34 @@ end
 ---------------------------------------------------------------------------
 -- The GUID
 ---------------------------------------------------------------------------
--- A creature's GUID split: kind ("Creature" or "Vehicle"), zoneUID (a number above 0), npc id, spawn
--- (its hex text); nil for anything else (players, pets, objects, a secret or broken value).
+-- A creature's GUID split: kind ("Creature" or "Vehicle"), the server part (the layer, a number above 0),
+-- npc id, spawn (its hex text) and the zoneUID (a number above 0); nil for anything else (players, pets,
+-- objects, a secret or broken value).
 function LY.Parse(guid)
     guid = ns.Plain(guid)
     if type(guid) ~= "string" or #guid > 80 then return nil end
-    local kind, zone, npc, spawn = guid:match("^(%a+)%-%d+%-%d+%-%d+%-(%d+)%-(%d+)%-(%x+)$")
+    local kind, server, zone, npc, spawn = guid:match("^(%a+)%-%d+%-(%d+)%-%d+%-(%d+)%-(%d+)%-(%x+)$")
     if kind ~= "Creature" and kind ~= "Vehicle" then return nil end
-    zone = tonumber(zone)
-    if not zone or zone <= 0 or zone > MAX_ZONE_UID then return nil end
-    return kind, zone, tonumber(npc), spawn
+    server, zone = tonumber(server), tonumber(zone)
+    if not server or server <= 0 or server > MAX_ZONE_UID or not zone or zone <= 0 or zone > MAX_ZONE_UID then return nil end
+    return kind, server, tonumber(npc), spawn, zone
+end
+
+-- The wire id of the other layer addon, "<server>-<zoneUID>" (D-145).
+function LY.WireText(uid, zuid)
+    uid, zuid = tonumber(uid), tonumber(zuid)
+    if not uid or not zuid then return nil end
+    return ("%d-%d"):format(uid, zuid)
+end
+
+-- A wire id split: server part (the layer) and zoneUID; nil for anything else.
+function LY.ParseWire(text)
+    text = ns.Plain(text)
+    if type(text) ~= "string" or #text > 21 then return nil end
+    local a, b = text:match("^(%d+)%-(%d+)$")
+    a, b = tonumber(a), tonumber(b)
+    if not a or not b or a <= 0 or a > MAX_ZONE_UID or b > MAX_ZONE_UID then return nil end
+    return a, b
 end
 
 ---------------------------------------------------------------------------
@@ -156,18 +185,19 @@ local function grouped()
     return ok and ns.Plain(v) == true
 end
 
-local function setCurrent(map, uid, t)
+local function setCurrent(map, uid, t, zuid)
     if cur and cur.map == map and cur.uid == uid then
         cur.at = t
+        cur.zuid = zuid or cur.zuid
         return
     end
-    cur = { map = map, uid = uid, at = t }
+    cur = { map = map, uid = uid, zuid = zuid, at = t }
     remember({ at = t, map = map, uid = uid, grouped = grouped() })
     ns.Fire("LAYER", "current")
 end
 
--- A creature of map with zoneUID uid and spawn was read at t.
-local function note(map, uid, spawn, t)
+-- A creature of map with server part uid, spawn and zoneUID zuid was read at t.
+local function note(map, uid, spawn, t, zuid)
     sweep()
     local m = mapState(map)
     local e = m.layers[uid]
@@ -191,15 +221,16 @@ local function note(map, uid, spawn, t)
         ns.Fire("LAYER", "list")
     end
     e.last = math.max(e.last, t)
+    e.zuid = zuid or e.zuid
     if not e.own then
         e.own = true
         ns.Fire("LAYER", "list")
     end
-    setCurrent(map, uid, t)
+    setCurrent(map, uid, t, zuid)
 end
 
 -- Reads unit (target, mouseover, a name plate's unit); source "target", "mouseover" or "plate" (the
--- throttle). Returns the zoneUID read, or nil.
+-- throttle). Returns the server part read (the layer), or nil.
 function LY.ReadUnit(unit, source)
     local t = now()
     local gap = LY.GAP[source]
@@ -213,7 +244,7 @@ function LY.ReadUnit(unit, source)
     local okG, guid = pcall(rawget(_G, "UnitGUID") or error, unit)
     if not okG then return nil end
     if guid ~= nil and ns.Plain(guid) == nil then stats.secret = stats.secret + 1 end
-    local _, uid, _, spawn = LY.Parse(guid)
+    local _, uid, _, spawn, zuid = LY.Parse(guid)
     if not uid then return nil end
     -- anything a player controls (a guardian carries a creature GUID too)
     for _, name in ipairs({ "UnitPlayerControlled", "UnitIsOtherPlayersPet", "UnitIsPlayer" }) do
@@ -226,7 +257,7 @@ function LY.ReadUnit(unit, source)
     end
     local map = LY.Map()
     if not map then return nil end
-    note(map, uid, spawn, t)
+    note(map, uid, spawn, t, zuid)
     stats.ok[key] = (stats.ok[key] or 0) + 1
     return uid
 end
@@ -234,23 +265,40 @@ end
 -- This session's reads and the current layer's changes, for the self-test (see the tables above).
 function LY.Stats() return stats, history end
 
--- A layer of map the guild reported (an answer to "Gilde fragen"): known from now on, so one own
--- creature makes it current; its letter counts for everyone who knows the same ids.
-function LY.Heard(map, uid)
+-- A layer of map the guild reported (an answer to "Gilde fragen") or a player of the zone named (zuid: the
+-- zoneUID of its wire id, F-220): known from now on, so one own creature makes it current; its letter
+-- counts for everyone who knows the same ids.
+function LY.Heard(map, uid, zuid)
     map, uid = tonumber(map), tonumber(uid)
     if not map or not uid or uid <= 0 or uid > MAX_ZONE_UID then return end
     local t = now()
     local m = mapState(map)
     local e = m.layers[uid]
     if not e then
-        e = { first = t, last = t, heard = true }
+        e = { first = t, last = t, heard = true, zuid = tonumber(zuid) }
         m.layers[uid] = e
         m.cand[uid] = nil
         ns.Fire("LAYER", "list")
     else
         e.heard = true
         e.last = math.max(e.last, t)
+        e.zuid = e.zuid or tonumber(zuid)
     end
+end
+
+-- The wire id of layer uid on map ("6843-8"), nil while its zoneUID is unknown (D-145).
+function LY.Wire(map, uid)
+    local m = maps[tonumber(map) or 0]
+    local e = m and m.layers[tonumber(uid) or 0]
+    if cur and cur.map == tonumber(map) and cur.uid == tonumber(uid) and cur.zuid then return LY.WireText(cur.uid, cur.zuid) end
+    return e and LY.WireText(uid, e.zuid) or nil
+end
+
+-- The wire id of the current layer, nil when unknown.
+function LY.CurrentWire()
+    local uid, map = LY.Current()
+    if not uid then return nil end
+    return LY.Wire(map, uid)
 end
 
 ---------------------------------------------------------------------------
@@ -342,9 +390,10 @@ function LY.Probe()
         local ok, guid = pcall(rawget(_G, "UnitGUID") or error, unit)
         if ok and guid ~= nil then
             if ns.Plain(guid) == nil then return "WERT", L["%s: GUID geheim"]:format(unit) end
-            local kind, uid, npc = LY.Parse(guid)
+            local kind, uid, npc, _, zuid = LY.Parse(guid)
             if kind then
-                return "OK", L["%s: %s, Zonen-Kennung %d, NPC %d, Zone %s"]:format(unit, kind, uid, npc or 0, tostring(LY.Map() or "-"))
+                return "OK", L["%s: %s, Server-Teil %d (der Layer), Zonen-Kennung %d, NPC %d, Zone %s"]:format(unit, kind, uid, zuid,
+                    npc or 0, tostring(LY.Map() or "-"))
             end
             local head = type(guid) == "string" and guid:match("^(%a+)") or "?"
             return "WERT", L["%s: nicht zerlegbar (%s)"]:format(unit, head)
@@ -375,6 +424,58 @@ ns.OnEvent("PLAYER_ENTERING_WORLD", zoneChanged)
 ns.OnEvent("ZONE_CHANGED", function() zoneMap = nil end)
 ns.OnEvent("ZONE_CHANGED_INDOORS", function() zoneMap = nil end)
 
+---------------------------------------------------------------------------
+-- The world restart (F-220): the game announces it, counts down, moves everyone
+---------------------------------------------------------------------------
+-- The seconds the client says are left, nil when it has no such function or says nothing.
+local function evictionLeft()
+    local f = rawget(_G, "GetEvictionTimeRemaining")
+    if type(f) ~= "function" then return nil end
+    local ok, v = pcall(f)
+    v = ok and tonumber(ns.Plain(v)) or nil
+    if not v or v <= 0 or v > 86400 then return nil end
+    return v
+end
+
+local function readEviction()
+    local left = evictionLeft()
+    evictAt = left and now() + left or nil
+    ns.Fire("LAYER", "refresh")
+end
+
+-- The world restart: seconds left (0 while "gleich", REFRESH_SOON seconds after the countdown ended), nil
+-- when none is announced.
+function LY.Refresh()
+    if not evictAt then return nil end
+    local left = evictAt - now()
+    if left > 0 then return left end
+    if left > -LY.REFRESH_SOON then return 0 end
+    evictAt = nil
+    return nil
+end
+
+-- "Neustart in 4:12", "Neustart gleich", nil.
+function LY.RefreshText()
+    local left = LY.Refresh()
+    if not left then return nil end
+    if left <= 0 then return L["Neustart gleich"] end
+    local secs = math.ceil(left)
+    return L["Neustart in %s"]:format(("%d:%02d"):format(math.floor(secs / 60), secs % 60))
+end
+
+ns.OnEvent("SHARD_TRANSFER_IMMINENT", readEviction)
+ns.OnEvent("SHARD_TRANSFER_CANCELLED", readEviction)
+-- the move itself: the layer is unknown until a creature is read again (Gear/LayerChange.lua counts it as
+-- the change of an own swap)
+ns.OnEvent("SHARD_TRANSFER", function()
+    evictAt = nil
+    if cur then
+        cur = nil
+        ns.Fire("LAYER", "current")
+    end
+    ns.Fire("LAYER", "transfer")
+end)
+
 ns.RegisterSettings{ key = "layer", label = L["Layer"], order = 62, group = "guild", forever = true, items = {
     { key = "layer.chip", type = "toggle", label = L["Layer-Chip zeigen"], default = false,
       tip = L["Ein kleiner Kasten mit deinem Layer (\"Layer B\") bleibt auf dem Bildschirm; ziehen verschiebt ihn, ein Klick öffnet das Fenster Layer. Nicht in Instanzen."] },
@@ -404,11 +505,24 @@ ns.RegisterSettings{ key = "layer", label = L["Layer"], order = 62, group = "gui
       tip = L["\"Layer wechseln\" nimmt nur Antworten von Layern, die in der letzten Stunde in dieser Zone niemand gesehen hat."] },
     { key = "layer.combatPause", type = "toggle", label = L["Helfen im Kampf pausieren"], default = false,
       tip = L["Im Kampf beantwortet Amisia keine Layer-Fragen und lädt niemanden ein; danach geht es weiter."] },
+    -- F-220 (D-145)
+    { key = "layer.foreign", type = "toggle", label = L["Mit dem anderen Layer-Addon zusammenarbeiten"], default = true,
+      tip = L["\"Layer wechseln\" fragt die Spieler der Zone auch so, wie das meistgenutzte Layer-Addon fragt, und Helfen antwortet und lädt dessen Nutzer ein. Aus: nur Amisias eigene Fragen. Ist das andere Addon selbst geladen, überlässt Amisia ihm diesen Teil."] },
+    { key = "layer.guildLast", type = "toggle", label = L["Gilde zuletzt fragen"], default = true,
+      tip = L["Gildenmitglieder aus der Wer-Liste fragt \"Layer wechseln\" auf die Art des anderen Layer-Addons erst, wenn sonst niemand von einem anderen Layer antwortet. Amisia-Nutzer der Gilde fragt Amisia immer gleich."] },
+    { key = "layer.skipNear", type = "toggle", label = L["Fragende in der Nähe überspringen"], default = false,
+      tip = L["Helfen lädt niemanden ein, der näher als die eingestellten Meter bei dir steht (er wäre wohl auf deinem Layer). Nennt eine Bitte keine Position, lädt Amisia dann nicht ein."] },
+    { key = "layer.skipNearYards", type = "slider", label = L["Nähe in Metern"], default = 150, min = 50, max = 200, step = 10,
+      tip = L["So nah muss ein Fragender stehen, damit \"Fragende in der Nähe überspringen\" ihn auslässt."] },
+    { key = "layer.barOneLine", type = "toggle", label = L["Leiste in einer Zeile"], default = false,
+      tip = L["Die zusammengeklappte Leiste des Fensters Layer zeigt Layer und Zeile darunter nebeneinander, flacher."] },
+    { key = "layer.barShade", type = "slider", label = L["Leiste abdunkeln (Prozent)"], default = 90, min = 0, max = 100, step = 5,
+      tip = L["Wie dunkel der Hintergrund der zusammengeklappten Leiste ist; 0 ist durchsichtig."] },
 }}
 
 -- for the tests
 function LY._reset()
-    maps, cur, zoneMap, lastAt, sweptAt = {}, nil, nil, {}, 0
+    maps, cur, zoneMap, lastAt, sweptAt, evictAt = {}, nil, nil, {}, 0, nil
     stats, history = { read = {}, ok = {}, secret = 0 }, {}
 end
 end)

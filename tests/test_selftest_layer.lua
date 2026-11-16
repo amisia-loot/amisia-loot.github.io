@@ -116,39 +116,39 @@ assert(has(lastMsg(), "Einladen erlaubt, Annehmen erlaubt, Verlassen erlaubt"), 
 assert(#STUB.messages > msgs)
 
 -- a lively place: eight creatures of one layer, one over the border, a hunter's pet, a secret GUID, a player
-local secretGuid = "Creature-0-5250-0-4711-99-0FF"
+local secretGuid = "Creature-0-4711-0-5250-99-0FF"
 STUB.secret[secretGuid] = true
 local list = {}
-for i = 1, 8 do list[i] = { ("Creature-0-5250-0-4711-%d-0A%d"):format(100 + i, i) } end
-list[9] = { "Creature-0-5250-0-4802-300-0C1" }
-list[10] = { "Creature-0-5250-0-4711-400-0D1", true }
+for i = 1, 8 do list[i] = { ("Creature-0-4711-0-5250-%d-0A%d"):format(100 + i, i) } end
+list[9] = { "Creature-0-4802-0-5250-300-0C1" }
+list[10] = { "Creature-0-4711-0-5250-400-0D1", true }
 list[11] = { secretGuid }
 list[12] = { "Player-5250-00ABCDEF" }
 plates(list)
 for i = 1, 12 do STUB.fire("NAME_PLATE_UNIT_ADDED", "nameplate" .. i); STUB.tick(0.2) end
 assert(LY.Current() == 4711, "the plates gave the layer")
-STUB.targetGUID = "Creature-0-5250-0-4711-101-0A1"; STUB.fire("PLAYER_TARGET_CHANGED")
+STUB.targetGUID = "Creature-0-4711-0-5250-101-0A1"; STUB.fire("PLAYER_TARGET_CHANGED")
 -- a change in a group without a zone change: the id follows the layer
 STUB.party = true
 STUB.roster = { { name = "Vuloo" }, { name = "Anna Bergmann" } }
 STUB.fire("GROUP_ROSTER_UPDATE")
 STUB.tick(1)
-STUB.targetGUID = "Creature-0-5250-0-5555-501-0E1"; STUB.fire("PLAYER_TARGET_CHANGED")
-STUB.targetGUID = "Creature-0-5250-0-5555-502-0E2"; STUB.fire("PLAYER_TARGET_CHANGED")
+STUB.targetGUID = "Creature-0-5555-0-5250-501-0E1"; STUB.fire("PLAYER_TARGET_CHANGED")
+STUB.targetGUID = "Creature-0-5555-0-5250-502-0E2"; STUB.fire("PLAYER_TARGET_CHANGED")
 assert(LY.Current() == 5555)
 local calls = { #CALLS.invite, CALLS.accept, CALLS.leave }
 LT.Start()
 STUB.tick(6)
 r = report()
-assert(has(line(r, "Layer: Kreatur-GUID"), "Zonen-Kennung 5555"), line(r, "Layer: Kreatur-GUID"))
-assert(has(line(r, "Aktueller Layer"), "Zonen-Kennung 5555") and has(line(r, "Aktueller Layer"), "OK"))
+assert(has(line(r, "Layer: Kreatur-GUID"), "Server-Teil 5555 (der Layer), Zonen-Kennung 5250"), line(r, "Layer: Kreatur-GUID"))
+assert(has(line(r, "Aktueller Layer"), "Kennung 5555-5250") and has(line(r, "Aktueller Layer"), "OK"))
 assert(has(line(r, "Bekannte Layer dieser Zone"), "A=4711") and has(line(r, "Bekannte Layer dieser Zone"), "B=5555 hier"))
 assert(has(line(r, "In Sicht"), "12 Plaketten: 9 Kreaturen, 1 von Spielern gesteuert, 1 geheim, 1 anderes"), line(r, "In Sicht"))
-assert(has(line(r, "Zonen-Kennungen"), "4711 x8, 4802 x1"), line(r, "Zonen-Kennungen"))
+assert(has(line(r, "Server-Teile"), "4711 x8, 4802 x1"), line(r, "Server-Teile"))
 assert(has(line(r, "Kennung je Zonenkopie"), "8 von 9 Kreaturen tragen die Kennung 4711"))
 assert(has(line(r, "Gelesen"), "Ziel 3 von 3") and has(line(r, "Gelesen"), "geheime GUIDs 1"), line(r, "Gelesen"))
 assert(has(line(r, "Layer-Wechsel ohne Zonenwechsel"), "1, davon 1 in einer Gruppe, 0 Hin und Her"))
-assert(has(r, "Karte 1429, Zonen-Kennung 5555, in einer Gruppe") and has(r, "Karte 1429, Zonen-Kennung 4711, allein"))
+assert(has(r, "Karte 1429, Kennung 5555, in einer Gruppe") and has(r, "Karte 1429, Kennung 4711, allein"))
 assert(has(line(r, "Kennung folgt dem Layer"), "ja:") and has(line(r, "Kennung folgt dem Layer"), "OK"))
 -- in a group the two empty calls are skipped: they would act on the real group
 assert(#CALLS.invite == calls[1] + 1 and CALLS.accept == calls[2] and CALLS.leave == calls[3], "no accept or leave in a group")

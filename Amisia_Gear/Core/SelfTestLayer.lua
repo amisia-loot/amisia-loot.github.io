@@ -16,6 +16,9 @@
 -- verdicts in plain words and how to check a real change. F-216: the typed command is a key press, so it also
 -- asks the zone once (SW.ProbeZone): a /who of the zone, whether the client's who window stayed shut, one quiet
 -- question (ZQ) to the first name outside the guild and whether an Amisia answered ("Layer: Zone fragen").
+-- F-220 (D-145): the target's GUID with both parts (the server part is the layer, the zoneUID goes on the wire
+-- too), the world restart, and "Anderes Layer-Addon": its prefix registered, the addon itself loaded, the switch,
+-- and this session's whispers in its format (sent, throttled, refused) and its answers; nothing is sent for it.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -53,6 +56,8 @@ LT.FUNCTIONS = {
         "StaticPopup_Hide", "StaticPopup_Visible", "IsInGroup", "GetNumGroupMembers", "InCombatLockdown" } },
     { L["Chat und Kanäle"], { "ChatFrame_OpenChat|ChatFrameUtil.OpenChat", "GetChannelList", "GetChannelName",
         "C_ChatInfo.InChatMessagingLockdown" } },
+    { L["Anderes Layer-Addon und Neustart"], { "C_AddOns.IsAddOnLoaded|IsAddOnLoaded", "GetEvictionTimeRemaining",
+        "C_Map.GetPlayerMapPosition", "C_Map.GetWorldPosFromMapPos" } },
 }
 
 local run
@@ -135,7 +140,11 @@ local function sectionNow(P)
     check(R, L["Aktueller Layer"], function()
         local uid, _, name, age = LY.Current()
         if not uid then return "WERT", L["unbekannt: einen NPC ins Ziel nehmen oder die Namensplaketten einschalten"] end
-        return "OK", L["%s, Zonen-Kennung %d, zuletzt gelesen vor %d s"]:format(name, uid, math.floor(age + 0.5))
+        local _, map = LY.Current()
+        return "OK", L["%s, Kennung %s, zuletzt gelesen vor %d s"]:format(name, LY.Wire(map, uid) or tostring(uid), math.floor(age + 0.5))
+    end)
+    check(R, L["Neustart der Welt"], function()
+        return "WERT", LY.RefreshText() or L["keiner angekündigt"]
     end)
     check(R, L["Bekannte Layer dieser Zone"], function()
         local parts = {}
@@ -200,7 +209,7 @@ function LT.IdVerdict(pl)
     end
     local top = sortedIds(pl.ids)[1]
     if pl.kinds == 1 then
-        return "OK", L["alle %d Kreaturen in Sicht tragen dieselbe Zonen-Kennung (%d)"]:format(pl.creatures, top[1])
+        return "OK", L["alle %d Kreaturen in Sicht tragen denselben Server-Teil (%d)"]:format(pl.creatures, top[1])
     end
     if top[2] * 5 >= pl.creatures * 4 then
         return "OK", L["%d von %d Kreaturen tragen die Kennung %d, %d eine andere (wohl hinter der Zonengrenze)"]:format(top[2],
@@ -231,7 +240,7 @@ local function sectionPlates(P)
         if i > 6 then parts[#parts + 1] = "..." break end
         parts[#parts + 1] = ("%d x%d"):format(e[1], e[2])
     end
-    add(R, "WERT", L["Zonen-Kennungen"], #parts > 0 and table.concat(parts, ", ") or L["keine"])
+    add(R, "WERT", L["Server-Teile"], #parts > 0 and table.concat(parts, ", ") or L["keine"])
 end
 
 ---------------------------------------------------------------------------
@@ -281,7 +290,7 @@ local function sectionSession(P)
         if e.zone then
             add(R, "WERT", clock(e.at), L["Zonenwechsel"])
         else
-            add(R, "WERT", clock(e.at), L["Karte %d, Zonen-Kennung %d, %s"]:format(e.map, e.uid, e.grouped and L["in einer Gruppe"] or L["allein"]))
+            add(R, "WERT", clock(e.at), L["Karte %d, Kennung %d, %s"]:format(e.map, e.uid, e.grouped and L["in einer Gruppe"] or L["allein"]))
         end
     end
     local tr = SW.Trace()
@@ -326,11 +335,32 @@ local function sectionChannels(P)
     end)
     check(R, L["Einstellungen"], function()
         local parts = {}
-        for _, key in ipairs({ "answer", "chat", "others", "othersAuto", "autoInvite", "autoAccept", "autoLeave" }) do
+        for _, key in ipairs({ "answer", "chat", "others", "othersAuto", "autoInvite", "autoAccept", "autoLeave", "foreign", "guildLast",
+            "skipNear" }) do
             parts[#parts + 1] = ("%s %s"):format(key, show(ns.Get("layer." .. key) and true or false))
         end
         return "WERT", table.concat(parts, ", ")
     end)
+    check(R, L["Anderes Layer-Addon"], function()
+        local mark, text = LT.ForeignLine(ns.LayerForeign and ns.LayerForeign.Status())
+        P.foreign = mark
+        return mark, text
+    end)
+end
+
+-- The line "Anderes Layer-Addon" (F-220) of LF.Status(): mark and text.
+function LT.ForeignLine(st)
+    if not st then return FEHLT, L["nicht geladen"] end
+    local x = st.stats
+    local counts = L["%d Bitten gesendet, %d gedrosselt, %d abgelehnt, %d Antworten; als Helfer %d Bitten gehört"]:format(x.sent,
+        x.throttled, x.failed, x.answers, x.heard)
+    if not st.registered then
+        return "FEHLER", L["Präfix nicht angemeldet (%s): keine Bitten in seinem Format"]:format(show(st.result))
+    end
+    if st.refused then return "FEHLER", L["das Spiel lehnt das Flüstern in seinem Format ab: aus für diese Sitzung · %s"]:format(counts) end
+    if st.other then return "WERT", L["das Addon selbst ist geladen: es fragt und antwortet, Amisia nicht · %s"]:format(counts) end
+    if not st.on then return "WERT", L["aus (Einstellung): keine Bitten in seinem Format · %s"]:format(counts) end
+    return "OK", L["an: Bitten in seinem Format gehen raus · %s"]:format(counts)
 end
 
 ---------------------------------------------------------------------------
@@ -486,8 +516,9 @@ local function finishProbe(P)
     R = K.finish(R, L["Amisia-Layer-Prüfung %s | Client %s | %s"])
     LT.last = R
     ST.ShowText(R.text, function() LT.Start() end)
-    ns.msg(L["Layer-Prüfung fertig: Einladen %s, Annehmen %s, Verlassen %s, Zone fragen %s. Der Bericht steht im Fenster."]:format(
-        words.invite, words.accept, words.leave, zoneWord))
+    local foreignWord = P.foreign == "OK" and L["an"] or P.foreign == "FEHLER" and L["gesperrt"] or L["aus"]
+    ns.msg(L["Layer-Prüfung fertig: Einladen %s, Annehmen %s, Verlassen %s, Zone fragen %s, anderes Layer-Addon %s. Der Bericht steht im Fenster."]:format(
+        words.invite, words.accept, words.leave, zoneWord, foreignWord))
 end
 
 local safe = K.safeWith(finishProbe)

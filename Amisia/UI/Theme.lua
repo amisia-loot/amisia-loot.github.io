@@ -587,11 +587,11 @@ T.QUESTSTART = { W = 260, PAD = 18, TOP = 32, ICON = 44, MARK = 22, MARK_X = 10,
 -- of a layer and the two rows "Im Gildenchat fragen" / "Im Kanal fragen" light HOVER white under the
 -- mouse; those two rows ASK_H high, their symbol ASK_ICON square, the title ASK_TITLE_Y under the row's
 -- top from ASK_TEXT_X, the grey line ASK_LINE_GAP under it; the red buttons "Layer wechseln" and
--- "Helfen" BTN_W wide side by side.
+-- "Helfen" BTN_W wide side by side. F-220: the bar on one line (layer.barOneLine) MINI_ONE_H high.
 T.LAYER = { W = 300, PAD = 14, TOP = 30, VALUE_H = 22, LINE_H = 14, GAP = 8, HEAD_H = 16, ROW_H = 18, ROWS = 6,
     ANSWERS = 5, ANSWER_H = 22, NAME_W = 160, BOTTOM = 14, TICK = 5, CHIP_W = 84, CHIP_H = 22, CHIP_PAD = 6, SHADE = 0.78,
     MIN = 24, MIN_OLD = 20, MINI_W = 210, MINI_H = 36, MINI_ICON = 22, MINI_ICON_X = 9, MINI_TEXT_X = 38,
-    MINI_NAME_Y = 7, MINI_SUB_Y = -7, MINI_TEXT_W = 142, MINI_X = 20, MINI_X_R = 6,
+    MINI_NAME_Y = 7, MINI_SUB_Y = -7, MINI_TEXT_W = 142, MINI_X = 20, MINI_X_R = 6, MINI_ONE_H = 26,
     HOVER = 0.08, ASK_H = 34, ASK_ICON = 22, ASK_TEXT_X = 30, ASK_TITLE_Y = 3, ASK_LINE_GAP = 2, BTN_W = 132 }
 
 T.DUNGEONBAR = { H = 26, PAD = 6, GAP = 10, NAME_W = 130, CLOSE = 14, SHADE = 0.78, LIST_GAP = 2, LIST_W = 300, ROW_H = 18,

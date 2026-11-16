@@ -124,8 +124,8 @@ C_PartyInfo.InviteUnit = function(n) INVITED[#INVITED + 1] = n end
 -- the asker: "Im Kanal fragen" opens the channel of the setting with the text
 SW._reset()
 -- the own layer is known before the request, so the change can be seen
-STUB.targetGUID = "Creature-0-5250-0-3999-1-0A1"; STUB.fire("PLAYER_TARGET_CHANGED")
-STUB.targetGUID = "Creature-0-5250-0-3999-2-0A2"; STUB.fire("PLAYER_TARGET_CHANGED")
+STUB.targetGUID = "Creature-0-3999-0-5250-1-0A1"; STUB.fire("PLAYER_TARGET_CHANGED")
+STUB.targetGUID = "Creature-0-3999-0-5250-2-0A2"; STUB.fire("PLAYER_TARGET_CHANGED")
 assert(LY.Current() == 3999)
 assert(SW.AskChannel() == true and OPENED[1] == "/1 inv layer", tostring(OPENED[1]))
 local st = SW.State()
@@ -138,8 +138,8 @@ STUB.party = true
 STUB.roster = { { name = "Vuloo" }, { name = "Udo Fremd" } }
 STUB.fire("GROUP_ROSTER_UPDATE")
 assert(SW.State().swap and SW.State().swap.host == "Udo Fremd" and SW.Trace().accept.joined == 1)
-STUB.targetGUID = "Creature-0-5250-0-7777-3-0B1"; STUB.fire("PLAYER_TARGET_CHANGED")
-STUB.targetGUID = "Creature-0-5250-0-7777-4-0B2"; STUB.fire("PLAYER_TARGET_CHANGED")
+STUB.targetGUID = "Creature-0-7777-0-5250-3-0B1"; STUB.fire("PLAYER_TARGET_CHANGED")
+STUB.targetGUID = "Creature-0-7777-0-5250-4-0B2"; STUB.fire("PLAYER_TARGET_CHANGED")
 assert(SW.State().swap.changed and SW.Trace().changed == 1, "changed")
 assert(SW.Leave() == true and LEFT == 1)
 STUB.party, STUB.roster = nil, {}

@@ -59,6 +59,15 @@
 -- (a creature read 15 s or more after joining shows the old layer) makes Amisia leave and offer the swap
 -- again. The server's "no player named ..." line for a name Amisia just whispered stays out of the chat
 -- (Core/Comm.lua, for every whisper of Amisia's).
+-- Part 10 (F-220, D-145): the most widely used layer addon. With layer.foreign on and that addon not loaded
+-- (Gear/LayerForeign.lua, LF.Active), ZQ goes only to the names AmisiaDB.layerHosts knows as Amisia users (a
+-- positive time: they answered ZA); every other name of the /who gets that addon's quiet ask alone (LF.Ask),
+-- at most one whisper per name and click; guild members of the /who (they had YQ) with layer.guildLast only
+-- GUILD_WAIT seconds later when no helper from another layer answered by then. Its answers (heard, same) count
+-- like ZA (SW._foreignAnswer: reached, heard, other layer) and keep the name in layerHosts with a negative time;
+-- the first invite of a player who answered (and did not name the own layer) is the swap's, accepted with
+-- layer.autoAccept; a heard helper from another layer holds "none" back once. The world restart (Layer.lua,
+-- LY.Refresh) pauses helping; SHARD_TRANSFER during an own swap counts as the change.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -92,6 +101,7 @@ SW.SILENT_KEEP = 6 * 3600  -- seconds a player asked without an answer is not as
 SW.ZQ_WINDOW, SW.ZQ_MAX = 60, 20   -- quiet questions answered per minute at most
 SW.STUCK_WAIT = 15      -- seconds after joining before a read of the old layer means "not moved"
 SW.NEW_AGE = 3600       -- "Nur neue Layer": a layer seen in the zone within this many seconds is not new
+SW.GUILD_WAIT = 5       -- F-220: seconds after the zone's asks before the guild members of the /who are asked
 local ZONE_CHANNELS = { [1] = true, [22] = true }   -- the client's zone channels: General, LocalDefense
 local MAX_LINE_KEYS = 8
 local INVITE_WORDS = { inv = true, invite = true, einladen = true, pls = true, bitte = true }
@@ -198,6 +208,8 @@ local function changed() ns.Fire("LAYER_CHANGE") end
 -- group finder. Inviting needs SW.CanInvite besides.
 function SW.CanHelp()
     if not hosting then return false end
+    -- F-220: no invites while the game counts down to a world restart
+    if LY.Refresh and LY.Refresh() then return false end
     if ns.Get("layer.combatPause") and inCombat() then return false end
     return not inGroupFinder()
 end
@@ -294,6 +306,7 @@ local function asking()
     return (chatAt ~= nil and t - chatAt <= SW.ACCEPT_WAIT) or (pending ~= nil and t - pending.at <= SW.ACCEPT_WAIT)
         or (req ~= nil and t - req.at <= SW.ANSWER_WAIT) or swap ~= nil or (auto ~= nil and auto.picking == true)
 end
+SW.Asking = asking
 
 -- Host: remembers an answer (YA or a helping ZA) for the YI that may follow; MAX_ANSWERED at most.
 function SW._answered(low, entry)
@@ -734,9 +747,26 @@ local function chatInvite(name)
     end)
 end
 
+-- F-220: the first invite of a player who answered the own search on the other layer addon's prefix (not one
+-- that named the own layer) is the swap's; it takes the place of a request for an invite that got none yet.
+local function foreignInvite(f)
+    pending = { name = f.name, uid = f.uid, map = req and req.map or LY.Map(), from = req and req.uid, at = now(), invited = now(),
+        foreign = true }
+    changed()
+    if not ns.Get("layer.autoAccept") or inGroup() or LY.InInstance() then return end
+    if accept() then
+        pending.accepted = true
+        ns.msg(L["Einladung von %s angenommen (Layer-Wechsel)."]:format(f.name))
+    end
+end
+
 function SW.InviteRequest(raw)
     local name = nameOf(raw)
     if not name then return end
+    local f = not swap and SW._foreignInviter(name) or nil
+    if f and (not pending or (not pending.invited and not pending.accepted) or now() - pending.at > SW.ACCEPT_WAIT) then
+        return foreignInvite(f)
+    end
     -- a request older than ACCEPT_WAIT is over; after "Im Kanal fragen" a second player's invite takes the
     -- place of the first one's (which was not taken)
     if pending and (now() - pending.at > SW.ACCEPT_WAIT
@@ -788,8 +818,30 @@ local function checkStuck(s)
     changed()
 end
 
+-- The change found: say it and, with layer.autoLeave, leave after layer.leaveSeconds.
+local function changeDone(s)
+    s.changed, s.failed = now(), nil
+    trace.changed = trace.changed + 1
+    ns.msg(L["Gewechselt: %s"]:format(LY.Name(s.map, s.target)))
+    changed()
+    if ns.Get("layer.autoLeave") then
+        C_Timer.After(tonumber(ns.Get("layer.leaveSeconds")) or 5, function()
+            if swap == s and ns.Get("layer.autoLeave") then SW.Leave(true) end
+        end)
+    end
+end
+
 local function checkChange()
     local s = swap
+    -- F-220: moved by SHARD_TRANSFER before the host's layer was known: the first creature names it
+    if s and s.changed and s.moved and not s.target then
+        local uid, map = LY.Current()
+        if uid and map == s.map and uid ~= s.from then
+            s.target = uid
+            changed()
+        end
+        return
+    end
     if not s or s.changed then return end
     checkStuck(s)
     if s.stuck then return end
@@ -799,17 +851,20 @@ local function checkChange()
     if s.target and uid ~= s.target then return end
     if not s.target and (not s.from or uid == s.from) then return end
     s.target = uid
-    s.changed, s.failed = now(), nil
-    trace.changed = trace.changed + 1
-    ns.msg(L["Gewechselt: %s"]:format(LY.Name(map, uid)))
-    changed()
-    if ns.Get("layer.autoLeave") then
-        C_Timer.After(tonumber(ns.Get("layer.leaveSeconds")) or 5, function()
-            if swap == s and ns.Get("layer.autoLeave") then SW.Leave(true) end
-        end)
-    end
+    changeDone(s)
 end
-ns.Listen("LAYER", checkChange)
+-- F-220: the game moved the player (SHARD_TRANSFER) while an own swap's group stands: that is the change,
+-- faster than the creatures
+local function transferred()
+    local s = swap
+    if not s or s.changed or s.stuck or not inGroup() then return end
+    s.moved = true
+    changeDone(s)
+end
+ns.Listen("LAYER", function(what)
+    if what == "transfer" then transferred() end
+    checkChange()
+end)
 
 -- The swap party (F-216): free for all, once, when the leader is the host of a party Amisia filled.
 local function setLoot()
@@ -886,20 +941,25 @@ local function hostsDB()
     return AmisiaDB.layerHosts
 end
 
--- A player who answered a quiet question: first in line for a week (HOST_MAX names, the oldest go).
-local function rememberHost(name)
+-- A player who answered a quiet question: first in line for a week (HOST_MAX names, the oldest go). foreign
+-- (F-220): the answer came on the other layer addon's prefix: kept with a negative time (asked that way next
+-- time, not with ZQ), unless the name answered ZA within the week.
+local function rememberHost(name, foreign)
     local db = hostsDB()
     if not db then return end
     local low = name:lower()
+    local t = time()
+    if foreign and (tonumber(db[low]) or 0) >= t - SW.HOST_KEEP then return end
     if not db[low] then
         local n, oldest, oldKey = 0, nil, nil
         for k, at in pairs(db) do
             n = n + 1
+            at = math.abs(tonumber(at) or 0)
             if not oldest or at < oldest then oldest, oldKey = at, k end
         end
         if n >= SW.HOST_MAX and oldKey then db[oldKey] = nil end
     end
-    db[low] = time()
+    db[low] = foreign and -t or t
 end
 
 -- The saved list kept clean (on load): names and recent times only.
@@ -909,7 +969,7 @@ function SW.LoadedHosts(DB)
     if type(db) ~= "table" then DB.layerHosts = nil return end
     local cut, n = time() - SW.HOST_KEEP, 0
     for k, at in pairs(db) do
-        if type(k) ~= "string" or k == "" or #k > 48 or k:find("[%c|]") or type(at) ~= "number" or at < cut or n >= SW.HOST_MAX then
+        if type(k) ~= "string" or k == "" or #k > 48 or k:find("[%c|]") or type(at) ~= "number" or math.abs(at) < cut or n >= SW.HOST_MAX then
             db[k] = nil
         else
             n = n + 1
@@ -1033,38 +1093,114 @@ local function whoNames(where)
     return out
 end
 
--- The quiet questions to the names of one /who: not the own, not the guild's (they had YQ), not asked in this
--- search, not silent within SILENT_KEEP unless they answered within a week; who answered before goes first.
+-- One quiet question to x ({ name, low, amisia }): ZQ to a known Amisia user or without the other layer
+-- addon's way (F-220), else that addon's ask alone.
+local function askOne(z, x, foreign)
+    z.sent[x.low] = true
+    local function sent()
+        if not silent[x.low] then silent[x.low] = now() end
+        z.reached = z.reached + 1
+        changed()
+    end
+    if foreign and not x.amisia then return foreign.Ask(z, x.name, sent) end
+    ns.CommSend("ZQ", { z.req.id, z.req.map, z.req.uid or 0 }, "WHISPER", x.name, { anyone = true, low = true,
+        ttl = SW.ZQ_TTL, key = "ZQ:" .. x.low, sent = sent })
+end
+
+-- The quiet questions to the names of one /who: not the own, not asked in this search, not silent within
+-- SILENT_KEEP unless they answered within a week; who answered before goes first. The guild's (they had YQ):
+-- none, or (F-220, the other layer addon's way) its ask, with layer.guildLast GUILD_WAIT seconds later when
+-- no helper of another layer answered by then (at once when nobody else is in the list).
 function SW._sendZone(z, names)
     local me = ns.UnitFullName("player")
     local db = hostsDB() or {}
     local t, cut = now(), time() - SW.HOST_KEEP
-    local list = {}
+    local LF = ns.LayerForeign
+    local foreign = LF and LF.Active() and LF or nil
+    local list, guild = {}, {}
     for _, name in ipairs(names) do
         local low = name:lower()
-        local known = (tonumber(db[low]) or 0) >= cut
+        local at = tonumber(db[low]) or 0
+        local known = math.abs(at) >= cut
         local quiet = silent[low] and t - silent[low] < SW.SILENT_KEEP
-        if not z.sent[low] and not (me and low == me:lower()) and not (ns.InGuild() and ns.GuildMember(name))
-            and (known or not quiet) then
-            list[#list + 1] = { name = name, low = low, known = known }
+        if not z.sent[low] and not (me and low == me:lower()) and (known or not quiet) then
+            local x = { name = name, low = low, known = known, amisia = at >= cut }
+            if not (ns.InGuild() and ns.GuildMember(name)) then
+                list[#list + 1] = x
+            elseif foreign then
+                guild[#guild + 1] = x
+            end
         end
     end
-    table.sort(list, function(a, b)
+    local function order(a, b)
         if a.known ~= b.known then return a.known end
         return a.low < b.low
-    end)
+    end
+    table.sort(list, order)
+    table.sort(guild, order)
     z.found = (z.found or 0) + #names
-    for i = 1, math.min(#list, SW.ZONE_MAX) do
-        local x = list[i]
-        z.sent[x.low] = true
-        ns.CommSend("ZQ", { z.req.id, z.req.map, z.req.uid or 0 }, "WHISPER", x.name, { anyone = true, low = true,
-            ttl = SW.ZQ_TTL, key = "ZQ:" .. x.low, sent = function()
-                if not silent[x.low] then silent[x.low] = now() end
-                z.reached = z.reached + 1
-                changed()
-            end })
+    local n = math.min(#list, SW.ZONE_MAX)
+    for i = 1, n do askOne(z, list[i], foreign) end
+    if #guild > 0 then
+        local function askGuild()
+            if zone ~= z or z.req ~= req or pending or swap then return end
+            local left = SW.ZONE_MAX - n
+            for i = 1, math.min(#guild, left) do
+                if not z.sent[guild[i].low] then askOne(z, guild[i], foreign) end
+            end
+        end
+        if ns.Get("layer.guildLast") and n > 0 then
+            C_Timer.After(SW.GUILD_WAIT, function()
+                if zone == z and (z.other or 0) == 0 then askGuild() end
+            end)
+        else
+            askGuild()
+        end
     end
     changed()
+end
+
+-- F-220: an answer on the other layer addon's prefix (Gear/LayerForeign.lua) to the open search: name (the
+-- sender), the layer it named (uid: server part, zuid; nil for "-"), helps ("h"), same (it stands on the own
+-- layer). Counted like ZA; the name is kept in layerHosts. Returns whether it belonged to the search.
+function SW._foreignAnswer(name, uid, zuid, helps, same)
+    local z = zone
+    if not z or not req or z.req ~= req or now() - req.at > SW.REQ_LIFE or type(name) ~= "string" then return false end
+    local low = name:lower()
+    if not z.sent[low] then return false end
+    if same then uid = req.uid end
+    silent[low] = nil
+    rememberHost(name, true)
+    z.answered = z.answered or {}
+    local other = uid ~= nil and uid ~= req.uid
+    z.answered[low] = { name = name, uid = uid, helps = helps or same, at = now() }
+    if not z.heard[low] then
+        z.heard[low] = true
+        z.heardN = z.heardN + 1
+        if helps or same then z.hosts = z.hosts + 1 end
+        if helps and other then z.other = z.other + 1 end
+    end
+    if other then LY.Heard(req.map, uid, zuid) end
+    changed()
+    return true
+end
+
+-- F-220: the answer of name to the open search on the other layer addon's prefix whose invite counts (not one
+-- that named the own layer), nil when none.
+function SW._foreignInviter(name)
+    local z = zone
+    local a = z and z.answered and z.answered[tostring(name):lower()]
+    if not a or z.req ~= req or not req or now() - a.at > SW.ACCEPT_WAIT then return nil end
+    if a.uid ~= nil and a.uid == req.uid then return nil end
+    return a
+end
+
+-- F-220: the open search for the other layer addon's ask (Gear/LayerForeign.lua): zone search, question, the
+-- layer target of a row's click, the layers "Nur neue Layer" leaves out (their uids).
+function SW._search()
+    local z, a = zone, auto
+    if not z or not req or z.req ~= req then return nil end
+    return z, req, a and a.req == req and a.target or nil, a and a.req == req and a.recent or nil
 end
 
 -- The self-test's probe (F-216, /amisia selbsttest layer, typed: a key press): one /who of the zone, whether the
@@ -1218,6 +1354,12 @@ end
 -- The pick's clock: no fitting answer within ANSWER_WAIT means "none".
 local function armNone(a)
     C_Timer.After(SW.ANSWER_WAIT, function()
+        -- F-220: a helper of the other layer addon from another layer answered: its invite comes by itself
+        local z = zone
+        if auto == a and not a.waited and z and z.req == a.req and (z.other or 0) > 0 and not pending and not swap then
+            a.waited = true
+            return armNone(a)
+        end
         if auto == a and not a.picking and not a.picked then
             a.none = true
             changed()
@@ -1303,7 +1445,7 @@ function SW.State()
     return { req = req, pending = pending, swap = swap, answers = SW.Answers(),
         chat = open or nil, chatAll = open and chatAll or nil, auto = a, step = SW.SwapStep(),
         hosting = hosting, helped = helped, zone = z, zoneNext = SW.ZoneNext(), helping = SW.CanHelp(),
-        pause = SW.InviteBreak() }
+        pause = SW.InviteBreak(), refresh = LY.RefreshText and LY.RefreshText() or nil }
 end
 
 -- for the tests and the UI scene: st = { req, pending, swap } to start from (nil: nothing open)

@@ -142,6 +142,14 @@ local function switch(name, on, character)
 end
 C_AddOns.EnableAddOn = function(name, character) switch(name, true, character) end
 C_AddOns.DisableAddOn = function(name, character) switch(name, false, character) end
+-- loaded right now: Amisia and the addons a test lists in STUB.loaded (F-220: the other layer addon)
+STUB.loaded = {}
+C_AddOns.IsAddOnLoaded = function(name)
+    local on = name == "Amisia" or STUB.loaded[name] == true
+    return on, on
+end
+-- The world restart (F-220): GetEvictionTimeRemaining answers STUB.eviction (seconds, nil: none announced)
+_G.GetEvictionTimeRemaining = function() return STUB.eviction end
 STUB.officer = true
 _G.C_GuildInfo = { CanEditOfficerNote = function() return STUB.officer end }
 _G.MouseIsOver = function() return false end

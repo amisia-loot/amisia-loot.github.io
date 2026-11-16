@@ -6,7 +6,7 @@
 -- slash command; the self-test row.
 local LY = NS.Layer
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
-local function guid(zone, npc, spawn, kind) return ("%s-0-5250-0-%d-%d-%s"):format(kind or "Creature", zone, npc, spawn) end
+local function guid(zone, npc, spawn, kind) return ("%s-0-%d-0-5250-%d-%s"):format(kind or "Creature", zone, npc, spawn) end
 
 -- the world: Elwynn Forest, a sub zone map under it
 STUB.instance = { name = "Elwynn Forest", type = "none", id = 0 }
@@ -20,12 +20,12 @@ local fired = {}
 NS.Listen("LAYER", function(what) fired[#fired + 1] = what end)
 
 -- the GUID
-local kind, zone, npc, spawn = LY.Parse("Creature-0-5250-0-4012-299-0000ABCDEF")
+local kind, zone, npc, spawn = LY.Parse("Creature-0-4012-0-5250-299-0000ABCDEF")
 assert(kind == "Creature" and zone == 4012 and npc == 299 and spawn == "0000ABCDEF", tostring(zone))
-assert(LY.Parse("Vehicle-0-5250-0-77-12-00AA") == "Vehicle")
-assert(LY.Parse("Player-5250-0ABCDEF") == nil and LY.Parse("Pet-0-5250-0-4012-299-0100ABCD") == nil, "players and pets")
-assert(LY.Parse("GameObject-0-5250-0-4012-299-0000AB") == nil and LY.Parse("Creature-0-5250-0-0-299-00AB") == nil, "objects, id 0")
-assert(LY.Parse(nil) == nil and LY.Parse(42) == nil and LY.Parse("Creature-0-5250-0-x-299-00AB") == nil, "broken values")
+assert(LY.Parse("Vehicle-0-77-0-5250-12-00AA") == "Vehicle")
+assert(LY.Parse("Player-5250-0ABCDEF") == nil and LY.Parse("Pet-0-4012-0-5250-299-0100ABCD") == nil, "players and pets")
+assert(LY.Parse("GameObject-0-4012-0-5250-299-0000AB") == nil and LY.Parse("Creature-0-0-0-5250-299-00AB") == nil, "objects, id 0")
+assert(LY.Parse(nil) == nil and LY.Parse(42) == nil and LY.Parse("Creature-0-x-0-5250-299-00AB") == nil, "broken values")
 assert(LY.Map() == 1429, "a sub zone counts as its zone: " .. tostring(LY.Map()))
 
 -- one creature is not enough, the same creature twice neither
@@ -202,7 +202,7 @@ assert(not bar:IsShown(), "closed stays closed")
 -- the self-test row reads the target's GUID
 STUB.targetGUID = guid(4012, 299, "1A1")
 local st, text = LY.Probe()
-assert(st == "OK" and has(text, "Zonen-Kennung 4012") and has(text, "NPC 299"), text)
+assert(st == "OK" and has(text, "Server-Teil 4012 (der Layer), Zonen-Kennung 5250") and has(text, "NPC 299"), text)
 STUB.targetGUID = "Player-5250-0ABC"
 st, text = LY.Probe()
 assert(st == "WERT" and has(text, "nicht zerlegbar (Player)"), text)

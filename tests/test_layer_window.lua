@@ -6,7 +6,7 @@
 -- this session's helping.
 local A, V, Lk, K = "Anna Bergmann", "Vulo Sturmwind", "Lena Kraus", "Kai Lindner"
 BUS.setGuild({ { A, 3 }, { V, 3 }, { Lk, 3 }, { K, 3 } })
-local function guid(zone, npc, spawn) return ("Creature-0-5250-0-%d-%d-%s"):format(zone, npc, spawn) end
+local function guid(zone, npc, spawn) return ("Creature-0-%d-0-5250-%d-%s"):format(zone, npc, spawn) end
 local function world(name, zone)
     C(name, ([[STUB.instance = { name = "Elwynn Forest", type = "none", id = 0 }
         STUB.maps[1429] = { name = "Wald von Elwynn", mapType = 3 }

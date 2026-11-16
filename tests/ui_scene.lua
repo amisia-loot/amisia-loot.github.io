@@ -579,7 +579,7 @@ function S.layer(chip)
     NS.Layer._reset()
     STUB.fire("ZONE_CHANGED_NEW_AREA")
     local function read(z, s)
-        STUB.targetGUID = ("Creature-0-5250-0-%d-299-%s"):format(z, s)
+        STUB.targetGUID = ("Creature-0-%d-0-5250-299-%s"):format(z, s)
         STUB.fire("PLAYER_TARGET_CHANGED")
     end
     read(3999, "0A1"); read(3999, "0A2")
