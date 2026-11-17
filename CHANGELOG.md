@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(calendar): say why an event has no "Bearbeiten" and "Löschen", find events by any form of id (F-222)
+
+    On Forever the two links did not show for the player's own events although the game calendar lets delete
+    them. An event is now found again in the game's day list whether the client gives its id as a number or as
+    text, or by start and title. Where the links still cannot show for an own event, "Löschen" stands grey and
+    its tooltip (and a click) says why: a function the game lacks, the event not found in the game's list, or
+    what the game answered.
+
 ## [v2.100.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.100.1) (2026-11-17)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.100.0...v2.100.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

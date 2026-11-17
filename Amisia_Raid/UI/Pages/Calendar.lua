@@ -546,6 +546,12 @@ end
 local function startRemove()
     local t = currentItem()
     if not t or editWait or formWait or mode ~= nil then return end
+    -- the grey "Löschen" (CE.Explain): says why instead
+    local explain = CE().Explain(t)
+    if explain then
+        dayError = explain
+        return ns.Refresh()
+    end
     dayError = nil
     editWait = true
     local started, why = CE().Begin(t, "remove", function(ok, reason)
@@ -1260,11 +1266,16 @@ local function fillRight(f, terms, raids)
     local rights = inDay and t and CE() and CE().IsEvent(t) and CE().Rights(t) or nil
     local stop = rights and (rights.edit or rights.remove) and CE().Blocker() or nil
     local why = stop and CE().Why(stop) or nil
+    -- neither link although one would expect them (the player's own event, a function the client lacks,
+    -- an event the client's list does not hold): "Löschen" grey, the reason in its tooltip and on a click
+    local explain = rights and not rights.edit and not rights.remove and CE().Explain(t) or nil
     f.edit:SetShown(rights and rights.edit or false)
-    f.remove:SetShown(rights and rights.remove or false)
-    f.edit.why, f.remove.why = why, why
+    f.remove:SetShown(rights and (rights.remove or explain ~= nil) or false)
+    f.remove.dim = explain ~= nil
+    f.edit.why, f.remove.why = why, explain or why
     f.edit:SetEnabled(not stop and not editWait and not formWait)
     f.remove:SetEnabled(not stop and not editWait and not formWait)
+    if f.remove.UpdateChip then f.remove:UpdateChip() end
     f.toCall:SetShown(t ~= nil and t.call ~= nil and mode == nil)
     local open = dayOpen()
     f.create:SetShown(not inForm and not inBot and IsInGuild() and CC().Available() and open and true or false)

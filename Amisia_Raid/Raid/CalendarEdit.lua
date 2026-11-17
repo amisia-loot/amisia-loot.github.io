@@ -38,9 +38,15 @@ CE.FUNCS_REMOVE = { "ContextMenuEventCanRemove", "ContextMenuSelectEvent", "Cont
 
 local function has(list)
     for _, n in ipairs(list) do
-        if not api(n) then return false end
+        if not api(n) then return false, n end
     end
     return true
+end
+-- The first function of an edit ("edit") or a delete ("remove") the client lacks, or nil.
+function CE.Missing(what)
+    local ok, name = has(CE.FUNCS)
+    if ok then ok, name = has(what == "remove" and CE.FUNCS_REMOVE or CE.FUNCS_EDIT) end
+    return not ok and name or nil
 end
 -- Whether the client has every function of an edit ("edit") or a delete ("remove").
 function CE.Available(what)
@@ -75,21 +81,46 @@ end
 
 -- item in the client's list of its day at the month offset: its index and the day event; nil when it
 -- is not there. Found by its eventID, an item without one by its start and title.
+-- An event id as text: the client gives a number or (newer clients) a string of digits.
+local function idText(id)
+    id = plain(id)
+    if type(id) == "number" then return ("%.0f"):format(id) end
+    if type(id) == "string" and id ~= "" then return id end
+    return nil
+end
+
 local function locate(item, offset)
     local t = date("*t", item.at)
     local n = tonumber(plain(call("GetNumDayEvents", offset, t.day))) or 0
+    local want = idText(item.id)
     for i = 1, math.min(n, Cal.DAY_MAX) do
         local e = call("GetDayEvent", offset, t.day, i)
         if type(e) == "table" then
-            local id = plain(e.eventID)
-            if item.id then
-                if type(id) == "number" and ("%.0f"):format(id) == item.id then return i, e, t.day end
+            local id = idText(e.eventID)
+            if want and id then
+                if id == want then return i, e, t.day end
             elseif Cal.Epoch(e.startTime) == item.at and Cal.Clean(e.title) == item.title then
+                -- one side names no id (the sheet read it from another list, or the client's id is
+                -- no number): the same start and title
                 return i, e, t.day
             end
         end
     end
-    return nil
+    return nil, nil, t.day, n
+end
+
+-- What the game answers to a question about an event: "yes", "no", "secret" (a hidden value),
+-- "error" (the call failed) or "none" (nothing or something else).
+local function ask(name, ...)
+    local f = api(name)
+    if not f then return "none" end
+    local ok, v = pcall(f, ...)
+    if not ok then return "error" end
+    local secret = _G.issecretvalue
+    if type(secret) == "function" and secret(v) then return "secret" end
+    if v == true then return "yes" end
+    if v == false then return "no" end
+    return "none"
 end
 
 -- What the game lets the player do with item: { edit, remove } (booleans). Asked of the game when the
@@ -105,8 +136,8 @@ function CE.Rights(item)
     if off >= -1 and off <= 1 then
         local index, _, day = locate(item, off)
         if not index then return out end
-        edit = CE.Available("edit") and plain(call("ContextMenuEventCanEdit", off, day, index)) == true
-        remove = CE.Available("remove") and plain(call("ContextMenuEventCanRemove", off, day, index)) == true
+        edit = CE.Available("edit") and ask("ContextMenuEventCanEdit", off, day, index) == "yes"
+        remove = CE.Available("remove") and ask("ContextMenuEventCanRemove", off, day, index) == "yes"
     else
         edit = CE.Available("edit") and item.creator == true
         remove = CE.Available("remove") and item.creator == true
@@ -115,6 +146,32 @@ function CE.Rights(item)
     out.edit = edit and item.at > time() + skew or false
     out.remove = remove or false
     return out
+end
+
+-- Why item has neither "Bearbeiten" nor "Löschen" although one would expect them, as a line for the
+-- page; nil when the links show or there is nothing to say (another player's event the game plainly
+-- refuses, an event far away). Said for: a function the client lacks, a calendar month the client does
+-- not name, an event the client's day list does not hold, an answer of the game that is no plain yes
+-- or no, and the player's own event the game refuses.
+local ANSWER_WORD = { yes = N_("ja"), no = N_("nein"), secret = N_("verdeckt"), error = N_("Fehler"), none = N_("keine Antwort") }
+function CE.Explain(item)
+    if not CE.IsEvent(item) then return nil end
+    local r = CE.Rights(item)
+    if r.remove or r.edit then return nil end
+    local miss = CE.Missing("remove") or CE.Missing("edit")
+    if miss then return L["Ändern und Löschen: dem Spiel fehlt die Funktion %s."]:format(miss) end
+    local off = offsetOf(item)
+    if not off then return L["Ändern und Löschen: das Spiel nennt den Monat seines Kalenders nicht."] end
+    if off < -1 or off > 1 then return nil end
+    local index, e, day, n = locate(item, off)
+    if not index then
+        return L["Ändern und Löschen: Termin im Spielkalender nicht gefunden (Tag %d, %d Einträge dort)."]:format(day or 0, n or 0)
+    end
+    local edit, remove = ask("ContextMenuEventCanEdit", off, day, index), ask("ContextMenuEventCanRemove", off, day, index)
+    local own = item.creator == true or plain(e.modStatus) == "CREATOR"
+    local plainNo = (edit == "no" or edit == "yes") and remove == "no"
+    if plainNo and not own then return nil end
+    return L["Ändern und Löschen: das Spiel sagt ändern %s, löschen %s."]:format(L[ANSWER_WORD[edit]], L[ANSWER_WORD[remove]])
 end
 
 ---------------------------------------------------------------------------

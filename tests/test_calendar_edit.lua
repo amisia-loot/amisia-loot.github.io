@@ -390,3 +390,43 @@ assert(out and out[1] == false and out[2] == "timeout" and not CE.Session(), "ti
 -- a call of the guild is no event of the game calendar; an edit needs an event still to come
 assert(not CE.IsEvent({ call = {}, at = epochIn(1) }) and not CE.Rights({ call = {}, at = epochIn(1) }).edit)
 assert(select(2, CE.Begin(item(45) or { id = "45", at = epochIn(-1), title = "Gestern", kind = "GUILD_EVENT" }, "edit", function() end)) == "past")
+
+-- Why the links are missing (CE.Explain) and events found again whatever form the client's ids have
+cal = world()
+CE._reset(); CC._reset()
+Cal.Month(os.date("*t", epochIn(5)).year, os.date("*t", epochIn(5)).month, function(l) list = l end)
+STUB.tick(5)
+local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
+assert(CE.Rights(item(41)).remove and CE.Explain(item(41)) == nil, "the links show: nothing to say")
+assert(not CE.Rights(item(42)).remove and CE.Explain(item(42)) == nil, "another player's event the game refuses: nothing to say")
+-- the client's ids as strings (newer clients), the sheet's as digits; an item without an id by start and title
+local own = item(41)
+for _, e in ipairs(cal.month) do e.eventID = tostring(e.eventID) end
+assert(CE.Rights(own).remove and CE.Rights(own).edit, "an id of digits finds the client's string id")
+assert(CE.Rights({ at = own.at, title = own.title, kind = "GUILD_EVENT" }).remove, "no id: the same start and title")
+assert(not CE.Rights({ at = own.at, title = "Anderer Titel", kind = "GUILD_EVENT" }).remove)
+assert(has(CE.Explain({ at = own.at, title = "Anderer Titel", kind = "GUILD_EVENT", creator = true }), "nicht gefunden (Tag "),
+    "an event the client's day does not hold")
+-- the player's own event the game refuses: what the game said
+for _, e in ipairs(cal.month) do
+    if e.title == "Molten Core" then e.canEdit, e.canRemove = false, false end
+end
+assert(not CE.Rights(own).remove and not CE.Rights(own).edit)
+assert(has(CE.Explain(own), "das Spiel sagt ändern nein, löschen nein"), CE.Explain(own))
+-- the page: "Löschen" grey with the reason in its tooltip; a click says it and asks nothing
+show(own.at)
+assert(P.remove:IsShown() and P.remove.dim == true and not P.edit:IsShown(), "the grey link")
+assert(has(P.remove.why, "das Spiel sagt"), tostring(P.remove.why))
+local removedBefore = #cal.removed
+click(P.remove)
+STUB.tick(1)
+assert(#cal.removed == removedBefore and not CE.Session(), "a click on the grey link removes nothing")
+-- an answer that is no plain yes or no
+local canRemove = C_Calendar.ContextMenuEventCanRemove
+C_Calendar.ContextMenuEventCanRemove = function() error("boom") end
+assert(has(CE.Explain(own), "löschen Fehler"), CE.Explain(own))
+-- a function the client lacks
+C_Calendar.ContextMenuEventCanRemove = nil
+assert(CE.Missing("remove") == "ContextMenuEventCanRemove" and CE.Missing("edit") == nil)
+assert(has(CE.Explain(own), "fehlt die Funktion ContextMenuEventCanRemove"), CE.Explain(own))
+C_Calendar.ContextMenuEventCanRemove = canRemove
