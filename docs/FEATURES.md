@@ -486,8 +486,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: DECISIONS D-133. Wunsch 2026-11-15 mit Bild eines Reglers "Opacity"; Nachtrag 2026-11-15: der Regler auch in der Titelleiste neben dem Minimieren-Knopf.
 
 ### F-224 Buffs der Aufstellung im Planer
-- Version: -
-- Status: geplant
+- Version: 2.100.0
+- Status: gebaut
 - Prüfung: Wenn du unter Raid > Aufstellung im Planer "Buffs" klickst, dann stehen unter den Gruppen die Blöcke "Buffs", "Auf dem Boss" und "Nützliches" mit Symbol und Namen in deiner Spielsprache; ein zweiter Klick zeigt wieder die Listen.
 - Prüfung: Wenn kein Magier in einer Gruppe steht, dann ist "Arkane Intelligenz" rot mit "fehlt" und steht in der Zeile "Es fehlt"; ziehst du einen Magier in eine Gruppe, dann wird sie sofort weiß mit "1" und verschwindet aus "Es fehlt".
 - Prüfung: Wenn ein Jäger eingeteilt ist, dann steht bei "Aura des Volltreffers" gelb "Talent" und seine Gruppe; steht ein Schamane in Gruppe 2, dann steht bei "Totem des Windzorns" "Gr. 2".
@@ -1361,8 +1361,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ## Addon: Gilde
 
 ### F-223 Termin des Anmelde-Bots aus Discord in den Kalender einfügen
-- Version: -
-- Status: geplant
+- Version: 2.100.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn du das JSON eines Bot-Termins unter Gilde > Kalender, "Termin anlegen ...", "Aus Discord ..." einfügst, dann zeigt das Blatt den Tag des Termins, und das Formular hat Titel, Uhrzeit und Beschreibung.
 - Prüfung: Wenn du danach "Anlegen" klickst, dann steht der Termin im Spielkalender und auf Amisias Blatt.
@@ -1372,8 +1372,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-16-kalender-termin-aus-discord.md; DECISIONS D-148. Nutzer 2026-11-16: "können wir auch von hier termine (discord bot) in den kalender einfügen", dann "Passt, beide bauen".
 
 ### F-222 Termine im Kalender bearbeiten und löschen
-- Version: -
-- Status: geplant
+- Version: 2.100.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn du unter Gilde > Kalender deinen Termin wählst, "Bearbeiten" klickst, Titel und Uhrzeit änderst und "Speichern" klickst, dann steht im Chat "Termin geändert: ...", und Blatt und Spielkalender zeigen die neuen Werte.
 - Prüfung: Wenn du deinen Termin wählst, "Löschen" klickst und die Frage bestätigst, dann steht im Chat "Termin gelöscht: ...", und der Termin fehlt auf dem Blatt und im Spielkalender; mit "Abbrechen" bleibt er.
