@@ -5,6 +5,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(raid): the lineup planner shows which buffs the placed classes bring and which are missing (F-224)
+
+    The planner of Raid > Aufstellung gets the link "Buffs" beside "Spieler": under the groups it shows three
+    blocks, "Buffs", "Auf dem Boss" and "Nützliches", one row per buff with the spell's icon and name from the
+    game and its state: white with a count, yellow "Talent" when only a talent of a placed class (with a fitting
+    role) could bring it, red "fehlt"; group buffs such as totems and shouts name their groups ("Gr. 1, 3"). The
+    tooltip names the classes and the placed players. The line "Es fehlt: ..." under the groups always lists what
+    is missing (green "Alle Buffs da" when nothing is); with nobody placed it counts every sign-up. Forever only,
+    nothing is sent or inspected. New files in the TOCs: restart the game completely once after the update.
+
 ## [v2.99.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.99.1) (2026-11-17)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.99.0...v2.99.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

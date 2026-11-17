@@ -100,6 +100,14 @@ if rc then
     assert(not rc.views.buffs:IsShown() and rc.gearView:IsShown() and not rc.buffView:IsShown(), "the gear view instead")
 end
 
+-- the buffs of the lineup (F-224, D-149): Forever data, so neither the link "Buffs" nor the line "Es fehlt"
+assert(not NS.LineupBuffsAvailable() and NS.LineupBuffs() == nil)
+NS.ShowLineup("planner")
+local lp = NS.PageFrame("lineup")
+if lp then
+    assert(not lp.buffsBtn:IsShown() and not lp.buffs.line:IsShown(), "no buffs off Forever")
+end
+
 -- the settings: the stepper's arrows draw the classic textures, the reset button stands right of its control
 NS.Dispatch("einstellungen")
 assert(NS.CurrentPage() == "settings")

@@ -21,11 +21,11 @@ python3 tools/build.py perf [--sv FILE] [--rows N]
 
 - `data` runs the data builds in dependency order: `build_scan_archive.py update`, `build_dungeons.py --wago`, `build_gear.py`,
   `build_map.py`, `build_dungeonquests.py`, `build_quests.py`, `build_questitems.py`, `build_professions.py`,
-  `build_talents.py`, `build_magescrolls.py`, `build_raidcheck.py`, `build_enchants.py`, `build_dungeonart.py --wago`, `build_site_drops.py` (F-187, below), `build_bis.py`,
+  `build_talents.py`, `build_magescrolls.py`, `build_raidcheck.py`, `build_raidbuffs.py` (F-224, below), `build_enchants.py`, `build_dungeonart.py --wago`, `build_site_drops.py` (F-187, below), `build_bis.py`,
   `build_scan_lists.py` (last: it reads the NPC ids of the files before it). It stops at the first build
   that fails and ends with `git diff --stat` of `Amisia_Gear/Data`, `tools`, `Amisia-Website/data` and `Amisia-Website/index.html`. Without `--wago` it first
   chooses the newest, fullest copy of every client table (`client_tables.py`, below) and prints per table
-  the file it took (version, rows, source); `--wago DIR` reads only that folder instead. Professions, talents, mage scrolls and the raid check are skipped with a
+  the file it took (version, rows, source); `--wago DIR` reads only that folder instead. Professions, talents, mage scrolls, the raid check and the raid buffs are skipped with a
   note naming the missing tables (`build.py tables`, or export them on the PC with `tools/export_db2.ps1 -Tables ...`),
   dungeons and dungeon art fall back to their kept snapshots. `--sv` goes to `build_gear.py`,
   `build_map.py` (learned entrances), `build_professions.py` (trainers read in the game), `build_dungeonquests.py` (the collector's own quest observations), `build_questitems.py` (the own links of quest items, F-173),
@@ -297,7 +297,7 @@ an addon file by its path inside its folder with `ADDON_FILE("Gear/Map.lua")`; `
 
 ### Lazy data
 
-The big generated files (`GearData`, `GearNoSource`, `GearWeights`, `MapData`, `QuestData`, `QuestItemData`, `ProfessionData`, `TalentData`, `MageScrollData`, `RaidCheckData`, `ScanDone`)
+The big generated files (`GearData`, `GearNoSource`, `GearWeights`, `MapData`, `QuestData`, `QuestItemData`, `ProfessionData`, `TalentData`, `MageScrollData`, `RaidCheckData`, `RaidBuffData`, `ScanDone`)
 hand their table to `ns.LazyData("KEY", [=[ return { ... } ]=], N)` as text (`tools/lua_data.py`:
 `lazy()` in the generators, `eager()` and `load()` for the tools and tests that read a data file;
 N is the generator's count of entries; the long string's level is 1 at least, as Lua 5.1 refuses a
@@ -1180,6 +1180,23 @@ whose use spell raises the skill, Study (bundle of scrolls) and Research. From A
 library books with their librarians (Stormwind, Undercity) and the Friend of the Library quests.
 `--no-att` builds without sources, `--refresh-att` updates the cache first. `build.py data` runs it
 after the talents (skipped without the tables).
+
+## build_raidbuffs.py
+
+Builds `Amisia_Gear/Data/RaidBuffData.lua` (`ns.RAIDBUFFS`, lazy) for the buffs of the lineup (F-224, D-149,
+`Raid/LineupBuffs.lua`): a short list of English spell names in the builder, one row per thing an officer
+thinks of (one "remove curse" row for the mage's and the druid's spell), each with its block (buff, boss,
+util), its scope (raid or group: kept in the list, SpellEffect cannot tell it reliably), the roles a talent
+buff needs (Leader of the Pack `TM`, Moonkin Aura `R`, Mana Tide `H`) and one fixed class (Blood Pact, the
+imp's spell in no class skill line). The class comes from the client tables (`--wago`, default the newest
+copy of each table, `client_tables.py`; SkillLineAbility -> SkillRaceClassInfo with a single class bit ->
+ChrClasses), "talent" from the talent trees of `Amisia_Gear/Data/TalentData.lua` (`--talents`; the name or
+the talent that gives it, `via`: Moonkin Form), the spell id for the client's name and icon is the highest
+id of the first name in the class's skill line, its icon (SpellMisc) rides along. A name no class has is
+dropped and reported. `build.py data` runs it after the raid check (after the talents; skipped without
+SpellName, SkillLineAbility, SkillRaceClassInfo, ChrClasses). Tests: `tools/tests/test_build_raidbuffs.py`
+(small tables written by the test; every listed name still a class's in the tables on disk, the shipped
+file current).
 
 ## build_raidcheck.py
 

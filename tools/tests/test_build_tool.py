@@ -185,7 +185,7 @@ def test_check_utf8(tmp_path):
 def test_data_steps_order():
     names = [s[0] for s in build.data_steps()]
     assert names == ['scan archive', 'dungeons', 'gear', 'map', 'dungeon quests', 'quests', 'quest items', 'professions', 'talents',
-                     'mage scrolls', 'raid check', 'enchants', 'dungeon art', 'site drops', 'bis', 'scan lists']
+                     'mage scrolls', 'raid check', 'raid buffs', 'enchants', 'dungeon art', 'site drops', 'bis', 'scan lists']
     steps = {s[0]: s for s in build.data_steps(sv='/x/Amisia.lua', wago='/w', refresh_att=True)}
     assert steps['gear'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua', '--refresh-att']
     assert steps['bis'][2] == ['--wago', '/w', '--sv', '/x/Amisia.lua']
@@ -205,6 +205,10 @@ def test_data_steps_order():
     assert steps['mage scrolls'][3] == build_magescrolls.REQUIRED
     import build_raidcheck
     assert steps['raid check'][3] == build_raidcheck.REQUIRED and steps['raid check'][4] == 'skip'
+    # the buffs of the lineup (F-224): after the talents, whose data says which buff is a talent
+    import build_raidbuffs
+    assert steps['raid buffs'][2] == ['--wago', '/w']
+    assert steps['raid buffs'][3] == build_raidbuffs.REQUIRED and steps['raid buffs'][4] == 'skip'
     assert steps['dungeon art'][4] == [] and steps['dungeons'][4] == [], 'without tables: from the snapshot'
 
 

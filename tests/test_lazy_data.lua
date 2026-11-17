@@ -4,7 +4,8 @@
 -- reported and gives nil.
 local KEYS = { GEAR = "GearData", MAP = "MapData", QUEST_DATA = "QuestData", PROFESSIONS = "ProfessionData",
                TALENTS = "TalentData", GEAR_WEIGHTS = "GearWeights", ENCHANT = "EnchantData",
-               RAIDCHECK = "RaidCheckData", MAGESCROLLS = "MageScrollData", SCAN_DONE = "ScanDone" }
+               RAIDCHECK = "RaidCheckData", MAGESCROLLS = "MageScrollData", SCAN_DONE = "ScanDone",
+               RAIDBUFFS = "RaidBuffData" }
 
 local function built(k) return NS.DataBuilt()[k] ~= nil end
 

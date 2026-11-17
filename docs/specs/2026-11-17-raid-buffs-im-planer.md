@@ -40,6 +40,8 @@ Befehlsruf und Vampirberührung schon. Namen und Symbole kommen vom Spiel selbst
 - Buffs, die nur die eigene Gruppe treffen (Totems, Schlachtruf, Aura des Volltreffers, Rudelführer, Mondkin-Aura,
   Blutpakt, Paladin-Auren), nennen statt der Zahl die Gruppen: "Gr. 1, 3".
 
+In jedem Block stehen die roten Zeilen oben, dann die gelben, dann die weißen (ein Block zeigt sechs Zeilen und rollt).
+
 Der Tooltip einer Zeile nennt die Klasse, die ihn bringt, ob es ein Talent ist, und die Namen der Eingeteilten in
 Klassenfarbe.
 

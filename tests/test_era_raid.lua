@@ -32,4 +32,6 @@ NS.Dispatch("einstellungen")
 assert(NS.CurrentPage() == "settings")
 NS.ShowPage("rolls")
 NS.ShowPage("softres")
+-- the buffs of the lineup (F-224, D-149) are Forever data: absent here
+assert(not NS.LineupBuffsAvailable() and NS.LineupBuffs() == nil)
 print("era raid ok")

@@ -49,6 +49,7 @@ Raid\Lineup.lua
 Raid\LineupInvite.lua
 Raid\LineupSort.lua
 Raid\LineupRoles.lua
+Raid\LineupBuffs.lua
 Raid\GroupAccept.lua
 Raid\OnlineInvite.lua
 Raid\GuildCalls.lua

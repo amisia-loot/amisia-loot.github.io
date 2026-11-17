@@ -974,10 +974,170 @@ local function fillInv(row, it)
 end
 
 ---------------------------------------------------------------------------
+-- The buffs of the lineup (F-224, D-149, Raid/LineupBuffs.lua): "Buffs" beside "Spieler" shows three blocks
+-- under the groups in place of the lists (grid.buffs, for the session like grid.on; the two exclude each
+-- other); the line "Es fehlt" under them is always there while the data is (Forever). One table: the
+-- page's create holds 60 upvalues at most.
+---------------------------------------------------------------------------
+local BV = { blocks = {}, rows = {} }
+BV.TITLE = { buff = L["Buffs"], boss = L["Auf dem Boss"], util = L["Nützliches"] }
+BV.ROLE = { T = L["Tank"], H = L["Heiler"], M = L["Nahkampf"], R = L["Fernkampf"] }
+BV.RANK = { missing = 1, talent = 2, have = 3 }
+
+-- The state of a row: white with the count, yellow "Talent", red "fehlt"; group buffs name their groups.
+function BV.State(it)
+    local B = T.LINEUP_BUFFS
+    if it.state == "missing" then return RED .. L["fehlt"] .. "|r" end
+    local groups = #it.groups > 0 and L["Gr. %s"]:format(table.concat(it.groups, ", ")) or nil
+    if it.state == "talent" then
+        return B.TALENT .. (groups and L["Talent, %s"]:format(groups) or L["Talent"]) .. "|r"
+    end
+    return B.HAVE .. (groups or tostring(it.count)) .. "|r"
+end
+
+function BV.Tooltip(self)
+    local it = self.item
+    if not it then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(it.name, 1, 0.82, 0)
+    for _, c in ipairs(it.classes) do
+        local line = ns.ClassColored(className(c[1]), c[1])
+        if c[2] then line = line .. " · " .. T.LINEUP_BUFFS.TALENT .. L["Talent"] .. "|r" end
+        if it.roles ~= "" then
+            local words = {}
+            for r in it.roles:gmatch(".") do words[#words + 1] = BV.ROLE[r] end
+            line = line .. GREY .. " · " .. L["nur als %s"]:format(table.concat(words, "/")) .. "|r"
+        end
+        GameTooltip:AddLine(line, 1, 1, 1)
+    end
+    if it.scope == "group" then GameTooltip:AddLine(L["Wirkt nur in der eigenen Gruppe."], 0.6, 0.6, 0.6, true) end
+    if #it.who > 0 then
+        local names = {}
+        for _, w in ipairs(it.who) do
+            names[#names + 1] = ns.ClassColored(w.n, w.c) .. (w.talent and (GREY .. " (" .. L["Talent"] .. ")|r") or "")
+        end
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine(BV.all and L["Angemeldet:"] or L["Eingeteilt:"], 1, 0.82, 0)
+        GameTooltip:AddLine(table.concat(names, ", "), 1, 1, 1, true)
+    else
+        GameTooltip:AddLine(RED .. L["Niemand Eingeteiltes bringt ihn."] .. "|r", 1, 1, 1, true)
+    end
+    GameTooltip:Show()
+end
+
+function BV.BuildRow(row)
+    local B = T.LINEUP_BUFFS
+    row.icon = row:CreateTexture(nil, "ARTWORK")
+    row.icon:SetSize(B.ICON, B.ICON)
+    row.icon:SetPoint("LEFT", B.ICON_X, 0)
+    row.name = W.Text(row, T.FONT.text, B.W - B.NAME_X - B.STATE_X)
+    row.name:SetPoint("LEFT", B.NAME_X, 0)
+    row.state = W.Text(row, T.FONT.text, B.W - B.NAME_X - B.STATE_X)
+    row.state:SetPoint("RIGHT", -B.STATE_X, 0)
+    row.state:SetJustifyH("RIGHT")
+    row:SetScript("OnEnter", BV.Tooltip)
+    row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+end
+
+-- the width a text needs (the client's GetStringWidth stops at the string's own width)
+function BV.Width(fs)
+    return (fs.GetUnboundedStringWidth and fs:GetUnboundedStringWidth()) or fs:GetStringWidth() or 0
+end
+
+function BV.FillRow(row, it)
+    local B = T.LINEUP_BUFFS
+    row.icon:SetTexture(it.icon)
+    row.icon:SetShown(it.icon ~= nil)
+    -- an empty night: the names without a state
+    row.state:SetText(BV.counted and BV.State(it) or "")
+    local sw = BV.Width(row.state)
+    row.name:SetWidth(math.max(20, B.W - B.NAME_X - B.STATE_X - (sw > 0 and (sw + B.STATE_GAP) or 0)))
+    row.name:SetText(it.name)
+end
+
+-- The blocks with their heads in the planner P (the place of the two lists from top), the line "Es fehlt"
+-- and the grey note under them (at lineTop).
+function BV.Build(P, top, lineTop, open)
+    local B = T.LINEUP_BUFFS
+    for i, key in ipairs(ns.LINEUP_BUFF_BLOCKS or {}) do
+        local x = (i - 1) * (B.W + B.GAP)
+        local head, cells = P:Columns({ { "t", T.LAYOUT.TEXT_X, B.W - 2 * T.LAYOUT.TEXT_X, BV.TITLE[key] } }, { top = top, x = x, width = B.W })
+        local list = P:List(B.ROWS, B.ROW_H, BV.BuildRow, BV.FillRow, { top = top - T.LAYOUT.COLHEAD_H, x = x, width = B.W })
+        BV.blocks[key] = { head = head, title = cells.t, list = list }
+    end
+    local width = (#ns.LINEUP_BUFF_BLOCKS) * (B.W + B.GAP) - B.GAP
+    local line = CreateFrame("Button", nil, P)
+    line:SetSize(width - B.NOTE_W - T.LAYOUT.ITEM_GAP, T.LAYOUT.LINE_H)
+    line:SetPoint("TOPLEFT", 0, lineTop)
+    line.text = W.Text(line, T.FONT.text, width - B.NOTE_W - T.LAYOUT.ITEM_GAP - T.LAYOUT.TEXT_X)
+    line.text:SetPoint("LEFT", T.LAYOUT.TEXT_X, 0)
+    line:SetScript("OnClick", open)
+    W.Tooltip(line, L["Buffs"], L["Klick: zeigt, welche Buffs die Klassen in den Gruppen mitbringen und welche fehlen."])
+    BV.line = line
+    BV.note = W.Text(P, T.FONT.hint, B.NOTE_W)
+    BV.note:SetPoint("TOPRIGHT", P, "TOPLEFT", width - T.LAYOUT.TEXT_X, lineTop - 2)
+    BV.note:SetJustifyH("RIGHT")
+end
+
+-- "Es fehlt: A, B (+3)" cut to the line's width, or green "Alle Buffs da"; "(alle Anmeldungen)" behind it.
+function BV.MissingText(r)
+    local fs = BV.line.text
+    local tail = r.all and (GREY .. L[" (alle Anmeldungen)"] .. "|r") or ""
+    if #r.missing == 0 then return GREEN .. L["Alle Buffs da"] .. "|r" .. tail end
+    local names = {}
+    for i, it in ipairs(r.missing) do names[i] = it.name end
+    local text
+    for k = #names, 1, -1 do
+        local rest = #names - k
+        text = RED .. L["Es fehlt: %s"]:format(table.concat(names, ", ", 1, k)) .. "|r"
+            .. (rest > 0 and (GREY .. L[" (+%d)"]:format(rest) .. "|r") or "") .. tail
+        fs:SetText(text)
+        if k == 1 or BV.Width(fs) <= fs:GetWidth() then break end
+    end
+    return text
+end
+
+-- shown: the planner is the view; on: the blocks in place of the lists.
+function BV.Fill(key, shown, on)
+    local r = shown and ns.LineupBuffs and ns.LineupBuffs(key) or nil
+    for _, b in pairs(BV.blocks) do
+        b.head:SetShown(on and r ~= nil)
+        b.list:SetShown(on and r ~= nil)
+    end
+    BV.line:SetShown(r ~= nil and r.counted > 0)
+    BV.note:SetShown(on and r ~= nil)
+    if not r then return end
+    BV.all, BV.counted = r.all, r.counted > 0
+    if r.counted > 0 then BV.line.text:SetText(BV.MissingText(r)) end
+    BV.note:SetText(r.counted == 0 and L["Noch niemand eingeteilt"] or r.noClass > 0 and L["%d ohne Klasse"]:format(r.noClass) or "")
+    if not on then return end
+    -- what is missing first, then what needs a talent, then what is there (each in the data's order): a
+    -- block shows six of up to 26 rows
+    for key2, b in pairs(BV.blocks) do
+        local items = {}
+        for i, it in ipairs(r.entries) do
+            if it.block == key2 then
+                it.order = (BV.RANK[it.state] or 3) * 1000 + i
+                items[#items + 1] = it
+            end
+        end
+        if r.counted > 0 then table.sort(items, function(a, c) return a.order < c.order end) end
+        b.list:SetItems(items)
+    end
+end
+
+---------------------------------------------------------------------------
 -- The page
 ---------------------------------------------------------------------------
--- the snapshots: the player list on or off
-ns._lineupPlayers = function(on) grid.on = on and true or false end
+-- the snapshots: the player list on or off (the buffs off), the buffs on or off
+ns._lineupPlayers = function(on)
+    grid.on = on and true or false
+    grid.buffs = false
+end
+ns._lineupBuffs = function(on)
+    grid.buffs = on and true or false
+    if on then grid.on = false end
+end
 
 -- Opens the page (the officers only), in a view when given ("match", "planner", "paste", "invite",
 -- "sets", "export").
@@ -1153,10 +1313,22 @@ local function buildSetTools(f)
     -- F-161: the planner's player list; the view "Vorlagen"
     f.gridBtn = W.TabCheck(f, L["Spieler"], function()
         grid.on = not grid.on
+        if grid.on then grid.buffs = false end
         if not grid.on and pending then selName, pending = nil, nil end
         ns.Refresh()
     end)
     W.FitChip(f.gridBtn)
+    -- F-224: the buffs of the lineup in place of the lists (excludes "Spieler")
+    f.buffsBtn = W.TabCheck(f, L["Buffs"], function()
+        grid.buffs = not grid.buffs
+        if grid.buffs then
+            grid.on = false
+            if pending then selName, pending = nil, nil end
+        end
+        ns.Refresh()
+    end)
+    W.FitChip(f.buffsBtn)
+    W.Tooltip(f.buffsBtn, L["Buffs"], L["Zeigt statt der Listen unter den Gruppen, welche Buffs, Schwächungen auf dem Boss und Hilfen die eingeteilten Klassen mitbringen und welche fehlen."])
     W.Tooltip(f.gridBtn, L["Spieler"], L["Zeigt statt \"Nicht eingeteilt\" und \"Ersatz\" die Spieler aus Raid oder Gilde. Ein Klick wählt einen Namen, der nächste Klick auf einen Platz setzt ihn dorthin."])
     f.setName = W.LineEdit(f, SET_NAME_W)
     f.setSave = W.Link(f, L["Speichern"], function()
@@ -1496,6 +1668,11 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.plan.people = f.people
         f.openHead, f.benchHead = f.plan.openHead, f.plan.benchHead
         buildGridAndSets(f, top, sideTop)
+        BV.Build(f.plan, sideTop + T.LAYOUT.COLHEAD_H, sideTop - LIST_ROWS * LIST_ROW_H - T.LINEUP_BUFFS.LINE_GAP, function()
+            grid.buffs, grid.on = true, false
+            ns.Refresh()
+        end)
+        f.buffs = BV
         -- the calendar view
         f.cal = W.Page(f, { view = true, top = top })
         local _, cheads = f.cal:Columns(CAL_COLS)
@@ -1556,8 +1733,10 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         local shown = view
         -- the planner's player list: on a night without a list it opens by itself (there is nothing
         -- else to show) and stays until "Spieler" is clicked off
-        if shown == "planner" and not has then grid.on = true end
-        local gridOn = shown == "planner" and grid.on
+        -- F-224: "Buffs" shows its blocks there instead (Forever only)
+        local buffsOn = shown == "planner" and grid.buffs and ns.LineupBuffsAvailable and ns.LineupBuffsAvailable() or false
+        if shown == "planner" and not has and not buffsOn then grid.on = true end
+        local gridOn = shown == "planner" and grid.on and not buffsOn
         f.views.match:SetOn(shown == "match")
         f.views.planner:SetOn(shown == "planner")
         f.views.invite:SetOn(shown == "invite")
@@ -1651,6 +1830,8 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.gridBtn:SetShown(shown == "planner")
         f.gridBtn:SetOn(gridOn)
         f.gridBtn:SetEnabled(has)
+        f.buffsBtn:SetShown(shown == "planner" and ns.LineupBuffsAvailable ~= nil and ns.LineupBuffsAvailable())
+        f.buffsBtn:SetOn(buffsOn)
         -- invite and sort: the reason on the button when they may not
         local isInv, isPlan = has and shown == "invite", has and shown == "planner"
         f.inviteAll:SetShown(isInv)
@@ -1685,7 +1866,7 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
         f.raidIdPick:SetValue(f.raidId or 0)
         f.raidIdPick:SetShown(shown == "match" and has and #insts > 0)
         f:Place(4, { f.views.match, f.views.planner, f.views.invite, f.raidIdPick, f.guildRank, f.setName, f.setSave },
-            { f.copy, f.rematch, f.gridBtn, f.sortBtn, f.bench, f.cancel, f.setDelete, f.setLoad, f.take, f.calTake, f.guildInv, f.again, f.inviteAll, f.rolesBtn }, { shown = true })
+            { f.copy, f.rematch, f.gridBtn, f.buffsBtn, f.sortBtn, f.bench, f.cancel, f.setDelete, f.setLoad, f.take, f.calTake, f.guildInv, f.again, f.inviteAll, f.rolesBtn }, { shown = true })
         f.paste:SetShown(paste)
         f.export:SetShown(export)
         if export then
@@ -1722,6 +1903,8 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
             f.hint:SetText(L["Eine Vorlage merkt sich, wer in welcher Gruppe und auf Ersatz steht, mit Rolle und Festhalten. \"Laden\" setzt sie in die gezeigte Nacht; Doppelklick lädt auch. Höchstens %d Vorlagen."]:format(ns.LINEUP_MAX_SETS))
         elseif export then
             f.hint:SetText(L["Strg+C kopiert den Block. Ein anderer Offizier fügt ihn auf seiner Seite Aufstellung unter \"Einfügen\" ein."])
+        elseif buffsOn then
+            f.hint:SetText(L["Was die Klassen in den Gruppen mitbringen können: weiß mit Zahl da, gelb nur mit Talent, rot fehlt; Gruppen-Buffs nennen ihre Gruppen. Maus auf eine Zeile: wer ihn bringt. Ohne Eingeteilte zählen alle Anmeldungen."])
         elseif gridOn then
             f.hint:SetText(L["Klick auf einen Namen, dann auf einen Platz: der Spieler steht dort (Ziehen geht auch). Grau mit Zahl: schon in dieser Gruppe. Rechtsklick auf einen Namen der Liste: Rolle, Ersatz, Festhalten, Entfernen."])
         elseif shown == "roles" then
@@ -1785,9 +1968,10 @@ ns.RegisterPanel{ key = "lineup", label = L["Aufstellung"], sub = L["Wer zum Rai
             f.benchList:SetItems(bench)
             -- the two lists, or the player list in their place
             local P = f.plan
-            for _, h in ipairs(P.sideHeads) do h:SetShown(not gridOn) end
-            f.openList:SetShown(not gridOn)
-            f.benchList:SetShown(not gridOn)
+            for _, h in ipairs(P.sideHeads) do h:SetShown(not gridOn and not buffsOn) end
+            f.openList:SetShown(not gridOn and not buffsOn)
+            f.benchList:SetShown(not gridOn and not buffsOn)
+            BV.Fill(key, true, buffsOn)
             for _, w in ipairs(P.gridBar) do w:SetShown(gridOn) end
             f.gridList:SetShown(gridOn)
             P.gridEmpty:SetShown(false)

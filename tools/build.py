@@ -239,6 +239,8 @@ MAGESCROLL_TABLES = ['ItemSparse', 'Item', 'SkillLine', 'SkillLineAbility', 'Spe
                      'ItemEffect', 'ItemXItemEffect']
 # the client tables tools/build_raidcheck.py needs (its REQUIRED)
 RAIDCHECK_TABLES = ['Item', 'ItemEffect', 'ItemXItemEffect', 'SpellEffect', 'SpellMisc', 'SpellDuration', 'SpellName']
+# the client tables tools/build_raidbuffs.py needs (its REQUIRED)
+RAIDBUFF_TABLES = ['SpellName', 'SkillLineAbility', 'SkillRaceClassInfo', 'ChrClasses']
 # the client tables tools/build_enchants.py needs (its REQUIRED)
 ENCHANT_TABLES = ['SpellEffect', 'SpellItemEnchantment', 'SpellEquippedItems', 'SkillLineAbility', 'ItemEffect',
                   'ItemXItemEffect', 'Item', 'ItemSparse']
@@ -266,6 +268,8 @@ def data_steps(sv=None, wago=WAGO, refresh_att=False):
         ('mage scrolls', 'build_magescrolls.py', ['--wago', wago], MAGESCROLL_TABLES, 'skip'),
         # the raid check's flasks, elixirs, food and class buffs (SpellEquippedItems optional)
         ('raid check', 'build_raidcheck.py', ['--wago', wago], RAIDCHECK_TABLES, 'skip'),
+        # the buffs of the lineup (F-224): after the talents, whose data says which buff is a talent
+        ('raid buffs', 'build_raidbuffs.py', ['--wago', wago], RAIDBUFF_TABLES, 'skip'),
         # the permanent enchantments of the enchant suggestions (F-128)
         ('enchants', 'build_enchants.py', ['--wago', wago], ENCHANT_TABLES, 'skip'),
         ('dungeon art', 'build_dungeonart.py', ['--wago', wago], ['Map', 'LoadingScreens'], []),

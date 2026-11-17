@@ -4041,3 +4041,47 @@ gefragt ohne Antwort, offene Liste, Beute zurück, 4 s), `tests/test_layer_forei
 Layer, Warnung, Wechsel erst nach dem Layer), `tests/test_layer_change.lua` (offene Einladungen, eine je Sekunde,
 120 s), `tests/test_layer_window.lua` (Knopf "Suche stoppen", "Gruppe verlassen"),
 `tools/tests/test_contracts.py::test_two_prefixes_and_one_sender`.
+
+## D-149 Buffs der Aufstellung: was die Klassen der Gruppen bringen können, aus den Tabellen von Forever
+
+**Datum:** 2026-11-17
+**Entscheidung:** Der Planer der Seite "Aufstellung" zeigt, welche Buffs, Schwächungen auf dem Boss und Hilfen die
+eingeteilten Klassen mitbringen können (F-224, Spec `docs/specs/2026-11-17-raid-buffs-im-planer.md`, Rechnen in
+`Amisia_Raid/Raid/LineupBuffs.lua`, Daten `Amisia_Gear/Data/RaidBuffData.lua` von `tools/build_raidbuffs.py`).
+- **Wer zählt:** wer in einer Gruppe steht (nicht abgemeldet, nicht Ersatz, nicht überzählig); steht niemand in einer
+  Gruppe, alle der Nacht außer Abgemeldeten und Ersatz, und die Zeile sagt "(alle Anmeldungen)". Ein Eintrag ohne
+  Klasse zählt nichts ("3 ohne Klasse").
+- **Drei Zustände je Eintrag:** weiß mit Zahl (eine gezählte Klasse bringt ihn von Haus aus), gelb "Talent" (nur ein
+  Talent einer gezählten Klasse könnte ihn bringen), rot "fehlt". Gruppen-Buffs (Totems, Schlachtruf, Befehlsruf, Aura
+  des Volltreffers, Rudelführer, Mondkin-Aura, Blutpakt, Paladin-Auren, Totem der Manaflut) nennen ihre Gruppen
+  ("Gr. 1, 3"), ohne eigene Warnung je Gruppe. In jedem Block stehen die fehlenden oben, dann die mit Talent, dann die
+  vorhandenen: ein Block zeigt sechs Zeilen und rollt.
+- **Rollen:** ein Talent-Buff zählt nur bei passender Rolle: Rudelführer Druide als Tank oder Nahkampf, Mondkin-Aura
+  Druide als Fernkampf, Totem der Manaflut Schamane als Heiler.
+- **Aus den Tabellen:** Klasse (SkillLineAbility, SkillRaceClassInfo, ChrClasses) und "Talent" (die Talentbäume in
+  `Data/TalentData.lua`) liest der Builder aus den Client-Tabellen, nicht aus seiner Liste; die Liste hält nur
+  englische Zaubernamen, Block, Reichweite, Rollen und eine feste Klasse (Blutpakt, ein Zauber des Wichtels).
+  **Die Reichweite (Raid oder Gruppe) ist von Hand gepflegt**, weil SpellEffect sie nicht verlässlich sagt (Ränge und
+  NPC-Kopien mischen sich). Namen und Symbole zeigt der Client (`C_Spell`), in seiner Sprache; ein Zauber, den der
+  Client nicht kennt, fällt als Zeile weg.
+- **Nur Forever:** die Daten liegen im Ausrüstungs-Modul; auf TBC Anniversary und Classic Era (und ohne das Modul)
+  fehlen Link "Buffs" und Zeile "Es fehlt".
+- Kein Inspect, keine Nachricht, kein neuer `AmisiaDB`-Schlüssel, keine Einstellung; "Buffs" und "Spieler" schließen
+  einander aus und gelten für die Sitzung.
+**Grund:** Nutzer 2026-11-17 mit einem Bild des leeren Planers: "können wir hier in raidplaner wenn wir den raid mit den
+klassen gefüllt haben anzeigen welche buffs wir haben und welche uns fehlen"; zu den drei offenen Fragen der Spec
+"Passt, bauen" (zählen, wer in einer Gruppe steht, sonst alle Anmeldungen; alle drei Blöcke; Gruppen-Buffs mit ihren
+Gruppen).
+**Folge:** Die Liste ist die von Forever (Build 1.60.1.70938): Segen der Rettung, des Refugiums und des Lichts,
+Aura der Heiligkeit, Totem der beruhigenden Winde, Fluch der Schatten sowie Kampfrausch/Heldentum als Klassenzauber
+gibt es dort nicht und fehlen. Talent-Buffs bleiben gelb, weil Amisia keine Skillung kennt. Nimmt ein neuer Build einer
+Klasse einen Zauber weg, wird der Werkzeugtest rot und die Zeile fällt weg. Neue Dateien in zwei TOCs: nach dem Update
+einmal das Spiel ganz neu starten.
+**Durchgesetzt durch:** `tests/test_lineup_buffs.lua` (wer zählt, die drei Zustände, Rollen, Gruppen, ohne Klasse,
+getauschter Twink, unbekannter Zauber, ohne Daten kein Feature), `tests/test_lineup_buffs_page.lua` (Link neben
+"Spieler", beide schließen einander aus, drei Blöcke, Zustände, Tooltip, Zeile "Es fehlt" gekürzt, "(alle
+Anmeldungen)", "Alle Buffs da", Klick auf die Zeile, graue Hinweise, ohne Daten weder Link noch Zeile),
+`tests/test_tbc_raid.lua` und `tests/test_era_raid.lua` (fehlt außerhalb von Forever),
+`tools/tests/test_build_raidbuffs.py` (Klasse und Talent aus kleinen Tabellen,
+`tools/tests/test_build_raidbuffs.py::test_every_listed_name_belongs_to_a_class` mit den Tabellen auf der Platte,
+`tools/tests/test_build_raidbuffs.py::test_shipped_file_is_current`), `tests/ui_scene.lua` (`lineup-buffs`).

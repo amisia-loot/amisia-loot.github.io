@@ -747,6 +747,12 @@ T.LINEUP_MORE_W = 210   -- the menu "Mehr" of the page Aufstellung (F-161)
 -- (EDGE px, the fill FILL_ALPHA) and the box beside the cursor (name over where it goes)
 T.LINEUP_DRAG = { EDGE = 2, FILL_ALPHA = 0.18, GHOST_H = 34, GHOST_MIN = 90, GHOST_MAX = 220, PAD = 6, PAD_Y = 4,
     SHADE = 0.85, OFFSET_X = 16, OFFSET_Y = -8 }
+-- the buffs of the lineup (F-224): three blocks under the planner's groups in place of the lists (W wide,
+-- GAP between them, the room of a scroll bar in it), ROWS rows of ROW_H each (as the lists), the spell's
+-- icon, its name, the state on the right (STATE_GAP before it); the line "Es fehlt" under them (LINE_GAP
+-- above it) with the grey note on its right (NOTE_W); the colours of the states
+T.LINEUP_BUFFS = { W = 184, GAP = 18, ROWS = 6, ROW_H = 18, ICON = 14, ICON_X = 4, NAME_X = 22, STATE_GAP = 6,
+    STATE_X = 4, LINE_GAP = 4, NOTE_W = 170, HAVE = "|cffffffff", TALENT = "|cffffd100" }
 T.PICKER = { ROWS = 8, ROW_H = 20, MIN_W = 180, FILTER_Y = 6, LIST_Y = 30, ARROW_ROOM = 26 }
 -- the talent calculator (Pages/Talents.lua) in the look of the game's classic three-tree talent
 -- window: three dark panels side by side, a centred head (name over points), square icons with a

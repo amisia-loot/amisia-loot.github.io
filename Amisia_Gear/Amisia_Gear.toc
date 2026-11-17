@@ -44,6 +44,7 @@ Data\ScanDone.lua
 Data\ScanLists.lua
 Data\ScanNames.lua
 Data\RaidCheckData.lua
+Data\RaidBuffData.lua
 Data\EnchantData.lua
 Gear\Gear.lua
 Gear\PlayStyle.lua

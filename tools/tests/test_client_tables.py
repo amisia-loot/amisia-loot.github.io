@@ -130,13 +130,16 @@ def test_tables_is_the_export_list_and_holds_every_builders_table():
     import build_bis
     import build_enchants
     import build_magescrolls
+    import build_raidbuffs
     import build_raidcheck
     import build_talents
     import build
     wanted = set(build_bis.TABLES) | set(build_bis.DMG_TABLES.values())
-    for mod in (build_enchants, build_magescrolls, build_raidcheck, build_talents):
+    for mod in (build_enchants, build_magescrolls, build_raidbuffs, build_raidcheck, build_talents):
         wanted |= set(mod.REQUIRED) | set(getattr(mod, 'OPTIONAL', []))
     wanted |= set(build.MAGESCROLL_TABLES) | set(build.RAIDCHECK_TABLES) | set(build.ENCHANT_TABLES)
+    wanted |= set(build.RAIDBUFF_TABLES)
+    assert build.RAIDBUFF_TABLES == build_raidbuffs.REQUIRED
     wanted |= {'LFGDungeons', 'ContentTuning', 'AreaTable', 'DungeonEncounter', 'UiMapAssignment', 'Map',
                'LoadingScreens', 'SkillLineAbility', 'SpellReagents', 'SkillLine', 'SpellCooldowns', 'SpellCategories'}
     assert not wanted - set(ct.TABLES), sorted(wanted - set(ct.TABLES))

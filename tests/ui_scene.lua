@@ -129,9 +129,33 @@ end
 -- a likely, an ambiguous and an unknown name, a guest from the group, the bench and the absent;
 -- then "Automatisch einteilen" with one held player.
 local lineupDone
+-- the names the German client gives the spells of the lineup's buffs (F-224; the stub has no C_Spell)
+local BUFF_NAMES = {
+    int = "Arkane Intelligenz", sta = "Machtwort: Seelenstärke", spirit = "Göttlicher Willen", shadow = "Schattenschutz",
+    wild = "Mal der Wildnis", kings = "Segen der Könige", might = "Segen der Macht", wisdom = "Segen der Weisheit",
+    devotion = "Aura der Hingabe", retri = "Aura der Vergeltung", conc = "Aura der Konzentration",
+    fireres = "Aura des Feuerwiderstands", battle = "Schlachtruf", command = "Befehlsruf", windfury = "Totem des Windzorns",
+    soe = "Totem der Erdstärke", goa = "Totem der luftgleichen Anmut", manaspring = "Totem der Manaquelle",
+    healstream = "Totem des heilenden Flusses", flametongue = "Totem der Flammenzunge", tremor = "Totem des Erdstoßes",
+    poisontotem = "Totem der Giftreinigung", trueshot = "Aura des Volltreffers", lotp = "Rudelführer", moonkin = "Mondkin-Aura",
+    bloodpact = "Blutpakt", sunder = "Rüstung zerreißen", expose = "Rüstung schwächen", faerie = "Feenfeuer",
+    elements = "Fluch der Elemente", reckless = "Fluch der Tollkühnheit", mark = "Mal des Jägers",
+    demo = "Demoralisierender Ruf", thunder = "Donnerknall", jow = "Richturteil der Weisheit", jol = "Richturteil des Lichts",
+    scorch = "Verbessertes Versengen", chill = "Winterkälte", weaving = "Schattenwirken", vtouch = "Vampirberührung",
+    rebirth = "Wiedergeburt", soulstone = "Seelenstein herstellen", healthstone = "Gesundheitsstein herstellen",
+    curse = "Fluch aufheben", magic = "Magiebannung", poison = "Vergiftung heilen", disease = "Krankheit heilen",
+    tranq = "Einlullender Schuss", fearward = "Furchtzauberschutz", innervate = "Anregen", manatide = "Totem der Manaflut",
+}
 function S.lineup()
+    -- the planner's lists, not the buffs (a shot of the buffs turns them on)
+    if NS._lineupBuffs then NS._lineupBuffs(false) end
     if lineupDone then return end
     lineupDone = true
+    if NS.LineupBuffSpell and NS.HasData("RAIDBUFFS") then
+        local byId = {}
+        for _, d in ipairs(NS.Data("RAIDBUFFS").entries) do byId[d[4]] = BUFF_NAMES[d[1]] end
+        NS.LineupBuffSpell = function(spell, icon) return byId[spell], icon ~= 0 and icon or nil end
+    end
     local add = {
         { "Bob Eisherz", "WARRIOR" }, { "Grimm Felsfaust", "WARRIOR" }, { "Lina Sonnfeld", "PALADIN" },
         { "Mara Quell", "SHAMAN" }, { "Tobi Hain", "DRUID" }, { "Ella Licht", "PRIEST" }, { "Rurik Stahl", "WARRIOR" },
@@ -825,6 +849,12 @@ S.STATES = {
         NS.LineupSaveSet(NS.LineupTonight(), "Geschmolzener Kern Stamm")
         NS.LineupSaveSet(NS.LineupTonight(), "Zehner")
         NS.ShowLineup("sets", NS.LineupTonight())
+    end },
+    -- F-224: the planner's buffs in place of the lists (three blocks, the line "Es fehlt")
+    { page = "lineup", name = "lineup-buffs", open = function()
+        S.lineup()
+        NS._lineupBuffs(true)
+        NS.ShowLineup("planner", NS.LineupTonight())
     end },
     { page = "lineup", name = "lineup-export", open = function()
         S.lineup()
