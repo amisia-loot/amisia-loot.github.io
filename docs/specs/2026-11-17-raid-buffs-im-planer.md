@@ -1,6 +1,6 @@
 # Spec: Buffs der Aufstellung im Planer
 
-Stand: 2026-11-17 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-17 · Status: freigegeben ·
 Feature: F-224
 
 ## Ziel
@@ -124,4 +124,6 @@ Liste zeigt höchstens einen falschen Buff an.
 
 ## Entscheidungen
 
-Noch keine.
+- 2026-11-17: alle drei Fragen: "Passt, bauen" -> es zählt, wer in einer Gruppe steht (ohne Eingeteilte alle
+  Anmeldungen); alle drei Blöcke (Buffs, Auf dem Boss, Nützliches); Gruppen-Buffs nennen ihre Gruppen ("Gr. 1, 3"),
+  ohne eigene Warnung je Gruppe.

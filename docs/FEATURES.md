@@ -485,6 +485,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du im Hauptfenster oben rechts neben dem Minimieren-Knopf den Regler "Deckkraft" nach links ziehst, dann wird das Fenster durchsichtiger; der Regler unter Einstellungen > Oberfläche zeigt denselben Wert.
 - Notiz: DECISIONS D-133. Wunsch 2026-11-15 mit Bild eines Reglers "Opacity"; Nachtrag 2026-11-15: der Regler auch in der Titelleiste neben dem Minimieren-Knopf.
 
+### F-224 Buffs der Aufstellung im Planer
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du unter Raid > Aufstellung im Planer "Buffs" klickst, dann stehen unter den Gruppen die Blöcke "Buffs", "Auf dem Boss" und "Nützliches" mit Symbol und Namen in deiner Spielsprache; ein zweiter Klick zeigt wieder die Listen.
+- Prüfung: Wenn kein Magier in einer Gruppe steht, dann ist "Arkane Intelligenz" rot mit "fehlt" und steht in der Zeile "Es fehlt"; ziehst du einen Magier in eine Gruppe, dann wird sie sofort weiß mit "1" und verschwindet aus "Es fehlt".
+- Prüfung: Wenn ein Jäger eingeteilt ist, dann steht bei "Aura des Volltreffers" gelb "Talent" und seine Gruppe; steht ein Schamane in Gruppe 2, dann steht bei "Totem des Windzorns" "Gr. 2".
+- Prüfung: Wenn du mit der Maus auf eine Zeile gehst, dann nennt der Tooltip die Klasse und die eingeteilten Spieler, die ihn bringen.
+- Prüfung: Wenn noch niemand in einer Gruppe steht, aber Anmeldungen da sind, dann rechnet die Zeile "Es fehlt" mit allen und sagt "(alle Anmeldungen)".
+- Notiz: Spec docs/specs/2026-11-17-raid-buffs-im-planer.md. Nur Forever; zählt, was die Klassen bringen können, liest keine echten Buffs (das tut der Raid-Check, F-098).
+
 ### F-207 Raid-Aufstellung: Ziel beim Ziehen sichtbar
 - Version: 2.89.0
 - Status: gebaut
