@@ -1360,6 +1360,28 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Gilde
 
+### F-223 Termin des Anmelde-Bots aus Discord in den Kalender einfügen
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du das JSON eines Bot-Termins unter Gilde > Kalender, "Termin anlegen ...", "Aus Discord ..." einfügst, dann zeigt das Blatt den Tag des Termins, und das Formular hat Titel, Uhrzeit und Beschreibung.
+- Prüfung: Wenn du danach "Anlegen" klickst, dann steht der Termin im Spielkalender und auf Amisias Blatt.
+- Prüfung: Wenn du etwas anderes einfügst (z. B. den Text des Discord-Beitrags) und "Übernehmen" klickst, dann steht dort "Das ist kein Termin des Anmelde-Bots (JSON).", und das Formular bleibt, wie es war.
+- Prüfung: Wenn du dasselbe JSON auf der Seite Aufstellung unter "Einfügen" einfügst, dann stehen die Anmeldungen des Bots mit Rolle und Klasse in der Liste.
+- Prüfung: Wenn der Termin des Bots schon vorbei ist, dann füllt Amisia das Formular nicht und sagt "Der Termin liegt in der Vergangenheit."
+- Notiz: Spec docs/specs/2026-11-16-kalender-termin-aus-discord.md; DECISIONS D-148. Nutzer 2026-11-16: "können wir auch von hier termine (discord bot) in den kalender einfügen", dann "Passt, beide bauen".
+
+### F-222 Termine im Kalender bearbeiten und löschen
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du unter Gilde > Kalender deinen Termin wählst, "Bearbeiten" klickst, Titel und Uhrzeit änderst und "Speichern" klickst, dann steht im Chat "Termin geändert: ...", und Blatt und Spielkalender zeigen die neuen Werte.
+- Prüfung: Wenn du deinen Termin wählst, "Löschen" klickst und die Frage bestätigst, dann steht im Chat "Termin gelöscht: ...", und der Termin fehlt auf dem Blatt und im Spielkalender; mit "Abbrechen" bleibt er.
+- Prüfung: Wenn ein Gildenmitglied ohne Recht deinen Termin wählt, dann sieht es weder "Bearbeiten" noch "Löschen".
+- Prüfung: Wenn ein anderer sich angemeldet hat und du danach die Uhrzeit änderst, dann steht er weiter als angemeldet in der Liste.
+- Prüfung: Wenn das Kalenderfenster des Spiels offen ist, dann sind "Bearbeiten" und "Löschen" grau ("Erst den Spielkalender schließen.").
+- Notiz: Spec docs/specs/2026-11-16-kalender-bearbeiten-loeschen.md; DECISIONS D-147. Nutzer 2026-11-16: "können wir die sachen im Kalender auch bearbeiten und löschen", dann "Passt, beide bauen".
+
 ### F-219 Eigenen Aufruf ändern, Aufrufe für jetzt im Kalender
 - Version: 2.97.0
 - Status: gebaut

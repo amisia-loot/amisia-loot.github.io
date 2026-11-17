@@ -3885,7 +3885,7 @@ und Beschreibung (`AmisiaDB.calForm`).
 den ingame blizzards Kalender also das beide wege gehen", "vllt auch mit discord / bot", dann "Passt" (alle sechs
 Vorschläge der Spec). `AddEvent` ist laut Spiel ein #hwevent (kein #protected): aus einem Klick geht es.
 **Folge:** Keine neue Addon-Nachricht: das Spiel verteilt den Termin an die ganze Gilde, Amisia liest ihn wie jeden
-anderen. Weiter nicht in Amisia: Bearbeiten, Löschen, Kopieren, Einladen, Masseneinladen, Sperren, eigene (nicht
+anderen. Weiter nicht in Amisia: Bearbeiten, Löschen (beides seit 2026-11-16 doch: D-147), Kopieren, Einladen, Masseneinladen, Sperren, eigene (nicht
 Gilden-)Termine anlegen, Feiertage und Raid-Resets auf dem Blatt, eine Verbindung zu einem Discord-Bot (dafür bräuchte
 es dessen Schlüssel und einen Server: eigene Spec, falls gewünscht). Anmeldung, Aufstellung und Raid-Kalender bleiben
 bei "heute bis 14 Tage, nur Gildenereignisse".
@@ -4041,6 +4041,86 @@ gefragt ohne Antwort, offene Liste, Beute zurück, 4 s), `tests/test_layer_forei
 Layer, Warnung, Wechsel erst nach dem Layer), `tests/test_layer_change.lua` (offene Einladungen, eine je Sekunde,
 120 s), `tests/test_layer_window.lua` (Knopf "Suche stoppen", "Gruppe verlassen"),
 `tools/tests/test_contracts.py::test_two_prefixes_and_one_sender`.
+
+## D-147 Termine des Spielkalenders in Amisia ändern und löschen, soweit das Spiel es dem Spieler erlaubt
+
+**Datum:** 2026-11-16
+**Entscheidung:** Auf der Seite Gilde > Kalender stehen bei einem gewählten Termin des Spielkalenders (Gildenereignis,
+Gildenankündigung, eigener Termin; kein Aufruf der Gilde) "Bearbeiten" und "Löschen", wenn das Spiel es dem Spieler
+für diesen Termin erlaubt (F-222, Spec `docs/specs/2026-11-16-kalender-bearbeiten-loeschen.md`; ändert die "Folge" von
+D-142 in diesen zwei Punkten). Amisia fragt dafür das Spiel (`ContextMenuEventCanEdit`, `ContextMenuEventCanRemove`,
+die Fragen seines Rechtsklick-Menüs) und gibt niemandem ein eigenes Recht.
+- **Bearbeiten:** Amisia findet den Termin über seine `eventID` in der Tagesliste des Spiels, öffnet ihn (`OpenEvent`)
+  und zeigt das Formular von "Termin anlegen ..." mit seinen Werten. Der Termin bleibt im Spiel offen, solange das
+  Formular steht (`Cal.Hold`: kein eigenes Lesen öffnet währenddessen einen anderen), weil `UpdateEvent` wie `AddEvent`
+  einen Tastendruck braucht und das Öffnen erst später antwortet. "Speichern" setzt im selben Klick nur die geänderten
+  Felder (Titel, Beschreibung, Uhrzeit, Typ, Instanz nach dem Typ) und ruft `UpdateEvent`; ohne Änderung ist es grau
+  (Amisia vergleicht die Felder, das Spiel wird vor dem Aufruf noch mit `EventHaveSettingsChanged` gefragt). Tag und
+  Art eines Termins ändert Amisia nie, einen Termin, dessen Beginn vorbei ist, bietet es nicht zum Bearbeiten an.
+- **Löschen:** immer erst die Rückfrage mit Titel, Tag und Uhrzeit ("für die ganze Gilde, alle Anmeldungen gehen
+  verloren"). Ihr "Löschen" prüft, dass an der Stelle noch derselbe Termin steht und das Spiel es noch erlaubt, und
+  ruft im selben Klick `ContextMenuSelectEvent` und `ContextMenuEventRemove`.
+- **Nie:** im Kampf, bei offenem Kalenderfenster des Spiels, während eine Antwort aussteht oder Amisia den Kalender
+  liest oder schreibt, aus einem Timer oder einer Nachricht, als zweiter Versuch. Ein anderer Tag, eine andere Seite,
+  "Abbrechen", ein Kampf, das Kalenderfenster des Spiels oder ein im Spiel geschlossener Termin beenden ein Bearbeiten
+  ohne Änderung.
+- **Ferner Monat:** die Aufrufe des Spiels zählen vom gesetzten Monat und kennen nur ihn und seine Nachbarn. Für einen
+  Termin weiter weg setzt Amisia dessen Monat (`SetAbsMonth`) und danach den vorigen zurück, wie beim Lesen (D-142).
+  Bis dahin zeigt es die Links für die eigenen Termine (Ersteller) und fragt das Spiel, sobald der Monat gesetzt ist.
+- **Antwort:** die Kalender-Ereignisse des Spiels ohne Fehler (Bearbeiten: die eigene Aktion war offen oder der eigene
+  Termin wurde aktualisiert, und nichts ist mehr offen; ein Kalender-Ereignis eines anderen ist keine Antwort. Löschen:
+  der Termin ist aus der Liste seines Tages, solange der Monat noch gesetzt ist, von dem aus gezählt wurde), ein
+  Kalenderfehler mit dem Text des Spiels (das Formular bleibt für einen weiteren Versuch
+  offen), eine Sperre des Spiels für Amisia (beide Links bis /reload aus) oder nach 10 Sekunden keine Antwort. Im Chat
+  "Termin geändert: ..." bzw. "Termin gelöscht: ...".
+**Grund:** Nutzer 2026-11-16, mit einem Bild seines in Amisia angelegten Termins: "können wir die sachen im Kalender
+auch bearbeiten und löschen", dann "Passt, beide bauen" (alle sechs Vorschläge der Spec). Das Anlegen geht in Forever
+(F-217); Frage 3 jener Spec hatte Bearbeiten und Löschen bis dahin zurückgestellt.
+**Folge:** Keine neue Addon-Nachricht, kein neuer gespeicherter Schlüssel, keine Einstellung. Weiter nicht in Amisia:
+einen Termin auf einen anderen Tag verschieben oder seine Art wechseln (das kann auch der Spielkalender nicht: löschen
+und neu anlegen), Kopieren, Einladen, einzelne Teilnehmer entfernen, Sperren, Moderator, eine Nachricht an die Gilde
+über die Änderung. Aufstellung und Anmeldung finden den Termin über seine `eventID` auch nach neuem Titel oder neuer
+Uhrzeit; nach dem Löschen zeigt eine übernommene Aufstellung wie bisher "Ereignis nicht mehr im Kalender".
+**Durchgesetzt durch:** `tests/test_calendar_edit.lua` (Links nur mit dem Recht des Spiels, grau bei offenem
+Kalenderfenster und im Kampf, Formular mit den Werten, Art fest, nur geänderte Felder im Klick, Instanz nach dem Typ,
+Chatzeilen, Abbrechen, anderer Tag, andere Seite, Kampf, Kalenderfenster, Fehler mit zweitem Versuch, Seite während
+des Speicherns verlassen, fremdes Kalender-Ereignis ist keine Antwort, Titel und Instanz beim Bearbeiten, Termin ohne
+Instanz, ferner Monat beim Bearbeiten, Monatswechsel während des Löschens, Abbrechen während des Öffnens, vergangener
+Termin, Rückfrage, Löschen im Klick, inzwischen gelöschter Termin, ferner Monat mit `SetAbsMonth` und zurück, Sperre
+bis /reload, keine Antwort), `tools/tests/test_contracts.py` (Dateien).
+
+## D-148 Termine des Anmelde-Bots aus Discord: nur als eingefügtes JSON, keine Verbindung, kein Schlüssel
+
+**Datum:** 2026-11-16
+**Entscheidung:** Ein Termin, den der Offizier im Anmelde-Bot in Discord angelegt hat, kommt über Kopieren und
+Einfügen in den Spielkalender (F-223, Spec `docs/specs/2026-11-16-kalender-termin-aus-discord.md`): im Formular
+"Termin anlegen ..." öffnet "Aus Discord ..." ein Einfügefeld für das JSON des Termins (der Bot gibt jeden einzelnen
+Termin unter einer öffentlichen Adresse ohne Schlüssel heraus, sein Dashboard hat dafür einen Knopf). Amisia liest
+daraus nur `title`, `description`, `startTime` und `signUps` und füllt das Formular: Tag und Uhrzeit in der Zeit des
+Spielkalenders (der feste Zeitpunkt plus der Abstand von Realm-Uhr und PC-Uhr, `CC.Skew`, wie "Für Discord"
+rückwärts), Titel (31 Zeichen; ein gekürzter steht ganz am Anfang der Beschreibung), Beschreibung (255, ohne
+Discord-Zeichen, Emoji, Erwähnungen und Links), Art "Gildenereignis (mit Anmeldung)" und die Instanz aus der Liste
+des Spiels, deren Name im Titel steht (sonst wählt der Spieler). Das Blatt springt auf den Tag des Termins. Steht
+dort zur selben Uhrzeit schon ein Termin, sagt das Formular es und lässt das Anlegen zu. Angelegt wird erst mit dem
+Klick des Spielers auf "Anlegen" (D-142). Dasselbe JSON liest auch "Einfügen" der Aufstellung: die Anmeldungen mit
+Rolle (`roleName`, sonst aus Klasse und Spezialisierung), Klasse und Stand (abwesend, vorläufig, Ersatzbank für die
+Warteliste des Bots) in die Nacht des Termins, nach den Regeln des Bot-Texts (80 Namen, Abgleich mit der Gilde).
+**Grund:** Nutzer 2026-11-16, mit einem Bild der Seite des Bots: "können wir auch von hier termine (discord bot) in
+den kalender einfügen", dann "Passt, beide bauen" (alle sechs Vorschläge der Spec). Ein Addon hat kein Netz; die Liste
+aller Termine eines Servers gibt der Bot nur mit dem Schlüssel eines Admins heraus, und ein solcher Schlüssel gehört
+weder ins Addon noch auf die Website (D-142, Folge).
+**Folge:** Keine Verbindung zum Bot, kein Schlüssel, kein eigener Server, kein Umweg über die Website, nichts zurück
+in den Bot; kein Abgleich, wenn sich der Termin im Bot später ändert (der Offizier ändert den Spieltermin selbst,
+D-147, oder fügt neu ein); je Klick ein Termin. Kein Name und kein Link des Bots in Amisias Texten. Eingefügter Text
+ist unvertraut (D-12, D-26): höchstens 262144 Zeichen und 20 Ebenen, gezählt bevor der JSON-Leser des Clients ihn
+sieht; jedes Feld geprüft und gekürzt; ein `startTime` außerhalb 2017 bis 2100 ist kein Termin. Ohne den JSON-Leser
+des Clients (`C_EncodingUtil.DeserializeJSON`) fehlt der Link. Gebaut ist es nach der Dokumentation des Bots
+(2026-11-16); an einem echten Termin wird es vor dem Release geprüft (Frage 1 der Spec).
+**Durchgesetzt durch:** `tests/test_calendar_bot.lua` (nur ein Termin des Bots, Größe und Tiefe, Millisekunden,
+Discord-Zeichen, Tag und Uhrzeit, Titel und Instanz, langer Titel, kein Instanzname, vergangen und zu weit voraus,
+Einfügefeld mit Grund, Formular auf dem Tag des Termins, schon ein Termin zur selben Zeit, nichts angelegt ohne Klick,
+die Aufrufe des Klicks, "Zurück", Anmeldungen mit Rolle, Klasse und Stand in der Nacht des Termins, Client ohne
+JSON-Leser), `tools/tests/test_contracts.py` (Dateien).
 
 ## D-149 Buffs der Aufstellung: was die Klassen der Gruppen bringen können, aus den Tabellen von Forever
 

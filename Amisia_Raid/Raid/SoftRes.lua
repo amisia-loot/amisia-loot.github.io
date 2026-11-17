@@ -113,6 +113,8 @@ local function tooDeep(json, max)
     end
     return false
 end
+-- the calendar reads a pasted event of the sign-up bot with the same bound (Raid/CalendarBot.lua, F-223)
+ns.JsonTooDeep = tooDeep
 
 -- A name of the code without its "-Realm". A Forever surname may hold a dash ("Anna Stein-Herz"):
 -- with a surname only the own realm or a second dash in the surname is taken for the realm.

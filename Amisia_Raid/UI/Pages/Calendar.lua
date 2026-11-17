@@ -16,7 +16,15 @@
 -- invite of the game calendar (ns.Cal.Month), the latter two in their own colour and without a
 -- participant list. "Termin anlegen ..." turns the right inset into a form whose "Anlegen" makes a guild
 -- event or announcement in the game calendar with the same click (ns.CalCreate); "Für Discord" shows the
--- chosen date as Discord text to copy. Nothing else here writes into the calendar.
+-- chosen date as Discord text to copy.
+-- F-222 (D-147): "Bearbeiten" and "Löschen" stand beside it for an event the game lets the player change
+-- or delete (ns.CalEdit.Rights). "Bearbeiten" opens the event and shows the same form with its values
+-- ("Speichern" writes the changed fields with that click; day and kind stay); "Löschen" asks first.
+-- Another day, another page, a fight or the client's calendar window end an edit without a change.
+-- F-223 (D-148): the form's "Aus Discord ..." takes the pasted JSON of an event of the sign-up bot
+-- (ns.CalBot.Form) and fills the form with its day, time, title and description; the player still clicks
+-- "Anlegen" himself.
+-- Nothing else here writes into the calendar.
 -- F-218 (D-143): the guild's running calls (ns.GuildCalls: the own and the others') stand on their day in their
 -- own colour, one for "jetzt" (or whose time has come) tonight with "jetzt" instead of a time (F-219, D-144); the
 -- inset names art, creator, level and roles, "Zum Aufruf" opens the page Aufrufe at that call (the own one: its
@@ -49,14 +57,22 @@ local chosenAuto          -- chosen by the page (the next date), not by a click:
 local chosenTerm          -- the chosen date of that day (its index in the day's dates)
 local asked               -- the dates were asked for once (ns.SignupLoadTerms)
 local reader
-local mode                -- the right inset: nil the day, "form" a new event, "discord" the text to copy
+local mode                -- the right inset: nil the day, "form" a new event, "edit" an event's values, "discord" the text to copy,
+                          -- "bot" the paste field for an event of the sign-up bot
+local botError            -- why the last paste was no event
 local months = {}         -- [y * 12 + m - 1] = { list (ns.Cal.Month), at = GetTime(), dirty, far }
 local monthAsking         -- the month being read
 local form = {}           -- the form's values (kind, type, tex, texTitle, time, title, desc)
 local formError, formWait -- the form's last reason; an entry runs
 local KIND_COLOR = { GUILD_ANNOUNCEMENT = { 0.55, 0.78, 1 }, PLAYER = { 0.62, 0.86, 0.62 }, CALL = { 0.86, 0.68, 1 } }
 local CC = function() return ns.CalCreate end
+local CE = function() return ns.CalEdit end
+local CB = function() return ns.CalBot end
 local GC = function() return ns.GuildCalls end
+local editItem            -- the event the form changes (mode "edit")
+local editWait            -- an edit or a delete is being prepared (the event found, opened)
+local removeAsking        -- the question before a delete shows
+local dayError            -- why the last edit or delete did not work (the day's view)
 
 ---------------------------------------------------------------------------
 -- Dates and months
@@ -239,10 +255,24 @@ end
 ---------------------------------------------------------------------------
 -- Choosing
 ---------------------------------------------------------------------------
+-- Leaves an edit or a waiting delete without a change (another day, another page, "Abbrechen").
+local function endEdit()
+    if mode == "edit" then mode = nil end
+    editItem, editWait = nil, nil
+    if removeAsking then
+        removeAsking = nil
+        local c = _G.AmisiaConfirmFrame
+        if c and c:IsShown() then c:Hide() end
+    end
+    if CE() then CE().Cancel() end
+end
+
 local function choose(night, index)
+    if mode == "edit" or editWait or removeAsking then endEdit() end
+    dayError = nil
     chosen, chosenTerm, chosenAuto = night, index, false
     -- the Discord text belongs to one date; the form follows the chosen day
-    if mode == "discord" then mode = nil end
+    if mode == "discord" or mode == "bot" then mode = nil end
     formError = nil
     if reader then reader.Reset() end
     ns.Refresh()
@@ -319,6 +349,7 @@ local function dayOpen()
 end
 
 local function openForm()
+    if editWait then return end
     local last = CC().Form()
     form = { kind = last.kind, type = last.type, time = last.time, texTitle = last.tex }
     if form.kind == "announce" and not CC().CanAnnounce() then form.kind = "signup" end
@@ -334,6 +365,44 @@ local function openForm()
         page.descBox.box:SetText("")
         page.timeBox:SetText(ns.FormatTime(form.time))
     end
+    ns.Refresh()
+end
+
+-- "Aus Discord ...": the paste field for the JSON of an event of the sign-up bot (F-223).
+local function openBot()
+    mode, botError = "bot", nil
+    if page then page.botBox.box:SetText("") end
+    ns.Refresh()
+    if page and page.botBox.box.SetFocus then page.botBox.box:SetFocus() end
+end
+
+-- Takes the pasted event into the form: the sheet goes to its day, the form has its values. quiet: a
+-- paste still coming in (the text changed) shows no reason while it is no event yet.
+local function takeBot(quiet)
+    if mode ~= "bot" or not page then return end
+    local text = page.botBox.box:GetText() or ""
+    if text:match("^%s*$") then
+        if not quiet then botError = CB().Why("not") ns.Refresh() end
+        return
+    end
+    local r, why = CB().Form(text)
+    if not r then
+        if quiet then return end
+        botError = CB().Why(why)
+        return ns.Refresh()
+    end
+    local last = CC().Form()
+    form = { kind = "signup", type = r.type or last.type, tex = r.tex, texTitle = r.texTitle, time = r.time }
+    local t = date("*t", r.day)
+    showMonth(t.year, t.month)
+    chosen, chosenTerm, chosenAuto = key(r.day), nil, false
+    formError, formWait, botError = nil, nil, nil
+    mode = "form"
+    page.titleBox:SetText(r.title)
+    page.descBox.box:SetText(r.desc)
+    page.timeBox:SetText(ns.FormatTime(form.time))
+    page.botBox.box:SetText("")
+    if reader then reader.Reset() end
     ns.Refresh()
 end
 
@@ -387,11 +456,175 @@ local function create()
     ns.Refresh()
 end
 
+---------------------------------------------------------------------------
+-- Edit and delete (F-222): ns.CalEdit holds the session, the form shows its values
+---------------------------------------------------------------------------
+local function fail(text)
+    dayError = text
+    ns.msg(text)
+end
+
+-- "Bearbeiten": the event is found and opened (the answer comes a moment later), then the form shows.
+local function startEdit()
+    local t = currentItem()
+    if not t or editWait or formWait or mode ~= nil then return end
+    dayError = nil
+    editWait = true
+    local started, why = CE().Begin(t, "edit", function(ok, reason, info)
+        editWait = nil
+        if not ok then
+            fail(CE().Why(reason))
+            return ns.Refresh()
+        end
+        editItem = t
+        form = { kind = info.kind or "GUILD_EVENT", type = info.type, time = info.time, tex = info.tex }
+        form.texTitle, form.texShown = CC().TextureAt(info.type, info.tex)
+        formError, formWait = nil, nil
+        mode = "edit"
+        if page then
+            page.titleBox:SetText(CC().Clean(info.title, CC().TITLE_CHARS) or "")
+            page.descBox.box:SetText(CC().Clean(info.desc, CC().DESC_CHARS) or "")
+            page.timeBox:SetText(ns.FormatTime(form.time))
+        end
+        ns.Refresh()
+    end)
+    if not started then
+        editWait = nil
+        fail(CE().Why(why))
+    end
+    ns.Refresh()
+end
+
+-- The form's values as they stand (the typed time when it can be read).
+local function editValues()
+    return { type = form.type, tex = form.tex, time = ns.ParseTime(page.timeBox:GetText()) or form.time,
+             title = page.titleBox:GetText(), desc = page.descBox.box:GetText() }
+end
+
+-- "Speichern": the changed fields and UpdateEvent inside this click.
+local function save()
+    if formWait then return end
+    formError = nil
+    if not typedTime() then
+        formError = CC().Why("time")
+        return ns.Refresh()
+    end
+    local f = editValues()
+    local function left(text)
+        -- the session is over: back to the day with the reason
+        if not CE().Session() then
+            mode, editItem = nil, nil
+            fail(text)
+        end
+    end
+    local started, why = CE().Save(f, function(ok, reason, detail)
+        formWait = nil
+        if ok then
+            ns.msg(L["Termin geändert: %s"]:format(CE().Label(f.at, f.cleanTitle)))
+            mode, editItem = nil, nil
+            for _, mo in pairs(months) do mo.dirty = true end
+        else
+            local text = CE().Why(reason)
+            if detail and reason == "error" then text = text .. " " .. tostring(detail) end
+            if reason ~= "same" then text = text .. " " .. L["Ändere ihn bitte im Spielkalender."] end
+            formError = text
+            -- the player left the form meanwhile: the session ends with the answer
+            if mode ~= "edit" then CE().Cancel() end
+            left(text)
+        end
+        ns.Refresh()
+    end)
+    if not started then
+        formError = CE().Why(why)
+        left(formError)
+    elseif formWait == nil and mode == "edit" and not formError then
+        local s = CE().Session()
+        formWait = s and s.job and true or nil
+    end
+    ns.Refresh()
+end
+
+-- "Löschen": the event is found and the game asked, then the question; its "Löschen" deletes inside that click.
+local function startRemove()
+    local t = currentItem()
+    if not t or editWait or formWait or mode ~= nil then return end
+    dayError = nil
+    editWait = true
+    local started, why = CE().Begin(t, "remove", function(ok, reason)
+        editWait = nil
+        if not ok then
+            fail(CE().Why(reason))
+            return ns.Refresh()
+        end
+        local label = CE().Label(t.at, t.title)
+        local when = ("%s %s"):format(ns.RaidCalView.DayText(t.at), date("%H:%M", t.at))
+        local text = (t.kind == "PLAYER" and L["Termin \"%s\" am %s löschen? Er verschwindet für alle Eingeladenen."]
+            or L["Termin \"%s\" am %s löschen? Er verschwindet für die ganze Gilde, alle Anmeldungen gehen verloren."]):format(t.title or "?", when)
+        removeAsking = true
+        W.Confirm(L["Termin löschen"], text, L["Löschen"], function()
+            removeAsking = nil
+            local run, why2 = CE().Remove(function(ok2, reason2, detail)
+                formWait = nil
+                if ok2 then
+                    ns.msg(L["Termin gelöscht: %s"]:format(label))
+                    for _, mo in pairs(months) do mo.dirty = true end
+                else
+                    local text2 = CE().Why(reason2)
+                    if detail and reason2 == "error" then text2 = text2 .. " " .. tostring(detail) end
+                    fail(text2 .. " " .. L["Lösche ihn bitte im Spielkalender."])
+                end
+                ns.Refresh()
+            end)
+            if not run then
+                fail(CE().Why(why2))
+            else
+                local s = CE().Session()
+                formWait = s and s.job and true or nil
+            end
+            ns.Refresh()
+        end, function()
+            if not removeAsking then return end
+            removeAsking = nil
+            CE().Cancel()
+            ns.Refresh()
+        end)
+        ns.Refresh()
+    end)
+    if not started then
+        editWait = nil
+        fail(CE().Why(why))
+    end
+    ns.Refresh()
+end
+
+-- The module ended a session itself (a fight, the client's calendar window, the event closed in the game).
+ns.Listen("CALEDIT_ENDED", function(why)
+    local was = mode == "edit" or removeAsking
+    if mode == "edit" then mode, editItem = nil, nil end
+    if removeAsking then
+        removeAsking = nil
+        local c = _G.AmisiaConfirmFrame
+        if c and c:IsShown() then c:Hide() end
+    end
+    if was and CE() then dayError = CE().Why(why) end
+    if page and page:IsVisible() and ns.CurrentPage() == "calendar" then ns.Refresh() end
+end)
+
+-- Why "Speichern" cannot work now (nil: it can), without the form's own fields.
+local function editBlocker()
+    if CE().Refused() then return "refused" end
+    if InCombatLockdown() then return "combat" end
+    if ns.Cal.WindowShown() then return "window" end
+    return nil
+end
+
 -- Opens the page at a night (default: the next date, else today).
 function ns.ShowCalendar(night)
     if night then
         local y, m = night:match("^(%d+)%-(%d+)")
         if y then showMonth(tonumber(y), tonumber(m)) end
+        if mode == "edit" or editWait or removeAsking then endEdit() end
+        dayError = nil
         chosen, chosenTerm, chosenAuto = night, nil, false
     end
     ns.ShowPage("calendar")
@@ -610,6 +843,10 @@ local function build(parent)
         return w
     end
     f.kindLabel = label(L["Art"])
+    f.formBot = W.Link(F, L["Aus Discord ..."], openBot)
+    W.FitChip(f.formBot)
+    f.formBot:SetPoint("TOPRIGHT", F, "TOPRIGHT", -C.INNER, 4)
+    W.Tooltip(f.formBot, L["Termin aus Discord"], L["Füllt das Formular aus einem Termin des Anmelde-Bots in Discord: dort das JSON des Termins kopieren und hier einfügen."])
     f.kind = field(W.Picker(F, FW, function(v)
         form.kind = v or "signup"
         ns.Refresh()
@@ -618,21 +855,32 @@ local function build(parent)
     f.typePick = field(W.Picker(F, FW, function(v)
         local before = form.texTitle
         form.type = v or 4
-        form.tex, form.texTitle = nil, nil
-        if f.titleBox:GetText() == (before or "") then f.titleBox:SetText("") end
+        form.tex, form.texTitle, form.texShown = nil, nil, nil
+        -- a new event's title follows its instance; an event being changed keeps its title
+        if mode ~= "edit" and f.titleBox:GetText() == (before or "") then f.titleBox:SetText("") end
         ns.Refresh()
     end))
     f.texY = y
     f.texLabel = label(L["Instanz##Termin"])
     f.texPick = field(W.Picker(F, FW, function(v)
         local before = form.texTitle
-        form.tex, form.texTitle = v, nil
+        form.tex, form.texTitle, form.texShown = v, nil, nil
         for _, x in ipairs(CC().Textures(form.type)) do
             if x.index == v then form.texTitle = x.title end
         end
-        -- the title follows the instance until the player typed one of his own
-        local text = f.titleBox:GetText()
-        if text == "" or text == before then f.titleBox:SetText(CC().Clean(form.texTitle, CC().TITLE_CHARS) or "") end
+        if mode == "edit" then
+            -- the event's own instance picked again: its own index (another difficulty of the same name stays)
+            local es = CE().Session()
+            local info = es and es.info
+            if info and info.type == form.type and info.tex then
+                local _, shown = CC().TextureAt(info.type, info.tex)
+                if shown == v then form.tex, form.texShown = info.tex, v end
+            end
+        else
+            -- the title follows the instance until the player typed one of his own
+            local text = f.titleBox:GetText()
+            if text == "" or text == before then f.titleBox:SetText(CC().Clean(form.texTitle, CC().TITLE_CHARS) or "") end
+        end
         ns.Refresh()
     end))
     f.restY = y
@@ -654,10 +902,21 @@ local function build(parent)
     f.descBox:SetSize(FW, C.DESC_H)
     f.descBox.box:SetMaxLetters(CC().DESC_CHARS)
     f.formHint = W.Text(F, T.FONT.hint, FW, true)
-    f.formAdd = W.Button(F, L["Anlegen##Termin"], C.FORM_BUTTON_W, create)
+    f.formAdd = W.Button(F, L["Anlegen##Termin"], C.FORM_BUTTON_W, function()
+        if mode == "edit" then save() else create() end
+    end)
     f.formCancel = W.Link(F, L["Abbrechen"], function()
+        if mode == "edit" then endEdit() end
         mode, formError = nil, nil
         ns.Refresh()
+    end)
+    -- an edit: "Speichern" is on only while a value differs from the event's (the boxes change without a refresh)
+    local since = 0
+    F:SetScript("OnUpdate", function(_, elapsed)
+        since = since + (elapsed or 0)
+        if since < 0.2 or mode ~= "edit" or formWait then return end
+        since = 0
+        f.formAdd:SetEnabled(editBlocker() == nil and CE().Changes(editValues()) ~= nil)
     end)
     W.FitChip(f.formCancel)
     f.formAdd:SetPoint("BOTTOMRIGHT", -C.INNER, C.INNER)
@@ -681,6 +940,29 @@ local function build(parent)
     f.discordClose:SetPoint("BOTTOMRIGHT", -C.INNER, C.INNER)
     f.discordClose:Hide()
 
+    -- an event of the sign-up bot, pasted (F-223)
+    f.botBox = W.EditArea(f.right)
+    f.botBox:SetPoint("TOPLEFT", C.INNER, -C.TERM_Y)
+    f.botBox:SetPoint("TOPRIGHT", -C.INNER, -C.TERM_Y)
+    f.botBox:SetHeight(C.DISCORD_H)
+    f.botBox:Hide()
+    f.botBox.box:HookScript("OnTextChanged", function(_, user)
+        if user and mode == "bot" then takeBot(true) end
+    end)
+    f.botHint = W.Text(f.right, T.FONT.hint, FW, true)
+    f.botHint:SetPoint("TOPLEFT", f.botBox, "BOTTOMLEFT", 0, -C.FORM_GAP)
+    f.botHint:Hide()
+    f.botTake = W.Button(f.right, L["Übernehmen"], C.FORM_BUTTON_W, function() takeBot(false) end)
+    f.botTake:SetPoint("BOTTOMRIGHT", -C.INNER, C.INNER)
+    f.botTake:Hide()
+    f.botBack = W.Link(f.right, L["Zurück"], function()
+        mode, botError = "form", nil
+        ns.Refresh()
+    end)
+    W.FitChip(f.botBack)
+    f.botBack:SetPoint("RIGHT", f.botTake, "LEFT", -T.LAYOUT.ITEM_GAP, 0)
+    f.botBack:Hide()
+
     -- the bottom row: the read's state, the buttons; the hint under it
     f:Footer({ { "hint", help = true } })
     f.status = W.Text(f, T.FONT.hint)
@@ -700,6 +982,16 @@ local function build(parent)
     end)
     W.FitChip(f.discord)
     W.Tooltip(f.discord, L["Für Discord"], L["Der gewählte Termin als Text für Discord, zum Kopieren."])
+    f.edit = W.Link(f, L["Bearbeiten"], startEdit)
+    W.FitChip(f.edit)
+    W.Tooltip(f.edit, L["Termin bearbeiten"], function(self)
+        return self.why or L["Ändert Typ, Uhrzeit, Titel und Beschreibung dieses Termins im Spielkalender. Die Anmeldungen bleiben."]
+    end)
+    f.remove = W.Link(f, L["Löschen"], startRemove)
+    W.FitChip(f.remove)
+    W.Tooltip(f.remove, L["Termin löschen"], function(self)
+        return self.why or L["Löscht diesen Termin im Spielkalender, für alle. Amisia fragt vorher nach."]
+    end)
     f.toCall = W.Link(f, L["Zum Aufruf"], function()
         local t = currentItem()
         if not (t and t.call) then return end
@@ -712,7 +1004,7 @@ local function build(parent)
     f.create = W.Button(f, L["Termin anlegen ..."], C.BUTTON_W, openForm)
     W.FitChip(f.create, C.BUTTON_W)
     W.Tooltip(f.create, L["Termin anlegen"], L["Legt an diesem Tag einen Gildentermin im Spielkalender an. Die ganze Gilde sieht ihn dort, auch ohne Amisia."])
-    f:BottomRow({ { f.status, fill = true } }, { f.toCall, f.discord, f.lineup, f.signup, f.create }, { shown = true })
+    f:BottomRow({ { f.status, fill = true } }, { f.toCall, f.discord, f.edit, f.remove, f.lineup, f.signup, f.create }, { shown = true })
     f.hint:SetText(L["Klick auf einen Tag: seine Termine und wer kommt. Der Punkt zeigt deinen Stand."])
 
     -- shown: on the screen, not only the open page of a closed window (that read the calendar on every
@@ -729,14 +1021,22 @@ local function build(parent)
         ensureChosen()
         C_Timer.After(0, function() reader.Read(false) end)
     end)
+    -- another page or the window closed: an edit or a waiting delete ends without a change
+    f:SetScript("OnHide", function()
+        if mode == "edit" or editWait or removeAsking then endEdit() end
+    end)
     return f
 end
 
 -- The form's fields as the values stand (the instance row only for a raid or a dungeon).
-local function fillForm(f)
+local function fillForm(f, day)
     local FL, G = C.FORM_LABEL_H, C.FORM_GAP
+    local editing = mode == "edit"
+    f.formBot:SetShown(not editing and CB() ~= nil and CB().Available())
     local kinds = { { value = "signup", text = L["Gildenereignis (mit Anmeldung)"] } }
     if CC().CanAnnounce() then kinds[2] = { value = "announce", text = L["Gildenankündigung"] } end
+    -- an edit: the kind stays what it is
+    if editing then kinds = { { value = form.kind, text = CC().KIND_WORD[form.kind] and L[CC().KIND_WORD[form.kind]] or "?" } } end
     f.kind:SetValues(kinds)
     f.kind:SetValue(form.kind)
     local types = {}
@@ -751,7 +1051,7 @@ local function fillForm(f)
         local vals = {}
         for _, x in ipairs(texs) do vals[#vals + 1] = { value = x.index, text = x.title } end
         f.texPick:SetValues(vals)
-        f.texPick:SetValue(form.tex)
+        f.texPick:SetValue(form.texShown or form.tex)
         if not form.tex then f.texPick.label:SetText(T.GREY .. (#vals > 0 and L["Instanz wählen"] or L["Das Spiel nennt keine Instanzen."]) .. "|r") end
     end
     local y = withTex and f.restY or f.texY
@@ -770,17 +1070,32 @@ local function fillForm(f)
     at(f.descBox, FL)
     y = y + FL + C.DESC_H + G
     at(f.formHint)
-    local blocker = CC().Blocker()
+    local blocker
+    if editing then blocker = editBlocker() else blocker = CC().Blocker() end
     if formWait then
-        f.formHint:SetText(L["Wird im Spielkalender angelegt ..."])
+        f.formHint:SetText(editing and L["Wird im Spielkalender geändert ..."] or L["Wird im Spielkalender angelegt ..."])
     elseif formError then
         f.formHint:SetText(T.RED .. formError .. "|r")
     elseif blocker then
-        f.formHint:SetText(T.RED .. CC().Why(blocker) .. "|r")
+        f.formHint:SetText(T.RED .. (editing and CE().Why(blocker) or CC().Why(blocker)) .. "|r")
+    elseif editing then
+        f.formHint:SetText(GREY .. L["Die Anmeldungen bleiben. Tag und Art lassen sich nicht ändern."] .. "|r")
     else
-        f.formHint:SetText(GREY .. L["Die ganze Gilde sieht den Termin im Spielkalender und kann sich anmelden."] .. "|r")
+        -- a date of the day at the same time (a pasted event that stands already): said, not refused
+        local same
+        local mins = ns.ParseTime(f.timeBox:GetText()) or form.time
+        for _, e in ipairs(day or {}) do
+            local d = not e.call and date("*t", e.at)
+            if d and d.hour * 60 + d.min == mins then same = e break end
+        end
+        if same then
+            f.formHint:SetText(T.ORANGE .. L["Um %s steht schon \"%s\" im Kalender."]:format(ns.FormatTime(mins), same.title or "?") .. "|r")
+        else
+            f.formHint:SetText(GREY .. L["Die ganze Gilde sieht den Termin im Spielkalender und kann sich anmelden."] .. "|r")
+        end
     end
-    f.formAdd:SetEnabled(not formWait and blocker == nil)
+    f.formAdd:SetText(editing and L["Speichern"] or L["Anlegen##Termin"])
+    f.formAdd:SetEnabled(not formWait and blocker == nil and (not editing or CE().Changes(editValues()) ~= nil))
 end
 
 local function fillRight(f, terms, raids)
@@ -792,10 +1107,40 @@ local function fillRight(f, terms, raids)
     -- the form needs a day it can take; the Discord text a date
     if mode == "form" and not (dayOpen() or formWait) then mode = nil end
     if mode == "discord" and not t then mode = nil end
-    f.dayTitle:SetText(at and (mode == "form" and L["Neuer Termin: %s"]:format(V.DayText(at)) or V.DayText(at)) or "")
+    -- an edit lives as long as its session (a write still running counts)
+    if mode == "edit" and not (CE() and CE().Session()) and not formWait then mode, editItem = nil, nil end
+    local head = at and V.DayText(at) or ""
+    if at and mode == "form" then head = L["Neuer Termin: %s"]:format(head) end
+    if at and mode == "edit" then head = L["Termin ändern: %s"]:format(head) end
+    if mode == "bot" then
+        if not (CB() and CB().Available()) then mode = nil else head = L["Termin aus Discord"] end
+    end
+    f.dayTitle:SetText(head)
     local inDay = mode == nil
-    f.form:SetShown(mode == "form")
-    if mode == "form" then fillForm(f) end
+    local inForm = mode == "form" or mode == "edit"
+    f.form:SetShown(inForm)
+    if inForm then
+        -- the dates of the chosen calendar day (the day's list is the night's: an event before the
+        -- night's start stands under the night before)
+        local same = {}
+        if chosen and at then
+            for _, k in ipairs({ key(at - DAY), chosen }) do
+                for _, e in ipairs(terms[k] or {}) do
+                    if not e.call and date("%Y-%m-%d", e.at) == chosen then same[#same + 1] = e end
+                end
+            end
+        end
+        fillForm(f, same)
+    end
+    local inBot = mode == "bot"
+    f.botBox:SetShown(inBot)
+    f.botHint:SetShown(inBot)
+    f.botTake:SetShown(inBot)
+    f.botBack:SetShown(inBot)
+    if inBot then
+        f.botHint:SetText(botError and (T.RED .. botError .. "|r")
+            or L["Im Dashboard des Bots beim Termin auf \"JSON\" klicken, alles markieren (Strg+A), kopieren (Strg+C) und hier einfügen (Strg+V)."])
+    end
     f.discordBox:SetShown(mode == "discord")
     f.discordHint:SetShown(mode == "discord")
     f.discordClose:SetShown(mode == "discord")
@@ -912,12 +1257,24 @@ local function fillRight(f, terms, raids)
     W.FitChip(f.signup, C.BUTTON_W)
     f.signup:SetShown(sign ~= nil and mode == nil)
     f.lineup:SetShown(sign ~= nil and mode == nil and ns.LineupAllowed ~= nil and ns.LineupAllowed() or false)
-    f.discord:SetShown(t ~= nil and not t.call and mode ~= "form")
+    f.discord:SetShown(t ~= nil and not t.call and not inForm and not inBot)
+    -- edit and delete: only what the game lets the player do with this event; grey with the reason
+    local rights = inDay and t and CE() and CE().IsEvent(t) and CE().Rights(t) or nil
+    local stop = rights and (rights.edit or rights.remove) and CE().Blocker() or nil
+    local why = stop and CE().Why(stop) or nil
+    f.edit:SetShown(rights and rights.edit or false)
+    f.remove:SetShown(rights and rights.remove or false)
+    f.edit.why, f.remove.why = why, why
+    f.edit:SetEnabled(not stop and not editWait and not formWait)
+    f.remove:SetEnabled(not stop and not editWait and not formWait)
     f.toCall:SetShown(t ~= nil and t.call ~= nil and mode == nil)
     local open = dayOpen()
-    f.create:SetShown(mode ~= "form" and IsInGuild() and CC().Available() and open and true or false)
-    f.create:SetEnabled(CC().Refused() == nil)
-    f.status:SetText(sign and inDay and reader.Status(sign) or "")
+    f.create:SetShown(not inForm and not inBot and IsInGuild() and CC().Available() and open and true or false)
+    f.create:SetEnabled(CC().Refused() == nil and not editWait)
+    local status = sign and inDay and reader.Status(sign) or ""
+    if inDay and editWait then status = L["Termin wird im Spielkalender gesucht ..."] end
+    if inDay and dayError and not editWait then status = T.RED .. dayError .. "|r" end
+    f.status:SetText(status)
     f:BottomRow()
 end
 

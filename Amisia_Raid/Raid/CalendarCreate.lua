@@ -8,8 +8,8 @@
 --   EventSetDescription, EventSetTime, EventSetType, EventSetTextureID (after the type), AddEvent
 -- all inside the click: AddEvent needs a hardware event. Never in combat, never while the client's
 -- calendar window is shown or an own read holds an event open (the new event replaces the open one),
--- never while an answer is pending, never from a timer or a message, never retried. No edit, no
--- delete, no invites (D-142). The answer: CALENDAR_NEW_EVENT (made), CALENDAR_UPDATE_ERROR* (its
+-- never while an answer is pending, never from a timer or a message, never retried. No invites
+-- (D-142); edit and delete are Raid/CalendarEdit.lua (F-222, D-147). The answer: CALENDAR_NEW_EVENT (made), CALENDAR_UPDATE_ERROR* (its
 -- text), ADDON_ACTION_BLOCKED/FORBIDDEN for Amisia (the game refuses: the button stays off until
 -- /reload), else none within CC.WAIT seconds.
 local ADDON, ns = ...
@@ -81,6 +81,20 @@ function CC.Textures(typ)
     -- an empty answer (the calendar not loaded yet) is asked again next time
     if #out > 0 then texCache[typ] = out end
     return out
+end
+
+-- The instance at index of a type's list (EventGetTextures, what GetEventInfo's textureIndex counts in):
+-- its title and the index CC.Textures lists that title under (the picker's value); nil when unknown.
+function CC.TextureAt(typ, index)
+    if (typ ~= 0 and typ ~= 1) or type(index) ~= "number" then return nil end
+    local list = call("EventGetTextures", typ)
+    local t = type(list) == "table" and list[index]
+    local title = type(t) == "table" and ns.Cal.Clean(t.title, 60)
+    if not title then return nil end
+    for _, x in ipairs(CC.Textures(typ)) do
+        if x.title == title then return title, x.index end
+    end
+    return title, index
 end
 
 -- The calendar day today (the client's calendar time, else the own clock) as noon of that day, and

@@ -15,6 +15,23 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
     is missing (green "Alle Buffs da" when nothing is); with nobody placed it counts every sign-up. Forever only,
     nothing is sent or inspected. New files in the TOCs: restart the game completely once after the update.
 
+- feat(calendar): paste an event of the Discord sign-up bot into the calendar (F-223)
+
+    The form of "Termin anlegen ..." under Gilde > Kalender has "Aus Discord ...": paste the JSON of an event of
+    the sign-up bot (its dashboard has a "JSON" button at the event), and the sheet jumps to the event's day with
+    title, time, description and, when the title names one, the instance filled in. You check the form and click
+    "Anlegen" as before. The same JSON pasted under "Einfügen" on the lineup page gives the bot's sign-ups with
+    role, class and state. Amisia never connects to the bot and needs no key.
+
+- feat(calendar): edit and delete events of the game calendar from Amisia (F-222)
+
+    Under Gilde > Kalender a chosen event now has "Bearbeiten" and "Löschen" beside "Für Discord", but only when
+    the game lets you change or delete that event (your own events, or what your guild rank allows). "Bearbeiten"
+    opens the form of "Termin anlegen ..." with the event's type, instance, time, title and description;
+    "Speichern" writes what you changed, and everyone who signed up stays signed up. "Löschen" asks first, then
+    removes the event for the whole guild. Day and kind of an event cannot be changed, as in the game calendar.
+    Neither works in combat or while the game's calendar window is open.
+
 ## [v2.99.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.99.1) (2026-11-17)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.99.0...v2.99.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

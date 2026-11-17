@@ -2267,7 +2267,8 @@ function STUB.calendar(opts)
                     startTime = { year = t.year, month = t.month, monthDay = t.day, hour = t.hour, minute = t.min, weekday = t.wday },
                     calendarType = e.calendarType or "GUILD_EVENT", sequenceType = e.sequenceType or "", eventType = e.eventType or 4,
                     inviteStatus = e.inviteStatus or 7, modStatus = e.modStatus or "", invitedBy = e.invitedBy or "",
-                    inviteType = e.inviteType or 1, iconTexture = 0 }
+                    inviteType = e.inviteType or 1, iconTexture = 0,
+                    description = e.description, textureIndex = e.textureIndex, canEdit = e.canEdit, canRemove = e.canRemove }
             end
         end
         cal.setMonthEvents(opts.month)
@@ -2284,6 +2285,7 @@ function STUB.calendar(opts)
             end
             return out
         end
+        cal.onDay = onDay
         C.GetMonthInfo = function(off)
             local y, m = ym(off)
             local days = tonumber(os.date("%d", os.time({ year = y, month = m + 1, day = 0, hour = 12 })))
@@ -2362,6 +2364,125 @@ function STUB.calendar(opts)
                 STUB.fire("CALENDAR_NEW_EVENT", false)
                 STUB.fire("CALENDAR_UPDATE_EVENT_LIST")
             end)
+        end
+    end
+    -- opts.edit (with opts.month): edit and delete of the month's events (F-222). An event may be
+    -- changed and deleted by its creator (modStatus "CREATOR") unless its canEdit / canRemove says
+    -- otherwise. OpenEvent(offset, day, index) opens the day's event (CALENDAR_OPEN_EVENT at once),
+    -- GetEventInfo names its description and textureIndex, GetEventIndex its place. The EventSet*
+    -- calls of an open event collect in cal.pendingEdit; UpdateEvent writes them after 0.3 s
+    -- (CALENDAR_UPDATE_EVENT, CALENDAR_UPDATE_EVENT_LIST); ContextMenuSelectEvent +
+    -- ContextMenuEventRemove take the event out of the month after 0.3 s (CALENDAR_UPDATE_EVENT_LIST).
+    -- cal.fail[name]: CALENDAR_UPDATE_ERROR instead; cal.block[name]: ADDON_ACTION_BLOCKED for Amisia;
+    -- cal.quiet[name]: no answer; opts.hw: outside a click (STUB.inClick) UpdateEvent is blocked.
+    -- cal.updates: every UpdateEvent { id, changes, inClick }; cal.removed: every remove { id, inClick,
+    -- selectedInClick }. CloseEvent fires CALENDAR_CLOSE_EVENT.
+    if opts.edit and opts.month then
+        cal.updates, cal.removed, cal.fail, cal.block, cal.quiet = {}, {}, {}, {}, {}
+        local function can(e, key)
+            if e[key] ~= nil then return e[key] end
+            return e.modStatus == "CREATOR"
+        end
+        C.ContextMenuEventCanEdit = function(off, day, i)
+            local e = cal.onDay(off, day)[i]
+            return e ~= nil and can(e, "canEdit")
+        end
+        C.ContextMenuEventCanRemove = function(off, day, i)
+            local e = cal.onDay(off, day)[i]
+            return e ~= nil and can(e, "canRemove")
+        end
+        C.OpenEvent = function(off, day, i)
+            log("OpenEvent")
+            local e = cal.onDay(off, day)[i]
+            if not e or opts.refuse then return false end
+            cal.opens = cal.opens + 1
+            cal.open, cal.openAt, cal.pendingEdit = e, { offsetMonths = off, monthDay = day, eventIndex = i }, {}
+            if opts.onOpen then opts.onOpen(cal, i) end
+            if not opts.silent then STUB.fire("CALENDAR_OPEN_EVENT", e.calendarType) end
+            return true
+        end
+        C.IsEventOpen = function() return cal.open ~= nil end
+        local baseInfo = C.GetEventInfo
+        C.GetEventInfo = function()
+            local e = cal.open
+            if not e then return nil end
+            if not e.startTime then return baseInfo() end
+            local s = e.startTime
+            return { title = e.title, description = e.description or "", calendarType = e.calendarType, eventType = e.eventType,
+                     textureIndex = e.textureIndex, inviteType = e.inviteType or 1, inviteStatus = e.inviteStatus, modStatus = e.modStatus,
+                     time = { year = s.year, month = s.month, monthDay = s.monthDay, hour = s.hour, minute = s.minute } }
+        end
+        C.GetEventIndex = function() return cal.open and cal.openAt or nil end
+        C.EventCanEdit = function() return cal.open ~= nil and can(cal.open, "canEdit") end
+        local function set(name, fn)
+            local base = C[name]
+            C[name] = function(...)
+                if cal.open and not cal.draft then
+                    log(name)
+                    fn(cal.pendingEdit, ...)
+                    return
+                end
+                if base then return base(...) end
+                error("no event open: " .. name)
+            end
+        end
+        set("EventSetTitle", function(d, t) d.title = t end)
+        set("EventSetDescription", function(d, t) d.description = t end)
+        set("EventSetTime", function(d, h, mi) d.hour, d.minute = h, mi end)
+        set("EventSetType", function(d, t) d.eventType = t end)
+        set("EventSetTextureID", function(d, i) d.textureIndex = i end)
+        C.EventHaveSettingsChanged = function() return cal.open ~= nil and next(cal.pendingEdit or {}) ~= nil end
+        C.IsActionPending = function() return cal.pending == true end
+        local function refused(name)
+            if cal.block[name] or (name == "UpdateEvent" and opts.hw and not STUB.inClick) then
+                STUB.fire("ADDON_ACTION_BLOCKED", "Amisia", "C_Calendar." .. name .. "()")
+                return true
+            end
+            if cal.fail[name] then
+                C_Timer.After(0.3, function() STUB.fire("CALENDAR_UPDATE_ERROR", "CALENDAR_ERROR_EVENT_INVALID") end)
+                return true
+            end
+            return cal.quiet[name] == true
+        end
+        C.UpdateEvent = function()
+            log("UpdateEvent")
+            local e, changes = cal.open, {}
+            for k, v in pairs(cal.pendingEdit or {}) do changes[k] = v end
+            cal.updates[#cal.updates + 1] = { id = e and e.eventID, changes = changes, inClick = STUB.inClick }
+            if refused("UpdateEvent") or not e then return end
+            cal.pending = true
+            C_Timer.After(0.3, function()
+                cal.pending = false
+                for k, v in pairs(changes) do
+                    if k == "hour" or k == "minute" then e.startTime[k] = v else e[k] = v end
+                end
+                cal.pendingEdit = {}
+                STUB.fire("CALENDAR_UPDATE_EVENT")
+                STUB.fire("CALENDAR_UPDATE_EVENT_LIST")
+            end)
+        end
+        C.ContextMenuSelectEvent = function(off, day, i)
+            log("ContextMenuSelectEvent")
+            cal.selected, cal.selectedInClick = cal.onDay(off, day)[i], STUB.inClick
+        end
+        C.ContextMenuEventRemove = function()
+            log("ContextMenuEventRemove")
+            local e = cal.selected
+            cal.removed[#cal.removed + 1] = { id = e and e.eventID, inClick = STUB.inClick, selectedInClick = cal.selectedInClick }
+            if refused("ContextMenuEventRemove") or not e then return end
+            C_Timer.After(0.3, function()
+                for i, x in ipairs(cal.month) do
+                    if x == e then table.remove(cal.month, i) break end
+                end
+                STUB.fire("CALENDAR_UPDATE_EVENT_LIST")
+            end)
+        end
+        C.CloseEvent = function()
+            log("CloseEvent")
+            local was = cal.open ~= nil or cal.draft ~= nil
+            cal.open, cal.draft, cal.pendingEdit = nil, nil, nil
+            cal.closes = cal.closes + 1
+            if was then STUB.fire("CALENDAR_CLOSE_EVENT") end
         end
     end
     _G.C_Calendar = C
