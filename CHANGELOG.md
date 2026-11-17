@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.100.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.100.0) (2026-11-17)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.99.1...v2.100.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(raid): the lineup planner shows which buffs the placed classes bring and which are missing (F-224)
 
     The planner of Raid > Aufstellung gets the link "Buffs" beside "Spieler": under the groups it shows three
