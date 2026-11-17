@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- data(map): places for new Forever quests and mobs from the guild's own observations
+
+    The map now also knows where a source stands when the open data has no place for it: for a quest the spot
+    where a player took it, for a mob the spot where it was looted, both from the source collector's own
+    records. 45 quests and 81 mobs and vendors get a place this way. The save file of 2026-11-17 joins the data:
+    1 item, 19 item sources, 25 observed quests and 14 quest items are new.
+
 ## [v2.100.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.100.0) (2026-11-17)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.99.1...v2.100.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

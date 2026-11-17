@@ -732,6 +732,13 @@ python tools/build_map.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE...
   or for a mob only a drop names the drop's coordinates; dungeon and raid entrances from the
   instances' coordinates. A point on a dungeon's own map stands for its entrance; an entrance given
   as the middle of its zone (50, 50) is not measured and is left out.
+- Where ATT knows no place, the source collector's own observation fills in (`observed_places`): for
+  `Q:<quest id>` where a player took the quest (`tools/quest_obs.json` joined with the SavedVariables,
+  own values only; the giver's observed name goes to `G`), for `U:<NPC id>` where a mob was looted or
+  a vendor stood (the collector records of the SavedVariables over `tools/scan_archive.json`, by the
+  rule of `build_scan.collect_observed`: own values, heard ones only when two accounts agree). ATT's
+  place always wins; a point on a dungeon's own map stands for its entrance. The build prints
+  "placed by own observation: N quests, M NPCs".
 - F-105, the places on the world map (spec `docs/specs/2026-10-16-karte-orte.md`, D-50):
   - Entrances of every dungeon and raid of the facts, under `I:<instance id>` (else `N:<name>`); the
     gear data's `I:`/`N:` keys of a dungeon get the same points. Sources in this order, the first with a

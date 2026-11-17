@@ -311,6 +311,7 @@ client table TaxiNodes (+ ATT's flight master names) -> build_map.py -> Data/Map
 tools/forever_transports.json (by hand) -> build_map.py -> Data/MapData.lua (T docks; F only where TaxiNodes has no node)
 client tables of two builds on disk     -> tools/build_diff.py (build.py diff, auto_data.py) -> "new in this build" (D-103)
 MapPlaces.lua (entering an instance)    -> AmisiaDB.entrances -> build_map.py -> tools/entrance_archive.json -> Data/MapData.lua
+Collector.lua (a quest taken, a mob looted) -> tools/quest_obs.json, tools/scan_archive.json -> build_map.py -> Data/MapData.lua (Q:/U: places ATT lacks)
 ProfTrainers.lua (a trainer opened)     -> AmisiaDB.trainers -> build_professions.py -> tools/trainer_archive.json -> Data/ProfessionData.lua
 QuestTags.lua (the own quest log)        -> AmisiaDB.questtags -> build_gear.py -> tools/quest_tag_archive.json -> Data/GearData.lua (QT)
 Collector.lua (quests: own fields only)  -> AmisiaDB.collect.q -> build_dungeonquests.py -> tools/quest_obs.json -> Data/DungeonQuestData.lua

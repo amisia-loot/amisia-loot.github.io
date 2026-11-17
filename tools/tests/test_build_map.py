@@ -123,6 +123,35 @@ def test_npcs_by_id_and_by_name(resolved):
     assert P['U:81004'] == [], 'a mob only a drop names has no coordinates'
 
 
+def test_own_observations_fill_only_what_the_data_lacks():
+    recs, has_game = build_map.load_gear_text(GEAR)
+    needed = build_map.needed_keys(recs, has_game)
+    db = att_data.load(FIXTURE, items=False)
+    seen = {'quests': {79998: {'points': [(1426, 1234, 4321)], 'giver': 'Seen Giver'},
+                       71001: {'points': [(1426, 1, 1)], 'giver': 'Somebody Else'}},
+            'npcs': {81004: [(1426, 2222, 3333)], 81003: [(1426, 9, 9)]}}
+    P, G, report = build_map.resolve(db, needed, FACTS, seen)
+    assert P['Q:79998'] == [(1426, 1234, 4321)] and G['Q:79998'] == 'Seen Giver', 'a quest the data does not know'
+    assert P['Q:71001'] == [(1426, 4000, 6000)] and G['Q:71001'] == 'Farmer Fixture', 'the data wins'
+    assert P['U:81004'] == [(1426, 2222, 3333)], 'a mob without coordinates: where it was looted'
+    assert P['U:81003'] == [(1426, 5000, 4000)], 'the data wins'
+    assert report['observed quests'] == 1 and report['observed npcs'] == 1 and report['unknown quests'] == 0
+    assert P['Q:70003'] == [] and report['quest item start'] == 1, 'nothing seen: as before'
+
+
+def test_observed_places_from_the_archives(tmp_path):
+    arch = tmp_path / 'quest_obs.json'
+    arch.write_text('{"v": 1, "updated": "2026-11-17", "q": {\n'
+                    '  "92329": {"day": 320, "giver": 249235, "gname": "Kaylaena", "gpos": "2482:6017:6128"},\n'
+                    '  "92330": {"day": 320, "giver": 249236, "gpos": "2482"},\n'
+                    '  "92331": {"day": 320, "giver": 249237}\n}}\n', encoding='utf-8')
+    seen = build_map.observed_places([], obs_archive=str(arch), scan_archive=str(tmp_path / 'none.json'))
+    assert seen == {'quests': {92329: {'points': [(2482, 6017, 6128)], 'giver': 'Kaylaena'}}, 'npcs': {}}
+    assert build_map._point('2482:6017:6128') == (2482, 6017, 6128) and build_map._point((1, 2, 3)) == (1, 2, 3)
+    for bad in ('', None, '2482', '2482:1:10001', '0:1:1', 'a:b:c'):
+        assert build_map._point(bad) is None, bad
+
+
 def test_entrances_by_instance_id_and_name(resolved):
     (P, G, report), _ = resolved
     assert P['I:4002'] == [(1426, 7000, 2000)], 'the instance map id from UiMapAssignment'

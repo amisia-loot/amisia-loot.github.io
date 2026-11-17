@@ -15,6 +15,10 @@ Sources (named with their licence in tools/README.md and in the header of the ge
     of rares, vendors and other NPCs, and of dungeon and raid entrances. --refresh-att downloads it
     into ~/addons/_cache/att (outside the repo); the folder's commit is named in the output.
     A place inside a dungeon stands for its entrance.
+  - The own observations of the source collector, only where AllTheThings knows no place: where a
+    player took a quest (tools/quest_obs.json joined with the SavedVariables) and where one looted a
+    mob or stood at a vendor (the collector records of the SavedVariables and tools/scan_archive.json,
+    by the rule of build_scan.collect_observed: own values, heard ones only when two accounts agree).
   - The generated gear data (GearData.lua): which places are needed at all.
   - Instance ids (I:<id> keys) are matched to the data's instances through the client's
     UiMapAssignment and AreaTable tables in --wago (default: the newest copy of each table, tools/client_tables.py)
@@ -281,12 +285,15 @@ class Atlas:
         return None
 
 
-def resolve(att, needed, facts=()):
+def resolve(att, needed, facts=(), observed=None):
     """{key: [points]} for every needed key (empty where no place is known), {key: who stands there}
-    and a report."""
+    and a report. observed (observed_places): the collector's own places, taken only where the data
+    has none: {'quests': {quest id: {'points', 'giver'}}, 'npcs': {NPC id: [points]}}."""
     atlas = Atlas(att, facts)
     report = {'kinds': {}, 'ambiguous': [], 'quest item start': 0, 'quest without place': 0, 'unknown quests': 0,
-              'unknown instances': []}
+              'unknown instances': [], 'observed quests': 0, 'observed npcs': 0}
+    seen_q = (observed or {}).get('quests') or {}
+    seen_n = (observed or {}).get('npcs') or {}
     P, G = {}, {}
     for key in sorted(needed):
         recs = needed[key]
@@ -294,9 +301,7 @@ def resolve(att, needed, facts=()):
         points = []
         if kind == 'Q':
             q = atlas.quests.get(int(rest))
-            if not q:
-                report['unknown quests'] += 1
-            else:
+            if q:
                 points = atlas.outside(q.get('points') or [])
                 if not points:
                     for nid in q.get('givers') or []:
@@ -305,7 +310,18 @@ def resolve(att, needed, facts=()):
                     points = atlas.entrance(q['inst'])
                 if q.get('giver'):
                     G[key] = q['giver']
-                if not points:
+            if not points and int(rest) in seen_q:
+                # where a player took it (a place inside a dungeon stands for its entrance)
+                o = seen_q[int(rest)]
+                points = atlas.outside(o.get('points') or [])
+                if points:
+                    report['observed quests'] += 1
+                    if o.get('giver') and key not in G:
+                        G[key] = o['giver']
+            if not points:
+                if not q:
+                    report['unknown quests'] += 1
+                else:
                     report['quest item start' if q.get('startItem') else 'quest without place'] += 1
         elif kind in ('V', 'R', 'W'):
             cands = atlas.by_name.get(rest, [])
@@ -320,6 +336,10 @@ def resolve(att, needed, facts=()):
                 points += atlas.npc_points(n)
         elif kind == 'U':
             points = atlas.npc_points(int(rest))
+            if not points and int(rest) in seen_n:
+                points = atlas.outside(seen_n[int(rest)])
+                if points:
+                    report['observed npcs'] += 1
         elif kind == 'I':
             iid = atlas.instance_by_id(int(rest))
             if iid is None:
@@ -340,6 +360,47 @@ def resolve(att, needed, facts=()):
             w, wo = report['kinds'].get(k, (0, 0))
             report['kinds'][k] = (w + 1, wo) if P[key] else (w, wo + 1)
     return P, G, report
+
+
+# ---------------------------------------------------------------- own observations
+def _point(v):
+    """A collector place as (map, x, y), or None (empty, or only a map)."""
+    if isinstance(v, str):
+        v = v.split(':')
+    try:
+        p = tuple(int(x) for x in v or ())
+    except (TypeError, ValueError):
+        return None
+    return p if len(p) == 3 and p[0] > 0 and 0 <= p[1] <= 10000 and 0 <= p[2] <= 10000 else None
+
+
+def observed_places(svs, obs_archive=None, scan_archive=None):
+    """What the source collector saw, for resolve(): where a quest was taken (the archive
+    tools/quest_obs.json joined with the SavedVariables, own values only) and where a mob was looted
+    or a vendor stood (the SavedVariables over tools/scan_archive.json; own values, heard ones only
+    when two accounts agree: build_scan.collect_observed). Nothing is written here."""
+    import build_dungeonquests
+    import build_scan
+    import build_scan_archive
+    dbs = [build_scan.load_sv(p) for p in svs]
+    quests = {}
+    obs = build_dungeonquests.read_observed(dbs, build_dungeonquests.load_obs_archive(
+        obs_archive or build_dungeonquests.OBS_ARCHIVE))
+    for qid, o in obs.items():
+        p = _point(o.get('gpos'))
+        if p:
+            quests[int(qid)] = {'points': [p], 'giver': o.get('gname') or None}
+    npcs = {}
+    seen = build_scan.collect_observed(build_scan_archive.with_archive(dbs, scan_archive)
+                                       if scan_archive else build_scan_archive.with_archive(dbs))
+    for kind in ('s', 'w'):
+        for nid, rec in (seen.get(kind) or {}).items():
+            p = _point(rec.get('pos'))
+            if p and isinstance(nid, int) and nid > 0:
+                npcs.setdefault(nid, [])
+                if p not in npcs[nid]:
+                    npcs[nid].append(p)
+    return {'quests': quests, 'npcs': npcs}
 
 
 # ---------------------------------------------------------------- places on the map (F-105)
@@ -925,10 +986,12 @@ def main(argv=None):
         raise SystemExit(f'no AllTheThings download in {args.att}: run with --refresh-att')
     att = att_data.load(args.att, items=False, wago=args.wago)
     facts = build_gear.load_facts()
-    P, G, report = resolve(att, needed, facts)
-
     import build_scan_archive
-    learned = update_learned(build_scan_archive.default_svs() if args.sv is None else args.sv, args.entrances)
+    svs = build_scan_archive.default_svs() if args.sv is None else args.sv
+    observed = observed_places(svs)
+    P, G, report = resolve(att, needed, facts, observed)
+
+    learned = update_learned(svs, args.entrances)
     client = Client(args.wago)
     if not client.instances:
         log(f'no client table Map in {args.wago}: entrances from the other sources only '
@@ -952,6 +1015,9 @@ def main(argv=None):
     if nodes:
         sources.append('Client table TaxiNodes (Blizzard game data): flight points, their side and place; '
                        'the flight masters\' names from AllTheThings.')
+    if report['observed quests'] or report['observed npcs']:
+        sources.append('Own observations of the source collector (tools/quest_obs.json, tools/scan_archive.json): '
+                       'where a quest was taken or a mob looted, for what AllTheThings does not place.')
     sources.append('Docks by hand: tools/forever_transports.json.' if nodes else
                    'Docks and the flight masters AllTheThings lacks by hand: tools/forever_transports.json.')
     n = write_lua(args.out, P, G, att.get('commit'), time.strftime('%Y-%m-%d'), E, F, T, sources)
@@ -968,6 +1034,8 @@ def main(argv=None):
         log(f'  instance ids the data cannot place: {report["unknown instances"]}')
     log(f'  quests started by an item: {report["quest item start"]}, without a place: '
         f'{report["quest without place"]}, unknown: {report["unknown quests"]}')
+    log(f'  placed by own observation: {report["observed quests"]} quests (of {len(observed["quests"])} seen), '
+        f'{report["observed npcs"]} NPCs (of {len(observed["npcs"])} seen)')
     report_places(facts, ent, F, att_flights, T)
     if nodes:
         report_flights(F, flight_rep, client)
