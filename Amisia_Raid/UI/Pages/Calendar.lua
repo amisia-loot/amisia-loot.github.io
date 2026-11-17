@@ -69,7 +69,6 @@ local CC = function() return ns.CalCreate end
 local CE = function() return ns.CalEdit end
 local CB = function() return ns.CalBot end
 local GC = function() return ns.GuildCalls end
-local editItem            -- the event the form changes (mode "edit")
 local editWait            -- an edit or a delete is being prepared (the event found, opened)
 local removeAsking        -- the question before a delete shows
 local dayError            -- why the last edit or delete did not work (the day's view)
@@ -258,7 +257,7 @@ end
 -- Leaves an edit or a waiting delete without a change (another day, another page, "Abbrechen").
 local function endEdit()
     if mode == "edit" then mode = nil end
-    editItem, editWait = nil, nil
+    editWait = nil
     if removeAsking then
         removeAsking = nil
         local c = _G.AmisiaConfirmFrame
@@ -476,7 +475,6 @@ local function startEdit()
             fail(CE().Why(reason))
             return ns.Refresh()
         end
-        editItem = t
         form = { kind = info.kind or "GUILD_EVENT", type = info.type, time = info.time, tex = info.tex }
         form.texTitle, form.texShown = CC().TextureAt(info.type, info.tex)
         formError, formWait = nil, nil
@@ -513,7 +511,7 @@ local function save()
     local function left(text)
         -- the session is over: back to the day with the reason
         if not CE().Session() then
-            mode, editItem = nil, nil
+            mode = nil
             fail(text)
         end
     end
@@ -521,7 +519,7 @@ local function save()
         formWait = nil
         if ok then
             ns.msg(L["Termin geändert: %s"]:format(CE().Label(f.at, f.cleanTitle)))
-            mode, editItem = nil, nil
+            mode = nil
             for _, mo in pairs(months) do mo.dirty = true end
         else
             local text = CE().Why(reason)
@@ -600,7 +598,7 @@ end
 -- The module ended a session itself (a fight, the client's calendar window, the event closed in the game).
 ns.Listen("CALEDIT_ENDED", function(why)
     local was = mode == "edit" or removeAsking
-    if mode == "edit" then mode, editItem = nil, nil end
+    if mode == "edit" then mode = nil end
     if removeAsking then
         removeAsking = nil
         local c = _G.AmisiaConfirmFrame
@@ -1108,7 +1106,7 @@ local function fillRight(f, terms, raids)
     if mode == "form" and not (dayOpen() or formWait) then mode = nil end
     if mode == "discord" and not t then mode = nil end
     -- an edit lives as long as its session (a write still running counts)
-    if mode == "edit" and not (CE() and CE().Session()) and not formWait then mode, editItem = nil, nil end
+    if mode == "edit" and not (CE() and CE().Session()) and not formWait then mode = nil end
     local head = at and V.DayText(at) or ""
     if at and mode == "form" then head = L["Neuer Termin: %s"]:format(head) end
     if at and mode == "edit" then head = L["Termin ändern: %s"]:format(head) end
