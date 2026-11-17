@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.100.3](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.100.3) (2026-11-17)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.100.2...v2.100.3) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - fix(calendar): "Bearbeiten" and "Löschen" show for your own events on Forever (F-222)
 
     Forever answers an addon "no" when asked whether an event may be changed or deleted, even for the event's
