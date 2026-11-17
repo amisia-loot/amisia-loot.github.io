@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-15",
+ "updated": "2026-11-17",
  "entrances": {
   "33": {
    "map": 1421,
@@ -24,6 +24,14 @@
    "name": "Uldaman",
    "kind": "party",
    "seen": 1794601747
+  },
+  "109": {
+   "map": 1415,
+   "x": 4545,
+   "y": 3456,
+   "name": "Versunkener Tempel",
+   "kind": "party",
+   "seen": 1794754290
   },
   "129": {
    "map": 1434,
