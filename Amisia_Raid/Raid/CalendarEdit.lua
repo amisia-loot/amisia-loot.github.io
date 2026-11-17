@@ -1,7 +1,10 @@
 -- Amisia calendar edit and delete (F-222, D-147, spec docs/specs/2026-11-16-kalender-bearbeiten-loeschen.md):
 -- the player changes or deletes an event of the game calendar from the calendar page, as far as the
 -- game lets him (C_Calendar.ContextMenuEventCanEdit / ContextMenuEventCanRemove, the questions of the
--- client's right-click menu; Amisia gives nobody a right of its own). The calls are the client's own
+-- client's right-click menu; Amisia gives nobody a right of its own). On Forever those questions answer an
+-- addon "no" even for the creator's own event (in game 2026-11-17, D-147 Nachtrag): the player's own
+-- event (modStatus CREATOR; to change it also MODERATOR) is offered all the same and the game decides
+-- when the call is made; CE.Explain says why an event has no link. The calls are the client's own
 -- (Blizzard_Calendar.lua: CalendarFrame_OpenEvent, CalendarCreateEventFrame in mode "edit",
 -- CalendarCreateEventCreateButton_OnClick, CalendarDayContextMenu_DeleteEvent and its popup):
 --   edit    OpenEvent (read), then inside the click on "Speichern" the changed fields (EventSetTitle,
@@ -123,6 +126,24 @@ local function ask(name, ...)
     return "none"
 end
 
+-- Whether the player made the day event e (or item says so), or may change it as its moderator.
+local function ownEvent(item, e, moderator)
+    local mod = type(e) == "table" and plain(e.modStatus) or nil
+    if mod == "CREATOR" or (type(item) == "table" and item.creator == true) then return true end
+    return moderator == true and mod == "MODERATOR"
+end
+
+-- Whether the player may change ("edit") or delete ("remove") the day event e at its place: the game
+-- says so, or it is the player's own event (to change it also as its moderator). In game 2026-11-17
+-- (Forever 1.60.1, Amisia 2.100.2) the game answered an addon "no" to both questions for the creator's
+-- own event while its own right-click menu, which asks the same, offers "Löschen" (D-147 Nachtrag): so
+-- the own event is tried, and the game decides when the call is made (the server on a delete and on
+-- UpdateEvent). Nobody gets a right of Amisia's: what the game refuses fails there.
+local function allowed(what, item, e, off, day, index)
+    if ask(what == "edit" and "ContextMenuEventCanEdit" or "ContextMenuEventCanRemove", off, day, index) == "yes" then return true end
+    return ownEvent(item, e, what == "edit")
+end
+
 -- What the game lets the player do with item: { edit, remove } (booleans). Asked of the game when the
 -- event's month is the set one or a neighbour; for a month further away (the client has not loaded
 -- it) the links show for the player's own events and the game is asked once CE.Begin has set the month.
@@ -134,10 +155,10 @@ function CE.Rights(item)
     if not off then return out end
     local edit, remove
     if off >= -1 and off <= 1 then
-        local index, _, day = locate(item, off)
+        local index, e, day = locate(item, off)
         if not index then return out end
-        edit = CE.Available("edit") and ask("ContextMenuEventCanEdit", off, day, index) == "yes"
-        remove = CE.Available("remove") and ask("ContextMenuEventCanRemove", off, day, index) == "yes"
+        edit = CE.Available("edit") and allowed("edit", item, e, off, day, index)
+        remove = CE.Available("remove") and allowed("remove", item, e, off, day, index)
     else
         edit = CE.Available("edit") and item.creator == true
         remove = CE.Available("remove") and item.creator == true
@@ -308,7 +329,7 @@ end
 -- coming open or this one closing ends the session before (CALENDAR_OPEN_EVENT, CALENDAR_CLOSE_EVENT).
 local function stillOpen(s)
     if api("IsEventOpen") and plain(call("IsEventOpen")) == false then return false end
-    if plain(call("EventCanEdit")) ~= true then return false end
+    if not s.own and plain(call("EventCanEdit")) ~= true then return false end
     local info = call("GetEventInfo")
     local at = type(info) == "table" and Cal.Epoch(info.time)
     if not at or date("%Y-%m-%d", at) ~= date("%Y-%m-%d", s.item.at) then return false end
@@ -436,11 +457,13 @@ function CE.Begin(item, what, fn)
 
     local function found(offset)
         if session ~= s then return end
-        local index, _, day = locate(item, offset)
+        local index, e, day = locate(item, offset)
         if not index then return abort(s, "gone") end
         s.offset, s.day, s.index, s.monthSet = offset, day, index, (setMonth())
-        local can = plain(call(what == "edit" and "ContextMenuEventCanEdit" or "ContextMenuEventCanRemove", offset, day, index))
-        if can ~= true then return abort(s, "right") end
+        if not allowed(what, item, e, offset, day, index) then return abort(s, "right") end
+        -- the player's own event: the client's EventCanEdit is not asked either (it answers an addon as
+        -- the questions above); UpdateEvent decides
+        s.own = ownEvent(item, e, true)
         if what == "remove" then
             s.stage = "ready"
             return fn(true)
@@ -465,7 +488,7 @@ function CE.Begin(item, what, fn)
                     s.opened = false
                     return abort(s, "closed")
                 end
-                if plain(call("EventCanEdit")) ~= true then return abort(s, "right") end
+                if not s.own and plain(call("EventCanEdit")) ~= true then return abort(s, "right") end
                 s.info = info
                 s.stage = "open"
                 fn(true, nil, info)
@@ -641,12 +664,12 @@ function CE.Remove(fn)
         return false, why
     end
     if s.what ~= "remove" then return false, "closed" end
-    local index = locate(s.item, s.offset)
+    local index, e = locate(s.item, s.offset)
     if index ~= s.index then
         abort(s, "gone")
         return false, "gone"
     end
-    if plain(call("ContextMenuEventCanRemove", s.offset, s.day, s.index)) ~= true then
+    if not allowed("remove", s.item, e, s.offset, s.day, s.index) then
         abort(s, "right")
         return false, "right"
     end

@@ -4089,6 +4089,22 @@ Instanz, ferner Monat beim Bearbeiten, Monatswechsel während des Löschens, Abb
 Termin, Rückfrage, Löschen im Klick, inzwischen gelöschter Termin, ferner Monat mit `SetAbsMonth` und zurück, Sperre
 bis /reload, keine Antwort), `tools/tests/test_contracts.py` (Dateien).
 
+**Nachtrag 2026-11-17:** Im Spiel (Forever 1.60.1, Amisia 2.100.1 und 2.100.2) fehlten "Bearbeiten" und "Löschen" bei
+den eigenen Terminen des Nutzers (gestern und morgen), obwohl der Spielkalender ihm "Löschen" anbietet. Der Grund, den
+2.100.2 zeigt: "das Spiel sagt ändern nein, löschen nein". `ContextMenuEventCanEdit` und `ContextMenuEventCanRemove`
+antworten einem Addon also "nein", wo Blizzards eigenes Rechtsklick-Menü mit denselben Aufrufen und Angaben "ja"
+bekommt (`Blizzard_Calendar.lua` des Forever-Zweigs gelesen: `GenerateDayContextMenu`). **Geändert:** Den eigenen Termin
+(`modStatus` `CREATOR` in der Tagesliste des Spiels; zum Ändern auch `MODERATOR`) bietet Amisia an, ohne auf die
+Vorab-Frage zu hören, und fragt dann auch `EventCanEdit` nicht; das Spiel entscheidet beim Ausführen (`UpdateEvent`,
+`ContextMenuEventRemove`), ein Nein kommt als Fehler oder bleibt ohne Antwort ("... bitte im Spielkalender"). Wer nur
+über seinen Gildenrang ändern oder löschen dürfte, bekommt die Links erst, wenn das Spiel einem Addon "ja" sagt. Amisia
+gibt weiter niemandem ein eigenes Recht. Fehlen die Links, wo man sie erwartet (Funktion fehlt, Termin nicht in der
+Tagesliste, keine klare Antwort), steht "Löschen" grau mit dem Grund im Tooltip (`CE.Explain`). Der Termin wird über
+seine Kennung als Text (Zahl oder Zeichenkette) wiedergefunden, sonst über Beginn und Titel. Der Nutzer dazu: Addon- und
+Spielkalender "müssen nicht unbedingt zusammen arbeiten", Anlegen, Ansehen und Anmelden sollen in beiden gehen.
+Durchgesetzt durch `tests/test_calendar_edit.lua` (eigener Termin trotz "nein", Moderator nur ändern, fremder Termin
+nicht, grauer Link mit Grund, Kennung als Text).
+
 ## D-148 Termine des Anmelde-Bots aus Discord: nur als eingefügtes JSON, keine Verbindung, kein Schlüssel
 
 **Datum:** 2026-11-16

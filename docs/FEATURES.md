@@ -1382,6 +1382,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn das Kalenderfenster des Spiels offen ist, dann sind "Bearbeiten" und "Löschen" grau ("Erst den Spielkalender schließen.").
 - Notiz: Spec docs/specs/2026-11-16-kalender-bearbeiten-loeschen.md; DECISIONS D-147. Nutzer 2026-11-16: "können wir die sachen im Kalender auch bearbeiten und löschen", dann "Passt, beide bauen".
 - Notiz: Im Spiel 2026-11-17 (2.100.1): bei eigenen Terminen (gestern und morgen) erschienen weder "Bearbeiten" noch "Löschen", obwohl der Spielkalender Löschen anbietet; Ursache noch offen. Seit 2.100.2 steht dann "Löschen" grau mit dem Grund im Tooltip (Funktion fehlt, Termin nicht gefunden, Antwort des Spiels); der Termin wird über jede Form der Kennung oder über Beginn und Titel wiedergefunden.
+- Notiz: Im Spiel 2026-11-17 (2.100.2): der graue Link nannte den Grund "das Spiel sagt ändern nein, löschen nein" beim eigenen Termin. Seit 2.100.3 stehen beide Links bei eigenen Terminen ohne diese Vorab-Frage (D-147 Nachtrag); ob das Spiel das Ändern und Löschen aus Amisia dann ausführt, ist noch nicht im Spiel geprüft.
 
 ### F-219 Eigenen Aufruf ändern, Aufrufe für jetzt im Kalender
 - Version: 2.97.0

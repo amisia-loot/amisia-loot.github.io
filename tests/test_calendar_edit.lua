@@ -407,26 +407,48 @@ assert(CE.Rights({ at = own.at, title = own.title, kind = "GUILD_EVENT" }).remov
 assert(not CE.Rights({ at = own.at, title = "Anderer Titel", kind = "GUILD_EVENT" }).remove)
 assert(has(CE.Explain({ at = own.at, title = "Anderer Titel", kind = "GUILD_EVENT", creator = true }), "nicht gefunden (Tag "),
     "an event the client's day does not hold")
--- the player's own event the game refuses: what the game said
+-- the game answers an addon "no" for the player's own event (Forever, in game 2026-11-17): the links
+-- show all the same, and the game decides when the call is made
 for _, e in ipairs(cal.month) do
     if e.title == "Molten Core" then e.canEdit, e.canRemove = false, false end
 end
-assert(not CE.Rights(own).remove and not CE.Rights(own).edit)
-assert(has(CE.Explain(own), "das Spiel sagt ändern nein, löschen nein"), CE.Explain(own))
--- the page: "Löschen" grey with the reason in its tooltip; a click says it and asks nothing
+C_Calendar.EventCanEdit = function() return false end
+assert(CE.Rights(own).remove and CE.Rights(own).edit and CE.Explain(own) == nil, "the own event: both links")
+assert(not CE.Rights(item(42)).remove and not CE.Rights(item(42)).edit, "another player's event: the game's no stands")
 show(own.at)
-assert(P.remove:IsShown() and P.remove.dim == true and not P.edit:IsShown(), "the grey link")
-assert(has(P.remove.why, "das Spiel sagt"), tostring(P.remove.why))
+assert(P.remove:IsShown() and not P.remove.dim and P.edit:IsShown(), "both links, none grey")
+-- a moderator may change, not delete
+for _, e in ipairs(cal.month) do
+    if e.title == "Fremder Raid" then e.modStatus, e.canEdit, e.canRemove = "MODERATOR", false, false end
+end
+assert(CE.Rights(item(42)).edit and not CE.Rights(item(42)).remove, "a moderator: change only")
+-- delete: the question, then the client's two calls inside the click
 local removedBefore = #cal.removed
-click(P.remove)
-STUB.tick(1)
-assert(#cal.removed == removedBefore and not CE.Session(), "a click on the grey link removes nothing")
+res = nil
+assert(CE.Begin(own, "remove", function(ok, why) res = { ok, why } end) and res and res[1] == true, "the own event is tried")
+local gone
+STUB.inClick = true
+assert(CE.Remove(function(ok, why) gone = { ok, why } end))
+STUB.inClick = false
+STUB.tick(2)
+assert(#cal.removed == removedBefore + 1 and gone and gone[1] == true and not CE.Session(), "removed by the game")
+-- the grey link stays for what has no plain answer and no own event
+local foreign = { at = item(44).at, title = item(44).title, kind = "PLAYER" }
+for _, e in ipairs(cal.month) do
+    if e.title == "Angeln" then e.modStatus, e.canEdit, e.canRemove = "", nil, nil end
+end
 -- an answer that is no plain yes or no
 local canRemove = C_Calendar.ContextMenuEventCanRemove
 C_Calendar.ContextMenuEventCanRemove = function() error("boom") end
-assert(has(CE.Explain(own), "löschen Fehler"), CE.Explain(own))
+assert(has(CE.Explain(foreign), "löschen Fehler"), tostring(CE.Explain(foreign)))
+show(foreign.at)
+assert(P.remove:IsShown() and P.remove.dim == true and has(P.remove.why, "das Spiel sagt"), "the grey link with the reason")
+removedBefore = #cal.removed
+click(P.remove)
+STUB.tick(1)
+assert(#cal.removed == removedBefore and not CE.Session(), "a click on the grey link removes nothing")
 -- a function the client lacks
 C_Calendar.ContextMenuEventCanRemove = nil
 assert(CE.Missing("remove") == "ContextMenuEventCanRemove" and CE.Missing("edit") == nil)
-assert(has(CE.Explain(own), "fehlt die Funktion ContextMenuEventCanRemove"), CE.Explain(own))
+assert(has(CE.Explain(foreign), "fehlt die Funktion ContextMenuEventCanRemove"), tostring(CE.Explain(foreign)))
 C_Calendar.ContextMenuEventCanRemove = canRemove

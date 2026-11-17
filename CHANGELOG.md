@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(calendar): "Bearbeiten" and "Löschen" show for your own events on Forever (F-222)
+
+    Forever answers an addon "no" when asked whether an event may be changed or deleted, even for the event's
+    creator, while the game's own menu offers "Delete". Amisia now offers both links for your own events without
+    that question (to change one also as its moderator) and lets the game decide when you save or delete; if the
+    game refuses, Amisia says so and points to the game calendar.
+
 ## [v2.100.2](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.100.2) (2026-11-17)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.100.1...v2.100.2) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
