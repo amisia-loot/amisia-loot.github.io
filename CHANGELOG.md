@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.100.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.100.1) (2026-11-17)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.100.0...v2.100.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - data(map): places for new Forever quests and mobs from the guild's own observations
 
     The map now also knows where a source stands when the open data has no place for it: for a quest the spot
