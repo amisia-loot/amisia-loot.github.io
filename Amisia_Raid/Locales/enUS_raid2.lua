@@ -1747,6 +1747,7 @@ L["Ändern und Löschen: dem Spiel fehlt die Funktion %s."] = "Edit and delete: 
 L["Ändern und Löschen: das Spiel nennt den Monat seines Kalenders nicht."] = "Edit and delete: the game does not name its calendar's month."
 L["Ändern und Löschen: Termin im Spielkalender nicht gefunden (Tag %d, %d Einträge dort)."] = "Edit and delete: event not found in the game calendar (day %d, %d entries there)."
 L["Ändern und Löschen: das Spiel sagt ändern %s, löschen %s."] = "Edit and delete: the game says edit %s, delete %s."
+L["Antwort des Spiels bei offenem Termin: ändern %s, löschen %s, bearbeitbar %s."] = "The game's answer with the event open: edit %s, delete %s, editable %s."
 -- F-223: an event of the sign-up bot in Discord, pasted into the calendar
 L["Aus Discord ..."] = "From Discord ..."
 L["Termin aus Discord"] = "Event from Discord"

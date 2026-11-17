@@ -10,7 +10,9 @@
 --   edit    OpenEvent (read), then inside the click on "Speichern" the changed fields (EventSetTitle,
 --           EventSetDescription, EventSetTime, EventSetType, EventSetTextureID after the type) and
 --           UpdateEvent, which needs a hardware event like AddEvent
---   delete  inside the click on the question's "Löschen": ContextMenuSelectEvent, ContextMenuEventRemove
+--   delete  OpenEvent first (since 2.100.3: the client's rights of a guild event seem to hang on the
+--           event it has open; without an answer the delete goes on), then inside the click on the
+--           question's "Löschen": ContextMenuSelectEvent, ContextMenuEventRemove
 -- One session at a time: CE.Begin finds the event by its eventID in the client's day list (setting the
 -- event's month first when it is not the set one or a neighbour, and the month set before back at the
 -- end), asks the game for the right and, for an edit, opens the event and holds it open while the form
@@ -229,6 +231,7 @@ CE.WATCH = { "ADDON_ACTION_BLOCKED", "ADDON_ACTION_FORBIDDEN", "CALENDAR_UPDATE_
 
 local watcher
 local session           -- { item, what, stage ("find", "month", "opening", "open", "ready"), offset, day, index, back, info, job }
+local said              -- the game's answers about the event the last session opened (CE.Said)
 local refused           -- the game refused a write for Amisia: no more tries until /reload
 
 -- The text of a client error (a global string's name, as the client's popup shows it).
@@ -281,6 +284,13 @@ local function abort(s, why)
 end
 
 function CE.Session() return session end
+-- What the game answered about the event the last session opened, as a sentence for a failure's
+-- message; nil when it opened none.
+function CE.Said()
+    if not said then return nil end
+    return L["Antwort des Spiels bei offenem Termin: ändern %s, löschen %s, bearbeitbar %s."]:format(
+        L[ANSWER_WORD[said.edit]], L[ANSWER_WORD[said.remove]], L[ANSWER_WORD[said.open]])
+end
 function CE.Busy() return session ~= nil end
 function CE.Refused() return refused end
 
@@ -464,9 +474,14 @@ function CE.Begin(item, what, fn)
         -- the player's own event: the client's EventCanEdit is not asked either (it answers an addon as
         -- the questions above); UpdateEvent decides
         s.own = ownEvent(item, e, true)
-        if what == "remove" then
+        said = nil
+        -- The event is opened for a delete too (2.100.3): what is known of the client says its rights of a
+        -- guild event hang on the event it has open, and the game's own menu is mostly used on an event
+        -- the player clicked open before. A delete goes on without it when the client does not open it.
+        local remove = what == "remove"
+        local function ready()
             s.stage = "ready"
-            return fn(true)
+            fn(true)
         end
         s.stage = "opening"
         local finished = false
@@ -476,19 +491,32 @@ function CE.Begin(item, what, fn)
             s.onOpen = nil
             -- cancelled while the client was opening it: closed now, nobody told
             if s.cancelled then return release(s) end
-            if not event then return abort(s, "open") end
+            if not event then
+                if remove then
+                    s.opened = false
+                    return ready()
+                end
+                return abort(s, "open")
+            end
             -- on the next frame: the client fills the event after its handlers
             C_Timer.After(0, function()
                 if session ~= s then return end
                 if s.cancelled then return release(s) end
                 local info = readOpen()
-                if not info then return abort(s, "read") end
+                if not info then
+                    if remove then return ready() end
+                    return abort(s, "read")
+                end
                 if info.at ~= item.at or (item.title and Cal.Clean(info.title) ~= item.title) then
                     -- another event came open instead: not Amisia's to close
                     s.opened = false
                     return abort(s, "closed")
                 end
-                if not s.own and plain(call("EventCanEdit")) ~= true then return abort(s, "right") end
+                -- what the game says now the event is open (CE.Said: told when a write fails)
+                said = { edit = ask("ContextMenuEventCanEdit", offset, day, index),
+                         remove = ask("ContextMenuEventCanRemove", offset, day, index), open = ask("EventCanEdit") }
+                if remove then return ready() end
+                if not s.own and said.open ~= "yes" then return abort(s, "right") end
                 s.info = info
                 s.stage = "open"
                 fn(true, nil, info)
@@ -500,6 +528,10 @@ function CE.Begin(item, what, fn)
         local ok, res = pcall(C_Calendar.OpenEvent, offset, day, index)
         if not ok or res == false then
             finished = true
+            if remove then
+                s.opened = false
+                return ready()
+            end
             return abort(s, "open")
         end
     end

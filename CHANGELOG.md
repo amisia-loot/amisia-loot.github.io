@@ -10,7 +10,8 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
     Forever answers an addon "no" when asked whether an event may be changed or deleted, even for the event's
     creator, while the game's own menu offers "Delete". Amisia now offers both links for your own events without
     that question (to change one also as its moderator) and lets the game decide when you save or delete; if the
-    game refuses, Amisia says so and points to the game calendar.
+    game refuses, Amisia says so, names what the game answered and points to the game calendar. Before a delete
+    Amisia now opens the event in the game first, as it does before an edit.
 
 ## [v2.100.2](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.100.2) (2026-11-17)
 

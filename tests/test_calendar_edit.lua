@@ -381,7 +381,9 @@ CE._reset(); CC._reset()
 cal.quiet.ContextMenuEventRemove = true
 Cal.Month(os.date("*t", epochIn(5)).year, os.date("*t", epochIn(5)).month, function(l) list = l end)
 res = nil
-assert(CE.Begin(item(41), "remove", function(ok) res = ok end) and res == true)
+assert(CE.Begin(item(41), "remove", function(ok) res = ok end))
+STUB.tick(1)
+assert(res == true and cal.open ~= nil, "the event is opened before the question")
 local out
 assert(CE.Remove(function(ok, why) out = { ok, why } end))
 STUB.tick(CE.WAIT + 1)
@@ -425,18 +427,39 @@ assert(CE.Rights(item(42)).edit and not CE.Rights(item(42)).remove, "a moderator
 -- delete: the question, then the client's two calls inside the click
 local removedBefore = #cal.removed
 res = nil
-assert(CE.Begin(own, "remove", function(ok, why) res = { ok, why } end) and res and res[1] == true, "the own event is tried")
+assert(CE.Begin(own, "remove", function(ok, why) res = { ok, why } end))
+STUB.tick(1)
+assert(res and res[1] == true and cal.open ~= nil, "the own event is tried, opened first")
+assert(has(CE.Said(), "ändern nein, löschen nein, bearbeitbar nein"), tostring(CE.Said()))
 local gone
 STUB.inClick = true
 assert(CE.Remove(function(ok, why) gone = { ok, why } end))
 STUB.inClick = false
 STUB.tick(2)
 assert(#cal.removed == removedBefore + 1 and gone and gone[1] == true and not CE.Session(), "removed by the game")
+assert(cal.open == nil, "the event Amisia opened is closed again")
+-- a client that does not open the event: the delete goes on all the same
+cal = world({ refuse = true })
+CE._reset(); CC._reset()
+Cal.Month(os.date("*t", epochIn(5)).year, os.date("*t", epochIn(5)).month, function(l) list = l end)
+STUB.tick(5)
+res = nil
+assert(CE.Begin(item(41), "remove", function(ok, why) res = { ok, why } end))
+STUB.tick(1)
+assert(res and res[1] == true and cal.open == nil and CE.Said() == nil, "not opened: asked all the same")
+CE.Cancel()
 -- the grey link stays for what has no plain answer and no own event
-local foreign = { at = item(44).at, title = item(44).title, kind = "PLAYER" }
+cal = world()
+CE._reset(); CC._reset()
 for _, e in ipairs(cal.month) do
     if e.title == "Angeln" then e.modStatus, e.canEdit, e.canRemove = "", nil, nil end
 end
+STUB.fire("CALENDAR_UPDATE_EVENT_LIST")
+STUB.tick(5)
+Cal.Month(os.date("*t", epochIn(5)).year, os.date("*t", epochIn(5)).month, function(l) list = l end)
+STUB.tick(5)
+NS.Refresh()
+local foreign = { at = item(44).at, title = item(44).title, kind = "PLAYER" }
 -- an answer that is no plain yes or no
 local canRemove = C_Calendar.ContextMenuEventCanRemove
 C_Calendar.ContextMenuEventCanRemove = function() error("boom") end

@@ -524,7 +524,11 @@ local function save()
         else
             local text = CE().Why(reason)
             if detail and reason == "error" then text = text .. " " .. tostring(detail) end
-            if reason ~= "same" then text = text .. " " .. L["Ändere ihn bitte im Spielkalender."] end
+            if reason ~= "same" then
+                text = text .. " " .. L["Ändere ihn bitte im Spielkalender."]
+                local said = CE().Said()
+                if said then text = text .. " " .. said end
+            end
             formError = text
             -- the player left the form meanwhile: the session ends with the answer
             if mode ~= "edit" then CE().Cancel() end
@@ -575,7 +579,10 @@ local function startRemove()
                 else
                     local text2 = CE().Why(reason2)
                     if detail and reason2 == "error" then text2 = text2 .. " " .. tostring(detail) end
-                    fail(text2 .. " " .. L["Lösche ihn bitte im Spielkalender."])
+                    text2 = text2 .. " " .. L["Lösche ihn bitte im Spielkalender."]
+                    -- what the game said about the opened event: the reason to look for
+                    local said = CE().Said()
+                    fail(said and (text2 .. " " .. said) or text2)
                 end
                 ns.Refresh()
             end)

@@ -4105,6 +4105,24 @@ Spielkalender "müssen nicht unbedingt zusammen arbeiten", Anlegen, Ansehen und 
 Durchgesetzt durch `tests/test_calendar_edit.lua` (eigener Termin trotz "nein", Moderator nur ändern, fremder Termin
 nicht, grauer Link mit Grund, Kennung als Text).
 
+**Nachtrag 2026-11-17 (2), nach Recherche (Nutzer: "erst ganz genau informieren ... dann fixen und veröffentlichen"):**
+Gelesen: Blizzards `CalendarDocumentation.lua` und `Blizzard_Calendar.lua` des Forever-Zweigs (Forever lädt die
+Mainline-Datei; der Ordner des Spiels hält nur die Filterdaten), die Wiki-Seiten der Funktionen, die Liste bekannter
+UI-Fehler, die Seite zu den verdeckten Werten von 12.0 und öffentlicher Addon-Code. Befund: Kein Dokument nennt eine
+Bedingung für die beiden Vorab-Fragen, keines beschreibt, dass eine Funktion einem Addon "falsch" statt ihres Werts
+gibt; `SecretArguments = "AllowedWhenUntainted"` betrifft nur verdeckte Werte als Argumente und gäbe einen Fehler, kein
+"nein"; ein bekannter Fehler dazu ist nicht gemeldet. Öffentliche Addons fragen die beiden Funktionen gar nicht: sie
+entscheiden nach `calendarType` und `modStatus` (`CREATOR`, `MODERATOR`) und öffnen den Termin (`OpenEvent`), eines
+öffnet ihn ein zweites Mal, damit `EventCanEdit` stimmt. Eine fremde Nachbildung des Clients (nicht maßgeblich)
+beschreibt, dass die Rechte eines Gildentermins am geöffneten Termin hängen und ohne ihn "nein" herauskommt; das passt
+dazu, dass man im Spielkalender einen Termin meist erst anklickt (öffnet) und dann rechts klickt. **Darum:** Amisia
+öffnet den Termin jetzt auch vor dem Löschen (wie schon vor dem Bearbeiten) und ruft erst dann, im Klick auf die
+Rückfrage, `ContextMenuSelectEvent` und `ContextMenuEventRemove` (genau die Folge des Spiels); öffnet das Spiel ihn
+nicht, geht das Löschen trotzdem weiter. Scheitert ein Ändern oder Löschen, nennt die Meldung, was das Spiel bei
+offenem Termin geantwortet hat (`CE.Said`: ändern, löschen, bearbeitbar). **Unbewiesen bleibt**, warum die Vorab-Fragen
+"nein" sagen und ob Forever `UpdateEvent` und `ContextMenuEventRemove` aus einem Addon ausführt; das zeigt erst der
+Test im Spiel. Die Notizen mit den Quellen liegen außerhalb des Repos.
+
 ## D-148 Termine des Anmelde-Bots aus Discord: nur als eingefügtes JSON, keine Verbindung, kein Schlüssel
 
 **Datum:** 2026-11-16
