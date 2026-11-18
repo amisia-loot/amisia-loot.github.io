@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.100.4](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.100.4) (2026-11-18)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.100.3...v2.100.4) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - fix(gear): druids may use polearms from level 20 and rogues one-hand axes, as Forever teaches them (F-039)
 
     The gear planner, the suggestions, items without a known source and the upgrade check now offer druids polearms
