@@ -243,10 +243,25 @@ def client_reputation(wago_dir):
     return out
 
 
-def client_known(ids, wago_dir):
-    """The ids of ids the client's own ItemSparse table has (an id it lacks does not exist in Forever:
-    /amisia scan gear would ask for it in vain). Without the table, all of them."""
+def client_named_ids(wago_dir):
+    """The item ids the client names at all: its tables ItemSparse and Item together; None without
+    ItemSparse. Item has ids ItemSparse lacks: items the server alone describes, and only once it
+    reveals them (in 1.60.1.70959 most loot of the dungeons for level 55 to 60: 22267 Spellweaver's
+    Turban answers in game, and ItemSparse has no row for it)."""
     known = client_item_ids(wago_dir)
+    if known is None:
+        return None
+    path = att_data.wago_csv(wago_dir, 'Item')
+    if path:
+        with open(path, encoding='utf-8', newline='') as fh:
+            known |= {int(r['ID']) for r in csv.DictReader(fh) if (r.get('ID') or '').isdigit()}
+    return known
+
+
+def client_known(ids, wago_dir):
+    """The ids of ids one of the client's item tables names (client_named_ids; an id both lack does
+    not exist in Forever: /amisia scan gear would ask for it in vain). Without the tables, all of them."""
+    known = client_named_ids(wago_dir)
     if known is None:
         return list(ids)
     kept = [i for i in ids if i in known]
@@ -987,9 +1002,9 @@ def build(scan_items, collected, att, crafts=None, wowsrc=None,
         kinds = {src.rows[n - 1][0] for n in nums}
         if not it or not it.get('equipLoc') and not it.get('classID'):
             dropped['unknown item'] += 1
-            # worth asking the client when a dungeon, crafting or quest source names it
-            if kinds & {'D', 'C', 'Q'}:
-                missing.add(iid)
+            # worth asking the client whatever source names it (a rare mob's or a world drop too):
+            # client_known keeps the list to the ids the client's tables name
+            missing.add(iid)
             continue
         if it['equipLoc'] not in EQUIP or it['classID'] not in (build_scan.CLASS_WEAPON, build_scan.CLASS_ARMOR):
             dropped['not gear'] += 1

@@ -3198,6 +3198,20 @@ Weiter draußen, Kampf, Kampfsperre, Anhalten von Hand, nichts offen, Planzeile 
 Stempeln, die Chatzeile einmal, nur im Expertenmodus, abschaltbar, nichts gespeichert), `tests/test_tools_page.lua`
 (Kopfzeile, grauer Link, Plan, Anhalten, "Nichts offen."), `tests/ui_scene.lua` (`tools-all`).
 
+**Nachtrag 2026-11-18 (Ausrüstungsliste):** Der Stempel der Ausrüstungsliste ist `SB.GearStamp()`: der Stempel
+oben und, wenn `GearData.lua` IDs nennt, die noch kein Scan gesehen hat (`M`), deren Anzahl und Summe
+(`SCAN_LISTS.gm`, von `tools/build_scan_lists.py` aus `GearData.lua`). Eine andere Liste solcher IDs öffnet den
+Ausrüstungs-Scan wieder, auch ohne neuen Client-Build; ohne solche IDs bleibt der Stempel wie bisher. In `M` kommt
+jede ID, die eine Quelle nennt (auch seltene Gegner und Weltdrops, vorher nur Dungeon, Beruf und Quest) und die eine
+der Client-Tabellen `ItemSparse` oder `Item` kennt (vorher nur `ItemSparse`). Grund: Nutzer 2026-11-18 mit einem
+Bild von 22267 Spruchwirkerturban, "Quelle unbekannt", obwohl AllTheThings General Drakkisath nennt. `ItemSparse`
+fehlen Items, die allein der Server beschreibt und erst später verrät (1.60.1.70959: die Beute der Dungeons für
+Stufe 55 bis 60); die Annahme vom 2026-10-06, solche IDs gebe es in Forever nicht, war falsch. Unverändert: IDs
+ohne Antwort wirft das Aufräumen aus der Wiederholungsliste, wenn `ItemSparse` sie nicht kennt (`SCAN_DONE.C`);
+der nächste Ausrüstungs-Scan fragt sie wieder. Durchgesetzt durch `tests/test_scan_all.lua` (eigener Stempel, andere
+Liste öffnet wieder), `tools/tests/test_build_gear.py` (`client_known` mit `Item`, jede Quellenart),
+`tools/tests/test_scan_ids.py` (die Listen sind aktuell).
+
 ## D-121 Drop-Austausch sichtbar: wer teilt nur im Speicher, "Jetzt abgleichen" einmal in der Minute, Protokoll unverändert
 
 **Datum:** 2026-11-13

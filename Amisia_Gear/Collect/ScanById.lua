@@ -221,6 +221,15 @@ function SB.Stamp()
     return SB.Build() .. "/" .. (SB.ListsClient() or "-")
 end
 
+-- The gear scan's stamp: the stamp above and, when the gear data names ids no scan has seen yet (its M,
+-- counted in the lists' gm "<count>.<sum>"), that count: another list of them asks the gear list again,
+-- so items the server reveals later are found without a new client build (D-120).
+function SB.GearStamp()
+    local d = ns.Data("SCAN_LISTS")
+    local gm = type(d) == "table" and type(d.gm) == "string" and d.gm ~= "" and d.gm or nil
+    return SB.Stamp() .. (gm and ("/" .. gm) or "")
+end
+
 -- "1 h 05 min", "12 min", "40 s".
 function SB.Duration(seconds)
     seconds = math.max(0, math.floor((tonumber(seconds) or 0) + 0.5))

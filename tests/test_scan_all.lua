@@ -252,5 +252,26 @@ assert(not saved and AmisiaDB.scanAll == nil, "nothing of the queue is saved")
 QS.Stop()
 assert(SA.PlanText() == "Noch offen: Quests, NPCs.", SA.PlanText())
 
+---------------------------------------------------------------------------
+-- the gear data asks for ids no scan has seen (the lists' gm): the gear list is open again under the
+-- same build, its own stamp names them; another list of them opens it once more
+---------------------------------------------------------------------------
+local L_ = rawget(NS, "SCAN_LISTS")
+assert(SB.GearStamp() == SB.Stamp(), "no ids beyond the items: the plain stamp")
+AmisiaDB.scan.gear = SB.Stamp()
+assert(not NS.ScanGearOpen())
+L_.gm = "870.123"
+assert(SB.GearStamp() == SB.Stamp() .. "/870.123", SB.GearStamp())
+assert(NS.ScanGearOpen(), "new ids to ask for: open under the same build")
+assert(NS.ScanGear())
+STUB.tick(1)
+answerItems()
+assert(not NS.ScanRunning() and AmisiaDB.scan.gear == SB.GearStamp(), tostring(AmisiaDB.scan.gear))
+assert(not NS.ScanGearOpen(), "asked through: finished under its own stamp")
+L_.gm = "12.99"
+assert(NS.ScanGearOpen(), "another list of them: open again")
+L_.gm = nil
+AmisiaDB.scan.gear = SB.Stamp()
+
 NS.Reset("ui.expert")
-print("scan all: order, skip finished, retries last, instance pause and resume, combat, stop by hand, nothing open, new build line, reload")
+print("scan all: order, skip finished, retries last, instance pause and resume, combat, stop by hand, nothing open, new build line, reload, the gear stamp")

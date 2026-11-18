@@ -122,7 +122,7 @@ local function finish(why, how)
     s.at = time()
     s.done = how == "done" and s.at or nil
     -- the gear list asked through: stamped with the build (F-188, "Alles Fehlende scannen")
-    if how == "done" and run == "gear" and ns.ScanById then s.gear = ns.ScanById.Stamp() end
+    if how == "done" and run == "gear" and ns.ScanById then s.gear = ns.ScanById.GearStamp() end
     ns.msg(L["Scan %s: %d Items gespeichert, nächste ID %d, %d offen zum Wiederholen."]:format(why or L["beendet"], s.count, s.next or 0, #s.retry))
     if ns.Refresh then ns.Refresh() end
     ns.Fire("SCAN_ENDED", run, how)

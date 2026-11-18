@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(gear): the gear scan asks for loot the server only reveals later (F-053, F-175, F-188)
+
+    919 items the loot data names, most of them drops of the dungeons for level 55 to 60 (Blackrock Spire, Dire
+    Maul, Blackrock Depths, Stratholme, Scholomance), were never asked for and so showed "Quelle unbekannt" when
+    looked up by ID. The gear scan now asks for them, also for drops of rare mobs and world drops, and "Alles
+    Fehlende scannen" offers it again whenever that list changes, without waiting for a new game build. After the
+    next data build the items appear in the planner with their boss.
+
 ## [v2.100.5](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.100.5) (2026-11-18)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.100.4...v2.100.5) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

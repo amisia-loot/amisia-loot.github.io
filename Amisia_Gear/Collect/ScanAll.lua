@@ -43,11 +43,12 @@ local function scanDB() return AmisiaDB and type(AmisiaDB.scan) == "table" and A
 ---------------------------------------------------------------------------
 -- What is open
 ---------------------------------------------------------------------------
--- The gear scan: open while its list never went through under this build and these lists.
+-- The gear scan: open while its list never went through under this build, these lists and these ids
+-- the gear data asks for beyond its items (SB.GearStamp).
 function ns.ScanGearOpen()
     if not (C_Item and C_Item.RequestLoadItemDataByID) or not ns.HasData("GEAR") then return false end
     local s = scanDB()
-    return not (s and s.gear == SB.Stamp())
+    return not (s and s.gear == SB.GearStamp())
 end
 
 local OPEN = {

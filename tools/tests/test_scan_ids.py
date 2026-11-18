@@ -196,7 +196,8 @@ def test_the_committed_lists_and_names_are_current():
     if not qids:
         pytest.skip('no QuestV2 on this machine')
     with open(sl.LISTS, encoding='utf-8') as fh:
-        assert fh.read() == sl.lists_text(build, qids, sorted(sl.data_npcs()), sl.ranges_b(sorted(sl.data_npcs()))), \
+        assert fh.read() == sl.lists_text(build, qids, sorted(sl.data_npcs()), sl.ranges_b(sorted(sl.data_npcs())),
+                                          sl.gear_missing()), \
             'rebuild: python3 tools/build_scan_lists.py'
     with open(sl.NAMES, encoding='utf-8') as fh:
         assert fh.read() == sl.names_text(sl.names_parts(sa.id_scans(REAL_ARCHIVE, []))), 'rebuild: python3 tools/build_scan_lists.py'

@@ -345,7 +345,9 @@ def test_the_fixture_end_to_end():
     assert rec(61006) == [('W', 'Gnoll Brute', 0, 0, 1426, 81004)]
     assert 61099 not in keep
     assert {61002, 61003, 61012, 61013, 61017} <= set(missing), 'a quest, dungeon or crafted item no table knows'
-    assert not {61007, 61015, 61016} & set(missing), 'world drops and PvP gear are not asked for'
+    # every source kind is asked for (a rare mob's or a world drop is revealed later like dungeon loot);
+    # client_known keeps the list to the ids the client's tables name
+    assert {61007, 61015, 61016} <= set(missing), sorted(missing)
 
 
 def test_zone_names_only_for_zone_fields(tmp_path):
@@ -503,10 +505,13 @@ def test_without_observations_nothing_changes():
 
 
 def test_scan_gear_asks_only_for_ids_the_client_has(tmp_path):
-    # an id the client's ItemSparse lacks does not exist in Forever: /amisia scan gear leaves it out
+    # an id neither ItemSparse nor Item has does not exist in Forever: /amisia scan gear leaves it out
     (tmp_path / 'ItemSparse.1.60.1.70235.csv').write_text('ID,Display_lang\n10,A\n30,C\n', encoding='utf-8')
     assert build_gear.client_known([10, 20, 30], str(tmp_path)) == [10, 30]
     assert build_gear.client_known([10, 20], str(tmp_path / 'none')) == [10, 20]
+    # an id only Item has is an item the server describes once it reveals it (22267): asked for
+    (tmp_path / 'Item.1.60.1.70235.csv').write_text('ID,ClassID\n10,4\n20,4\n', encoding='utf-8')
+    assert build_gear.client_known([10, 20, 30, 40], str(tmp_path)) == [10, 20, 30]
 
 
 # ---------------------------------------------------------------- recipes from the client tables
