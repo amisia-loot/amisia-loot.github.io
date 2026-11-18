@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.101.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.101.0) (2026-11-18)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.100.6...v2.101.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - data(data): 699 more pieces of gear with their source, most of them loot of the level 55 to 60 dungeons (F-175)
 
     The gear scan of 2.100.6 found 706 of the 919 items it newly asks for. They are in the planner now with their
