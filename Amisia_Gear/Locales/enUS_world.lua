@@ -235,6 +235,7 @@ L["Der Scan läuft nur außerhalb von Instanzen."] = "The scan only runs outside
 L["Bereich prüfen: /amisia scan <von> <bis>"] = "Check the range: /amisia scan <from> <to>"
 L["Scan gestartet: ID %d bis %d, %d Anfragen pro Sekunde. /amisia scan stop hält an."] = "Scan started: ID %d to %d, %d requests per second. /amisia scan stop stops it."
 L["Keine offenen IDs."] = "No open IDs."
+L["Die Liste der offenen IDs ist voll (%d). Weitere IDs ohne Antwort merkt sich der Scan nicht."] = "The list of open IDs is full (%d). The scan does not keep further IDs without an answer."
 L["Wiederholung gestartet: %d IDs mit %d Anfragen pro Sekunde."] = "Retry started: %d IDs at %d requests per second."
 L["Keine IDs zu scannen."] = "No IDs to scan."
 L["%s: %d IDs mit %d Anfragen pro Sekunde. Danach ausloggen, damit die Datei geschrieben wird."] = "%s: %d IDs at %d requests per second. Log out afterwards so the file gets written."

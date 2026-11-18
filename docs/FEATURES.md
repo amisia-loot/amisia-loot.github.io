@@ -1606,6 +1606,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: 2.49.2: Bildschirmfoto des Nutzers 2026-11-05 ("warum flakert der Charmodel"): jede Item-Antwort (GET_ITEM_INFO_RECEIVED) zog das Modell neu an (SetUnit, Undress, TryOn), und eine fehlgeschlagene Antwort fragte beim nächsten Refresh wieder; jetzt nur neu, wenn sich ein Link der Puppe ändert. Prozent über 999 gekürzt.
 - Notiz: seit 2.65.0 im Ausrüstungsplaner (D-80): das Fenster gibt es nicht mehr.
 
+### F-225 Wertung "Raid" ab Stufe 60
+- Version: 2.101.0
+- Status: gebaut
+- Prüfung: Wenn du auf Stufe 60 die Gewichtung auf "Raid" stellst, dann ändert sich die Reihenfolge der Vorschläge im Planer, und "Warum diese Gewichte" nennt Ziel Stufe 63 und die Trefferkappe deiner Klasse.
+- Prüfung: Wenn du als Schatten-Priester auf "Raid" ein Stoffteil mit Treffer und eines mit gleich viel Intelligenz vergleichst, dann steht das mit Treffer höher; auf "Speedrun" ist es umgekehrt oder knapper.
+- Prüfung: Wenn du als Zauberer mit 6 % Zaubertreffer ein Teil mit weiterem Treffer ansiehst, dann zeigt "Upgrade für dich" auf "Raid" einen Gewinn dafür, auf "Speedrun" keinen.
+- Prüfung: Wenn du mit einem Charakter unter 60 "Raid" wählst, dann sind die Vorschläge dieselben wie auf "Speedrun", und "Warum diese Gewichte" sagt "Raid gilt ab Stufe 60, bis dahin Speedrun".
+- Prüfung: Wenn du im Ausrüstungsfenster dreimal auf "Gewichtung: ..." klickst, dann steht wieder die erste Gewichtung da; mit Stufe 60 und "Speedrun" steht dort rechts einmal je Sitzung der Link "Für Raids: Gewichtung Raid".
+- Notiz: Spec docs/specs/2026-11-18-wertung-raid.md (freigegeben 2026-11-18); DECISIONS D-150. Alle Zahlen sind Classic-Werte gegen Stufe 63, in Forever nicht gemessen; Heiler rechnen auf "Raid" wie auf "Speedrun".
+
 ### F-111 Ausrüstungsziele: Wertungs-Kopf
 - Version: 2.44.0
 - Status: gebaut

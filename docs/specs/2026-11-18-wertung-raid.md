@@ -1,6 +1,6 @@
 # Spec: Wertung "Raid" ab Stufe 60
 
-Stand: 2026-11-18 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-18 · Status: freigegeben ·
 Feature: F-225
 
 ## Ziel
@@ -19,7 +19,8 @@ Wert "Raid". Der Umschalter im Ausrüstungsfenster geht reihum durch alle drei. 
 Bosskampf auf Stufe 60: Ziel drei Stufen höher, Mana kaum knapp."
 
 **B. Nur auf Stufe 60.** "Raid" hat eigene Gewichte allein für die Stufe 60. Für jede Stufe darunter rechnet "Raid"
-wie "Speedrun", und der Kopf der Ausrüstungsseite sagt das ("Raid gilt ab Stufe 60, bis dahin Speedrun").
+wie "Speedrun"; der Tooltip des Umschalters und "Warum diese Gewichte" sagen das ("Raid gilt ab Stufe 60, bis dahin
+Speedrun").
 
 **C. Was "Raid" anders rechnet** (Vorschlag der Zahlen, alle in `tools/build_bis.py`, jede mit ihrem Grund):
 
@@ -34,8 +35,9 @@ wie "Speedrun", und der Kopf der Ausrüstungsseite sagt das ("Raid gilt ab Stufe
 | Heiler | eigene Gewichte | unverändert | ihr Mana bleibt im Raid knapp |
 | Tanks | eigene Gewichte | unverändert bis auf das Ziel | siehe Frage 3 |
 
-Für Schatten auf 60 ergibt das mit derselben Formel: Intelligenz 0,42 statt 1,70, Willenskraft 0,09 statt 0,47, Tempo
-1,08 statt 0,60 je Wertungspunkt, Treffer unverändert 1,50 je Wertungspunkt, aber bis 16 % statt bis 6 %.
+Für Schatten auf 60 ergibt das mit derselben Formel (gebaut am 2026-11-18): Intelligenz 0,50 statt 1,69,
+Willenskraft 0,10 statt 0,47, Tempo 1,11 statt 0,60 je Wertungspunkt, Treffer 1,60 statt 1,51 je Wertungspunkt und
+bis 16 % statt bis 6 %.
 
 **D. Überall, wo die Gewichtung heute wirkt:** Vorschläge und Ziele des Planers, die Liste der Ausrüstungsseite,
 "Upgrade für dich" im Item-Tooltip, "Warum diese Gewichte" (dort steht bei "Raid" der Satz aus dem Tooltip und die
@@ -71,8 +73,8 @@ Tabelle oben für die eigene Klasse).
   dann steht das mit Treffer höher; auf "Speedrun" ist es umgekehrt oder knapper.
 - Wenn du als Zauberer mit 6 % Zaubertreffer ein Teil mit weiterem Treffer ansiehst, dann zeigt "Upgrade für dich" auf
   "Raid" einen Gewinn dafür, auf "Speedrun" keinen.
-- Wenn du mit einem Charakter unter 60 "Raid" wählst, dann sind die Vorschläge dieselben wie auf "Speedrun", und der Kopf
-  sagt "Raid gilt ab Stufe 60, bis dahin Speedrun".
+- Wenn du mit einem Charakter unter 60 "Raid" wählst, dann sind die Vorschläge dieselben wie auf "Speedrun", und
+  "Warum diese Gewichte" sagt "Raid gilt ab Stufe 60, bis dahin Speedrun".
 - Wenn du den Umschalter dreimal klickst, dann steht wieder die erste Gewichtung da.
 
 ## Sonderfälle
@@ -107,7 +109,8 @@ Nichts. Die Wertung ist lokal: keine Nachricht, kein Abgleich, keine Aktion für
 1. **Die Zahlen aus C.** Manaknappheit 0,1 und die Kappen 16 % und 9 % sind Classic-Werte, in Forever nicht gemessen.
    Vorschlag: so übernehmen, in "Warum diese Gewichte" als Annahme zeigen, und später am Raidboss messen.
 2. **Hinweis statt Automatik?** Vorschlag: kein Umschalten von selbst; wer 60 ist und noch "Speedrun" hat, sieht im
-   Kopf der Ausrüstungsseite einmal je Sitzung den ruhigen Link "Für Raids: Gewichtung Raid".
+   Kopf des Ausrüstungsfensters (dort steht der Umschalter) einmal je Sitzung den ruhigen Link "Für Raids:
+   Gewichtung Raid".
 3. **Tanks.** Vorschlag für die erste Fassung: nur das Ziel (Stufe 63) ändert sich; eine eigene Regel für
    Krit-Immunität über Verteidigung kommt erst, wenn sie in Forever gemessen ist.
 4. **Heiler.** Vorschlag: unverändert. Wenn du willst, dass im Raid Manaregeneration (alle 5 Sek.) mehr und
@@ -120,3 +123,15 @@ Nichts. Die Wertung ist lokal: keine Nachricht, kein Abgleich, keine Aktion für
 
 - 2026-11-18: Spec gewünscht ("Ja, Spec schreiben") nach dem Vorschlag einer dritten Wertung "Raid" ab Stufe 60. Die
   offenen Fragen sind noch nicht beantwortet.
+- 2026-11-18, beim Bauen: der Link aus Frage 2 steht im Ausrüstungsfenster neben "Mein Charakter" (dort ist der
+  Umschalter), nicht auf der Seite Ausrüstung des Hauptfensters; den Satz "Raid gilt ab Stufe 60, bis dahin Speedrun"
+  sagen der Tooltip des Umschalters und "Warum diese Gewichte" statt eines Kopfs. Die Zahlen für Schatten in C sind
+  die gebauten.
+- 2026-11-18: "passt" auf den Entwurf mit seinen fünf Fragen -> jede Frage wie vorgeschlagen:
+  - Frage 1: die Zahlen aus C übernehmen (Manaknappheit 0,1, Zaubertreffer bis 16 %, Nahkampftreffer bis 9 %), als
+    Annahme zeigen, später am Raidboss messen.
+  - Frage 2: kein Umschalten von selbst; ein ruhiger Link im Kopf der Ausrüstungsseite, einmal je Sitzung, für
+    Stufe 60 mit "Speedrun".
+  - Frage 3: Tanks: nur das Ziel (Stufe 63) ändert sich.
+  - Frage 4: Heiler: unverändert.
+  - Frage 5: der Krit der Zauberer ist nicht Teil dieser Spec.

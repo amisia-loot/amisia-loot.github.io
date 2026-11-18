@@ -4213,3 +4213,65 @@ Anmeldungen)", "Alle Buffs da", Klick auf die Zeile, graue Hinweise, ohne Daten 
 `tools/tests/test_build_raidbuffs.py` (Klasse und Talent aus kleinen Tabellen,
 `tools/tests/test_build_raidbuffs.py::test_every_listed_name_belongs_to_a_class` mit den Tabellen auf der Platte,
 `tools/tests/test_build_raidbuffs.py::test_shipped_file_is_current`), `tests/ui_scene.lua` (`lineup-buffs`).
+
+## D-150 Wertung "Raid": ein Bosskampf auf Stufe 60, eigene Gewichte nur dort, Heiler unverändert
+
+**Datum:** 2026-11-18
+**Entscheidung:** Die Gewichtung (`bis.kind`) hat einen dritten Wert "Raid" (F-225, Spec
+`docs/specs/2026-11-18-wertung-raid.md`). Regeln:
+- **Nur auf der Höchststufe:** `Data/GearWeights.lua` trägt je Spezialisierung einen Satz `Raid` allein für den
+  letzten Bereich (Stufe 60) mit eigenem Bezugscharakter (`rref`); darunter liest "Raid" die Gewichte von "Speedrun"
+  (`Gear.Weights`, `Gear.RaidOn`). Heiler haben keinen Raid-Satz: ihr Mana bleibt knapp, "Raid" ist für sie
+  "Speedrun".
+- **Was anders gerechnet wird** (`RAID` in `tools/build_bis.py`, `GEAR_WEIGHTS.model.raid` im Addon): das Ziel ist
+  drei Stufen höher statt zwei (Rüstungsformel und Blockwert der Tanks, Bedrohung); 9 % der Schläge verfehlen (28 %
+  mit zwei Waffen), 6,5 % werden ausgewichen; 16 % der Zauber verfehlen und Treffer nimmt sie weg (das eine Prozent,
+  das immer bleibt, ist nicht gerechnet); die Manaknappheit der Schadenszauberer ist 0,1 statt des Werts der
+  Spezialisierung (meist 0,5); der Zauberstab zählt nicht. Das Überleben der Schadensklassen bleibt bei 10 % wie auf
+  "Speedrun". Tanks: nur das Ziel.
+- **Drei Stellen, eine Bedingung:** die Gewichte (`Gear.Weights`), das Upgrade-Modell (`Model.Change`, die
+  Konstanten gelten nur für den einen Aufruf) und die Trefferkappe der Listen (`ns.BisHitCap`: 9 % und 16 % statt
+  6 %) gelten zusammen, wenn "Raid" gewählt ist, die Stufe die Höchststufe ist und die Spezialisierung einen Raid-Satz
+  hat. Die Formeln stehen wie bisher zweimal (Python und Lua).
+- **Kein Umschalten von selbst.** Das Ausrüstungsfenster schaltet per Klick reihum (Speedrun, Hardcore, Raid). Wer
+  auf der Höchststufe noch "Speedrun" hat, sieht dort einmal je Sitzung den ruhigen Link "Für Raids: Gewichtung Raid"
+  (bis das Fenster einmal damit geschlossen wurde).
+- **Annahmen, keine Messung:** alle Zahlen sind Classic-Werte gegen Stufe 63; "Warum diese Gewichte" sagt das. Eine
+  Messung in Forever ändert sie in `tools/build_bis.py`.
+
+**Grund:** Nutzer 2026-11-18. Anlass war der Vergleich von Amisias Schatten-Gewichten mit einer Raid-Simulation, auf
+die der Nutzer verwies: Intelligenz 1,70 je Punkt gegen 0,24 dort. Ursache war kein Fehler, sondern die Annahme
+"Mana ist die halbe Zeit knapp", die fürs Leveln und für Dungeons gilt. Auf den Vorschlag einer dritten Wertung:
+"Ja, Spec schreiben", dann "passt" (alle fünf Fragen wie vorgeschlagen). Aus der Simulation stammt keine Zahl und
+keine Liste (D-03, D-04).
+
+**Folge:** Kein neuer gespeicherter Schlüssel. Schatten auf 60: Intelligenz 1,69 -> 0,50, Willenskraft 0,47 -> 0,10,
+Tempo 6,0 -> 11,1 je Prozent, Zauberstab 0. Bei den Nahkämpfern ändern sich die Gewichte kaum; für sie wirkt vor allem
+die Trefferkappe von 9 %. Offen (nicht Teil der Spec): der Krit der Zauberer zählt mit halbem Zusatzschaden, die
+Simulation kommt etwa auf das Doppelte; eine eigene Raid-Regel für Heiler und die Krit-Immunität der Tanks.
+
+**Durchgesetzt durch:** `tools/tests/test_upgrade_model.py` (die Steigungen des Modells sind die Raid-Gewichte,
+Python und Lua gleich mit allen drei Gewichtungen, `test_raid_is_a_boss_fight_at_the_cap_only`),
+`tools/tests/test_score_parity.py` (`Gear.Weights` mit "Raid" wie der Build), `tools/tests/test_build_bis.py` (ein Satz
+für den letzten Bereich, keiner für Heiler), `tests/test_raid_weights.lua` (Gewichte, Trefferkappen, Modell, "Warum
+diese Gewichte", Einstellung, Umschalter, Link einmal je Sitzung), `tests/test_style.lua` (der Link in der dritten Zeile).
+
+## D-151 Die Liste der offenen Scan-IDs hat einen Deckel von 20000
+
+**Datum:** 2026-11-18
+**Entscheidung:** `AmisiaDB.scan.retry` (IDs des Item-Scans ohne brauchbare Antwort, "Offene Items") nimmt höchstens
+20000 IDs auf (`MAX_RETRY` in `Collect/Scan.lua`, `ns.SCAN_MAX_RETRY`). Ist die Liste voll, merkt sich der Scan weitere
+IDs nicht und sagt das einmal je Sitzung im Chat. Eine längere gespeicherte Liste wird beim Login auf die ersten 20000
+gekürzt (und bei jedem Zugriff auf die Scan-Daten). Was wegfällt, fragt ein späterer Scan desselben Bereichs wieder.
+**Grund:** Im Spielstand des Nutzers vom 2026-11-18 20:35 lief ein Bereichs-Scan von 300000 bis 3111111 und stand bei
+939506 mit 155800 offenen IDs: über dem höchsten Item des Clients (`SCAN_DONE.cmax`) kürzt das Aufräumen die Liste nicht
+(D-34), und etwa jede vierte ID dort bekam keine Antwort. Die gespeicherte Datei ist Lua, das der Client als ein Stück
+lädt, und ein Stück fasst höchstens 2^18 = 262144 verschiedene Konstanten; die Datei hatte schon rund 163000. Über der
+Grenze kann der Client die Datei nicht mehr lesen, und alles, was Amisia gespeichert hat, wäre weg. Aufgefallen ist es
+am Test, der den Spielstand nach dem Aufräumen noch einmal lädt ("constant table overflow").
+**Folge:** Ein Bereich weit über den Items des Clients verliert die IDs ohne Antwort jenseits der 20000; das ist
+gewollt. Die übrigen Listen des Scans wachsen nicht so (Zeilen kürzt das Aufräumen, die Scans per ID führen Bereiche
+als Text).
+**Durchgesetzt durch:** `tests/test_scan.lua` (Kürzen beim Login, volle Liste nimmt nichts auf, eine Chatzeile, mit
+Platz wie bisher), `tools/tests/test_scan_archive.py::test_a_build_after_the_trim_gives_the_same_data` (der echte
+Spielstand lädt nach dem Aufräumen).

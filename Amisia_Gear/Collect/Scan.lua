@@ -10,6 +10,12 @@ local MAX_TRIES = 3
 local DEFAULT_TO = 250000
 local DEFAULT_RATE = 100
 local REPORT_EVERY = 5000
+-- The most ids kept to ask again. A range far above the client's items leaves hundreds of thousands of
+-- ids without an answer; the saved file is Lua the client loads as one chunk, and a chunk holds at
+-- most 2^18 constants: past that the client cannot read the file and every saved value of Amisia is
+-- gone. What does not fit is dropped (a later scan of the range asks again).
+local MAX_RETRY = 20000
+ns.SCAN_MAX_RETRY = MAX_RETRY
 
 local running = false
 local ticker
@@ -31,11 +37,29 @@ local function now()
     return GetTime and GetTime() or clock
 end
 
+local toldFull   -- the chat line about the full list was said this session
+
+-- An id without a usable answer goes to the list to ask again, while there is room (MAX_RETRY).
+local function addRetry(s, id)
+    if #s.retry < MAX_RETRY then
+        s.retry[#s.retry + 1] = id
+    elseif not toldFull then
+        toldFull = true
+        ns.msg(L["Die Liste der offenen IDs ist voll (%d). Weitere IDs ohne Antwort merkt sich der Scan nicht."]:format(MAX_RETRY))
+    end
+end
+
 local function scanDB()
     AmisiaDB.scan = AmisiaDB.scan or {}
     local s = AmisiaDB.scan
     s.items = s.items or {}
     s.retry = s.retry or {}
+    -- a list an earlier version let grow: cut to the room (a new table gives the memory back)
+    if #s.retry > MAX_RETRY then
+        local keep = {}
+        for i = 1, MAX_RETRY do keep[i] = s.retry[i] end
+        s.retry = keep
+    end
     -- a retry run slows the rate down until it ends; keep that instead of the setting
     if not savedRate then s.rate = ns.Get("tools.scanRate") or DEFAULT_RATE end
     s.count = s.count or 0
@@ -102,10 +126,10 @@ function ns.ScanAddedCount() return added end
 local function park(run)
     local s = scanDB()
     if run == "retry" and queue then
-        for _, id in ipairs(queue) do s.retry[#s.retry + 1] = id end
+        for _, id in ipairs(queue) do addRetry(s, id) end
     end
     if run == "retry" or run == "range" then
-        for id in pairs(pending) do s.retry[#s.retry + 1] = id end
+        for id in pairs(pending) do addRetry(s, id) end
     end
 end
 
@@ -147,7 +171,7 @@ local function tick()
             else
                 pending[id] = nil
                 pendingCount = pendingCount - 1
-                s.retry[#s.retry + 1] = id
+                addRetry(s, id)
             end
         end
     end
@@ -191,14 +215,17 @@ local function onResult(id, success)
     pendingCount = pendingCount - 1
     if success ~= false then
         if not store(id) then
-            local s = scanDB()
-            s.retry[#s.retry + 1] = id
+            addRetry(scanDB(), id)
         end
     end
     local s = scanDB()
     if pendingCount == 0 and ((queue and #queue == 0) or (not queue and s.next > s.to)) then finish(L["fertig"], "done") end
 end
 ns.OnEvent("ITEM_DATA_LOAD_RESULT", onResult)
+-- a saved list longer than the room is cut at login, before the file is written again
+ns.OnEvent("PLAYER_LOGIN", function()
+    if AmisiaDB and type(AmisiaDB.scan) == "table" then scanDB() end
+end)
 -- a /reload or logout during a run: what it had not finished is kept in the saved retry list
 ns.OnEvent("PLAYER_LOGOUT", function()
     if not running then return end

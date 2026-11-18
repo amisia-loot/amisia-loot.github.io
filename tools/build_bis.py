@@ -65,7 +65,7 @@ SV_DEFAULT = os.path.expanduser('~/addons/_SavedVariables/Amisia.lua')
 CLASS_ORDER = ['WARRIOR', 'PALADIN', 'HUNTER', 'ROGUE', 'PRIEST', 'SHAMAN', 'MAGE', 'WARLOCK', 'DRUID']
 # Upper ends of Gear.COLUMNS: one weight set per level range of the planner.
 BRACKETS = [9, 14, 19, 24, 29, 34, 39, 44, 49, 54, 59, 60]
-KINDS = ('Speedrun', 'Hardcore')
+KINDS = ('Speedrun', 'Hardcore', 'Raid')
 
 
 def log(*a):
@@ -1499,6 +1499,27 @@ THREAT_SHARE = 0.15         # tanks: threat stats count at 15 %
 MELEE_MISS, DW_MISS, SPELL_MISS = 8.0, 27.0, 6.0   # percent, against a target two levels higher
 TARGET_DODGE = 5.6
 HIT_CAP, SPELL_HIT_CAP = 6.0, 6.0
+# The weighting "Raid" (F-225, D-150, spec docs/specs/2026-11-18-wertung-raid.md): a boss fight at the
+# level cap instead of levelling and dungeons. Only what differs: the target is three levels higher
+# (Classic's values against level 63: 9 % of the swings miss, 28 % with two weapons, 6.5 % are dodged;
+# 17 % of the spells miss and hit takes away 16 of them), mana hardly runs short for a damage caster
+# (potions, totems, Judgement of Wisdom) and nobody wands. Healers keep their weights. None of it is
+# measured in Forever yet (tools/bis_measured.json would change it).
+RAID_LEVEL = 60
+LEVELLING = {'meleeMiss': MELEE_MISS, 'dwMiss': DW_MISS, 'spellMiss': SPELL_MISS, 'targetDodge': TARGET_DODGE,
+             'levels': 2, 'scarce': None, 'wand': True}
+RAID = {'meleeMiss': 9.0, 'dwMiss': 28.0, 'spellMiss': 16.0, 'targetDodge': 6.5, 'levels': 3, 'scarce': 0.1,
+        'wand': False}
+
+
+def env(raid):
+    """The target and mana constants of a weighting: LEVELLING, or RAID for the weighting "Raid"."""
+    return RAID if raid else LEVELLING
+
+
+def is_raid(kind, level, model):
+    """Whether the weighting "Raid" has its own numbers here: at the level cap, never for a healer."""
+    return kind == 'Raid' and level >= RAID_LEVEL and model != 'heal'
 CASTS_PER_BAR_SPIRIT = 0.5  # share of a mana bar's time spent outside the five-second rule
 # Share of the time a character casts while a mana bar lasts (the rest: moving, looting, waiting):
 # damage dealers levelling 0.6, healers 0.4. A bar lasts its casting time divided by this.
@@ -1517,7 +1538,7 @@ def specials_rate(r60, level):
     return r60 * min(1.0, max(level - 4, 0) / 36)
 
 
-def phys_weights(cls, p, ref, conv):
+def phys_weights(cls, p, ref, conv, raid=False):
     """Weights in attack power units. Damage per second D = (wDPS + AP/14) * (1 + r*s) * (1 + c) * t:
     white swings plus r specials per second that each hit for a swing (Classic's specials add the
     weapon's damage per hit, AP bonus included, so they scale with the weapon speed s); crit c with
@@ -1534,8 +1555,9 @@ def phys_weights(cls, p, ref, conv):
     B = wdps + max(ap, 0) / 14
     c = (conv.base_crit(cls) + agi / conv.agi_per_crit(cls, L) + ref['critRating']) / 100
     dw = p.get('plan') == 'DW' and cls in DUAL_WIELD and L >= DUAL_WIELD[cls]
-    miss = (0.6 * DW_MISS + 0.4 * MELEE_MISS) if dw else MELEE_MISS
-    t = max(0.5, 1 - max(0.0, miss - ref['hit']) / 100 - TARGET_DODGE / 100)
+    E = env(raid)
+    miss = (0.6 * E['dwMiss'] + 0.4 * E['meleeMiss']) if dw else E['meleeMiss']
+    t = max(0.5, 1 - max(0.0, miss - ref['hit']) / 100 - E['targetDodge'] / 100)
     w = {'AP': 1.0}
     w_crit = 14 * 0.01 * B / (1 + c)
     w_hit = 14 * 0.01 * B / t
@@ -1560,9 +1582,7 @@ def phys_weights(cls, p, ref, conv):
             for kind, refspd in (('2H', 3.3), ('MH', 2.6)):
                 w['SPD_' + kind] = round(14 * r * B / (1 + r * refspd), 3)
                 w['SPDREF_' + kind] = refspd
-        t1 = 1 - MELEE_MISS / 100 - TARGET_DODGE / 100
-        tdw = 1 - DW_MISS / 100 - TARGET_DODGE / 100
-        w['OHDPS'] = round(0.5 * tdw / t1, 3)
+        w['OHDPS'] = m_ohdps(raid)
     if p.get('mana100'):
         mv = p['mana100'] / 100
         w['INT'] = 15 * mv
@@ -1573,10 +1593,13 @@ def phys_weights(cls, p, ref, conv):
     return w, {'AP': round(ap), 'wDPS': round(wdps, 1), 'crit': round(c * 100, 1)}
 
 
-def caster_weights(cls, p, ref, conv, heal=False):
+def caster_weights(cls, p, ref, conv, heal=False, raid=False):
     """Weights in spell damage (or healing) units from a reference spell: B base damage, cast time
     T, coefficient k = T / 3.5 (less below level 20); crit adds half (heals: a half too), hit
-    removes misses, mana is worth what it buys while mana runs short (scarce share)."""
+    removes misses, mana is worth what it buys while mana runs short (scarce share). raid: the damage
+    caster's boss fight (env); a healer's weights are the same in a raid."""
+    E = env(raid and not heal)
+    scarce = p['scarce'] if E['scarce'] is None else E['scarce']
     L = ref['level']
     B = interp(HEAL_TABLE if heal else NUKE, L) * p['f']
     T = min(p['cast'], interp(CAST_TIMES, L)) if p['cast'] <= 3.0 else p['cast']
@@ -1586,10 +1609,10 @@ def caster_weights(cls, p, ref, conv, heal=False):
     else:
         sp = ref['SPD'] + ref['SPP'] + max([ref[s] for s in p['school']] or [0])
     c = (conv.base_spell_crit(cls) + ref['INT'] / conv.int_per_crit(cls, L) + ref['spellCritRating']) / 100
-    t = 1.0 if heal else max(0.5, 1 - max(0.0, SPELL_MISS - ref['spellhit']) / 100)
+    t = 1.0 if heal else max(0.5, 1 - max(0.0, E['spellMiss'] - ref['spellhit']) / 100)
     dmg = B + k * sp
     pool = 18 * L + 15 * ref['INT']
-    mv = p['scarce'] * dmg / (k * pool)
+    mv = scarce * dmg / (k * pool)
     bar_time = pool * p['eff'] * T / B / DUTY['heal' if heal else 'caster']
     w = {}
     unit = 'HEAL' if heal else 'SP'
@@ -1600,23 +1623,24 @@ def caster_weights(cls, p, ref, conv, heal=False):
     w['SCRIT'] = round(0.5 * 0.01 * dmg / (k * (1 + 0.5 * c)), 4)
     if not heal:
         w['SHIT'] = round(0.01 * dmg / (k * t), 4)
-    w['HASTE'] = round((1 - p['scarce']) * 0.01 * dmg / k, 4)
+    w['HASTE'] = round((1 - scarce) * 0.01 * dmg / k, 4)
     w['INT'] = 15 * mv + w['SCRIT'] / conv.int_per_crit(cls, L)
     w['MP5'] = bar_time / 5 * mv
     w['SPI'] = conv.spirit[cls] * CASTS_PER_BAR_SPIRIT * bar_time / 5 * mv
-    if not heal and p.get('wand'):
+    if not heal and p.get('wand') and E['wand']:
         f = 0.4 if L < 20 else 0.25 if L < 40 else 0.15
         w['RDPS'] = round(f * T / (k * (1 + 0.5 * c) * t), 4)
     w['DPS'] = 0.1
     return w, {unit: round(sp), 'crit': round(c * 100, 1), 'mana': round(pool), 'spell': round(B)}
 
 
-def tank_weights(cls, p, ref, conv):
+def tank_weights(cls, p, ref, conv, raid=False):
     """Weights in stamina units from effective health EH = HP / (1 - armour reduction) /
     (1 - avoidance) against a target two levels higher; threat stats at THREAT_SHARE."""
     L = ref['level']
+    up = env(raid)['levels']   # the attacker's levels above the tank
     hp = base_hp(cls, L) + 10 * ref['STA']
-    K = 400 + 85 * (L + 2)
+    K = 400 + 85 * (L + up)
     agi = ref['AGI']
     armor = ref['ARMOR'] * p['armor_mult'] + 2 * agi
     dodge = (agi / conv.agi_per_crit(cls, L) + ref['dodgeRating'] + ref['def'] * 0.04) / 100
@@ -1633,13 +1657,13 @@ def tank_weights(cls, p, ref, conv):
     w['DEF'] = avoid_per_def * w_av + (0.012 * w_av if p['block'] else 0)
     if p['block']:
         w['BLOCK'] = 0.3 * w_av
-        hit = 3 * (L + 2) + 0.25 * (L + 2) ** 2
+        hit = 3 * (L + up) + 0.25 * (L + up) ** 2
         w['BLOCKVAL'] = round(block * 100 / hit * w_av, 4)
     w['AGI'] = 2 * w['ARMOR'] / p['armor_mult'] + w_av / conv.agi_per_crit(cls, L)
     # threat: the physical weights of the class at the same reference, at THREAT_SHARE, in
     # stamina for half an attack power (one budget point buys 2 attack power or 1 stamina)
     phys, _ = phys_weights(cls, dict(ap_str=2, ap_agi=1 if p.get('form') else 0, r_spec=0, plan='SHIELD',
-                                     mana100=0, form=p.get('form')), ref, conv)
+                                     mana100=0, form=p.get('form')), ref, conv, raid)
     s = THREAT_SHARE * 0.5
     for k in ('STR', 'AP', 'HIT', 'EXP', 'CRIT', 'DPS'):
         if phys.get(k):
@@ -1658,20 +1682,21 @@ def tank_weights(cls, p, ref, conv):
 SURVIVAL = ('STA', 'ARMOR', 'DODGE', 'PARRY', 'DEF', 'BLOCK')
 
 
-def derive(cls, model, p, ref, conv):
-    """(Speedrun weights, Hardcore weights, reference values to show) for one spec at ref."""
+def derive(cls, model, p, ref, conv, raid=False):
+    """(Speedrun weights, Hardcore weights, reference values to show) for one spec at ref. raid: against
+    a raid boss (env); the first set is then the weighting "Raid" (Speedrun's little survival on top)."""
     if model == 'phys':
-        w, shown = phys_weights(cls, p, ref, conv)
+        w, shown = phys_weights(cls, p, ref, conv, raid)
     elif model == 'caster':
-        w, shown = caster_weights(cls, p, ref, conv)
+        w, shown = caster_weights(cls, p, ref, conv, raid=raid)
     elif model == 'heal':
         w, shown = caster_weights(cls, p, ref, conv, heal=True)
     else:
-        w, shown = tank_weights(cls, p, ref, conv)
+        w, shown = tank_weights(cls, p, ref, conv, raid)
         return rounded(w), rounded(w), shown
     tank, _ = tank_weights(cls, dict(parry=cls in ('WARRIOR', 'PALADIN', 'ROGUE', 'HUNTER', 'SHAMAN'),
                                      block=cls in ('WARRIOR', 'PALADIN', 'SHAMAN'), armor_mult=1.0,
-                                     threat=cls), ref, conv)
+                                     threat=cls), ref, conv, raid)
     u = UNIT_PER_BUDGET[UNIT[model]]
 
     def survival(share):
@@ -1765,6 +1790,30 @@ def derive_spec(items, cls, model, p, conv, passes=16, tol=0.01):
         hc.append(hard)
         shown_all.append(shown)
     return sr, hc, shown_all, worst
+
+
+def derive_raid(items, cls, model, p, conv, start, passes=16, tol=0.01):
+    """The weighting "Raid" of a spec: (weights, reference values to show) at the level cap, at the
+    reference character who wears the best gear under these very weights (the fixpoint of derive_spec,
+    started from the Speedrun weights of the last bracket); None for a healer, whose weights stay."""
+    if model == 'heal':
+        return None
+    w, shown, change = start, None, 0.0
+    plan = '2H' if p.get('plan') == '2H' else 'auto'
+    for n in range(passes):
+        ref = reference(items, best(items, cls, RAID_LEVEL, w, conv, plan=plan), cls, RAID_LEVEL, conv)
+        new, _hard, shown = derive(cls, model, p, ref, conv, raid=True)
+        if n:
+            new = blend(w, new, 1 / (n + 1)) if rel_change(w, new) >= tol else new
+        change = rel_change(w, new)
+        w = new
+        if n and change < tol:
+            break
+    if change >= tol:
+        raise SystemExit(f'{cls} {model}: the raid weights did not settle ({change:.1%} after {passes} rounds)')
+    w = rounded(w)
+    check_signs(cls, model, w)
+    return w, shown
 
 
 # ---------------------------------------------------------------- the upgrade model (Gear/Model.lua's twin)
@@ -1916,25 +1965,27 @@ def m_apply(cls, p, st, s, place, sign, conv):
     return st
 
 
-def m_ohdps():
-    t1 = 1 - MELEE_MISS / 100 - TARGET_DODGE / 100
-    tdw = 1 - DW_MISS / 100 - TARGET_DODGE / 100
+def m_ohdps(raid=False):
+    E = env(raid)
+    t1 = 1 - E['meleeMiss'] / 100 - E['targetDodge'] / 100
+    tdw = 1 - E['dwMiss'] / 100 - E['targetDodge'] / 100
     return round(0.5 * tdw / t1, 3)
 
 
-def m_phys(cls, p, st):
+def m_phys(cls, p, st, raid=False):
     """(damage per second, its size in attack power) of the physical model."""
+    E = env(raid)
     L = st['level']
     r = specials_rate(p.get('r_spec', 0), L)
     if p.get('ranged'):
         B = st['rDPS'] + max(st['rap'], 0) / 14
         c, spd = st['rcrit'], st['rSpeed']
     else:
-        wd = 0.9 * L if p.get('form') else st['mhDPS'] + m_ohdps() * st['ohDPS']
+        wd = 0.9 * L if p.get('form') else st['mhDPS'] + m_ohdps(raid) * st['ohDPS']
         B = wd + max(st['ap'], 0) / 14
         c, spd = st['crit'], (0 if p.get('form') else st['mhSpeed'])
-    miss = (0.6 * DW_MISS + 0.4 * MELEE_MISS) if st['dw'] and not p.get('ranged') else MELEE_MISS
-    t = max(0.5, 1 - max(0.0, miss - st['hit']) / 100 - max(0.0, TARGET_DODGE - st['exp']) / 100)
+    miss = (0.6 * E['dwMiss'] + 0.4 * E['meleeMiss']) if st['dw'] and not p.get('ranged') else E['meleeMiss']
+    t = max(0.5, 1 - max(0.0, miss - st['hit']) / 100 - max(0.0, E['targetDodge'] - st['exp']) / 100)
     D = B * (1 + r * spd) * (1 + c / 100) * t * (1 + st['haste'] / 100)
     return D, 14 * B
 
@@ -1960,29 +2011,31 @@ def m_bar(cls, p, st):
     return st['mana'] * p['eff'] * T / B / DUTY['heal' if p['model'] == 'heal' else 'caster']
 
 
-def m_caster(cls, p, st, bar, conv):
+def m_caster(cls, p, st, bar, conv, raid=False):
     """(damage or healing per cast with crit, hit, haste and mana, its size in spell power)."""
+    E = env(raid and p['model'] != 'heal')
     L = st['level']
     B, T, k = m_cast(cls, p, L)
     dmg = B + k * m_power(p, st)
-    t = 1.0 if p['model'] == 'heal' else max(0.5, 1 - max(0.0, SPELL_MISS - st['shit']) / 100)
-    s = p['scarce']
+    t = 1.0 if p['model'] == 'heal' else max(0.5, 1 - max(0.0, E['spellMiss'] - st['shit']) / 100)
+    s = p['scarce'] if E['scarce'] is None else E['scarce']
     pool = st['mana'] + st['mp5'] * bar / 5 + st['SPI'] * conv.spirit[cls] * CASTS_PER_BAR_SPIRIT * bar / 5
     D = dmg * (1 + 0.5 * st['scrit'] / 100) * t * (1 + (1 - s) * st['shaste'] / 100) * max(pool, 1) ** s
     return D, dmg / k
 
 
-def m_eh(st):
-    """(effective health against a target two levels higher, its size in stamina)."""
+def m_eh(st, raid=False):
+    """(effective health against a target two levels higher, three in a raid; its size in stamina)."""
     L = st['level']
-    K = 400 + 85 * (L + 2)
+    K = 400 + 85 * (L + env(raid)['levels'])
     av = min(0.6, (st['miss'] + st['dodge'] + st['parry'] + 0.3 * st['block']) / 100)
     return st['hp'] * (st['armor'] + K) / K / (1 - av), st['hp'] / 10
 
 
-def m_linear(cls, p, st, conv):
+def m_linear(cls, p, st, conv, raid=False):
     """Weights (in the spec's unit, per point as the item shows it) of what the model counts straight:
     mana for physical specs, spell damage of hybrids, the other weapon's damage, block value."""
+    E = env(raid)
     w = {}
     model = p['model']
     if model == 'phys':
@@ -1993,11 +2046,11 @@ def m_linear(cls, p, st, conv):
             w['DPS_RANGED'] = 1.0
     if model in ('caster', 'heal'):
         w['DPS_MELEE'] = 0.1
-        if model == 'caster' and p.get('wand'):
+        if model == 'caster' and p.get('wand') and E['wand']:
             L = st['level']
             _, T, k = m_cast(cls, p, L)
             c = st['scrit'] / 100
-            t = max(0.5, 1 - max(0.0, SPELL_MISS - st['shit']) / 100)
+            t = max(0.5, 1 - max(0.0, E['spellMiss'] - st['shit']) / 100)
             f = 0.4 if L < 20 else 0.25 if L < 40 else 0.15
             w['DPS_RANGED'] = f * T / (k * (1 + 0.5 * c) * t)
     if p.get('mana100') and model in ('phys', 'tank'):
@@ -2013,7 +2066,7 @@ def m_linear(cls, p, st, conv):
         w['HP5'] = 0.5
         if p.get('block'):
             L = st['level']
-            hit = 3 * (L + 2) + 0.25 * (L + 2) ** 2
+            hit = 3 * (L + E['levels']) + 0.25 * (L + E['levels']) ** 2
             av = min(0.6, (st['miss'] + st['dodge'] + st['parry'] + 0.3 * st['block']) / 100)
             w['BLOCKVAL'] = st['block'] / hit * 0.001 * st['hp'] / (1 - av)
     if model == 'phys' and not MANA_PER_SPIRIT_5.get(cls):
@@ -2039,14 +2092,16 @@ M_FALLBACK = {'SOCK': 'GEM', 'META': 'META', 'RES': 'RES', 'SPEN': 'SPEN'}
 def m_change(cls, p, kind, st, out_items, in_items, conv, wb=None):
     """The change of the spec's output when out_items leave and in_items come: lists of (stats, place).
     Returns {total, main, surv, threat (percent), gain (in the spec's unit), size (the output's size)}.
-    kind is 'Speedrun' or 'Hardcore' (the survival share of non-tanks); wb the bracket's weights for the
-    keys of M_FALLBACK and a set bonus (SETB)."""
+    kind is 'Speedrun', 'Hardcore' (the survival share of non-tanks) or 'Raid' (a raid boss at the
+    level cap, is_raid; else as Speedrun); wb the bracket's weights for the keys of M_FALLBACK and a set
+    bonus (SETB)."""
+    raid = is_raid(kind, st['level'], p['model'])
     after = st
     for s, place in out_items:
         after = m_apply(cls, p, after, s, place, -1, conv)
     for s, place in in_items:
         after = m_apply(cls, p, after, s, place, 1, conv)
-    lin = m_linear(cls, p, st, conv)
+    lin = m_linear(cls, p, st, conv, raid)
     extra = 0.0
     for sign, items in ((-1, out_items), (1, in_items)):
         for s, place in items:
@@ -2056,12 +2111,12 @@ def m_change(cls, p, kind, st, out_items, in_items, conv, wb=None):
                     extra += sign * (s.get(k) or 0) * wb.get(wk, 0)
             extra += sign * (s.get('SETB') or 0)
     model = p['model']
-    eh0, vs = m_eh(st)
-    eh1, _ = m_eh(after)
+    eh0, vs = m_eh(st, raid)
+    eh1, _ = m_eh(after, raid)
     surv = eh1 / eh0 - 1
     if model == 'tank':
-        d0, vp = m_phys(cls, p['threat'], st)
-        d1, _ = m_phys(cls, p['threat'], after)
+        d0, vp = m_phys(cls, p['threat'], st, raid)
+        d1, _ = m_phys(cls, p['threat'], after, raid)
         threat = d1 / d0 - 1
         ts = THREAT_SHARE * 0.5
         size = vs + ts * vp
@@ -2069,12 +2124,12 @@ def m_change(cls, p, kind, st, out_items, in_items, conv, wb=None):
         return {'total': 100 * gain / size, 'main': 100 * (surv + extra / vs), 'surv': None,
                 'threat': 100 * threat, 'gain': gain, 'size': size}
     if model == 'phys':
-        d0, vo = m_phys(cls, p, st)
-        d1, _ = m_phys(cls, p, after)
+        d0, vo = m_phys(cls, p, st, raid)
+        d1, _ = m_phys(cls, p, after, raid)
     else:
         bar = m_bar(cls, p, st)
-        d0, vo = m_caster(cls, p, st, bar, conv)
-        d1, _ = m_caster(cls, p, after, bar, conv)
+        d0, vo = m_caster(cls, p, st, bar, conv, raid)
+        d1, _ = m_caster(cls, p, after, bar, conv, raid)
     main = d1 / d0 - 1 + extra / vo
     share = (HARDCORE_SHARE if kind == 'Hardcore' else SPEEDRUN_SURVIVAL) * UNIT_PER_BUDGET[UNIT[model]]
     size = vo + share * vs
@@ -2154,10 +2209,12 @@ def model_constants(conv):
         'threatShare': THREAT_SHARE, 'speedrun': SPEEDRUN_SURVIVAL, 'hardcore': HARDCORE_SHARE,
         'castsSpi': CASTS_PER_BAR_SPIRIT, 'dutyCaster': DUTY['caster'], 'dutyHeal': DUTY['heal'],
         'spiritHealth': SPIRIT_HEALTH_SHARE, 'fallback': dict(M_FALLBACK),
+        # the weighting "Raid": from this level, with these numbers instead of the ones above (env)
+        'raid': dict({k: v for k, v in RAID.items() if k != 'wand'}, level=RAID_LEVEL),
     }
 
 
-def render_weights(result, conv, info):
+def render_weights(result, conv, info, raid=None):
     lines = [
         '-- GENERATED by tools/build_bis.py. Do not edit; rebuild instead.',
         "-- Amisia's own weights, derived in tools/build_bis.py from game mechanics and the client's game tables.",
@@ -2169,6 +2226,8 @@ def render_weights(result, conv, info):
         '-- point, the rest per point. SPD_* weigh weapon speed in seconds above SPDREF_* by slot, DPS/RDPS melee and',
         '-- ranged weapon damage, OHDPS the share an off-hand weapon\'s damage counts. ratings: rating per 1 % at 60.',
         '-- unit: what one point of score is worth; ref: the reference character per bracket; why: the reason in short.',
+        '-- Raid: the weighting "Raid" (F-225), only its own set for the last bracket (the level cap); below it and for a',
+        '-- spec without one (healers) Raid reads Speedrun. rref: its reference character. model.raid: its constants.',
         'ns.GEAR_WEIGHTS = {',
         '    brackets = {' + ', '.join(str(b) for b in BRACKETS) + '},',
         '    order = {' + ', '.join(lua_str(c) for c in CLASS_ORDER) + '},',
@@ -2197,6 +2256,10 @@ def render_weights(result, conv, info):
             for s in shown:
                 lines.append('                ' + weights_table(s) + ',')
             lines.append('              },')
+            if raid and raid.get((cls, key)):
+                rw, rshown = raid[(cls, key)]
+                lines.append(f'              Raid = {{ [{len(BRACKETS)}] = ' + weights_table(rw) + ' },')
+                lines.append('              rref = ' + weights_table(rshown) + ',')
             lines[-1] = lines[-1] + ' },'
         lines.append('        },')
     lines += ['    },', '}', '']
@@ -2717,7 +2780,7 @@ def run(wago=WAGO, gamedata_path=GAMEDATA, measured_path=MEASURED, gear_path=GEA
             fx[iid] = '; '.join(texts)
     report['fx'] = len(fx)
     items = Items(gear, sc, stat_map)
-    result = {}
+    result, raid = {}, {}
     worst = 0.0
     for cls, key, name, role, model, p in SPECS:
         if specs and (cls, key) not in specs:
@@ -2725,12 +2788,13 @@ def run(wago=WAGO, gamedata_path=GAMEDATA, measured_path=MEASURED, gear_path=GEA
         sr, hc, shown, w = derive_spec(items, cls, model, p, conv)
         worst = max(worst, w)
         result[(cls, key)] = (sr, hc, shown)
+        raid[(cls, key)] = derive_raid(items, cls, model, p, conv, sr[-1])
     report['fixpoint'] = round(worst, 4)
     built = built or time.strftime('%Y-%m-%d')
     info = {'built': built, 'gamedata': gd.get('build'),
             'kinds': ', '.join(f'{k} {g}/{n}' + ('' if k in passed else ' (no SC)') for k, (g, n) in sorted(kinds.items()))}
     if not specs:
-        write_if_changed(out_weights, render_weights(result, conv, info))
+        write_if_changed(out_weights, render_weights(result, conv, info, raid))
     sets = build_sets(gd, set(gear['I']))
     rp = observed_suffixes(sv)
     with open(facts_path, encoding='utf-8') as fh:

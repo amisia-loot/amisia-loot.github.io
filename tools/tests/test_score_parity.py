@@ -19,10 +19,11 @@ def weights_py(G, cls, key, kind, level):
     specs = G.specs[cls]
     for i in range(1, len(specs) + 1):
         if specs[i].key == key:
-            sets = specs[i][kind]
+            sets = specs[i][kind] or specs[i].Speedrun
             brackets = [G.brackets[j] for j in range(1, len(G.brackets) + 1)]
             idx = next((j for j, b in enumerate(brackets) if level <= b), len(brackets) - 1)
-            w = sets[idx + 1]
+            # a weighting without a set of its own for the bracket ("Raid" below the cap) reads Speedrun
+            w = sets[idx + 1] or specs[i].Speedrun[idx + 1]
             return {k: w[k] for k in w.keys()}
     raise KeyError(key)
 
@@ -43,8 +44,10 @@ def test_python_and_lua_score_alike():
         for n, iid in enumerate(sample):
             s = dict(items.stats[iid])
             level = (9, 14, 27, 41, 60)[n % 5]
-            kindw = ('Speedrun', 'Hardcore')[n % 2]
+            kindw = ('Speedrun', 'Hardcore', 'Raid')[n % 3]
             w = weights_py(G, cls, key, kindw, level)
+            got = lua.eval('function(c, k, kind, level) return NS.Gear.Weights(c, k, kind, level) end')(cls, key, kindw, level)
+            assert {k: got[k] for k in got.keys()} == w, (cls, key, kindw, level)
             row = gear['I'][iid]
             place = KIND_OF.get(bb.GROUP.get(row[0]))
             if n % 7 == 0:

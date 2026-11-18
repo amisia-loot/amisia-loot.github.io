@@ -641,6 +641,14 @@ local HIT_CAP, SPELL_HIT_CAP = 6, 6
 local CR_HIT_MELEE, CR_HIT_SPELL = 6, 8
 ns.BIS_HIT_CAP = HIT_CAP
 
+-- The caps of the options (weapons, spells): with the weighting "Raid" in force (Gear.RaidOn) what a
+-- raid boss lets miss (F-225), else the two above.
+function ns.BisHitCap(o)
+    local r = o and Gear.RaidOn(o.class, o.spec, o.kind, o.level) and Gear.RaidModel() or nil
+    if r then return r.meleeMiss or HIT_CAP, r.spellMiss or SPELL_HIT_CAP end
+    return HIT_CAP, SPELL_HIT_CAP
+end
+
 local function plainNumber(f, ...)
     if type(f) ~= "function" then return nil end
     local ok, v = pcall(f, ...)
@@ -667,7 +675,9 @@ function ns.BisHitCaps(o)
     local melee, spell = ns.BisOwnHit()
     if not melee and not spell then return nil end
     local w = worn()
-    local key = table.concat({ tostring(w), tostring(o.level), tostring(melee), tostring(spell) }, "|")
+    local hitCap, spellCap = ns.BisHitCap(o)
+    local key = table.concat({ tostring(w), tostring(o.level), tostring(melee), tostring(spell), tostring(hitCap),
+        tostring(spellCap) }, "|")
     if capKeyOf == key then return capCache end
     local caps = {}
     for _, sl in ipairs(Gear.SLOTS) do
@@ -677,8 +687,8 @@ function ns.BisHitCaps(o)
         -- side and at the spell rate for the spell side
         local m = ((s.HIT or 0) + (s.MHIT or 0)) * Gear.RatingPerPoint("HIT", o.level)
         local sp = ((s.HIT or 0) + (s.SHIT or 0)) * Gear.RatingPerPoint("SHIT", o.level)
-        caps[sl.key] = { HIT = melee and math.max(0, HIT_CAP - (melee - m)) or nil,
-            SHIT = spell and math.max(0, SPELL_HIT_CAP - (spell - sp)) or nil }
+        caps[sl.key] = { HIT = melee and math.max(0, hitCap - (melee - m)) or nil,
+            SHIT = spell and math.max(0, spellCap - (spell - sp)) or nil }
     end
     capCache, capKeyOf = caps, key
     return caps
@@ -1313,6 +1323,27 @@ function ns.BisWhy(o)
         if o.level <= upper then idx = i break end
     end
     local ref = type(sp.ref) == "table" and sp.ref[idx or #brackets]
+    -- the weighting "Raid" (F-225): what it assumes, with its own reference character; where it has no
+    -- numbers of its own, that it reads Speedrun
+    if o.kind == "Raid" and not sp.all then
+        local r = Gear.RaidModel()
+        if r and Gear.RaidOn(o.class, o.spec, o.kind, o.level) then
+            local model, boss = sp.model, (r.level or 60) + (r.levels or 3)
+            if model == "caster" then
+                lines[#lines + 1] = L["Raid: Ziel Stufe %d, Zaubertreffer zählt bis %d %%, Mana kaum knapp, kein Zauberstab."]:format(boss, r.spellMiss or 0)
+            elseif model == "phys" then
+                lines[#lines + 1] = L["Raid: Ziel Stufe %d, Treffer zählt bis %d %%."]:format(boss, r.meleeMiss or 0)
+            else
+                lines[#lines + 1] = L["Raid: Ziel Stufe %d."]:format(boss)
+            end
+            lines[#lines + 1] = L["Das sind Annahmen nach Classic, in Forever noch nicht gemessen."]
+            if type(sp.rref) == "table" then ref = sp.rref end
+        elseif r and sp.Raid == nil and o.level >= (r.level or 60) then
+            lines[#lines + 1] = L["Raid: Heiler rechnen wie auf Speedrun."]
+        elseif r then
+            lines[#lines + 1] = L["Raid gilt ab Stufe %d, bis dahin Speedrun."]:format(r.level or 60)
+        end
+    end
     if type(ref) == "table" then
         local parts = {}
         for _, k in ipairs(REF_ORDER) do
@@ -2758,14 +2789,14 @@ ns.RegisterSettings{ key = "bis", label = L["Ausrüstung und Wünsche"], order =
     { key = "bis.picks", type = "toggle", label = L["BiS-Empfehlungen zeigen"], default = true,   -- l10n-ok: setting key
       tip = L["Von Hand gepflegte beste Items, die die Wertung allein verfehlt (Procs, Effekte), stehen in ihrem Slot zuerst."] },
     { key = "bis.hitCap", type = "toggle", label = L["Trefferwertung nur bis zur Grenze"], default = true,   -- l10n-ok: setting key
-      tip = L["Trefferwertung über 6 % zählt nicht, gerechnet mit deinem Trefferwert aus dem Charakterfenster."] },
+      tip = L["Trefferwertung über 6 % zählt nicht (Gewichtung Raid auf Stufe 60: 9 % für Waffen, 16 % für Zauber), gerechnet mit deinem Trefferwert aus dem Charakterfenster."] },
     { key = "bis.effortTie", type = "slider", label = L["Gleichstand für Aufwand (Prozent)"], default = 3, min = 0, max = 10, step = 1,   -- l10n-ok: setting key
       expert = true, tip = L["Liegen Optionen so nah an der besten, kommt die leichter zu bekommende zuerst."] },
     { key = "bis.prof", type = "choice", label = L["Hergestellte Items"], default = "all",   -- l10n-ok: setting key
       values = { { "all", L["alle"] }, { "mine", L["nur meine Berufe"] } }, tip = L["Welche hergestellten Items als Ziel in Frage kommen: alle oder nur die deiner eigenen Berufe."] },
     { key = "bis.kind", type = "choice", label = L["Gewichtung"], default = "Speedrun",   -- l10n-ok: setting key
-      values = { { "Speedrun", "Speedrun" }, { "Hardcore", "Hardcore" } },
-      tip = L["Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung."] },
+      values = { { "Speedrun", "Speedrun" }, { "Hardcore", "Hardcore" }, { "Raid", "Raid" } },
+      tip = L["Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung."] .. " " .. L["Raid rechnet einen Bosskampf auf Stufe 60: Ziel drei Stufen höher, Mana kaum knapp."] },
     { key = "bis.upgradeDot", type = "toggle", label = L["Upgrade-Punkt in der Tabelle"], default = true,   -- l10n-ok: setting key
       tip = L["Grüner Punkt an Items, die besser sind als das, was du trägst."] },
     { key = "bis.noSource", type = "toggle", label = L["Items ohne bekannte Quelle vorschlagen"], default = false,   -- l10n-ok: setting key
@@ -2878,8 +2909,9 @@ function ns.BisWeightsReport()
     ns.msg(L["Gewichte (%s, Level %d): %s"]:format(o.kind, o.level, table.concat(out, ", ")))
     local melee, spell = ns.BisOwnHit()
     if melee or spell then
-        ns.msg(L["Treffer laut Charakterfenster: %s %% (Waffen), %s %% (Zauber), Grenze %d %%"]:format(
-            melee and Gear.Num(melee, 1) or "?", spell and Gear.Num(spell, 1) or "?", ns.BIS_HIT_CAP))
+        local hitCap, spellCap = ns.BisHitCap(o)
+        ns.msg(L["Treffer laut Charakterfenster: %s %% (Waffen), %s %% (Zauber), Grenze %d %% und %d %%"]:format(
+            melee and Gear.Num(melee, 1) or "?", spell and Gear.Num(spell, 1) or "?", hitCap, spellCap))
     else
         ns.msg(L["Trefferwertung zählt ohne Obergrenze (der Client nennt den eigenen Trefferwert nicht)."])
     end

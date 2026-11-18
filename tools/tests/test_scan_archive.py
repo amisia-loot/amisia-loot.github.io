@@ -179,7 +179,9 @@ def trimmed_sv(text, out):
     lua = run.fresh('', setup=lambda l: l.execute(text))
     lua.execute('STUB.fire("PLAYER_LOGIN"); STUB.tick(NS.SCAN_TRIM.delay + 120)')
     assert not lua.eval('NS.ScanTrimRunning()')
-    out.write_text(text + '\nAmisiaDB.scan = ' + lua.eval('STUB.dump(AmisiaDB.scan)') + '\n', encoding='utf-8')
+    # the trimmed scan in a function of its own: with the whole file before it, one chunk would hold more
+    # constants than Lua allows once a fresh scan made the file large ("constant table overflow")
+    out.write_text(text + '\n(function() AmisiaDB.scan = ' + lua.eval('STUB.dump(AmisiaDB.scan)') + ' end)()\n', encoding='utf-8')
     return lua
 
 

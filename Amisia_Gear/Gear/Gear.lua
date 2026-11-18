@@ -1144,7 +1144,24 @@ function Gear.SpecInfo(class, specKey)
     return Gear.Specs(class)[1]
 end
 
--- The weight set of a spec for a level.
+-- The constants of the weighting "Raid" (F-225, D-150: a boss fight at the level cap; level, levels,
+-- meleeMiss, dwMiss, spellMiss, targetDodge, scarce), or nil with data that has none.
+function Gear.RaidModel()
+    local c = ns.GEAR_WEIGHTS and ns.GEAR_WEIGHTS.model
+    return type(c) == "table" and type(c.raid) == "table" and c.raid or nil
+end
+
+-- Whether the weighting "Raid" has numbers of its own for a spec at a level: from the level the data
+-- names, where the spec has a raid set (healers and own weights have none). Elsewhere "Raid" reads
+-- Speedrun.
+function Gear.RaidOn(class, specKey, kind, level)
+    if kind ~= "Raid" then return false end
+    local r, sp = Gear.RaidModel(), Gear.SpecInfo(class, specKey)
+    return r ~= nil and type(sp) == "table" and type(sp.Raid) == "table" and (tonumber(level) or 0) >= (r.level or 60)
+end
+
+-- The weight set of a spec for a level. A weighting without a set of its own for the bracket ("Raid"
+-- below the level cap and for healers) reads Speedrun's.
 function Gear.Weights(class, specKey, kind, level)
     local sp = Gear.SpecInfo(class, specKey)
     if not sp then return nil end
@@ -1152,9 +1169,9 @@ function Gear.Weights(class, specKey, kind, level)
     local sets = sp[kind] or sp.Speedrun
     local brackets = ns.GEAR_WEIGHTS.brackets
     for i, upper in ipairs(brackets) do
-        if level <= upper then return sets[i] end
+        if level <= upper then return sets[i] or sp.Speedrun[i] end
     end
-    return sets[#sets]
+    return sets[#brackets] or sp.Speedrun[#brackets]
 end
 
 -- Scores are kept per class, spec and weighting (memo, declared with the loader), so a redraw only
@@ -1415,7 +1432,7 @@ function Gear.PicksFor(class, spec, level, plan, exclude)
 end
 
 -- Best items per slot for one level range.
--- opts: class, spec, kind ("Speedrun"/"Hardcore"), faction ("Alliance"/"Horde" short A/H or nil),
+-- opts: class, spec, kind ("Speedrun"/"Hardcore"/"Raid"), faction ("Alliance"/"Horde" short A/H or nil),
 -- sources (set of filter keys), level (upper end of the range); optional
 -- exclude ({ item = {[id] = true}, boss = {[name] = true}, place = {[Gear.PlaceOf key] = true} }),
 -- plan ("auto", "2H", "DW", "SHIELD"; auto picks the larger sum), suffix ("best": an item's best

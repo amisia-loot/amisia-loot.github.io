@@ -728,6 +728,22 @@ assert(r2 <= 806, "the second row ends inside the frame: " .. r2)
 AmisiaDB.settings.gear.view = "list"
 NS.GearRefresh(true)
 GL.row("gear third row", GF.viewButtons.overview, GF.viewButtons.list, GF.prevCol, GF.colLabel, GF.nextCol, GF.mine)
+-- the link that offers the weighting "Raid" to a level 60 character on Speedrun (F-225): a quiet link
+-- between the range steps and "Mein Charakter"
+do
+    local keepLevel, keepKind = STUB.level, NS.Get("bis.kind")
+    STUB.level = 60
+    NS.Set("bis.kind", "Speedrun")
+    NS._gearFrame.resetRaidHint()
+    NS.GearRefresh(true)
+    assert(GF.raidHint:IsShown() and GF.raidHint.isTab and GF.raidHint.inherits == nil, "a quiet link, no red chip (D-67)")
+    GL.row("gear third row with the raid link", GF.viewButtons.overview, GF.viewButtons.list, GF.prevCol, GF.colLabel, GF.nextCol,
+        GF.raidHint, GF.mine)
+    STUB.level = keepLevel
+    NS.Set("bis.kind", keepKind)
+    NS.GearRefresh(true)
+    assert(not GF.raidHint:IsShown())
+end
 assert(GF.listRows[1].sel.atlas == "Professions_Recipe_Active", "the chosen slot glows like a recipe")
 assert(GF.altPanel.border and GF.altPanel.border.atlas == "common-insideframe", "the alternatives in Forever's inset")
 GL.row("gear list and alternatives", GF.listRows[1], GF.altPanel)

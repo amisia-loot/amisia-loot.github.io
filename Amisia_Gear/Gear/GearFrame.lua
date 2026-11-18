@@ -27,6 +27,8 @@ local CLASS_ICON = {
 local F, overview, listView, altPanel, statusText
 local classButtons, specButtons, filterButtons = {}, {}, {}
 local kindButton, factionButton, viewButtons, colLabel = nil, nil, {}, nil
+-- the link that offers the weighting "Raid" (F-225), and whether this session has shown it already
+local raidHint, raidHintSeen
 local cells, colHeads, listRows, altRows = {}, {}, {}, {}
 local results = {}          -- column index -> Gear.Best result
 local selSlot = "HEAD"
@@ -582,6 +584,10 @@ local function updateControls()
     local sp = Gear.SpecInfo(g.class, cur)
     kindButton.label:SetText(sp and sp.all and L["Gewichtung: eigene"] or L["Gewichtung: %s"]:format(ns.Get("bis.kind")))   -- l10n-ok: setting key
     kindButton:SetOn(true)
+    -- a character at the raid's level still on Speedrun is offered "Raid", once a session
+    local raid = Gear.RaidModel()
+    raidHint:SetShown(raid ~= nil and not raidHintSeen and ns.Get("bis.kind") == "Speedrun"   -- l10n-ok: setting key
+        and (tonumber(ns.Plain(UnitLevel("player"))) or 1) >= (raid.level or 60))
     factionButton.label:SetText(g.faction == "A" and L["Allianz"] or g.faction == "H" and "Horde" or L["Beide"])
     factionButton:SetOn(true)
     for _, b in ipairs(filterButtons) do b:SetOn(g.sources[b.key] and true or false) end
@@ -689,7 +695,9 @@ local function build()
     -- second row: weighting, faction, sources
     -- weighting and faction switch on a click: quiet links naming the value (D-67)
     kindButton = W.Link(F, "", function()
-        ns.Set("bis.kind", ns.Get("bis.kind") == "Speedrun" and "Hardcore" or "Speedrun")   -- l10n-ok: setting key
+        -- round through the three weightings
+        local now = ns.Get("bis.kind")   -- l10n-ok: setting key
+        ns.Set("bis.kind", now == "Speedrun" and "Hardcore" or now == "Hardcore" and "Raid" or "Speedrun")   -- l10n-ok: setting key
         ns.GearRefresh(true)
     end)
     kindButton:SetPoint("TOPLEFT", 14, -82)
@@ -699,6 +707,12 @@ local function build()
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:AddLine(L["Gewichtung"], 1, 0.82, 0)
         GameTooltip:AddLine(L["Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung. Heiler und Tanks haben eigene Gewichte."], 0.8, 0.8, 0.8, true)
+        GameTooltip:AddLine(L["Raid rechnet einen Bosskampf auf Stufe 60: Ziel drei Stufen höher, Mana kaum knapp."], 0.8, 0.8, 0.8, true)
+        -- the shown range is below the raid's level: say what counts there
+        local r, o = Gear.RaidModel(), opts(settings().col)
+        if r and o.kind == "Raid" and o.level < (r.level or 60) then
+            GameTooltip:AddLine(L["Raid gilt ab Stufe %d, bis dahin Speedrun."]:format(r.level or 60), 1, 0.82, 0, true)
+        end
         GameTooltip:Show()
     end)
     kindButton:SetScript("OnLeave", function(self)
@@ -761,6 +775,16 @@ local function build()
     end)
     mine:SetPoint("TOPRIGHT", -14, -108)
     mine:SetOn(false)
+    raidHint = W.Link(F, L["Für Raids: Gewichtung Raid"], function()
+        ns.Set("bis.kind", "Raid")   -- l10n-ok: setting key
+        ns.GearRefresh(true)
+    end)
+    raidHint:SetPoint("RIGHT", mine, "LEFT", -T.TAB_GAP, 0)
+    raidHint:SetOn(false)
+    raidHint:Hide()
+    W.Tooltip(raidHint, L["Gewichtung"], L["Raid rechnet einen Bosskampf auf Stufe 60: Ziel drei Stufen höher, Mana kaum knapp."])
+    -- shown once: closing the window with the link on it is that once
+    F:HookScript("OnHide", function() if raidHint:IsShown() then raidHintSeen = true end end)
 
     overview = buildOverview(F)
     listView = buildList(F)
@@ -771,12 +795,13 @@ local function build()
     -- the parts the layout tests read
     F.classButtons, F.specButtons, F.filterButtons = classButtons, specButtons, filterButtons
     F.kindButton, F.factionButton, F.viewButtons, F.mine = kindButton, factionButton, viewButtons, mine
+    F.raidHint = raidHint
     F.colLabel, F.statusText, F.overview, F.listView = colLabel, statusText, overview, listView
     F.altPanel, F.colHeads, F.listRows = altPanel, colHeads, listRows
 end
 
--- Test hook: the cells of the overview.
-ns._gearFrame = { cells = function() return cells end }
+-- Test hook: the cells of the overview; the raid link's "shown this session" taken back.
+ns._gearFrame = { cells = function() return cells end, resetRaidHint = function() raidHintSeen = nil end }
 
 function ns.ResetGearPosition()
     if F then F:ClearAllPoints(); F:SetPoint("CENTER") end

@@ -55,18 +55,54 @@ def test_the_slopes_are_the_weights():
             if model in ('caster', 'heal'):
                 st['SPI'] = 0
                 st['mp5'] = 0
-            for k in KEYS:
-                if model == 'tank' and k == 'HASTE':
-                    continue
-                # a two-hander would end a rogue's dual wield: its weapon damage goes to the main hand
-                melee = 'MH' if p.get('plan') == 'DW' else '2H'
-                place = ('RANGED' if p.get('ranged') else melee) if k == 'DPS' else None
-                d = 0.01
-                got = bb.m_change(cls, pp, 'Speedrun', st, [], [({k: d}, place)], conv)['gain'] / d
-                want = bb.score({k: 1}, speed, level, place, cls, conv)
-                if abs(got - want) > 0.02 + 0.03 * abs(want):
-                    bad.append((cls, key, level, k, round(got, 4), round(want, 4)))
+            # the weighting "Raid" has slopes of its own at the level cap (never for a healer)
+            sets = [('Speedrun', speed)]
+            if level >= bb.RAID_LEVEL and model != 'heal':
+                sets.append(('Raid', bb.derive(cls, model, p, ref, conv, raid=True)[0]))
+            for kind, weights in sets:
+                for k in KEYS:
+                    if model == 'tank' and k == 'HASTE':
+                        continue
+                    # a two-hander would end a rogue's dual wield: its weapon damage goes to the main hand
+                    melee = 'MH' if p.get('plan') == 'DW' else '2H'
+                    place = ('RANGED' if p.get('ranged') else melee) if k == 'DPS' else None
+                    d = 0.01
+                    got = bb.m_change(cls, pp, kind, st, [], [({k: d}, place)], conv)['gain'] / d
+                    want = bb.score({k: 1}, weights, level, place, cls, conv)
+                    if abs(got - want) > 0.02 + 0.03 * abs(want):
+                        bad.append((cls, key, kind, level, k, round(got, 4), round(want, 4)))
     assert not bad, bad[:20]
+
+
+def test_raid_is_a_boss_fight_at_the_cap_only():
+    """The weighting "Raid" (F-225): below the level cap and for a healer it is Speedrun to the last
+    digit; at the cap a caster's mana counts less, its spell hit counts past 6 %, a wand counts nothing,
+    and a swing still misses at 8 % hit."""
+    conv = conv_of()
+    by = {(c, k): (m, p) for c, k, _n, _r, m, p in bb.SPECS}
+    item = [({'INT': 20, 'SHIT': 16, 'HIT': 10, 'SPI': 10, 'DPS': 40.0, 'STA': 5}, 'RANGED')]
+    for (cls, key), (model, p) in by.items():
+        pp = bb.m_params(cls, model, p)
+        for level in (30, 59):
+            st = bb.m_state_from_ref(cls, pp, ref_for(cls, level, p.get('plan', '2H')), conv)
+            assert bb.m_change(cls, pp, 'Raid', st, [], item, conv) == bb.m_change(cls, pp, 'Speedrun', st, [], item, conv)
+        st = bb.m_state_from_ref(cls, pp, ref_for(cls, 60, p.get('plan', '2H')), conv)
+        raid, speed = (bb.m_change(cls, pp, k, st, [], item, conv) for k in ('Raid', 'Speedrun'))
+        assert (raid == speed) == (model == 'heal'), (cls, key)
+    model, p = by[('PRIEST', 'shadow')]
+    pp = bb.m_params('PRIEST', model, p)
+    st = bb.m_state_from_ref('PRIEST', pp, ref_for('PRIEST', 60, '2H'), conv)
+    st['shit'] = 6.0
+    gain = lambda kind, s, place=None: bb.m_change('PRIEST', pp, kind, st, [], [(s, place)], conv)['main']  # noqa: E731
+    assert gain('Speedrun', {'SHIT': 8}) == 0 and gain('Raid', {'SHIT': 8}) > 0.5, 'spell hit past 6 %'
+    assert gain('Raid', {'INT': 30}) < 0.5 * gain('Speedrun', {'INT': 30}), 'mana hardly short'
+    assert gain('Speedrun', {'DPS': 40.0}, 'RANGED') > 0 and gain('Raid', {'DPS': 40.0}, 'RANGED') == 0, 'no wand'
+    model, p = by[('WARRIOR', 'dps')]
+    pp = bb.m_params('WARRIOR', model, dict(p, plan='2H'))
+    st = bb.m_state_from_ref('WARRIOR', pp, ref_for('WARRIOR', 60, '2H'), conv)
+    st['hit'] = 8.0
+    hit = lambda kind: bb.m_change('WARRIOR', pp, kind, st, [], [({'HIT': 10}, None)], conv)['main']  # noqa: E731
+    assert hit('Speedrun') == 0 and hit('Raid') > 0, 'a boss lets 9 % miss'
 
 
 def to_lua(lua, v):
@@ -128,7 +164,7 @@ def test_python_and_lua_alike():
                 if n % 6 == 0:
                     s['SETB'] = 7.5
                 side.append((s, place))
-            kind = ('Speedrun', 'Hardcore')[n % 2]
+            kind = ('Speedrun', 'Hardcore', 'Raid')[n % 3]
             wb = {'GEM': 4.0, 'META': 9.0, 'RES': 0.5, 'SPEN': 0.3}
             py = bb.m_change(cls, pp, kind, st, out_items, in_items, conv, wb)
             lu = from_lua(change(cls, lp, kind, to_lua(lua, st), to_lua(lua, [list(x) for x in out_items]),
@@ -152,6 +188,10 @@ def test_gear_weights_carry_the_model():
     got = from_lua(G.model)
     for k in ('meleeMiss', 'dwMiss', 'spellMiss', 'targetDodge', 'threatShare', 'speedrun', 'hardcore'):
         assert got[k] == want[k], k
+    # the weighting "Raid": its constants as the build has them
+    assert got['raid'] == want['raid'] and got['raid']['level'] == bb.RAID_LEVEL, got.get('raid')
+    assert {k: got['raid'][k] for k in ('meleeMiss', 'dwMiss', 'spellMiss', 'targetDodge', 'levels', 'scarce')} == \
+        {k: bb.RAID[k] for k in ('meleeMiss', 'dwMiss', 'spellMiss', 'targetDodge', 'levels', 'scarce')}
     for cls in bb.CLASS_ORDER:
         assert abs(got['agi60'][cls] - want['agi60'][cls]) < 1e-3, cls
         assert abs(got['int60'][cls] - want['int60'][cls]) < 1e-3, cls

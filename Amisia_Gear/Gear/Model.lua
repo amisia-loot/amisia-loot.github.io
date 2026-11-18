@@ -23,6 +23,11 @@ local HEAL_SCHOOL = { PALADIN = "SP_HOLY", PRIEST = "SP_HOLY", SHAMAN = "SP_NATU
 local RATING_HASTE_MELEE, RATING_HASTE_SPELL, RATING_EXPERTISE = 18, 20, 24
 
 local function C() return ns.GEAR_WEIGHTS and ns.GEAR_WEIGHTS.model end
+-- The constants of the weighting "Raid" (F-225, D-150) while Model.Change runs for it, else nil: a
+-- target three levels higher (misses, dodge, armour formula), mana hardly short, no wand.
+local RAID
+local function target(key) return RAID and RAID[key] or C()[key] end
+local function levelsUp() return RAID and RAID.levels or 2 end
 function Model.Available()
     local c = Gear.Available() and C()
     return c ~= nil and c ~= false
@@ -235,15 +240,13 @@ end
 ---------------------------------------------------------------------------
 
 local function ohFactor()
-    local c = C()
-    local t1 = 1 - c.meleeMiss / 100 - c.targetDodge / 100
-    local tdw = 1 - c.dwMiss / 100 - c.targetDodge / 100
+    local t1 = 1 - target("meleeMiss") / 100 - target("targetDodge") / 100
+    local tdw = 1 - target("dwMiss") / 100 - target("targetDodge") / 100
     return math.floor(0.5 * tdw / t1 * 1000 + 0.5) / 1000
 end
 
 -- Damage per second of the physical model and its size in attack power.
 local function phys(p, st)
-    local c = C()
     local level = st.level
     local r = specialsRate(p.r_spec or 0, level)
     local B, crit, spd
@@ -255,8 +258,9 @@ local function phys(p, st)
         B = wd + math.max(st.ap, 0) / 14
         crit, spd = st.crit, p.form and 0 or st.mhSpeed
     end
-    local miss = (st.dw and not p.ranged) and (0.6 * c.dwMiss + 0.4 * c.meleeMiss) or c.meleeMiss
-    local t = math.max(0.5, 1 - math.max(0, miss - st.hit) / 100 - math.max(0, c.targetDodge - st.exp) / 100)
+    local mm = target("meleeMiss")
+    local miss = (st.dw and not p.ranged) and (0.6 * target("dwMiss") + 0.4 * mm) or mm
+    local t = math.max(0.5, 1 - math.max(0, miss - st.hit) / 100 - math.max(0, target("targetDodge") - st.exp) / 100)
     return B * (1 + r * spd) * (1 + crit / 100) * t * (1 + st.haste / 100), 14 * B
 end
 
@@ -286,15 +290,15 @@ local function caster(class, p, st, bar)
     local c = C()
     local B, _, k = cast(p, st.level)
     local dmg = B + k * power(p, st)
-    local t = p.model == "heal" and 1 or math.max(0.5, 1 - math.max(0, c.spellMiss - st.shit) / 100)
-    local s = p.scarce
+    local t = p.model == "heal" and 1 or math.max(0.5, 1 - math.max(0, target("spellMiss") - st.shit) / 100)
+    local s = RAID and RAID.scarce or p.scarce
     local pool = st.mana + st.mp5 * bar / 5 + st.SPI * c.spirit[class] * c.castsSpi * bar / 5
     return dmg * (1 + 0.5 * st.scrit / 100) * t * (1 + (1 - s) * st.shaste / 100) * math.max(pool, 1) ^ s, dmg / k
 end
 
--- Effective health against a target two levels higher, and its size in stamina.
+-- Effective health against a target two levels higher (three in a raid), and its size in stamina.
 local function eh(st)
-    local K = 400 + 85 * (st.level + 2)
+    local K = 400 + 85 * (st.level + levelsUp())
     local av = math.min(0.6, (st.miss + st.dodge + st.parry + 0.3 * st.block) / 100)
     return st.hp * (st.armor + K) / K / (1 - av), st.hp / 10
 end
@@ -314,11 +318,11 @@ local function linear(class, p, st)
     end
     if model == "caster" or model == "heal" then
         w.DPS_MELEE = 0.1
-        if model == "caster" and p.wand then
+        if model == "caster" and p.wand and not RAID then
             local level = st.level
             local _, T, k = cast(p, level)
             local cr = st.scrit / 100
-            local t = math.max(0.5, 1 - math.max(0, c.spellMiss - st.shit) / 100)
+            local t = math.max(0.5, 1 - math.max(0, target("spellMiss") - st.shit) / 100)
             local f = level < 20 and 0.4 or level < 40 and 0.25 or 0.15
             w.DPS_RANGED = f * T / (k * (1 + 0.5 * cr) * t)
         end
@@ -337,7 +341,8 @@ local function linear(class, p, st)
         w.HP5 = 0.5
         if p.block then
             local level = st.level
-            local hit = 3 * (level + 2) + 0.25 * (level + 2) ^ 2
+            local up = level + levelsUp()
+            local hit = 3 * up + 0.25 * up ^ 2
             local av = math.min(0.6, (st.miss + st.dodge + st.parry + 0.3 * st.block) / 100)
             w.BLOCKVAL = st.block / hit * 0.001 * st.hp / (1 - av)
         end
@@ -365,8 +370,20 @@ end
 -- The change of the spec's output when outItems leave and inItems come ({ { stats, place }, ... }):
 -- { total, main, surv, threat (percent; surv nil for a tank, threat nil for the others), gain (in
 -- the spec's unit), size (the output's size in that unit) }. kind: "Speedrun" or "Hardcore" (the
--- survival share of non-tanks); wb: the bracket's weights for gems, resilience, spell penetration.
+-- survival share of non-tanks) or "Raid" (a raid boss from the level the data names, never for a
+-- healer; else as Speedrun); wb: the bracket's weights for gems, resilience, spell penetration.
+local change
 function Model.Change(class, p, kind, st, outItems, inItems, wb)
+    local r = kind == "Raid" and p.model ~= "heal" and C().raid or nil
+    RAID = type(r) == "table" and st.level >= (r.level or 60) and r or nil
+    -- set for this call alone (every use of the models comes through here, so an error below cannot
+    -- leave it behind for another weighting)
+    local res = change(class, p, kind, st, outItems, inItems, wb)
+    RAID = nil
+    return res
+end
+
+change = function(class, p, kind, st, outItems, inItems, wb)
     local c = C()
     local after = st
     for _, it in ipairs(outItems) do after = Model.Apply(class, p, after, it[1], it[2], -1) end

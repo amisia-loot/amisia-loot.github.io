@@ -115,3 +115,36 @@ assert(AmisiaDB.scan.rate == 25)
 NS.ScanCommand("stop")
 assert(AmisiaDB.scan.rate == 100, "rate restored after stop")
 assert(#AmisiaDB.scan.retry == 100, "a stopped retry keeps its ids: " .. #AmisiaDB.scan.retry)
+
+---------------------------------------------------------------------------
+-- the list of ids to ask again has a lid (a range far above the client's items would grow the saved
+-- file past what the client can load): a saved list above it is cut at login, a full list takes no
+-- more ids and says so once
+---------------------------------------------------------------------------
+do
+    local MAX = NS.SCAN_MAX_RETRY
+    assert(MAX == 20000)
+    NS.ScanCommand("stop")
+    local long = {}
+    for i = 1, MAX + 500 do long[i] = 300000 + i end
+    AmisiaDB.scan.retry = long
+    STUB.fire("PLAYER_LOGIN")
+    assert(#AmisiaDB.scan.retry == MAX and AmisiaDB.scan.retry ~= long and AmisiaDB.scan.retry[MAX] == 300000 + MAX,
+        "cut to the lid at login: " .. #AmisiaDB.scan.retry)
+    -- a full list: an id that never answers is not kept, one chat line
+    local before = #STUB.messages
+    assert(NS.ScanList({ 7001, 7002 }, "Test"))
+    STUB.tick(20)
+    assert(not NS.ScanRunning() and #AmisiaDB.scan.retry == MAX, "nothing added to a full list: " .. #AmisiaDB.scan.retry)
+    local said = 0
+    for i = before + 1, #STUB.messages do
+        if STUB.messages[i]:find("Die Liste der offenen IDs ist voll (20000)", 1, true) then said = said + 1 end
+    end
+    assert(said == 1, "said once: " .. said)
+    -- with room again it takes ids as before
+    AmisiaDB.scan.retry = {}
+    assert(NS.ScanList({ 7003 }, "Test"))
+    STUB.tick(20)
+    assert(#AmisiaDB.scan.retry == 1 and AmisiaDB.scan.retry[1] == 7003)
+    AmisiaDB.scan.retry = {}
+end

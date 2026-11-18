@@ -465,7 +465,17 @@ def test_weights_file_has_our_own_header(tmp_path, wago):
             assert sp.unit in ('AP', 'SP', 'HEAL', 'STA') and sp.why
             assert len(sp.Speedrun) == 12 and len(sp.Hardcore) == 12 and len(sp.ref) == 12
             assert sp.Speedrun[12][sp.unit] == 1
+            # the weighting "Raid" (F-225): one set of its own, for the last bracket, with its reference
+            # character; none for a healer
+            if sp.model == 'heal':
+                assert sp.Raid is None and sp.rref is None, (cls, sp.key)
+            else:
+                assert list(sp.Raid.keys()) == [12] and sp.Raid[12][sp.unit] == 1 and sp.rref is not None, (cls, sp.key)
+                if sp.model == 'caster':
+                    assert sp.Raid[12].INT < 0.5 * sp.Speedrun[12].INT and sp.Raid[12].RDPS is None, (cls, sp.key)
+                    assert sp.Raid[12].HASTE > sp.Speedrun[12].HASTE, (cls, sp.key)
     assert n == len(bb.SPECS) == 22
+    assert G.model.raid.level == 60 and G.model.raid.spellMiss == 16 and G.model.raid.meleeMiss == 9
 
 
 def test_the_committed_data_is_current():
