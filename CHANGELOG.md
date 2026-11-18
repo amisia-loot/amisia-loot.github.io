@@ -5,6 +5,17 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(gear): druids may use polearms from level 20 and rogues one-hand axes, as Forever teaches them (F-039)
+
+    The gear planner, the suggestions, items without a known source and the upgrade check now offer druids polearms
+    from level 20 and rogues one-hand axes; two-hand axes stay off for rogues. The rule comes from the game's own
+    skill tables.
+
+- data(data): add the save file of 2026-11-17: new items, item sources, quests and quest items
+
+    41 items (13 changed), 184 item sources (19 changed), 22 observed quests (14 changed), 9 quest items (2 changed)
+    and 2 quest tags join the archives and the gear, dungeon quest and map data.
+
 ## [v2.100.3](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.100.3) (2026-11-17)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.100.2...v2.100.3) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

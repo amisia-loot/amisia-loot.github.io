@@ -1002,3 +1002,9 @@ def test_no_boss_lost_its_npc():
     # Scarlet Monastery is four wings: every NPC id stays in some dungeon
     assert sum(len(v) for v in base.values()) == 210 and sum(len(v) for v in dg.values()) >= 265
     assert len({i for v in dg.values() for i in v}) >= 260
+
+
+def test_usable_knows_the_forever_weapon_rules():
+    # Forever teaches druids polearms from level 20 and rogues one-hand axes, never two-hand axes
+    assert bb.usable('DRUID', ['2HWEAPON', 2, 6], 20) and not bb.usable('DRUID', ['2HWEAPON', 2, 6], 19)
+    assert bb.usable('ROGUE', ['WEAPON', 2, 0], 1) and not bb.usable('ROGUE', ['2HWEAPON', 2, 1], 60)

@@ -17,7 +17,7 @@ local _, ns = ...
 -- the quest scan's text alone (D-109; no source knows its giver, place or English name) }.
 -- Names and places the Amisia collector saw itself go first (German where it saw them); nil is unknown.
 ns.DUNGEON_QUESTS = {
-    built = "2026-11-17", source = "007a0073a4",
+    built = "2026-11-18", source = "007a0073a4",
     D = {
         bfd = { 908, 971, 1198, 1199, 1200, 1275, 3765, 6561, 6562, 6563, 6564, 6565, 6921, 6922 },
         brd = { 3701, 3702, 3801, 3802, 3906, 3907, 3981, 3982, 4001, 4002, 4003, 4004, 4022, 4023, 4024, 4061, 4062, 4063, 4081, 4082, 4083, 4121, 4122, 4123, 4126, 4128, 4132, 4133, 4134, 4136, 4182, 4183, 4184, 4185, 4186, 4201, 4223, 4224, 4241, 4242, 4262, 4263, 4264, 4282, 4286, 4295, 4322, 4324, 4341, 4342, 4361, 4362, 4363, 6402, 6403, 6501, 6642, 6643, 6644, 6645, 6646, 7201 },
@@ -237,10 +237,10 @@ ns.DUNGEON_QUESTS = {
         [3441] = { "Divine Retribution", 40, 48, "", 0, "O", "Kalaran Windblade", "1427:3910:3900", nil, nil, nil, nil, nil, nil, nil, nil, 0, 0 },
         [3442] = { "The Flawless Flame", 40, 48, "", 0, "O", "Kalaran Windblade", "1427:3910:3900", { 3441 }, nil, nil, nil, nil, nil, nil, nil, 0, 0 },
         [3443] = { "Forging the Shaft", 40, 48, "", 0, "O", "Kalaran Windblade", "1427:3910:3900", { 3442 }, nil, nil, nil, nil, nil, nil, nil, 0, 0 },
-        [3444] = { "The Stone Circle", 46, 51, "", 0, "O", "Marvon Rivetseeker", "1446:5275:4592", { 3380, 3445 }, nil, nil, nil, nil, nil, nil, nil, 0, 0, nil, nil, "Holt den runden Stein aus Marvon Rivetseekers Werkstatt in Ratchet." },
+        [3444] = { "The Stone Circle", 46, 51, "", 0, "O", "Marvon Rivetseeker", "1446:5275:4592", { 3380, 3445 }, nil, nil, nil, nil, nil, nil, nil, 0, 0, "Marvon Rivetseeker", "1446:5275:4598", "Holt den runden Stein aus Marvon Rivetseekers Werkstatt in Ratchet." },
         [3445] = { "The Sunken Temple", 46, 51, "A", 0, "O", "Angelas Moonbreeze", "1444:3180:4560", nil, nil, nil, nil, nil, nil, nil, nil, 0, 0 },
-        [3446] = { "Into the Depths", 46, 51, "", 0, "O", "Marvon Rivetseeker", "1446:5260:4580", { 3444 }, nil, "st", nil, nil, nil, nil, nil, 0, 0 },
-        [3447] = { "Secret of the Circle", 46, 51, "", 0, "O", "Marvon Rivetseeker", "1446:5260:4580", { 3444 }, nil, "st", { 10773, 10781, 10782, 10780 }, nil, nil, nil, nil, 0, 0 },
+        [3446] = { "Into the Depths", 46, 51, "", 0, "O", "Marvon Rivetseeker", "1446:5275:4598", { 3444 }, nil, "st", nil, nil, nil, nil, nil, 0, 0, nil, nil, "Sucht den Altar von Hakkar im Versunkenen Tempel in den Sümpfen des Elends." },
+        [3447] = { "Secret of the Circle", 46, 51, "", 0, "O", "Marvon Rivetseeker", "1446:5275:4598", { 3444 }, nil, "st", { 10773, 10781, 10782, 10780 }, nil, nil, nil, nil, 0, 0, nil, nil, "Reist zum Versunkenen Tempel und enthüllt das Geheimnis, das sich in dem Kreis der Statuen verbirgt." },
         [3452] = { "The Flame's Casing", 40, 50, "", 0, "O", "Kalaran Windblade", "1427:3910:3900", { 3443 }, nil, nil, nil, nil, nil, nil, nil, 0, 0 },
         [3453] = { "The Torch of Retribution (1/2)", 40, 50, "", 0, "O", "Kalaran Windblade", "1427:3910:3900", { 3452 }, nil, nil, nil, nil, nil, nil, nil, 0, 0 },
         [3454] = { "The Torch of Retribution (2/2)", 40, 50, "", 0, "O", "Kalaran Windblade", "1427:3910:3900", { 3453 }, nil, nil, nil, nil, nil, nil, nil, 0, 0 },

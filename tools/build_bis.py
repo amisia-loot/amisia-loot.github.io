@@ -1139,10 +1139,11 @@ ARMOR = {
 }
 WEAPON = {
     'WARRIOR': {0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 13, 15, 16, 18}, 'PALADIN': {0, 1, 4, 5, 6, 7, 8},
-    'HUNTER': {0, 1, 2, 3, 6, 7, 8, 10, 13, 15, 16, 18}, 'ROGUE': {2, 3, 4, 7, 13, 15, 16, 18},
+    'HUNTER': {0, 1, 2, 3, 6, 7, 8, 10, 13, 15, 16, 18}, 'ROGUE': {0, 2, 3, 4, 7, 13, 15, 16, 18},
     'PRIEST': {4, 10, 15, 19}, 'SHAMAN': {0, 1, 4, 5, 10, 13, 15}, 'MAGE': {7, 10, 15, 19},
-    'WARLOCK': {7, 10, 15, 19}, 'DRUID': {4, 5, 10, 13, 15},
+    'WARLOCK': {7, 10, 15, 19}, 'DRUID': {4, 5, 6, 10, 13, 15},
 }
+WEAPON_FROM = {('DRUID', 6): 20}   # weapons learnt later than level 1 (Gear.lua WEAPON)
 DUAL_WIELD = {'ROGUE': 10, 'WARRIOR': 20, 'HUNTER': 20}
 RELIC = {7: 'PALADIN', 8: 'DRUID', 9: 'SHAMAN'}
 CLASS_BIT = {'WARRIOR': 1, 'PALADIN': 2, 'HUNTER': 4, 'ROGUE': 8, 'PRIEST': 16, 'SHAMAN': 64, 'MAGE': 128,
@@ -1165,7 +1166,7 @@ def usable(cls, row, level):
         frm = ARMOR[cls].get(sub)
         return frm is not None and level >= frm
     if class_id == 2:
-        if sub not in WEAPON[cls]:
+        if sub not in WEAPON[cls] or level < WEAPON_FROM.get((cls, sub), 1):
             return False
         if loc == 'WEAPONOFFHAND':
             return cls in DUAL_WIELD and level >= DUAL_WIELD[cls]

@@ -23,7 +23,7 @@ local _, ns = ...
 -- L: [spell] = copper a trainer read in the game asks. TD: [npc] = the time of its reading the data holds.
 ns.LazyData("PROFESSIONS", [=[
 return {
-built="2026-11-17",client="1.60.1.70959",source="007a0073a4",
+built="2026-11-18",client="1.60.1.70959",source="007a0073a4",
 P={{171,"alchemy"},{164,"blacksmithing"},{333,"enchanting"},{202,"engineering"},{165,"leatherworking"},{197,"tailoring"},{185,"cooking"},{129,"firstaid"},{356,"fishing"},{182,"herbalism"},{186,"mining"},{393,"skinning"},{40,"poisons"}},
 R={
 [171]={

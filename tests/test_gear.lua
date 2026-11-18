@@ -55,6 +55,8 @@ assert(Gear.Usable("MAGE", row("CLOAK", 4, 1), 5) and Gear.Usable("ROGUE", row("
 assert(Gear.Usable("DRUID", row("RELIC", 4, 8), 20) and not Gear.Usable("SHAMAN", row("RELIC", 4, 8), 20))
 assert(Gear.Usable("ROGUE", row("WEAPONOFFHAND", 2, 15), 10) and not Gear.Usable("ROGUE", row("WEAPONOFFHAND", 2, 15), 9))
 assert(not Gear.Usable("MAGE", row("2HWEAPON", 2, 8), 30) and Gear.Usable("MAGE", row("2HWEAPON", 2, 10), 30))
+assert(Gear.Usable("DRUID", row("2HWEAPON", 2, 6), 20) and not Gear.Usable("DRUID", row("2HWEAPON", 2, 6), 19), "druid polearms from 20")
+assert(Gear.Usable("ROGUE", row("WEAPON", 2, 0), 1) and not Gear.Usable("ROGUE", row("2HWEAPON", 2, 1), 60), "rogues: one-hand axes only")
 assert(not Gear.Usable("PALADIN", row("SHIELD", 4, 6), 1) == false)
 
 -- a small world to pick from

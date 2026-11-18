@@ -87,16 +87,18 @@ local ARMOR = {
 }
 -- Weapon subclasses: 0 axe, 1 two-hand axe, 2 bow, 3 gun, 4 mace, 5 two-hand mace, 6 polearm, 7 sword,
 -- 8 two-hand sword, 10 staff, 13 fist weapon, 15 dagger, 16 thrown, 18 crossbow, 19 wand.
+-- The number is the level the class learns the weapon at; Forever teaches druids polearms from 20 and
+-- rogues one-hand axes (SkillRaceClassInfo skill 229, SkillLineAbility spell 196).
 local WEAPON = {
     WARRIOR = { [0] = 1, [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1, [6] = 1, [7] = 1, [8] = 1, [10] = 1, [13] = 1, [15] = 1, [16] = 1, [18] = 1 },
     PALADIN = { [0] = 1, [1] = 1, [4] = 1, [5] = 1, [6] = 1, [7] = 1, [8] = 1 },
     HUNTER = { [0] = 1, [1] = 1, [2] = 1, [3] = 1, [6] = 1, [7] = 1, [8] = 1, [10] = 1, [13] = 1, [15] = 1, [16] = 1, [18] = 1 },
-    ROGUE = { [2] = 1, [3] = 1, [4] = 1, [7] = 1, [13] = 1, [15] = 1, [16] = 1, [18] = 1 },
+    ROGUE = { [0] = 1, [2] = 1, [3] = 1, [4] = 1, [7] = 1, [13] = 1, [15] = 1, [16] = 1, [18] = 1 },
     PRIEST = { [4] = 1, [10] = 1, [15] = 1, [19] = 1 },
     SHAMAN = { [0] = 1, [1] = 1, [4] = 1, [5] = 1, [10] = 1, [13] = 1, [15] = 1 },
     MAGE = { [7] = 1, [10] = 1, [15] = 1, [19] = 1 },
     WARLOCK = { [7] = 1, [10] = 1, [15] = 1, [19] = 1 },
-    DRUID = { [4] = 1, [5] = 1, [10] = 1, [13] = 1, [15] = 1 },
+    DRUID = { [4] = 1, [5] = 1, [6] = 20, [10] = 1, [13] = 1, [15] = 1 },
 }
 local DUAL_WIELD = { ROGUE = 10, WARRIOR = 20, HUNTER = 20 }
 local RELIC = { [7] = "PALADIN", [8] = "DRUID", [9] = "SHAMAN" }
@@ -565,7 +567,8 @@ function Gear.Usable(class, row, level, spec)
         local from = ARMOR[class] and ARMOR[class][sub]
         return from ~= nil and level >= from
     elseif classID == 2 then
-        if not (WEAPON[class] and WEAPON[class][sub]) then return false end
+        local from = WEAPON[class] and WEAPON[class][sub]
+        if not from or level < from then return false end
         if loc == "WEAPONOFFHAND" then return Gear.CanDualWield(class, level, spec) end
         return true
     end
