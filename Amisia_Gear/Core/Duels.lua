@@ -252,6 +252,8 @@ end
 -- duels with it; for a full name the first name a duel message gave alone. nil for a name of no duel.
 local function keyOf(name)
     if type(name) ~= "string" then return nil end
+    -- built again after D.Changed (an inspect queued before "Alle Duelle löschen" still asks)
+    index()
     local low = name:lower()
     if players[low] then return low end
     -- a first name alone (a client that gives no surname): the one full name with it

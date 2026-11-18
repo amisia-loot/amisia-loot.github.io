@@ -366,7 +366,12 @@ local function finishJob(s, ok, why, detail)
         if detail == true or text:find("Calendar") or text:find("UpdateEvent") or text:find("EventRemove") then refused = detail end
     end
     local keep = not ok and why == "error" and s.what == "edit" and session == s and not s.cancelled and stillOpen(s)
-    if not keep then release(s) end
+    if keep then
+        -- the failed try's EventSet* values stay in the open event: the next try compares with those
+        s.info = readOpen() or s.info
+    else
+        release(s)
+    end
     j.fn(ok, why, detail)
 end
 
@@ -465,10 +470,10 @@ function CE.Begin(item, what, fn)
     listen(true)
     watchWindow(s)
 
-    local function found(offset)
+    local function found(offset, missing)
         if session ~= s then return end
         local index, e, day = locate(item, offset)
-        if not index then return abort(s, "gone") end
+        if not index then return abort(s, missing or "gone") end
         s.offset, s.day, s.index, s.monthSet = offset, day, index, (setMonth())
         if not allowed(what, item, e, offset, day, index) then return abort(s, "right") end
         -- the player's own event: the client's EventCanEdit is not asked either (it answers an addon as
@@ -546,15 +551,16 @@ function CE.Begin(item, what, fn)
     s.back = { m = cm, y = cy }
     s.stage = "month"
     local finished = false
-    local function loaded()
+    -- late: the wait ran out before a list showing the event came (a slow answer, not proof it is gone)
+    local function loaded(late)
         if finished or session ~= s then return end
         finished = true
         s.onMonth = nil
         C_Timer.After(0, function()
             if session ~= s then return end
             local now = setMonth()
-            if now ~= t.year * 12 + (t.month - 1) then return abort(s, "window") end
-            found(0)
+            if now ~= t.year * 12 + (t.month - 1) then return abort(s, Cal.WindowShown() and "window" or "month") end
+            found(0, late and "month" or nil)
         end)
     end
     -- a list event of something else may come before the month's: only one that shows the event counts
@@ -562,7 +568,7 @@ function CE.Begin(item, what, fn)
     s.onMonth = function()
         if setMonth() == t.year * 12 + (t.month - 1) and locate(item, 0) then loaded() end
     end
-    C_Timer.After(Cal.MONTH_WAIT, loaded)
+    C_Timer.After(Cal.MONTH_WAIT, function() loaded(true) end)
     if not pcall(C_Calendar.SetAbsMonth, t.month, t.year) then
         finished = true
         abort(s, "month")
@@ -698,8 +704,10 @@ function CE.Remove(fn)
     if s.what ~= "remove" then return false, "closed" end
     local index, e = locate(s.item, s.offset)
     if index ~= s.index then
-        abort(s, "gone")
-        return false, "gone"
+        -- moved by a new event on that day: still there, nothing deleted; asked again from its new place
+        local why2 = index and "closed" or "gone"
+        abort(s, why2)
+        return false, why2
     end
     if not allowed("remove", s.item, e, s.offset, s.day, s.index) then
         abort(s, "right")

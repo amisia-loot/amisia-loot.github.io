@@ -614,7 +614,8 @@ local whisperedAt, goneAt = {}, {}
 local function nameKey(name)
     name = ns.Plain(name)
     if type(name) ~= "string" or name == "" then return nil end
-    return (name:match("^(.-)%-[^%-]+$") or name):lower()
+    -- only the own realm's ending goes: a Forever surname may hold a dash ("Anna Mond-Licht")
+    return (ns.StripOwnRealm(name) or name):lower()
 end
 local function gone(target)
     local k = nameKey(target)

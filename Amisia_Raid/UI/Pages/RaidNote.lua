@@ -149,7 +149,7 @@ ns.RegisterPanel{ key = "raidnote", label = L["Raid- und Gruppen-Notiz"], sub = 
             if self.setting then return end
             if userInput then
                 if f.readOnly then
-                    setBox(self, plainText(RN.Current()))
+                    setBox(self, plainText(RN.Shown()))
                 else
                     RN.SetDraft(self:GetText())
                 end

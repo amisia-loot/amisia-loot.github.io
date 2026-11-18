@@ -5,6 +5,46 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(layer): helped players are no longer taken out when "Helfen" turns itself off, and no "ask again" after a swap that worked (F-221)
+
+    When the four minutes after an own swap run out and Amisia turns "Helfen" off again, guests already in the
+    group stay (only a late accept of an older invite is still taken out). After a swap that worked, the window no
+    longer offers "Weiter fragen" and says nobody answered. Leaving a group that did not move you now follows the
+    setting "Gruppe nach dem Wechsel verlassen".
+
+- fix(calendar): clearer answers when editing or deleting events, Discord symbols removed (F-222, F-223)
+
+    A far month the game loads slowly now says "Gleich noch einmal" instead of "Ereignis nicht mehr im Kalender",
+    and so does an event that moved on its day while the delete question was open. After an edit the game refused,
+    the next try compares with what the game holds, so an undone change is saved too. Pasted bot events lose the
+    3-byte symbols (⚔ ✅ ❤ ⭐) as well.
+
+- fix(rolls): the winner of a tie-break keeps the kind of the round they tied in (F-020)
+
+    A tie among offspec rolls followed by "Nochmal" (a plain /roll) is now awarded as OS and charged the OS cost,
+    not as MS.
+
+- fix(lineup): a swap no longer puts a guest into a group without "Gäste einladen" (F-083)
+
+    Moving and swapping now follow the same rule.
+
+- fix(scan): a stopped, paused or reloaded item or quest scan no longer loses ids (F-053, F-172)
+
+    The retry list survives a stop, a pause in an instance and a /reload, and the ids still waiting go back to it.
+    A quest scan resumed in a long row of quests without an answer no longer stops at once with "Der Client
+    beantwortet Quest-Abfragen nicht" on every start.
+
+- fix(gear): the derived stat weights use the planner's own source rules (F-039)
+
+    The build that derives the weights now leaves out world drops by default and epic world drops always, as the
+    planner does (D-59), so low level weights no longer rest on items the planner never suggests.
+
+- fix(core): no Lua error after "Alle Duelle löschen" during an inspect, whispers to surnames with a dash, error page (F-106)
+
+    Clearing the duels while a talent inspect waits no longer errors. A whisper block after "offline" now keys on
+    the whole name, so "Anna Mond-Licht" and "Anna Mond-Stein" no longer block each other. A page that failed to
+    build no longer reports a new error on every refresh. The raid note box in a party resets to the group note.
+
 ## [v2.100.4](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.100.4) (2026-11-18)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.100.3...v2.100.4) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

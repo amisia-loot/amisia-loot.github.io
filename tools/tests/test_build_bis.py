@@ -1008,3 +1008,14 @@ def test_usable_knows_the_forever_weapon_rules():
     # Forever teaches druids polearms from level 20 and rogues one-hand axes, never two-hand axes
     assert bb.usable('DRUID', ['2HWEAPON', 2, 6], 20) and not bb.usable('DRUID', ['2HWEAPON', 2, 6], 19)
     assert bb.usable('ROGUE', ['WEAPON', 2, 0], 1) and not bb.usable('ROGUE', ['2HWEAPON', 2, 1], 60)
+
+
+def test_candidates_take_the_sources_as_gear_sourceok():
+    # D-59 as Gear.SourceOk and Bis.lua's defaults: world drops off, an epic world drop never, a rare mob always
+    items = bb.Items.__new__(bb.Items)
+    row = lambda q, src: ['CHEST', 4, 1, 1, q, 0, 30, 0, 0, 0, src]   # noqa: E731
+    items.gear = {'S': [['W'], ['R', 1, 2], ['D', 1, 2]],
+                  'I': {1: row(4, 1), 2: row(3, 1), 3: row(4, 2), 4: row(4, 3)}}
+    items.stats = {i: {'INT': 5} for i in items.gear['I']}
+    assert sorted(i for i, _, _ in items.candidates('MAGE', 60)) == [3, 4]
+    assert sorted(i for i, _, _ in items.candidates('MAGE', 60, sources={'W', 'D'})) == [2, 3, 4]

@@ -56,6 +56,7 @@ assert(select(2, CB.Read('{"startTime":' .. start .. ',"x":"' .. ("a"):rep(CB.MA
 assert(select(2, CB.Read('{"startTime":' .. start .. ',"x":' .. ("["):rep(30) .. ("]"):rep(30) .. '}')) == "big", "nested too deep")
 assert(CB.Start({ startTime = start * 1000 }) == start, "a start in milliseconds")
 assert(CB.Plain("**Hallo** <:Tank:123> <@&99> [Plan](https://example.org/a) ~~alt~~ :smile:", 80) == "Hallo Plan alt", CB.Plain("**Hallo** <:Tank:123> <@&99> [Plan](https://example.org/a) ~~alt~~ :smile:", 80))
+assert(CB.Plain("\226\154\148\239\184\143 Raid \226\156\133 – „MC“ \226\173\144", 80) == "Raid – „MC“", "3-byte symbols go, dashes and quotes stay: " .. tostring(CB.Plain("\226\154\148\239\184\143 Raid \226\156\133 – „MC“ \226\173\144", 80)))
 
 -- the form's values: day, time, title, description, the instance the title names
 local f = assert(CB.Form(json(start)))

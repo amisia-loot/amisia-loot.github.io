@@ -1229,7 +1229,7 @@ def score(s, w, level, kind, cls, conv):
 
 
 # ---------------------------------------------------------------- choosing gear (Gear.Best's twin)
-DEFAULT_SOURCES = {'X', 'Q', 'D', 'C', 'V', 'W'}   # Bis.lua's default switches (AH, PvP off)
+DEFAULT_SOURCES = {'X', 'Q', 'D', 'C', 'V'}   # Bis.lua's default switches (world drops, AH, PvP off; srcRule 2)
 FILTER_OF = {'X': 'X', 'Q': 'Q', 'D': 'D', 'C': 'C', 'V': 'V', 'R': 'W', 'W': 'W', 'A': 'A', 'P': 'P'}
 ONE_SLOT = ('HEAD', 'NECK', 'SHOULDER', 'BACK', 'CHEST', 'WRIST', 'HANDS', 'WAIST', 'LEGS', 'FEET')
 
@@ -1267,10 +1267,16 @@ class Items:
             ok = False
             for n in row[FIRST_SOURCE:]:
                 rec = S[n - 1]
-                if FILTER_OF.get(rec[0], rec[0]) in sources and not (
-                        rec[0] == 'Q' and (len(rec) > 7 and (rec[7] or 0) > 0) and not (rec[7] & CLASS_BIT[cls])):
-                    ok = True
-                    break
+                kind = rec[0]
+                # as Gear.SourceOk: a named rare mob needs no switch, an epic world drop never counts (D-59)
+                if kind != 'R' and FILTER_OF.get(kind, kind) not in sources:
+                    continue
+                if kind == 'W' and (row[4] or 0) >= 4:
+                    continue
+                if kind == 'Q' and (len(rec) > 7 and (rec[7] or 0) > 0) and not (rec[7] & CLASS_BIT[cls]):
+                    continue
+                ok = True
+                break
             if ok:
                 yield iid, row, s
 

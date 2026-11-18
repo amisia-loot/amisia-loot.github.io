@@ -318,7 +318,7 @@ local function tick()
         end
     end
     -- the first ids of the run: none answered -> the client does not answer quest questions
-    if first.asked >= QS.FIRST and first.answered == 0 and first.done == nil then
+    if first.probe and first.asked >= QS.FIRST and first.answered == 0 and first.done == nil then
         local open = false
         for _, p in pairs(pending) do if p.first then open = true break end end
         if not open then
@@ -354,6 +354,14 @@ local function tick()
     end
 end
 
+-- a /reload or logout during the scan: the ids still waiting are asked again on the next start (as finish)
+ns.OnEvent("PLAYER_LOGOUT", function()
+    if not running then return end
+    local q = QS.DB()
+    for _, p in pairs(pending) do
+        if p.index and p.index < q.next then q.next = p.index end
+    end
+end)
 ns.OnEvent("QUEST_DATA_LOAD_RESULT", function(qid, success)
     qid = tonumber(ns.Plain(qid))
     if not running or not qid or not pending[qid] then return end
@@ -400,7 +408,9 @@ function QS.Start()
     if q.next > #list then q.next, q.done = 1, nil end
     pending, pendingCount, credit, timeouts = {}, 0, 0, 0
     rate = ns.Get("tools.questRate") or 20
-    first = { asked = 0, answered = 0, start = q.next, none = q.none }
+    -- the check "the client does not answer" only from the list's start or before any quest was stored: a
+    -- resume can begin in a long row of ids without an answer, and would fail there on every start
+    first = { asked = 0, answered = 0, start = q.next, none = q.none, probe = q.next == 1 or (tonumber(q.n) or 0) == 0 }
     nextReport = (math.floor(q.next / QS.REPORT_EVERY) + 1) * QS.REPORT_EVERY
     running, pausedIn = true, nil
     SB.SetBusy("quests")

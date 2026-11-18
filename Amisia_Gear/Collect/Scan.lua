@@ -97,8 +97,21 @@ function ns.ScanAddedCount() return added end
 
 -- how a run ended: "done" (everything asked), "instance" (paused by an instance), "stop" (stopped by
 -- hand), nil (else). Fires SCAN_ENDED with the run ("gear", "retry", "list", "range") and how (F-188).
+-- The ids a retry or range run has not finished go back to the retry list: the retry run's queue (it
+-- took the list over) and the ids still waiting for an answer (asked once, never stored).
+local function park(run)
+    local s = scanDB()
+    if run == "retry" and queue then
+        for _, id in ipairs(queue) do s.retry[#s.retry + 1] = id end
+    end
+    if run == "retry" or run == "range" then
+        for id in pairs(pending) do s.retry[#s.retry + 1] = id end
+    end
+end
+
 local function finish(why, how)
     local run = gearRun and "gear" or (queue and listKind) or "range"
+    park(run)
     running = false
     queue, listTotal, listKind, gearRun = nil, nil, nil, nil
     pausedIn = how == "instance" or nil
@@ -186,6 +199,12 @@ local function onResult(id, success)
     if pendingCount == 0 and ((queue and #queue == 0) or (not queue and s.next > s.to)) then finish(L["fertig"], "done") end
 end
 ns.OnEvent("ITEM_DATA_LOAD_RESULT", onResult)
+-- a /reload or logout during a run: what it had not finished is kept in the saved retry list
+ns.OnEvent("PLAYER_LOGOUT", function()
+    if not running then return end
+    park(gearRun and "gear" or (queue and listKind) or "range")
+    queue, pending = nil, {}
+end)
 ns.OnEvent("GET_ITEM_INFO_RECEIVED", onResult)
 
 function ns.ScanRunning() return running end

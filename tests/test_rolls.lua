@@ -37,6 +37,14 @@ roll("Vuloo", 100, 1, 100); roll("Chorf", 5, 1, 100); roll("Fraktur", 4, 1, 100)
 assert(r.winner == "Chorf", "only tied names count in the re-roll")
 assert(r.ignored[1].name == "Vuloo")
 
+-- an offspec tie: the re-roll is a plain /roll, the award keeps the kind of the round they tied in
+assert(NS.StartRoll(link, 10)); r = NS.CurrentRoll()
+roll("Fraktur", 90, 1, 99); roll("Chorf", 90, 1, 99); STUB.tick(10)
+assert(r.done and #r.tie == 2)
+assert(NS.RerollTie()); r = NS.CurrentRoll()
+roll("Chorf", 50, 1, 100); roll("Fraktur", 4, 1, 100); STUB.tick(10)
+assert(r.winner == "Chorf" and NS.RollKind(32235, "Chorf") == "OS", "an offspec tie stays OS: " .. NS.RollKind(32235, "Chorf"))
+
 -- stop early, nobody rolled
 assert(NS.StartRoll(link, 20)); NS.StopRoll()
 assert(NS.CurrentRoll().done and lastChat():find("Niemand", 1, true))

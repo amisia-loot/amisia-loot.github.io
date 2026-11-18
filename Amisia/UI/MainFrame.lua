@@ -1463,6 +1463,7 @@ local function showPage(key, chosen)
         if not ok or type(frame) ~= "table" then
             -- not passed to the error handler: the error page shows it and the window stays usable
             frame = errorPage(content, ok and L["create gab keinen Frame zurück"] or frame)
+            frame.isError = true
         end
         frame:SetAllPoints(content)
         built[current] = frame
@@ -1486,7 +1487,8 @@ function ns.Refresh()
     updateHeader()
     updatePageHead(p)
     local frame = built[current]
-    if p.refresh and frame then
+    -- the error page of a failed create has none of the page's fields: its refresh would only fail again
+    if p.refresh and frame and not frame.isError then
         -- /amisia leistung (F-184) times the page's own refresh as "Refresh <page key>"
         local ok, err
         if ns.Perf.on then ok, err = ns.Perf.PCall(ns.Perf.Label("Refresh ", current), p.refresh, frame) else ok, err = pcall(p.refresh, frame) end

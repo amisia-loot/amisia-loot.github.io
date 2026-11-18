@@ -1064,6 +1064,10 @@ function ns.LineupSwap(night, i, j)
     local a, n = entry(night, i)
     local b = n and n.list[j]
     if not a or not b or i == j or a.a or b.a then return false end
+    -- a guest goes into a group only with "Gäste einladen", as with ns.LineupMove (D-41)
+    if (b.g and not ns.LineupPlaceable(a)) or (a.g and not ns.LineupPlaceable(b)) then
+        return false, L["Gäste nur mit der Einstellung \"Gäste einladen\"."]
+    end
     a.g, b.g = b.g, a.g
     a.b, b.b = b.b, a.b
     a.v, b.v = b.v, a.v

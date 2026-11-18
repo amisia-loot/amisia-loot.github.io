@@ -114,3 +114,4 @@ STUB.tick(0.1); assert(#STUB.requested <= 3, "slow retry rate: " .. #STUB.reques
 assert(AmisiaDB.scan.rate == 25)
 NS.ScanCommand("stop")
 assert(AmisiaDB.scan.rate == 100, "rate restored after stop")
+assert(#AmisiaDB.scan.retry == 100, "a stopped retry keeps its ids: " .. #AmisiaDB.scan.retry)

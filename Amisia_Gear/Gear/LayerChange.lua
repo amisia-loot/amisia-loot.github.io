@@ -611,7 +611,9 @@ function SW.LockLeft()
 end
 
 -- Off: closes an open "... Einladen?" of Amisia's and (F-216) takes the guests of swaps out of the group.
-local function goOff()
+-- byItself: the lock ran out (Amisia had turned Helfen on); guests already in the group stay, or a swap
+-- that is still being made would break (D-146: only a late accept after "aus" is taken out).
+local function goOff(byItself)
     hosting = false
     offAt = now()
     local q = question
@@ -619,7 +621,7 @@ local function goOff()
         question = nil
         if q.frame and q.frame.IsShown and q.frame:IsShown() and q.frame.onOk == q.fn then q.frame:Hide() end
     end
-    SW.Kick(true)
+    if not byItself then SW.Kick(true) end
 end
 
 -- Once a second while Amisia holds Helfen on: the lock ran out and no own ask runs: off again when Amisia had
@@ -637,7 +639,7 @@ local function settleHelp()
         hd.forced = nil
         if hosting then
             hd.off = true
-            goOff()
+            goOff(true)
         end
         changed()
     end
@@ -1137,7 +1139,8 @@ local function checkStuck(s)
     changed()
     C_Timer.After(math.max(0, SW.STUCK_WAIT - since), function()
         if swap ~= s then return end
-        if SW.Leave(true) then
+        -- leaving by itself belongs to layer.autoLeave (its tip: "hat er dich nicht bewegt, frühestens nach 15 Sekunden")
+        if ns.Get("layer.autoLeave") and SW.Leave(true) then
             ns.msg(L["Der Wechsel über %s hat nicht geklappt: Amisia verlässt die Gruppe, Layer wechseln geht wieder."]:format(s.host))
         else
             ns.msg(L["Der Wechsel über %s hat nicht geklappt."]:format(s.host))
@@ -1158,6 +1161,8 @@ end
 -- answered the ask, leave after layer.leaveSeconds. noLeave: the group is gone already.
 local function changeDone(s, noLeave)
     s.changed, s.failed = now(), nil
+    -- the search is over: "Weiter fragen" after the leave would say nobody answered
+    auto = nil
     trace.changed = trace.changed + 1
     startLock()
     if s.wanted and s.target ~= s.wanted then

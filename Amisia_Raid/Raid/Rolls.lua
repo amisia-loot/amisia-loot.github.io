@@ -549,21 +549,31 @@ end
 
 -- MS, OS or SR for an award: what the recipient reserved, rolled or said in the newest round of
 -- this item that knows the name (ns.RoundsOf), "-" when none does.
+-- A tie-break (r.only) is a plain /roll of the tied names: their kind is the one of the round they tied in.
 function ns.RollKind(item, name)
+    local tieKind
     for _, r in ipairs(ns.RoundsOf(item)) do
+        local kind
         if r.mode then
             local key = keyIn(r, r.rolls, name)
             local e = key and r.rolls[key]
-            if e then return e.kind == "OS" and "OS" or "MS" end
+            if e then kind = e.kind == "OS" and "OS" or "MS" end
         else
-            if reservedIn(r, name) then return "SR" end
-            -- the chat's "Vulo" is the candidate's "Vulo Sturmwind"
-            local key = keyIn(r, r.rolls, name)
-            local e = key and r.rolls[key]
-            if e and e.kind then return e.kind end
+            if reservedIn(r, name) then
+                kind = "SR"
+            else
+                -- the chat's "Vulo" is the candidate's "Vulo Sturmwind"
+                local key = keyIn(r, r.rolls, name)
+                local e = key and r.rolls[key]
+                if e and e.kind then kind = e.kind end
+            end
+        end
+        if kind then
+            if not r.only then return kind end
+            tieKind = tieKind or kind
         end
     end
-    return "-"
+    return tieKind or "-"
 end
 
 ns.RegisterSettings{ key = "rolls", label = L["Roll-Runden"], order = 20, group = "raid", pages = { "rolls" }, officer = true, items = {

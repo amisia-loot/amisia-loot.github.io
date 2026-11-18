@@ -439,6 +439,8 @@ function RT.Kill(enc)
         start(t, c, other, l.i, l.nm, run, math.max(at, l.at))
         l = t.live[c]
         changed("start")
+        -- the "end" above closed the window: the new clock shows it again
+        if ns.RunTimer and ns.RunTimer.Started then ns.RunTimer.Started((select(2, instanceNow()))) end
     end
     local encs = ns.Runs.Encounters(l.k)
     if not encs or l.s[enc] then return end
