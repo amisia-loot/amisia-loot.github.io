@@ -109,9 +109,16 @@ for _, t in ipairs({ OPEN_EVENTS, CHANGE_EVENTS, ERROR_EVENTS }) do
 end
 local listen = K.listener(onEvent, LISTEN)
 
-local finishRun
+local finishRun, restore
 
-local safe = K.safeWith(function(P) finishRun(P, true) end)
+-- an error ends the run, but the player's own status is put back first (once): it is a real guild event
+local safe = K.safeWith(function(P)
+    if P.s0 ~= nil and not P.restoreTried and not P.finished then
+        P.restoreTried = true
+        if pcall(restore, P) then return end
+    end
+    finishRun(P, true)
+end)
 
 -- Waits for one of set (a table of events) for at most WP.WAIT seconds; then nextStep(event or nil)
 -- on the next frame. Set up before the call it waits for (the client may answer at once). Returns a
@@ -282,7 +289,11 @@ end
 
 local nextTest
 
-local function restore(P)
+-- seconds the restore waits for a fight or the calendar window to end
+local RESTORE_WAIT = 120
+
+restore = function(P)
+    P.restoreTried = true
     K.section(P.R, L["Alter Stand"])
     local want
     if IS.NS[P.s0] then want = "NS" elseif IS.TENT[P.s0] then want = "TENT" elseif IS.DECL[P.s0] then want = "DECL"
@@ -297,6 +308,12 @@ local function restore(P)
     local function step(i)
         if IS[want][P.cur] then return check() end
         local why = stop(P, true)
+        -- a fight or the calendar window passes: wait for it, the old status is the player's real one
+        if why and (InCombatLockdown() or Cal.WindowShown()) and (P.restoreWait or 0) < RESTORE_WAIT then
+            if not P.restoreWait then add(P.R, "WERT", L["Wiederherstellen"], L["wartet: %s"]:format(why)) end
+            P.restoreWait = (P.restoreWait or 0) + 2
+            return C_Timer.After(2, safe(P, function() step(i) end))
+        end
         if why or i > 3 then
             if why then add(P.R, "FEHLER", L["Abgebrochen"], why) end
             return check()
@@ -386,6 +403,8 @@ local function execute(P)
     local t = where(P)
     if not t then return ns.msg(Cal.Why("gone")) end
     if SET_BY_OFFICER[t.status] then return WP.SayOfficerSet(P.ev, t.status) end
+    -- a status the client does not tell could not be put back
+    if type(t.status) ~= "number" then return ns.msg(L["Dein Status zu diesem Termin ist nicht lesbar: die Prüfung schreibt nichts."]) end
     run = P
     P.at = GetTime()
     listen(true)

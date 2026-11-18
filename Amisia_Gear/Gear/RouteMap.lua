@@ -462,6 +462,14 @@ local function makeBar()
     bar.clear = W.Link(bar, L["Leeren"], function() R.Clear() end)
     bar.name = W.LineEdit(bar, P.NAME_W, commitName)
     bar.name:SetMaxLetters(R.NAME_MAX)
+    -- Escape while a stop is named ends the naming: else the field kept the label and "Speichern" or the
+    -- next Enter took it as the route's name
+    bar.name:HookScript("OnEscapePressed", function()
+        if bar.labelFor then
+            bar.labelFor = nil
+            refreshBar()
+        end
+    end)
     bar.save = W.Link(bar, L["Speichern"], function()
         local ok, why = R.Save(bar.name:GetText())
         if ok then ns.msg(L["Route \"%s\" gespeichert."]:format(why)) else say(ok, why) end

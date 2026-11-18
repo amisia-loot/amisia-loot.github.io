@@ -318,6 +318,9 @@ local function gearRow()
     elseif p.resumable then
         m.state, m.bar = progressText(p, L["Läuft: %d %%, etwa %s übrig"], L["Angehalten: %d %%, noch etwa %s"])
         m.resume = true
+    elseif p.pausedIn and not p.finished then
+        -- the gear list stopped in an instance: it keeps no place, "Starten" asks it again from the top
+        m.state = L["In der Instanz angehalten: Starten fragt die Liste von vorn."]
     else
         local s = AmisiaDB and AmisiaDB.scan or {}
         m.state = waiting("gear", p.items, p.finished, s.next ~= nil or s.trim ~= nil)

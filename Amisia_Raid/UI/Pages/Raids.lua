@@ -27,7 +27,7 @@ local function detailText(s)
     end
     local loot = {}
     for _, l in ipairs(s.items or {}) do
-        loot[#loot + 1] = ("%s: %s%s"):format(l.name, ns.ItemName(l.item), (l.count or 1) > 1 and (" x" .. l.count) or "")
+        loot[#loot + 1] = ("%s: %s%s"):format(tostring(l.name or "?"), ns.ItemName(l.item), (l.count or 1) > 1 and (" x" .. l.count) or "")
     end
     local drops = {}
     for _, d in pairs(s.drops or {}) do
@@ -44,7 +44,7 @@ local function detailText(s)
             local who = (a.name and a.name ~= "-") and (" (" .. a.name .. ")") or ""
             text = ("%s: %s%s"):format(ns.ItemName(a.item), a.to == "bank" and "Bank" or L["entzaubert"], who)
         else
-            text = L["%s an %s%s"]:format(ns.ItemName(a.item), a.name, (a.kind and a.kind ~= "-") and (" (" .. a.kind .. ")") or "")
+            text = L["%s an %s%s"]:format(ns.ItemName(a.item), tostring(a.name or "?"), (a.kind and a.kind ~= "-") and (" (" .. a.kind .. ")") or "")
         end
         awards[#awards + 1] = text .. (a.note and (" (" .. a.note .. ")") or "")
     end
@@ -166,7 +166,7 @@ ns.RegisterPanel{ key = "raids", label = L["Raid-Archiv"], sub = L["Alle aufgeze
         end, function(r, s)
             local c = ns.MatCounts(s)
             r.box:SetChecked(ns.RaidSelection[s.id])
-            r.date:SetText(ns.ExportState(s) == "done" and ("|cff8f86a3" .. s.date .. "|r") or s.date)
+            r.date:SetText(ns.ExportState(s) == "done" and ("|cff8f86a3" .. tostring(s.date or "?") .. "|r") or tostring(s.date or "?"))
             r.zone:SetText((s == ns.Active() and "|TInterface\\AddOns\\Amisia\\Media\\Icons\\dot:12:12:0:0|t " or "") .. (s.zone or "?"))
             local late = ns.LateCount(s)
             r.raiders:SetText(ns.MemberCount(s) .. (late > 0 and ("  |cffe0a344+" .. late .. "|r") or ""))

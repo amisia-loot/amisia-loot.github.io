@@ -149,6 +149,16 @@ assert(D and D.chosen == "thanes" and D.noteView:IsShown(), "the page on the par
 ---------------------------------------------------------------------------
 -- the part Notiz: field, count, boss lines, saving, a link, clearing; the tab's mark
 ---------------------------------------------------------------------------
+-- the journal's boss list by the game's order where the loot data spells a name otherwise (thanes: "Magmatus")
+NS.ShowDungeon("thanes", "bosses")
+D.plan.scripts.OnClick(D.plan, "LeftButton")
+assert(D.pathView:IsShown(), "the run planner open")
+NS.ShowDungeonBoss("thanes", 2)
+assert(not D.pathView:IsShown() and D.bossView:IsShown(), "a boss asked for leaves the run planner")
+local chosen
+for _, h in ipairs(D.bossView.list.items) do if h.on then chosen = h end end
+assert(chosen and chosen.n == 2 and chosen.rank == 2, "the bar's boss 2 is the second boss: " .. tostring(chosen and chosen.text))
+NS.ShowDungeon("thanes", "note")
 local v = D.noteView
 assert(v.area.box:GetText() == "Erst links die Goblins\nRhahk allein ziehen", "the field holds the note")
 assert(has(D.parts.note:GetText(), "PublicNote"), "the tab carries the mark")
@@ -167,6 +177,7 @@ assert(N.Get("thanes") == "Neu geschrieben" .. LINK, "no second copy in the same
 box:SetText(("x"):rep(N.MAX_TEXT - 10))
 box.scripts.OnTextChanged(box, true)
 STUB.tick(1)
+assert(box:HasFocus(), "the page's refresh after the save keeps the field's keyboard")
 ChatFrameUtil.InsertLink(LINK)
 assert(#N.Get("thanes") == N.MAX_TEXT - 10, "a link that does not fit stays out")
 box:SetText("Neu geschrieben" .. LINK)

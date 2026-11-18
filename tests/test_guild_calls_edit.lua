@@ -83,6 +83,7 @@ assert(GC.PageMode() == "form" and has(f.formHint:GetText(), "Uhrzeit fehlt oder
 f.timeMode.onPick("now")
 f.main:Click()
 assert(GC.Own().at == 0 and GC.PageMode() == "mine", "now: jetzt")
+assert(time() - GC.Own().created <= 1, "switched to now: its life counts from now, not from when it was made")
 -- nothing changed: no new revision
 rev = GC.Own().rev
 assert(GC.Edit({ art = "H", title = GC.Own().title, min = 30, need = GC.Own().need, note = GC.Own().note, at = 0 }))

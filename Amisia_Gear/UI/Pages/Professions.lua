@@ -247,7 +247,11 @@ end
 local function ringColor(fr, item)
     if not fr.ring then return end
     local q
-    if item and item > 0 then q = select(2, Pr.ItemInfo(item)) end
+    if item and item > 0 then
+        q = select(2, Pr.ItemInfo(item))
+        -- not cached yet: GET_ITEM_INFO_RECEIVED draws the ring again
+        if not q then nameMissing = true end
+    end
     local c = T.QUALITY_RGB[q or 1] or T.QUALITY_RGB[1]
     fr.ringColor = { c[1], c[2], c[3], 1 }
     fr.ring:SetVertexColor(c[1], c[2], c[3], 1)
@@ -1683,6 +1687,8 @@ local function refresh(f)
     if type(v) == "number" then s.skill = v end
     local m = type(v) == "number" and mode() or nil
     local onRoute = routeShown(v)
+    -- the mode "route" kept for a profession without a route (gathering, fishing): its recipes with their filters
+    if m == ROUTE and not onRoute then m = RECIPES end
     for _, t in ipairs(f.tabs) do t:Show() end
     fillTabs(f, v, m, onRoute)
     f:Place(1, f.tabs, member and { f.back } or nil)

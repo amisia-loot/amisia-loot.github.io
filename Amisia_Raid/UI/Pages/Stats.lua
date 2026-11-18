@@ -287,7 +287,8 @@ local function refresh(f)
     f.hint:SetShown(not fame)
     if fame then
         f.empty:Hide()
-        f.fame:SetText(fameText(res))
+        -- the hall of fame is everyone's: not the officer's class and role filter of the player view
+        f.fame:SetText(fameText({ from = res.from, phase = res.phase, awards = res.awards, raids = res.raids, all = res.all, players = res.all }))
         return
     end
     W.MarkSortHead(f.heads, sortCol)

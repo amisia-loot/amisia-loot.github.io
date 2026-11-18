@@ -283,6 +283,12 @@ local function check19(P)
     P.phase = "19"
     add(R, "WERT", L["Warten"], L["%d s, dann dasselbe Öffnen aus einem C_Timer.After"]:format(CT.DELAY))
     C_Timer.After(CT.DELAY, safe(P, function()
+        -- opened meanwhile: the window reacts to every open, and 19 is "without the window"
+        if calendarWindow() then
+            add(R, "WERT", L["Kalenderfenster"], L["offen: 18 und 19 übersprungen (es reagiert auf jedes Öffnen). Fenster schließen und neu prüfen."])
+            P.skipped = L["Kalenderfenster offen"]
+            return finishProbe(P)
+        end
         openTarget(P, false, function(R2)
             check(R2, "GetNumInvites", function()
                 local v = call("C_Calendar.GetNumInvites")

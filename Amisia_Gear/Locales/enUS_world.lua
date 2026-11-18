@@ -1328,4 +1328,5 @@ L["fragt ..."] = "asking ..."
 L["in der Gruppensuche oder Dungeonsuche"] = "in the group finder or dungeon finder"
 L["in einer fremden Gruppe"] = "in someone else's group"
 L["pausiert: %s"] = "paused: %s"
+L["In der Instanz angehalten: Starten fragt die Liste von vorn."] = "Stopped in an instance: Start asks the list again from the top."
 end)

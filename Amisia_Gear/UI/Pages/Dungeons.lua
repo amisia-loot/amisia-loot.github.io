@@ -206,7 +206,7 @@ local function detailItems(e)
         local b = jb.b
         -- shown: the name in the client's language where the NPC scan found it (D-104); text stays the key
         local head = { kind = "boss", text = b.name, shown = ns.ScannedNpcName and jb.npc and ns.ScannedNpcName(jb.npc) or nil,
-                       b = b, npc = jb.npc, items = {} }
+                       b = b, npc = jb.npc, rank = jb.rank, items = {} }
         out[#out + 1] = head
         for _, it in ipairs(b.items) do
             local row = { kind = "item", id = it.id, it = it, rec = it.rec, wished = it.wished, owned = it.owned }
@@ -242,7 +242,7 @@ local function bossHeads(B, e)
     for _, row in ipairs(detailItems(e)) do
         if row.kind == "boss" then
             heads[#heads + 1] = { kind = "boss", text = row.text, shown = row.shown, b = row.b, npc = row.npc, items = row.items, n = #heads + 1,
-                killed = JP.BossKilled(e.key, row.text) }
+                rank = row.rank, killed = JP.BossKilled(e.key, row.text, row.rank) }
         end
     end
     B.bossSel = B.bossSel or {}
@@ -250,7 +250,7 @@ local function bossHeads(B, e)
         focus.chosen = true
         for _, h in ipairs(heads) do
             -- a boss asked for by its place in the game's order (F-168, the dungeon bar)
-            if focus.boss and JP.BossIndex(e.key, h.text) == focus.boss then B.bossSel[e.key] = h.text end
+            if focus.boss and (h.rank or JP.BossIndex(e.key, h.text)) == focus.boss then B.bossSel[e.key] = h.text end
             for _, row in ipairs(h.items) do
                 if row.id == focus.id then B.bossSel[e.key] = h.text end
             end
@@ -280,7 +280,8 @@ local function wishItems(e)
     local out, head = {}, nil
     for _, row in ipairs(detailItems(e)) do
         if row.kind == "boss" then
-            head = { kind = "boss", text = row.text, shown = row.shown, b = row.b, items = {}, killed = JP.BossKilled(e.key, row.text) }
+            head = { kind = "boss", text = row.text, shown = row.shown, b = row.b, items = {}, rank = row.rank,
+                     killed = JP.BossKilled(e.key, row.text, row.rank) }
         elseif (row.wished or row.rec) and head then
             if #head.items == 0 then out[#out + 1] = head end
             out[#out + 1] = row
@@ -2284,6 +2285,8 @@ local function buildFilter(B, i, opts)
         local q = (tostring(text or ""):match("^%s*(.-)%s*$") or ""):lower()
         if q ~= B.filter.query then
             B.filter.query = q
+            -- the hits from the top: a kept scroll place would hide the first of them
+            if B.table then B.table.offset = 0 end
             ns.Refresh()
         end
     end
@@ -2297,6 +2300,7 @@ local function buildFilter(B, i, opts)
     for _, m in ipairs(modes) do
         local tab = W.Tab(B, m[2], function()
             B.filter.mode = m[1]
+            if B.table then B.table.offset = 0 end
             ns.Refresh()
         end)
         W.Tooltip(tab, m[2], m[3])
@@ -2796,6 +2800,8 @@ function ns.ShowDungeon(key, part)
     -- a raid opens on the page Raids
     if ns.ShowRaid and ns.Dungeons.IsRaid(key) then return ns.ShowRaid(key, part) end
     holdHere(false)   -- asked for: no jump to the instance stood in (D-72)
+    -- the asked part, not the quest journal opened from it before
+    if page then page.pathFor = nil end
     state().dungeon = key
     if part then state().dpart = part end
     asked = key

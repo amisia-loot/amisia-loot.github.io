@@ -342,6 +342,8 @@ function GC.Edit(spec)
         and x.note == c.note
     for _, r in ipairs(GC.ROLES) do same = same and x.need[r] == (c.need[r] or 0) end
     if same then return true end
+    -- switched to "jetzt": its life counts from now, not from when it was made (else it could end at once)
+    if x.at == 0 and (c.at or 0) > 0 then c.created = time() end
     c.art, c.key, c.title, c.min, c.at, c.need, c.note = x.art, x.key, x.title, x.min, x.at, x.need, x.note
     ownChanged()
     if locked() then ns.msg(L["Kampfsperre: Die Änderung geht an die Gilde, sobald sie vorbei ist."]) end
@@ -616,7 +618,9 @@ end
 function GC.Get(low) return calls[tostring(low or ""):lower()] end
 function GC.Count() return ns.Count(calls) end
 
+local focusClicks = 0          -- clicks on [Anmelden]: each one opens the list at its call again
 function GC.Focus() return focus end
+function GC.FocusClicks() return focusClicks end
 function GC.SetFocus(low) focus = low and tostring(low):lower() or nil end
 
 -- "Heiler, 2 Schaden": what a call still lacks.
@@ -688,6 +692,8 @@ local function take(name, f)
         if mine[low] and mine[low].id ~= f[1] then mine[low] = nil end
     end
     c.rev, c.art, c.key = rev, f[3], f[4] ~= "-" and f[4] or nil
+    -- another's call switched to "jetzt": its life counts from now here too
+    if not fresh and at == 0 and (c.at or 0) > 0 then c.created = time() end
     c.title, c.min, c.at = f[5], tonumber(f[6]), at
     c.need, c.signed, c.inGroup = parseTriple(f[8]), parseTriple(f[9]), parseTriple(f[10])
     c.state, c.note = f[11], f[12] ~= "-" and f[12] or nil
@@ -839,6 +845,7 @@ function GC.OnLink(_, link)
     for low, c in pairs(calls) do
         if c.id == id then focus = low end
     end
+    focusClicks = focusClicks + 1
     if ns.ShowPage then ns.ShowPage("calls") end
 end
 

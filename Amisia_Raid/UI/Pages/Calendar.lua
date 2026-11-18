@@ -55,6 +55,7 @@ local view = {}           -- the month shown: { y, m }
 local chosen              -- the chosen day (a night, "yyyy-mm-dd")
 local chosenAuto          -- chosen by the page (the next date), not by a click: follows the dates
 local chosenTerm          -- the chosen date of that day (its index in the day's dates)
+local chosenKey           -- and which date it is: the index moves when a date is added or a "jetzt" call passes one
 local asked               -- the dates were asked for once (ns.SignupLoadTerms)
 local reader
 local mode                -- the right inset: nil the day, "form" a new event, "edit" an event's values, "discord" the text to copy,
@@ -194,14 +195,28 @@ local function showMonth(y, m)
 end
 
 -- The chosen date of the chosen day (the chosen one of its dates, else its first raid, else its first).
+local function termKey(t)
+    if t.call then return "C\t" .. (t.own and "own" or tostring(t.low)) end
+    if t.id then return "E\t" .. tostring(t.id) end
+    return tostring(t.at) .. "\t" .. tostring(t.title)
+end
+
 local function termOf(terms)
     local list = chosen and terms[chosen]
     if not list or #list == 0 then return nil end
-    if chosenTerm and list[chosenTerm] then return list[chosenTerm] end
-    for i, t in ipairs(list) do
-        if t.raid then chosenTerm = i return t end
+    if chosenKey then
+        for i, t in ipairs(list) do
+            if termKey(t) == chosenKey then chosenTerm = i return t end
+        end
     end
-    chosenTerm = 1
+    if chosenTerm and list[chosenTerm] then
+        chosenKey = termKey(list[chosenTerm])
+        return list[chosenTerm]
+    end
+    for i, t in ipairs(list) do
+        if t.raid then chosenTerm, chosenKey = i, termKey(t) return t end
+    end
+    chosenTerm, chosenKey = 1, termKey(list[1])
     return list[1]
 end
 
@@ -209,7 +224,7 @@ end
 local function ensureChosen()
     if chosen and not chosenAuto then return end
     local nxt = ns.SignupNextTerm and ns.SignupNextTerm()
-    if nxt and nxt.night ~= chosen then chosenTerm = nil end
+    if nxt and nxt.night ~= chosen then chosenTerm, chosenKey = nil, nil end
     chosen = nxt and nxt.night or (ns.NightOf and ns.NightOf(time()) or key(time()))
     chosenAuto = true
 end
@@ -270,6 +285,7 @@ local function choose(night, index)
     if mode == "edit" or editWait or removeAsking then endEdit() end
     dayError = nil
     chosen, chosenTerm, chosenAuto = night, index, false
+    chosenKey = nil
     -- the Discord text belongs to one date; the form follows the chosen day
     if mode == "discord" or mode == "bot" then mode = nil end
     formError = nil
@@ -360,7 +376,7 @@ local function openForm()
     formError, formWait = nil, nil
     mode = "form"
     if page then
-        page.titleBox:SetText(form.texTitle or "")
+        page.titleBox:SetText(CC().Clean(form.texTitle, CC().TITLE_CHARS) or "")
         page.descBox.box:SetText("")
         page.timeBox:SetText(ns.FormatTime(form.time))
     end
@@ -395,6 +411,7 @@ local function takeBot(quiet)
     local t = date("*t", r.day)
     showMonth(t.year, t.month)
     chosen, chosenTerm, chosenAuto = key(r.day), nil, false
+    chosenKey = nil
     formError, formWait, botError = nil, nil, nil
     mode = "form"
     page.titleBox:SetText(r.title)
@@ -637,6 +654,7 @@ function ns.ShowCalendar(night)
         if mode == "edit" or editWait or removeAsking then endEdit() end
         dayError = nil
         chosen, chosenTerm, chosenAuto = night, nil, false
+        chosenKey = nil
     end
     ns.ShowPage("calendar")
 end
@@ -868,7 +886,7 @@ local function build(parent)
         form.type = v or 4
         form.tex, form.texTitle, form.texShown = nil, nil, nil
         -- a new event's title follows its instance; an event being changed keeps its title
-        if mode ~= "edit" and f.titleBox:GetText() == (before or "") then f.titleBox:SetText("") end
+        if mode ~= "edit" and f.titleBox:GetText() == (CC().Clean(before, CC().TITLE_CHARS) or "") then f.titleBox:SetText("") end
         ns.Refresh()
     end))
     f.texY = y
@@ -890,7 +908,8 @@ local function build(parent)
         else
             -- the title follows the instance until the player typed one of his own
             local text = f.titleBox:GetText()
-            if text == "" or text == before then f.titleBox:SetText(CC().Clean(form.texTitle, CC().TITLE_CHARS) or "") end
+            -- the box holds the name cut to the title's length (a long instance name): compare with that
+            if text == "" or text == (CC().Clean(before, CC().TITLE_CHARS) or "") then f.titleBox:SetText(CC().Clean(form.texTitle, CC().TITLE_CHARS) or "") end
         end
         ns.Refresh()
     end))

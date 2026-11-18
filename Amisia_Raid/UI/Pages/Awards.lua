@@ -150,14 +150,20 @@ end
 
 -- A note typed into the edit panel but not committed yet belongs to the award it was typed for:
 -- before another award is chosen it is committed (keep) or, before a deletion, thrown away.
+-- The note and the cost box alike: a click on a row does not take an edit box's focus, so what was typed
+-- would else be saved on the award chosen next.
 local function settleNote(O, keep)
-    local box = O and O.edit and O.edit.note
-    if not box or not box:HasFocus() then return end
-    if keep then
-        box:ClearFocus()
-    else
-        local escape = box:GetScript("OnEscapePressed")
-        if escape then escape(box) else box:ClearFocus() end
+    local E = O and O.edit
+    if not E then return end
+    for _, box in ipairs({ E.note, E.pts }) do
+        if box and box:HasFocus() then
+            if keep then
+                box:ClearFocus()
+            else
+                local escape = box:GetScript("OnEscapePressed")
+                if escape then escape(box) else box:ClearFocus() end
+            end
+        end
     end
 end
 

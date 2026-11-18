@@ -1436,7 +1436,7 @@ ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()
     C_Timer.After(0.3, function()
         namesDue = false
         local cur = ns.CurrentPage and ns.CurrentPage()
-        if not nameMissing or not (cur == "gear" or cur == "dungeons" or cur == "raidjournal") then return end
+        if not nameMissing or not (cur == "gear" or cur == "dungeons" or cur == "raidjournal" or cur == "overview") then return end
         memo.wishes = nil
         guildKey = nil
         ns.Refresh()
@@ -1451,7 +1451,8 @@ local function bestUpgrade(res)
     local best
     for _, sl in ipairs(Gear.SLOTS) do
         local e = res[sl.key] and res[sl.key][1]
-        if e and e.upgrade and (not best or e.gain > best.gain) then best = e end
+        -- a pick worn below its score counts as "upgrade" in the list; the card names only a real gain
+        if e and e.upgrade and (tonumber(e.gain) or 0) > 0 and (not best or e.gain > best.gain) then best = e end
     end
     return best
 end

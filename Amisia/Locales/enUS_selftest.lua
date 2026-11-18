@@ -583,4 +583,6 @@ L["übersprungen"] = "skipped"
 L["vom Spiel gesperrt (diese Sitzung)"] = "blocked by the game (this session)"
 L["Wer-Abfrage"] = "Who query"
 L["Nachlesen"] = "rescans"
+L["wartet: %s"] = "waiting: %s"
+L["Dein Status zu diesem Termin ist nicht lesbar: die Prüfung schreibt nichts."] = "Your status for this event cannot be read: the check writes nothing."
 end)

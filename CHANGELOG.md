@@ -5,6 +5,54 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(guild): a call switched to "jetzt" no longer ends at once and loses its sign-ups (F-211)
+
+    A call made for later and changed to "jetzt" now counts its two hours from the change, for its maker and for
+    everyone who hears it. A click on [Anmelden] in the chat opens the list at that call every time, with every
+    kind of call shown.
+
+- fix(dungeons): the note keeps the keyboard, every boss of the journal knows its kills (F-212, F-146)
+
+    Typing a dungeon note no longer loses the keyboard half a second after the first letter. Bosses whose name the
+    loot data spells otherwise ("Magmatus", "Gelihast", "Ras Frostwhisper" and 13 more) now show their kill tick,
+    take the right-click mark and are chosen by a click in the dungeon bar. A boss asked for leaves the run planner,
+    and a search shows its hits from the top.
+
+- fix(runs): a raid's kills end with its raid ID even when it was not read before leaving (F-166)
+
+    The raid ID the first kill makes is taken over as soon as the game names it, and kills without a known raid ID
+    end after a week, so last week's bosses no longer show as killed.
+
+- fix(awards): a cost typed and not confirmed is saved on its own award, not on the next one clicked (F-015)
+
+    The hall of fame now counts every player, also when an officer filtered the player list by class or role.
+
+- fix(calendar): the sign-up window shows the role and note of the night it switched to; the page keeps its date (F-087, F-096)
+
+    The calendar page remembers the chosen date itself, not its place in the day, so a "jetzt" call or a new date
+    no longer swaps it. A long instance name no longer stops the title from following the instance.
+
+- fix(raid): raid IDs of a kill right after a /reload reach the officers (F-099)
+
+    A change seen before the login's report is sent with it, instead of waiting for the next boss.
+
+- fix(routes): Escape while naming a stop ends the naming (F-167)
+
+    Before, the field kept the stop's label and "Speichern" took it as the route's name.
+
+- fix(professions): a profession without a route shows its recipes with their filters; rings get their colour (F-151)
+
+    The planner's slot click opens the slot's suggestions from the wish list too, the overview card names only an
+    upgrade with a real gain, and the model stops turning when the page closes mid-drag (F-149, F-039).
+
+- fix(tools): the gear list stopped in an instance says so on its line (F-186)
+
+- fix(selftest): the calendar write check puts the own status back after an error, waits out a fight (F-089)
+
+    It waits up to two minutes for a fight or the calendar window to end before it puts the status back, also after
+    a Lua error, and refuses a status it cannot read. The read check skips its second part when the calendar window
+    opened meanwhile, and the layer check sends no /who in a fight (F-085, F-192).
+
 - fix(layer): helped players are no longer taken out when "Helfen" turns itself off, and no "ask again" after a swap that worked (F-221)
 
     When the four minutes after an own swap run out and Amisia turns "Helfen" off again, guests already in the

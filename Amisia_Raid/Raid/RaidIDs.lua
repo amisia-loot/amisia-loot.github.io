@@ -275,9 +275,11 @@ local function afterCombat(fn)
     waitFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 end
 
+-- a change before the login's report (a boss right after a /reload): sent by the login if it sends nothing else
+local changedEarly = false
 local function readAndReport()
     local changed = ns.RaidIDsReadOwn()
-    if changed and loginDone then reportNew() end
+    if changed and loginDone then reportNew() elseif changed then changedEarly = true end
 end
 ns.OnEvent("UPDATE_INSTANCE_INFO", function() afterCombat(readAndReport) end)
 
@@ -309,9 +311,13 @@ function ns.RaidIDsLogin()
     -- the client answers with UPDATE_INSTANCE_INFO; the report a moment later
     C_Timer.After(3, function()
         loginDone = true
-        ns.RaidIDsReadOwn()
+        local early = ns.RaidIDsReadOwn() or changedEarly
+        changedEarly = false
         local st = DB and DB.raidcheck
-        if not st or (st.sent and now() - st.sent < RESEND_EVERY) then return end
+        if not st or (st.sent and now() - st.sent < RESEND_EVERY) then
+            if early then reportNew() end
+            return
+        end
         if ns.RaidIDsSendAll("GUILD", nil, { low = true, ttl = 120 }) > 0 then st.sent = now() end
     end)
 end

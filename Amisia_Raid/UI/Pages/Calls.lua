@@ -418,9 +418,10 @@ local function refresh(f)
     if editing and not own then editing = nil end
     if mode == "form" and own and not editing then mode = "mine" end
     -- a click on [Anmelden] in the chat: the list at that call
-    local focus = GC().Focus()
-    if focus and mode ~= "list" and not f.focusSeen then mode = "list" end
-    f.focusSeen = focus
+    -- every click (the same call again too), and with every art, or the tab chosen before may hide it
+    local focus, clicks = GC().Focus(), GC().FocusClicks()
+    if focus and clicks ~= f.focusSeen then mode, filter = "list", "all" end
+    f.focusSeen = clicks
     f.listView:SetShown(mode == "list")
     f.formView:SetShown(mode == "form")
     f.mineView:SetShown(mode == "mine")

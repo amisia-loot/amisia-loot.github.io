@@ -249,6 +249,11 @@ local function wireModel(m, P)
         self.dragX = nil
         self:SetScript("OnUpdate", nil)
     end)
+    -- hidden while dragged (Escape, another page): no mouse-up comes, the turn ends here
+    m:HookScript("OnHide", function(self)
+        self.dragX = nil
+        self:SetScript("OnUpdate", nil)
+    end)
     m:SetScript("OnMouseWheel", function(self, delta)
         self.zoom = math.max(0, math.min(P.ZOOM_MAX, (self.zoom or 0) + (tonumber(delta) or 0) * P.ZOOM_STEP))
         call(self, "SetPortraitZoom", self.zoom)

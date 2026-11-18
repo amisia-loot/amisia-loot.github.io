@@ -17,6 +17,7 @@ local R = {}
 ns.Runs = R
 
 local FRESH = 30 * 60       -- outside longer than this: the next entry is a fresh instance
+local RAID_WEEK = 7 * 24 * 3600
 local MAX_ENC = 40          -- encounters kept per run at most
 
 local function now() return time() end
@@ -222,8 +223,13 @@ function R.Update(login, reload)
     if inst then
         local stale
         if kind == "raid" then
-            -- a raid's kills last while its raid ID does
-            stale = run.reset ~= nil and now() > run.reset
+            -- a raid's kills last while its raid ID does; without a known one (the raid module off, the ID not
+            -- read before leaving) a week at most, the longest lockout
+            if run.reset then
+                stale = now() > run.reset
+            else
+                stale = run.at ~= nil and now() - run.at > RAID_WEEK
+            end
         else
             stale = run.left ~= nil and now() - run.left > FRESH
         end
@@ -352,6 +358,13 @@ ns.OnEvent("ENCOUNTER_END", function(enc, _, _, _, success)
     if tonumber(ns.Plain(success)) == 1 then R.Kill(enc) end
 end)
 ns.OnEvent("BOSS_KILL", function(enc) R.Kill(enc) end)
+-- the raid ID the first kill made (read after UPDATE_INSTANCE_INFO): the run's kills end with it
+ns.Listen("RAIDIDS", function()
+    local inst, kind = instanceNow()
+    if kind ~= "raid" then return end
+    local run = charRun(false)
+    if run and run.inst == inst then run.reset = lockEnd(inst) or run.reset end
+end)
 ns.OnEvent("CHAT_MSG_SYSTEM", function(text)
     local name = resetName(ns.Plain(text))
     if name then R.Reset(name) end

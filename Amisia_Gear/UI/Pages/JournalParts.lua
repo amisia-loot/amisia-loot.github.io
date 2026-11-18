@@ -127,16 +127,17 @@ function P.BossIndex(dkey, name)
     return nil
 end
 
--- Whether boss name of dkey is killed in the run.
-function P.BossKilled(dkey, name)
-    local i = dkey and P.BossIndex(dkey, name)
+-- Whether boss name of dkey is killed in the run. rank: its place in the game's order where the page
+-- knows it (ns.Dungeons.JournalBosses matches by NPC when the loot data spells the name otherwise).
+function P.BossKilled(dkey, name, rank)
+    local i = dkey and (rank or P.BossIndex(dkey, name))
     return i ~= nil and ns.Runs.Killed(dkey, i)
 end
 
 -- The right-click menu of a boss row (e: the row's head) on B: mark it killed or not.
 function P.BossMenu(B, owner, e)
     local dkey = B.entry and B.entry.key
-    local i = dkey and P.BossIndex(dkey, e.text)
+    local i = dkey and (e.rank or P.BossIndex(dkey, e.text))
     if not i or not ns.Runs.Encounters(dkey) then return end
     local killed = ns.Runs.Killed(dkey, i)
     W.Menu(owner, { { killed and RTEXT.unmark or RTEXT.mark, function()
@@ -708,8 +709,11 @@ function P.BuildNote(B, top)
     list.empty:SetPoint("TOP", 0, -T.LAYOUT.EMPTY_Y)
     list.empty:SetText(NTEXT.noBosses)
     v.list = list
-    -- hidden (another tab, the window closed): no field keeps the keyboard
-    v:SetScript("OnHide", function() dropFocus(v) end)
+    -- hidden (another tab, the window closed): no field keeps the keyboard. Looked at on the next frame:
+    -- the pages hide every part on each refresh and show the chosen one again (a note's own save refreshes)
+    v:SetScript("OnHide", function()
+        C_Timer.After(0, function() if not v:IsVisible() then dropFocus(v) end end)
+    end)
     v:Hide()
     B.noteView = v
     return v

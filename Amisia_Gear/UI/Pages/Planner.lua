@@ -778,6 +778,8 @@ end
 local function choose(key)
     local st = state()
     st.planSlot = key
+    -- "Klick auf einen Platz: seine Vorschläge" (the goals keep their tab: the click marks the row there)
+    if st.planTab == "wish" then st.planTab = "suggest" end
     setCat, openSet, query = nil, nil, ""
     ns.Refresh()
 end

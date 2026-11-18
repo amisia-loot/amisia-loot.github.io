@@ -210,6 +210,10 @@ refresh = function()
     if ns.SignupTerms() and not termNow() then
         local t = ns.SignupNextTerm()
         cur = t and t.night or nil
+        -- another night now: its own role and note, not the ones of the night before (a click sends them)
+        local r = cur and ns.SignupOf()[cur]
+        role = r and r.r or nil
+        F.note:SetText(r and r.w or "")
     end
     F.pick:SetValue(cur)
     local t = termNow()

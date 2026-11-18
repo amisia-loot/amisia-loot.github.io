@@ -540,7 +540,10 @@ function LT.Start()
         if not ok then add(P.R, "FEHLER", L["Abschnitt"], cut(tostring(err))) end
     end
     -- the typed command is a key press: the zone's /who may go now (F-216)
-    local okZ, probeZ = pcall(SW.ProbeZone)
+    -- never in a fight or the chat lockdown (the head of this file): no /who, no whisper to a stranger
+    local blockedZ = blockedNow()
+    local okZ, probeZ
+    if blockedZ then okZ, probeZ = true, { skipped = blockedZ } else okZ, probeZ = pcall(SW.ProbeZone) end
     P.zone = okZ and probeZ or { skipped = "error" }
     SW.ForgetCall()   -- a block of the timed calls below is not the /who's
     local total = LT.WAIT + 2 * LT.STEP
