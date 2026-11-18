@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.100.5](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.100.5) (2026-11-18)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.100.4...v2.100.5) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - fix(guild): a call switched to "jetzt" no longer ends at once and loses its sign-ups (F-211)
 
     A call made for later and changed to "jetzt" now counts its two hours from the change, for its maker and for
