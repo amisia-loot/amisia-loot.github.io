@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-17",
+ "updated": "2026-11-18",
  "entrances": {
   "33": {
    "map": 1421,
@@ -56,6 +56,14 @@
    "name": "Zul'Farrak",
    "kind": "party",
    "seen": 1794611831
+  },
+  "229": {
+   "map": 1428,
+   "x": 3300,
+   "y": 2515,
+   "name": "Blackrockspitze",
+   "kind": "party",
+   "seen": 1795024871
   },
   "349": {
    "map": 1414,

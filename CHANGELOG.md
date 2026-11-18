@@ -5,6 +5,29 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- data(data): 699 more pieces of gear with their source, most of them loot of the level 55 to 60 dungeons (F-175)
+
+    The gear scan of 2.100.6 found 706 of the 919 items it newly asks for. They are in the planner now with their
+    boss and drop chance, for example Spellweaver's Turban from General Drakkisath in Upper Blackrock Spire. 213 items
+    did not answer yet and are asked for again by the next gear scan.
+
+- fix(scan): the list of item IDs to ask again can no longer grow until the saved file breaks (F-053)
+
+    A scan of a range far above the game's items (for example 300000 to 3000000) kept every ID without an answer,
+    hundreds of thousands of them. The list now holds at most 20000 IDs, says so once when it is full, and a longer
+    saved list is cut at login. Without this the saved file could grow past what the game can load, and everything
+    Amisia had saved would have been lost.
+
+- feat(gear): a third weighting "Raid" for boss fights at level 60 (F-225)
+
+    Besides "Speedrun" and "Hardcore" the gear weighting can be set to "Raid" (settings, or a click on "Gewichtung"
+    in the gear window, which now goes round all three). At level 60 it reckons a raid boss instead of levelling and
+    dungeons: the target is three levels higher, spell hit counts up to 16 % and weapon hit up to 9 % instead of 6 %,
+    a damage caster's mana hardly runs short (intellect and spirit count far less, haste more) and a wand counts
+    nothing. Suggestions, targets and "Upgrade für dich" follow it. Below level 60 "Raid" is "Speedrun", and healers
+    keep their weights. The numbers are Classic's values, not measured in Forever yet; "Warum diese Gewichte" says so.
+    A level 60 character still on "Speedrun" is offered "Raid" once a session by a quiet link in the gear window.
+
 ## [v2.100.6](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.100.6) (2026-11-18)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.100.5...v2.100.6) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
