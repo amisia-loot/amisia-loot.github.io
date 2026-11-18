@@ -64,7 +64,6 @@ local function applyScale(s, keep)
     end
     return s
 end
-function TW.Scale() return F and F:GetScale() or 1 end
 function TW.SetScale(s) return applyScale(s, true) end
 
 function ns.ResetRunTimerPosition()

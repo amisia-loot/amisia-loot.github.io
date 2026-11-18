@@ -332,14 +332,6 @@ function SB.AddToRanges(text, id)
     return text .. "," .. id
 end
 
--- Whether id lies in a ranges text.
-function SB.InRanges(text, id)
-    for _, r in ipairs(SB.ParseRanges(text)) do
-        if id >= r[1] and id <= r[2] then return true end
-    end
-    return false
-end
-
 -- The number of ids in a ranges text.
 function SB.RangesCount(text)
     local n = 0

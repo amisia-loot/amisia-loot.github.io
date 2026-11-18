@@ -704,9 +704,6 @@ function LW.UpdateMini()
     end
 end
 
-function LW.MiniShown() return mini ~= nil and mini:IsShown() end
-LW.Mini = function() return mini end
-
 -- The bar shown or hidden as wanted (layer.bar or the folded window).
 function LW.UpdateBar()
     if barWanted() then

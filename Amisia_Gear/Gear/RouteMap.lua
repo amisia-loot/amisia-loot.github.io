@@ -29,7 +29,6 @@ local layer, canvas, overlay, bar
 local lines, dots, pins = {}, {}, {}
 local seen = {}           -- what the last draw read: map, w, h, scale; the bar's place
 local dirty = true
-local draws = 0
 
 local function inCombat() return InCombatLockdown ~= nil and ns.Plain(InCombatLockdown()) == true end
 
@@ -143,7 +142,6 @@ end
 -- Puts the shown route of the shown map on the layer: the lines between the stops, the drawn lines,
 -- the line being drawn, the numbered stops (the one followed green, the passed ones grey).
 local function draw()
-    draws = draws + 1
     local r = R.Shown()
     local w, h, cs = canvas:GetWidth(), canvas:GetHeight(), canvas:GetScale()
     seen.w, seen.h, seen.scale = w, h, cs
@@ -568,11 +566,10 @@ ns.Listen("ROUTES", function()
     end
 end)
 
--- For the tests: the layer, the click layer, the bar, the shown stops and lines, the draws so far.
+-- For the tests: the layer, the click layer, the bar, the shown stops and lines.
 function RM.Layer() return layer end
 function RM.Overlay() return overlay end
 function RM.Bar() return bar end
-function RM.Draws() return draws end
 function RM.ShownPins()
     local out = {}
     for _, b in ipairs(pins) do
