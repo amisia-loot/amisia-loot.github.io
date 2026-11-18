@@ -39,6 +39,11 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
     The build that derives the weights now leaves out world drops by default and epic world drops always, as the
     planner does (D-59), so low level weights no longer rest on items the planner never suggests.
 
+- fix(runs): the run window stays open when a kill hands the clock to another dungeon of the same map (F-180)
+
+    In a map of several dungeons (Blackrock Spire) the new clock shows at once instead of only after the next zone
+    change.
+
 - fix(core): no Lua error after "Alle Duelle löschen" during an inspect, whispers to surnames with a dash, error page (F-106)
 
     Clearing the duels while a talent inspect waits no longer errors. A whisper block after "offline" now keys on
