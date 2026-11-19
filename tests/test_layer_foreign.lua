@@ -38,6 +38,8 @@ end
 world(A, 4012)
 world(U, 3999)
 world(K, 4012)
+-- D-145 since 2026-11-19: strangers are helped only with layer.others, without a question only with layer.othersAuto
+for _, n in ipairs({ A, U, K }) do C(n, "NS.Set('layer.others', true); NS.Set('layer.othersAuto', true)") end
 BUS.tick(15)
 local function sentTo(sender, target)
     local out = {}

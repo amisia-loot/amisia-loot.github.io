@@ -402,10 +402,13 @@ end
 local function decide(ask, low, name)
     local function offer()
         if not LF.CanHost() then return end
+        -- a player outside the guild only with layer.others, and without a question only with layer.othersAuto
+        local member = ns.GuildMember(name) ~= nil
+        if not member and ns.Get("layer.others") ~= true then return end
         local mine, map = LY.Current()
         stats.invites = stats.invites + 1
         SW.Offer(name, L["%s möchte über das andere Layer-Addon auf deinen Layer wechseln (%s). Einladen?"]:format(name,
-            mine and LY.Name(map, mine) or L["unbekannt"]), true, true)
+            mine and LY.Name(map, mine) or L["unbekannt"]), true, true, not member and "layer.othersAuto" or nil)
     end
     local mine = LY.Current()
     local l = leaves[low]

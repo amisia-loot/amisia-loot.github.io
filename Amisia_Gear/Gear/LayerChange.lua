@@ -539,10 +539,16 @@ ns.CommOn("YI", function(sender, f, chan)
         local mine, myMap = LY.Current()
         if mine ~= a.uid or myMap ~= a.map then return end
         answered[low] = nil
-        SW.Offer(a.name or name, L["%s möchte auf deinen Layer wechseln (%s). Einladen?"]:format(a.name or name, LY.Name(myMap, mine)), true)
+        -- a stranger: without a question only with "Fremde ohne Frage einladen" (layer.othersAuto)
+        SW.Offer(a.name or name, L["%s möchte auf deinen Layer wechseln (%s). Einladen?"]:format(a.name or name, LY.Name(myMap, mine)), true,
+            nil, a.stranger and "layer.othersAuto" or nil)
     end
-    -- a player outside the guild that this client answered with ZA (F-216): no roster to wait for
-    if a.stranger then return go() end
+    -- a player outside the guild that this client answered with ZA (F-216): no roster to wait for; only while
+    -- layer.others is on (it may have been turned off since the answer)
+    if a.stranger then
+        if ns.Get("layer.others") ~= true and not ns.GuildMember(name) then return end
+        return go()
+    end
     ns.TrustWait(name, "member", function(member) if member then go() end end)
 end)
 
@@ -1916,7 +1922,10 @@ ns.CommOn("ZQ", function(sender, f, chan)
         mine, myMap = LY.Current()
     end
     local known = mine ~= nil and myMap == map
+    -- a player outside the guild only with "Auch Spielern außerhalb der Gilde helfen" (layer.others)
+    local member = ns.GuildMember(name) ~= nil
     local helps = known and mine ~= uid and SW.CanHelp() and ns.Get("layer.answer") and not asking() and SW.CanInvite()
+        and (member or ns.Get("layer.others") == true)
     local low = name:lower()
     if helps then SW._answered(low, { id = id, map = map, uid = mine, at = t, stranger = true, name = name }) end
     ns.CommSend("ZA", { id, map, known and mine or 0, helps and 1 or 0 }, "WHISPER", name,

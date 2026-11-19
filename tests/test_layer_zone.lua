@@ -45,6 +45,8 @@ world(A, 4012)
 world(U, 3999)
 world(K, 4012)
 world(Lk, 3998)
+-- D-145 since 2026-11-19: strangers are helped only with layer.others, without a question only with layer.othersAuto
+for _, n in ipairs({ A, U, K, Lk }) do C(n, "NS.Set('layer.others', true); NS.Set('layer.othersAuto', true)") end
 BUS.tick(15)
 C(Lk, "NS.LayerChange.SetHosting(false)")
 local function step(n) return C(n, "NS.LayerChange.SwapStep()") end
@@ -256,4 +258,16 @@ C(A, [[local r = NS.LayerChange.State().req
     STUB.fire("CHAT_MSG_ADDON", "Amisia", "1ZA\t" .. r.id .. "\t1429\t3999\t1", "WHISPER", "Udo Fremd")]])
 BUS.tick(4)
 assert(BUS.count({ kind = "YI", sender = A, target = U }) == 2, "the late answer is asked for the invite")
+-- D-145 since 2026-11-19: without layer.others a stranger's quiet question gets "does not help"; a member is helped
+C(U, "NS.Set('layer.others', false); NS.LayerChange._reset(); INVITED = {}")
+C(U, [[STUB.fire("CHAT_MSG_ADDON", "Amisia", "1ZQ\tabcd\t1429\t4012", "WHISPER", "Zed Fremd")]])
+BUS.tick(3)
+local function za(to, helps)
+    return BUS.count(function(m) return m.kind == "ZA" and m.sender == U and m.target == to and m.text:sub(-2) == "\t" .. helps end)
+end
+assert(za("Zed Fremd", 0) == 1 and za("Zed Fremd", 1) == 0, "a stranger is not helped without layer.others")
+C(U, "NS.Set('layer.others', true)")
+C(U, [[STUB.fire("CHAT_MSG_ADDON", "Amisia", "1ZQ\tabce\t1429\t4012", "WHISPER", "Ute Fremd")]])
+BUS.tick(3)
+assert(za("Ute Fremd", 1) == 1, "with layer.others the stranger is helped")
 print("layer zone ok")

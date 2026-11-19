@@ -4003,6 +4003,11 @@ Dokument), `tools/tests/test_contracts.py::test_two_prefixes_and_one_sender` (nu
 **Berichtigt durch D-146 (2026-11-16):** Jenes Addon nutzt Gildenbitten auf Forever weiter (eine Zeile im Gildenchat
 mit `<LS ...>`); Amisia schreibt diese Zeile bei "Im Gildenchat fragen" und beantwortet sie mit `heard` über GUILD.
 Ein `SHARD_TRANSFER` allein ist kein Wechsel mehr (erst ein anderer Layer), und "h" heißt "hilft und kann einladen".
+**Nachtrag 2026-11-19 (Sicherheitsprüfung, Nutzer "Fix 2 und 3"):** Spieler außerhalb der Gilde bekommen auch über
+Amisia (`ZQ`/`YI`) und über das andere Layer-Addon nur noch mit `layer.others` Hilfe, ohne Frage nur mit
+`layer.othersAuto` (beides aus als Vorgabe). Bis dahin lud ein Helfer jeden Fremden der Zone ohne Frage ein, obwohl
+"Auch Spielern außerhalb der Gilde helfen" aus war. Folge: der Wechsel über die ganze Zone (F-216, F-220) findet bei
+Fremden nur noch Helfer, die die Einstellung angeschaltet haben; Gildenmitglieder bleiben wie bisher.
 
 ## D-146 Layer: sich verhalten wie das verbreitete Layer-Addon (Helfen-Sperre, Lesen, Fragen, Urteil, Leiste)
 

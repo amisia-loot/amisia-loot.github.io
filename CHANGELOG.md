@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(layer): players outside the guild are helped only with "Auch Spielern außerhalb der Gilde helfen" (F-216, F-220)
+
+    Until now a helper invited any stranger of the zone who asked through Amisia or the other layer addon, without a
+    question, even with that setting off. Now strangers get help only with it on, and an invite without a question
+    only with "Fremde ohne Frage einladen". Guild members are helped as before.
+
 - fix(security): a crafted paste no longer freezes the client or fills the saved data (F-091, F-059)
 
     Soft-reserve lists, site blocks and pasted names are trimmed in linear time and cut per line, a pasted list
