@@ -200,7 +200,11 @@ def test_a_build_after_the_trim_gives_the_same_data(tmp_path):
     n_full = len(full['scan']['items'])
     n_left = len(trimmed['scan'].get('items') or {})
     assert n_left < n_full / 2 or n_full < 100, f'the trim took most of the scan ({n_left} of {n_full} left)'
-    assert trimmed['scan']['next'] == full['scan']['next'], 'the scan progress stays'
+    # the scan progress stays, except a range above the client's items, which the login closes (to + 1)
+    nxt, to = full['scan'].get('next'), full['scan'].get('to')
+    assert trimmed['scan']['next'] in (nxt, (to or 0) + 1), 'the scan progress stays'
+    if trimmed['scan']['next'] != nxt:
+        assert nxt > 290000, 'only a range beyond the client\'s items is closed'
     # the archive as build.py data leaves it: the committed one with this file joined
     archive = tmp_path / 'scan_archive.json'
     shutil.copy(REAL_ARCHIVE, archive)
