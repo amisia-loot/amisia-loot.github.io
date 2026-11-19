@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.102.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.102.0) (2026-11-19)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.101.1...v2.102.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(guild): the guild queue shows who of the guild waits for the same battleground (F-227)
 
     While you queue for a battleground the window "Gilden-Warteschlange" opens: one bar per battleground with your
