@@ -1368,10 +1368,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Gilde
 ### F-227 Gilden-Warteschlange für Schlachtfelder
-- Version: -
-- Status: geplant
+- Version: 2.102.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn du dich für ein Schlachtfeld anmeldest, dann geht das Fenster "Gilden-Warteschlange" auf und zeigt das Schlachtfeld mit deiner Wartezeit, die jede Sekunde weiterzählt.
+- Prüfung: Wenn ein Gildenmitglied mit Amisia für dasselbe Schlachtfeld wartet, dann steht es binnen 75 Sekunden unter dem Balken mit seiner Wartezeit.
+- Prüfung: Wenn bei ihm die Warteschlange aufgeht und es "Betreten" klickt, dann steht bei dir erst grün "Aufgegangen", dann 10 Sekunden "Beigetreten".
+- Prüfung: Wenn du die Warteschlange verlässt oder das Schlachtfeld betrittst, dann geht das Fenster zu.
+- Prüfung: Wenn du unter Einstellungen > Gilde "Eigene Warteschlange mit der Gilde teilen" ausschaltest, dann sehen die anderen dich spätestens nach 180 Sekunden nicht mehr, und du siehst sie weiter.
 - Notiz: Spec docs/specs/2026-11-19-gilden-warteschlange.md (freigegeben 2026-11-19).
 
 
