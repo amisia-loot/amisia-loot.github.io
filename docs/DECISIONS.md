@@ -4321,14 +4321,19 @@ Kills, die schon im Archiv stehen, bleiben dort (das Archiv weiß nicht, welche 
 **Durchgesetzt durch:** `tools/tests/test_build_scan.py::test_only_own_drop_records_with_their_own_items_reach_the_archive`,
 `tests/test_drops.lua` (ein gehörtes Item steht in `it`, nicht in `oi`).
 
-## D-154 Die Export-Aufgabe des PCs lädt export_db2.ps1 weiter von GitHub
+## D-154 Die Export-Aufgabe des PCs nimmt export_db2.ps1 aus Syncthing, nicht von GitHub
 
 **Datum:** 2026-11-19
-**Entscheidung:** `tools/install_export_task.ps1` bleibt, wie es ist: die Aufgabe "Amisia Client-Tabellen" lädt bei
-jeder Anmeldung und alle 2 Stunden die neueste `tools/export_db2.ps1` von `main` und führt sie aus.
-**Grund:** Die Sicherheitsprüfung 2026-11-19 stufte das als hoch ein (wer auf `main` pushen kann, führt Code auf dem
-PC aus; vorgeschlagen war, nur die beim Einrichten geladene Kopie zu nehmen). Der Nutzer nach der Erklärung: "Nein";
-neue Fassungen sollen ohne neues Einrichten auf dem PC ankommen.
-**Folge:** Das GitHub-Token des N100 und der Zugang zum Repo schützen auch den PC. Nicht erneut vorschlagen, außer
-der Nutzer fragt danach.
-
+**Entscheidung:** Die Aufgabe "Amisia Client-Tabellen" lädt nichts mehr aus dem Internet. `tools/auto_data.py`
+(`publish_pc_scripts`, bei jedem Lauf des Timers) legt die committete Fassung von `main` von `tools/export_db2.ps1`
+und `tools/install_export_task.ps1` nach `~/addons/_pcscripts`; der Syncthing-Ordner `amisia-pc` ("Amisia
+PC-Skripte", auf dem N100 nur senden, auf dem PC nur empfangen) bringt sie nach
+`C:\Users\aobiw\VuloSync\_pcscripts`, und `run_export.ps1` führt sie dort aus. Neue Fassungen kommen so weiter von
+selbst an.
+**Grund:** Sicherheitsprüfung 2026-11-19: die Aufgabe lud alle 2 Stunden die neueste `export_db2.ps1` von GitHub und
+führte sie ungeprüft aus; wer auf `main` pushen kann (ein gestohlenes Token, ein Leck), hätte Code auf dem PC
+ausgeführt. Der Nutzer wollte es "sicher und automatisch"; ganz geht beides nicht (wer automatisch Code liefert, dem
+vertraut der PC), aber jetzt reicht ein GitHub-Zugang nicht mehr: es bräuchte den N100 im Heimnetz.
+**Folge:** Einmal auf dem PC: in Syncthing den Ordner "Amisia PC-Skripte" annehmen (Pfad
+`%USERPROFILE%\VuloSync\_pcscripts`, Ordnertyp "Nur empfangen") und `install_export_task.ps1` von dort neu einrichten.
+Nur Committetes von `main` geht hinaus, nie eine Datei, die gerade bearbeitet wird.

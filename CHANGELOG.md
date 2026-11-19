@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- chore(tools): the PC's export task runs its script from Syncthing, never from GitHub (D-154)
+
+    The Windows task "Amisia Client-Tabellen" downloaded the newest export script from GitHub every two hours and
+    ran it; anyone able to push to the repository could have run code on the PC. The N100 now puts the committed
+    script into the Syncthing folder "Amisia PC-Skripte" (receive only on the PC), and the task runs it from there.
+
 - fix(security): only drops you looted yourself reach the archive, the website and the BiS data (F-187)
 
     One guild member with a changed client could spread invented kills or extra items through the drop exchange,

@@ -63,6 +63,10 @@ import time
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WAGO = os.path.expanduser('~/addons/_wago')
 STATE_DIR = os.path.expanduser('~/addons/_auto')
+# the scripts the PC runs (D-154): Syncthing folder "amisia-pc" (send only here, receive only on the PC) instead of
+# GitHub; only the committed version of the base branch goes in, never a file being edited
+PC_SCRIPTS = os.path.expanduser('~/addons/_pcscripts')
+PC_FILES = ('tools/export_db2.ps1', 'tools/install_export_task.ps1')
 WORKTREE = os.path.expanduser('~/addons/.amisia-auto')
 SETTLE = 300            # seconds without a change before a build counts as complete
 BUILD = re.compile(r'^_export\.(\d+\.\d+\.\d+\.\d+)\.txt$')
@@ -157,6 +161,30 @@ def git(*args, cwd=None, check=True):
     if check and p.returncode != 0:
         raise RuntimeError(f'git {" ".join(args)}: {p.stdout.strip()}')
     return p.stdout
+
+
+def publish_pc_scripts(base, out=PC_SCRIPTS, files=PC_FILES):
+    """Writes the committed version (base branch) of each PC script into the Syncthing folder of the PC when it
+    differs. Returns the names written."""
+    os.makedirs(out, exist_ok=True)
+    wrote = []
+    for path in files:
+        p = subprocess.run(['git', 'show', f'{base}:{path}'], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        if p.returncode != 0 or not p.stdout:
+            continue
+        target = os.path.join(out, os.path.basename(path))
+        try:
+            with open(target, 'rb') as fh:
+                if fh.read() == p.stdout:
+                    continue
+        except OSError:
+            pass
+        tmp = target + '.tmp'
+        with open(tmp, 'wb') as fh:
+            fh.write(p.stdout)
+        os.replace(tmp, target)
+        wrote.append(os.path.basename(path))
+    return wrote
 
 
 def run(cmd, cwd):
@@ -695,6 +723,9 @@ def main(argv=None):
         print('another run is busy')
         return 0
 
+    if not args.dry_run:
+        for name in publish_pc_scripts(args.base):
+            print(f'PC script {name} updated in {PC_SCRIPTS}')
     on_main = data_build(git('show', f'{args.base}:Amisia_Gear/Data/TalentData.lua', check=False))
     state = load_state(os.path.join(args.state_dir, 'amisia-data.json'))
     settle_stale(args, on_main, state)

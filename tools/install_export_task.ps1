@@ -5,9 +5,9 @@ Sets up the Windows task that exports the WoW Forever client tables by itself af
 .DESCRIPTION
 Run once on the PC, in a PowerShell opened as administrator. The script
 
-1. writes %USERPROFILE%\Tools\amisia\run_export.ps1, which fetches the newest tools/export_db2.ps1 from
-   the Amisia repository on GitHub (keeps the last copy when offline) and runs it, with a short log
-   in export.log next to it;
+1. writes %USERPROFILE%\Tools\amisia\run_export.ps1, which runs export_db2.ps1 from the Syncthing folder
+   "Amisia PC-Skripte" (receive only on the PC, sent by the N100; DECISIONS D-154: nothing is fetched from
+   GitHub), with a short log in export.log next to it;
 2. registers the task "Amisia Client-Tabellen": two minutes after logging on and then every two hours,
    in the background without a window (also while WoW runs: export_db2.ps1 then stops at once and
    the next run tries again).
@@ -19,15 +19,19 @@ N100 builds and checks the data by itself (tools/auto_data.py); the release stay
 .PARAMETER EveryHours
 Hours between two runs. Default 2.
 
+.PARAMETER ScriptDir
+The PC's folder of the Syncthing share "Amisia PC-Skripte". Default %USERPROFILE%\VuloSync\_pcscripts.
+
 .PARAMETER Remove
 Remove the task again (the folder Tools\amisia stays).
 
 .EXAMPLE
-iwr https://raw.githubusercontent.com/amisia-loot/amisia-loot.github.io/main/tools/install_export_task.ps1 -OutFile $env:TEMP\install_export_task.ps1; powershell -ExecutionPolicy Bypass -File $env:TEMP\install_export_task.ps1
+powershell -ExecutionPolicy Bypass -File $env:USERPROFILE\VuloSync\_pcscripts\install_export_task.ps1
 #>
 [CmdletBinding()]
 param(
     [int]$EveryHours = 2,
+    [string]$ScriptDir = (Join-Path $env:USERPROFILE 'VuloSync\_pcscripts'),
     [switch]$Remove
 )
 $ErrorActionPreference = 'Stop'
@@ -48,29 +52,27 @@ if (-not $admin) {
     exit 1
 }
 
+if (-not (Test-Path (Join-Path $ScriptDir 'export_db2.ps1'))) {
+    Write-Host "export_db2.ps1 fehlt in $ScriptDir. In Syncthing den Ordner 'Amisia PC-Skripte' annehmen (Pfad $ScriptDir, Ordnertyp 'Nur empfangen') und noch einmal starten." -ForegroundColor Yellow
+    exit 1
+}
 New-Item -ItemType Directory -Force -Path $Dir | Out-Null
 $Runner = Join-Path $Dir 'run_export.ps1'
-@'
+(@'
 # Written by tools/install_export_task.ps1 (Amisia). Run by the task "Amisia Client-Tabellen".
 $Dir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Log = Join-Path $Dir 'export.log'
-$Script = Join-Path $Dir 'export_db2.ps1'
-$Url = 'https://raw.githubusercontent.com/amisia-loot/amisia-loot.github.io/main/tools/export_db2.ps1'
+# the script comes from the Syncthing folder of the N100 (receive only here; D-154), never from the internet
+$Script = Join-Path '__SCRIPT_DIR__' 'export_db2.ps1'
 function Log([string]$Text) { Add-Content -Path $Log -Value ('{0:yyyy-MM-dd HH:mm} {1}' -f (Get-Date), $Text) -Encoding UTF8 }
 if ((Test-Path $Log) -and (Get-Item $Log).Length -gt 512KB) { Move-Item $Log "$Log.old" -Force }
-try {
-    Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile "$Script.new" -TimeoutSec 60
-    Move-Item "$Script.new" $Script -Force
-} catch {
-    Log ('Download fehlgeschlagen, nehme die letzte Kopie: ' + $_.Exception.Message)
-}
-if (-not (Test-Path $Script)) { Log 'Kein export_db2.ps1 vorhanden.'; exit 1 }
+if (-not (Test-Path $Script)) { Log "Kein export_db2.ps1 in __SCRIPT_DIR__ (Syncthing-Ordner 'Amisia PC-Skripte')."; exit 1 }
 $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $Script *>&1 | Out-String
 $rc = $LASTEXITCODE
 $tail = ($out -split "`r?`n" | Where-Object { $_ -match '\S' } | Select-Object -Last 2) -join ' | '
 Log ("Ende {0}: {1}" -f $rc, $tail)
 exit $rc
-'@ | Set-Content -Path $Runner -Encoding UTF8
+'@).Replace('__SCRIPT_DIR__', $ScriptDir) | Set-Content -Path $Runner -Encoding UTF8
 
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' `
     -Argument "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$Runner`""

@@ -95,7 +95,8 @@ python3 tools/build.py perf [--sv FILE] [--rows N]
   `_forever_` only. It removes junctions only, never a real folder, changes nothing while a subfolder is missing,
   prints each step, and a second run says "ok" (`-DryRun` only prints; `tools/tests/test_install_junctions.py`).
   On the PC `tools/install_export_task.ps1` (once, as administrator) sets up the task that runs
-  `export_db2.ps1` after logon and every two hours.
+  `export_db2.ps1` after logon and every two hours, from the Syncthing folder "Amisia PC-Skripte"
+  (`~/addons/_pcscripts`, which `auto_data.py` fills with main's committed version; D-154), never from GitHub.
 - `auto_data.py` runs `build.py data` without `--wago`, so the automatic build also takes the newest copy of
   each table (D-101).
 - Its second trigger (D-103): when the PC's export has nothing to build, at most once a day (the time and
