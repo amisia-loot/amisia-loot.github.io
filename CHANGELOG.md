@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.102.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.102.1) (2026-11-19)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.102.0...v2.102.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - fix(scan): a paused item range above the client's own items counts as through (F-186)
 
     The range 300000-3111111 of 2026-11-18 stood paused at 23 % and offered "Fortsetzen" for six hours over item
