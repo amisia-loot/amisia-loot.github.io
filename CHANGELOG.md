@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.101.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.101.1) (2026-11-19)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.101.0...v2.101.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - chore(tools): the PC's export task runs its script from Syncthing, never from GitHub (D-154)
 
     The Windows task "Amisia Client-Tabellen" downloaded the newest export script from GitHub every two hours and
