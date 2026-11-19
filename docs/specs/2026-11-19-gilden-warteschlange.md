@@ -1,6 +1,6 @@
 # Spec: Gilden-Warteschlange für Schlachtfelder
 
-Stand: 2026-11-19 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-19 · Status: freigegeben ·
 Feature: F-227
 
 ## Ziel
@@ -67,9 +67,11 @@ Addons (Nutzer 2026-11-19: "so wie bei fojjicore"); eigener Code, eigene Nachric
 - **`/reload` während des Wartens**: die Wartezeit kommt vom Spiel, der Stand geht 2 s später neu hinaus; die
   anderen Gildenmitglieder sind bis zu ihrem nächsten Wiederholen nicht sichtbar.
 - **Gruppe in der Warteschlange**: jeder mit Amisia meldet sich selbst; kein Unterschied.
-- **Client auf Englisch und Deutsch**: das Schlachtfeld wird nicht als Name, sondern als Nummer der Client-Tabelle
-  `BattlemasterList` geschickt (gefunden über den Namen in der Sprache des Clients), damit ein deutscher und ein
-  englischer Client dasselbe Schlachtfeld meinen; ein unbekannter Name wird übergangen.
+- **Client auf Englisch und Deutsch**: das Schlachtfeld wird nicht als Name, sondern als seine Nummer geschickt
+  (`battlegroundID`, die der Client selbst zum Namen nennt: `C_PvP.GetBattlegroundInfo(i)` auf Forever, die
+  Rückgabe `GetBattlegroundInfo(i)` auf TBC und Era), damit ein deutscher und ein englischer Client dasselbe
+  Schlachtfeld meinen; ein Name, zu dem der Client keine Nummer nennt, wird übergangen. Angezeigt wird der Name in
+  der Sprache des eigenen Clients.
 - **Ohne Gilde**: nichts wird gesendet, das Fenster zeigt nur die eigenen Warteschlangen.
 - **TBC Anniversary und Era**: dieselben Schlachtfelder und Funktionen; läuft dort ebenso (Raid-Teil, D-57).
 
@@ -86,14 +88,12 @@ Addons (Nutzer 2026-11-19: "so wie bei fojjicore"); eigener Code, eigene Nachric
 ## Daten
 
 - **Nachrichtenart `QW`** ("queue wait"), GUILD, nie beantwortet: `1`, dann bis zu 6 Einträge
-  `<BattlemasterList-ID>:<Zustand>:<Sekunden>` mit Zustand `W` wartet (Sekunden gewartet), `P` aufgegangen
+  `<battlegroundID>:<Zustand>:<Sekunden>` mit Zustand `W` wartet (Sekunden gewartet), `P` aufgegangen
   (Sekunden bis zum Ablauf), `J` beigetreten, `L` abgelehnt; leer heißt "wartet nicht mehr". Abstand je Absender
   10 s; gesendet nach 2 s bei einer Änderung, sofort bei Aufgehen, Beitreten, Ablehnen, alle 75 s solange man wartet.
 - **Einstellungsabschnitt** "Gilden-Warteschlange" (`bgqueue.share`, `bgqueue.window`, `bgqueue.onlyOthers`,
   `bgqueue.sound`) und die Fensterposition (`AmisiaDB.settings`); kein neuer Schlüssel sonst.
-- **Erzeugte Daten**: die Schlachtfelder aus `BattlemasterList` (ID, englischer und deutscher Name) in einer kleinen
-  Datendatei des Raid-Teils (läuft auch auf TBC und Era). Die Tabelle liegt noch nicht vor: sie kommt in die Liste
-  von `tools/export_db2.ps1` und wird mit `python3 tools/build.py tables` von wago.tools geholt (D-101).
+- **Keine erzeugten Daten**: Name und Nummer der Schlachtfelder nennt der Client zur Laufzeit.
 - Neue Datei `Amisia_Raid/Raid/GuildQueue.lua` mit dem Fenster.
 
 ## Offene Fragen
@@ -107,3 +107,11 @@ Addons (Nutzer 2026-11-19: "so wie bei fojjicore"); eigener Code, eigene Nachric
    Anniversary, Era); im Spiel zu prüfen.
 
 ## Entscheidungen
+
+2026-11-19, Nutzer: "passt" zu den Vorschlägen:
+1. Teilen standardmäßig an, nur an die eigene Gilde, abschaltbar.
+2. Im Raid-Teil (`Amisia_Raid/Raid/GuildQueue.lua`), läuft auch auf TBC Anniversary und Era.
+3. Ton standardmäßig aus.
+4. Ob Forever schon Schlachtfelder hat, zeigt sich im Spiel.
+Seit der Freigabe: die Nummer des Schlachtfelds kommt vom Client (`battlegroundID`), keine Datendatei
+(`BattlemasterList` wird nicht gebraucht).

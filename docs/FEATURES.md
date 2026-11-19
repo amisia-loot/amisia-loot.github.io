@@ -1367,6 +1367,13 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-10-12-raid-check.md, Teil C; DECISIONS D-46. Nachrichten IV/IQ, gespeichert in AmisiaDB.raidcheck. Einstellung "Raid-IDs der Gilde mitteilen" (an); nur Offiziere sehen die Raid-IDs anderer, jeder seine eigenen (`/amisia raidcheck`). Die Reset-Zeit ist die, die das Spiel pro ID nennt (Forevers Regeln sind vor 2026-12-09 unbekannt, Prüfung 17 der Spec).
 
 ## Addon: Gilde
+### F-227 Gilden-Warteschlange für Schlachtfelder
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du dich für ein Schlachtfeld anmeldest, dann geht das Fenster "Gilden-Warteschlange" auf und zeigt das Schlachtfeld mit deiner Wartezeit, die jede Sekunde weiterzählt.
+- Notiz: Spec docs/specs/2026-11-19-gilden-warteschlange.md (freigegeben 2026-11-19).
+
 
 ### F-223 Termin des Anmelde-Bots aus Discord in den Kalender einfügen
 - Version: 2.100.0
