@@ -1960,7 +1960,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 ### F-187 Drops ohne Kopieren auf die Website
 - Version: 2.82.0
 - Status: gebaut
-- Prüfung: Wenn nach einem Datenbau (`python3 tools/build.py data`) und dem Push der Reiter Loot Tables geöffnet wird, dann zeigt er die Kills deines Addons (eigene und in der Gilde gehörte), ohne dass du "Drops für die Website" kopiert und eingefügt hast.
+- Prüfung: Wenn nach einem Datenbau (`python3 tools/build.py data`) und dem Push der Reiter Loot Tables geöffnet wird, dann zeigt er die Kills, deren Beute du selbst geöffnet hast, ohne dass du "Drops für die Website" kopiert und eingefügt hast; in der Gilde gehörte Kills zeigt nur das Addon (D-153).
 - Prüfung: Wenn du danach denselben Text "Drops für die Website" im Reiter Import einfügst, dann sagt das Feld "(0 new, n already on the site from the data build)", und nach "Add the kills" bleiben die Zahlen in Loot Tables gleich.
 - Notiz: Spec `docs/specs/2026-11-13-drops-website.md`; DECISIONS D-119. Live mit dem Push eines Datenbaus, nicht mit einem Addon-Release. Die Datei `Amisia-Website/data/drops-forever.js` ist öffentlich und trägt keine Namen von Spielern, Gilde oder Realm.
 

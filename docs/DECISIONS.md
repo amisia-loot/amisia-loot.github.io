@@ -4302,3 +4302,22 @@ damit der Haken auch kommt, wenn ein anderer plündert.
 einer Kreatur in Instanzen nach dem Kampf lesbar gibt, ist im Spiel zu prüfen (ein geheimer Wert zählt nicht).
 **Durchgesetzt durch:** `tests/test_dungeon_notes.lua` (Ruuzlu als Ziel tot, Darkreaver geplündert, von Hand zurück,
 kein Zählen in n/m, kein Rare und kein Encounter-Boss).
+
+## D-153 Ins Archiv, auf die Seite und in die BiS-Daten kommen nur eigene Drops
+
+**Datum:** 2026-11-19
+**Entscheidung:** Der Datenbau (`tools/build_scan.py` `obs_from_sv`) nimmt aus den SavedVariables nur Drop-Datensätze,
+deren Beutefenster dieser Client selbst geöffnet hat (`mine`), und davon nur die Items, die dieses Fenster zeigte (`oi`,
+seit 2026-11-19; ein eigener Datensatz eines älteren Builds ohne `oi` behält seine Items). Namen von NPCs, Instanzen und
+Encountern nur für die genommenen Datensätze. Im Spiel zeigt Amisia weiter alle Drops der Gilde: gehörte Datensätze
+und gehörte Items bleiben in `drops.k`, nur nicht in `oi`.
+**Grund:** Sicherheitsprüfung 2026-11-19: ein Gildenmitglied mit verändertem Client kann über den Drop-Austausch
+(D-121) erfundene Kills oder zusätzliche Items an echte Kills verteilen; sie landeten bei allen, in
+`tools/drop_obs.json` (für immer), auf der öffentlichen Seite und in `ns.BIS.O`. Prüfen lässt sich ein gehörter
+Datensatz nicht: er wandert von Spieler zu Spieler, und Amisia speichert absichtlich keinen Spielernamen (D-119); zwei
+ehrliche Weitergeber einer Fälschung sähen aus wie zwei Zeugen. Der Nutzer: "Nur eigene fürs Archiv".
+**Folge:** Die Seite zeigt nur noch die Kills, deren Beute der Nutzer selbst geöffnet hat (F-187 geändert); gehörte
+Kills, die schon im Archiv stehen, bleiben dort (das Archiv weiß nicht, welche es waren).
+**Durchgesetzt durch:** `tools/tests/test_build_scan.py::test_only_own_drop_records_with_their_own_items_reach_the_archive`,
+`tests/test_drops.lua` (ein gehörtes Item steht in `it`, nicht in `oi`).
+

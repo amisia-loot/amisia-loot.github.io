@@ -234,6 +234,15 @@ end
 local n0 = size(d.k)
 assert(NS.DropsMerge(rec("aaaa0001", today, "ffffffff", { [219004] = 1 })) == "new")
 assert(size(d.k) == n0 + 1 and not d.k.aaaa0001.mine, "a heard record is not the own")
+-- D-153: an own record keeps its window's items apart (oi); a heard item shows in the game, never among them
+do
+    local ownId
+    for id, r in pairs(d.k) do if r.mine and r.src == "G" and next(r.it) then ownId = id break end end
+    local own = assert(d.k[ownId], "an own record from the windows above")
+    assert(type(own.oi) == "table" and next(own.oi) ~= nil, "an own record keeps its window's items")
+    NS.DropsMerge(rec(ownId, own.day, "ffffffff", { [219999] = 1 }, { npc = own.npc, inst = own.inst, diff = own.diff, enc = own.enc }))
+    assert(own.it[219999] == 1 and own.oi[219999] == nil, "a heard item shows in the game, not among the own window's")
+end
 assert(NS.DropsMerge(rec("aaaa0001", today, "00000001", { [219004] = 3, [219005] = 1 })) == "merged")
 assert(d.k.aaaa0001.it[219004] == 3 and d.k.aaaa0001.it[219005] == 1 and d.k.aaaa0001.o == "00000001", "max items, smaller origin")
 assert(NS.DropsMerge(rec("aaaa0001", today, "ffffffff", { [219004] = 1 })) == "same", "nothing lost, nothing new")

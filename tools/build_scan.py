@@ -1195,18 +1195,33 @@ def _names(part, npc, inst, enc):
 
 
 def obs_from_sv(db):
-    """The drop records of a SavedVariables table (AmisiaDB.drops), without the own-record marker."""
+    """The OWN drop records of a SavedVariables table (AmisiaDB.drops; D-153): only records whose loot window
+    this client opened (mine), with only the items that window showed (oi; an own record of an older build
+    without oi keeps its items). Records heard from other clients stay in the game: they cannot be checked, and
+    one member with a changed client could otherwise put invented kills into the archive, the site and the
+    BiS data. Names only for the NPCs, instances and encounters of the records taken."""
     part = _part()
     d = db.get('drops') if isinstance(db, dict) else None
     if not isinstance(d, dict):
         return part
+    used = {'npc': set(), 'inst': set(), 'enc': set()}
     for h, r in _pairs(d.get('k')):
+        if not (isinstance(r, dict) and r.get('mine') is True):
+            continue
+        if isinstance(r.get('oi'), (dict, list)):
+            r = dict(r, it=r['oi'])
         rec = check_record(r) if isinstance(h, str) and HEX8.match(h) else None
         if rec is None:
             part['bad'] += 1
         else:
             merge_record(part['k'], h, rec)
-    _names(part, d.get('npc'), d.get('inst'), d.get('enc'))
+            used['npc'].add(rec.get('npc'))
+            used['inst'].add(rec.get('inst'))
+            used['enc'].add(rec.get('enc'))
+    names = _part()
+    _names(names, d.get('npc'), d.get('inst'), d.get('enc'))
+    for kind in ('npc', 'inst', 'enc'):
+        part[kind].update({k: v for k, v in names[kind].items() if k in used[kind]})
     return part
 
 

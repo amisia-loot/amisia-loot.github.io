@@ -5,6 +5,13 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(security): only drops you looted yourself reach the archive, the website and the BiS data (F-187)
+
+    One guild member with a changed client could spread invented kills or extra items through the drop exchange,
+    and they ended up for good on the public website and in the item data. The data build now takes only kills whose
+    loot window you opened, with only the items that window showed. In the game Amisia still shows every drop of
+    the guild.
+
 - fix(layer): players outside the guild are helped only with "Auch Spielern außerhalb der Gilde helfen" (F-216, F-220)
 
     Until now a helper invited any stranger of the zone who asked through Amisia or the other layer addon, without a

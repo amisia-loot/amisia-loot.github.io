@@ -367,8 +367,10 @@ function ns.DropsMigrate(root)
         if it then r.it = it end
         if not isHex8(id) or not it or not validRecord(r, today, true) then
             d.k[id] = nil
-        elseif r.mine ~= nil and r.mine ~= true then
-            r.mine = nil
+        else
+            if r.mine ~= nil and r.mine ~= true then r.mine = nil end
+            -- the own window's items (D-153): only on an own record, within the caps
+            if r.oi ~= nil then r.oi = r.mine and capItemsKept(r.oi) or nil end
         end
     end
     for npc, name in pairs(d.npc) do
@@ -653,12 +655,17 @@ function ns.DropsFromLoot()
 
     local function add(id, g, src, npc, enc)
         local r = d.k[id]
+        local own = capItems(g.items) or {}
         if r then
-            local more, union = unionItems(r.it, capItems(g.items) or {})
+            local more, union = unionItems(r.it, own)
             if more then r.it = union; changed = true end
+            -- the own window makes it an own record; oi keeps what it showed apart from heard items (D-153)
+            local moreOwn, ownUnion = unionItems(r.oi or {}, own)
+            if not r.mine or moreOwn or not r.oi then r.mine, r.oi, changed = true, ownUnion, true end
             return r
         end
-        r = { npc = npc, inst = inst, diff = diff, day = today, o = d.me, enc = enc, it = capItems(g.items) or {}, src = src, mine = true }
+        r = { npc = npc, inst = inst, diff = diff, day = today, o = d.me, enc = enc, it = own, src = src, mine = true,
+              oi = copyItems(own) }
         d.k[id] = r
         track(d, id)
         added = added + 1

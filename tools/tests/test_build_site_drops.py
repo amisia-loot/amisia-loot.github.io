@@ -36,10 +36,11 @@ def sv_text(kills, me='3fa9c2e1'):
             '  char = { name = "Vulo", realm = "Sturmwind", guild = "Amisia" },\n}\n')
 
 
+# own records (D-153: only those reach the archive and the site)
 KILLS = {
     'a0000002': (213450, 2834, 301, '3fa9c2e1', 'G', {219006: 2, 219004: 1}, True),
-    'a0000001': (213450, 2834, 300, '11111111', 'G', {}, False),
-    'a0000003': (213470, 409, 301, '22222222', 'G', {219005: 1}, False),
+    'a0000001': (213450, 2834, 300, '11111111', 'G', {}, True),
+    'a0000003': (213470, 409, 301, '22222222', 'G', {219005: 1}, True),
     'a0000004': (0, 2834, 300, '3fa9c2e1', 'E', {219009: 1}, True),
 }
 
@@ -110,7 +111,7 @@ def test_the_archive_keeps_kills_the_addon_dropped_and_merges_one_kill_once(plac
         fh.write(sv_text(KILLS))
     run(place, [place['sv']])
     # 28 days later the addon holds only a0000003 (seen again with one more item) and a new kill
-    later = {'a0000003': (213470, 409, 301, '00000001', 'G', {219005: 1, 219010: 1}, False),
+    later = {'a0000003': (213470, 409, 301, '00000001', 'G', {219005: 1, 219010: 1}, True),
              'a0000005': (213470, 409, 315, '3fa9c2e1', 'G', {219005: 1}, True)}
     with open(place['sv'], 'w', encoding='utf-8') as fh:
         fh.write(sv_text(later))

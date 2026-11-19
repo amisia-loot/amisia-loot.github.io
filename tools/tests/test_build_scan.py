@@ -152,7 +152,7 @@ AmisiaDB = {
       ["c0000001"] = { ["npc"] = 213450, ["inst"] = 2834, ["diff"] = 1, ["day"] = 270, ["o"] = "00000001",
                        ["it"] = {}, ["src"] = "G", ["mine"] = true },
       ["d0000001"] = { ["npc"] = 0, ["inst"] = 2834, ["diff"] = 1, ["day"] = 270, ["o"] = "00000001",
-                       ["it"] = { [219006] = 1 }, ["src"] = "E", ["enc"] = 3020 },
+                       ["it"] = { [219006] = 1 }, ["src"] = "E", ["enc"] = 3020, ["mine"] = true },
       ["kaputt"] = { ["npc"] = 1 },
     },
     ["npc"] = { [213450] = "Faldrim" },
@@ -198,6 +198,31 @@ def test_drop_records_from_the_saved_variables_and_the_site(tmp_path):
     assert sorted(site['k']) == ['a0000001', 'b0000001'] and site['bad'] == 2
     assert site['k']['b0000001'] == {'npc': 213480, 'inst': 2834, 'diff': 1, 'day': 278, 'o': '00000002', 'src': 'G', 'it': {219008: 1}}
     assert site['npc'] == {213480: 'Neuer Boss', 213450: 'Faldrim Anvilmeal'}
+
+
+def test_only_own_drop_records_with_their_own_items_reach_the_archive(tmp_path):
+    # D-153: a heard record (no mine) stays out, an own one keeps only what its own window showed (oi)
+    p = tmp_path / 'Amisia.lua'
+    p.write_text(textwrap.dedent(r'''
+    AmisiaDB = {
+      ["drops"] = {
+        ["v"] = 1, ["me"] = "00000001",
+        ["k"] = {
+          ["e0000001"] = { ["npc"] = 213450, ["inst"] = 2834, ["diff"] = 1, ["day"] = 270, ["o"] = "00000009",
+                           ["it"] = { [219009] = 1 }, ["src"] = "G" },
+          ["f0000001"] = { ["npc"] = 213460, ["inst"] = 2834, ["diff"] = 1, ["day"] = 270, ["o"] = "00000001",
+                           ["it"] = { [219010] = 1, [219011] = 1 }, ["oi"] = { [219010] = 1 }, ["src"] = "G", ["mine"] = true },
+        },
+        ["npc"] = { [213450] = "Gehoerter Boss", [213460] = "Eigener Boss" },
+        ["inst"] = { [2834] = { "party", "Halle der Thane" } },
+        ["enc"] = {}, ["peers"] = {},
+      },
+    }
+    '''), encoding='utf-8')
+    sv = b.obs_from_sv(b.load_sv(str(p)))
+    assert sorted(sv['k']) == ['f0000001'], 'a heard record stays out'
+    assert sv['k']['f0000001']['it'] == {219010: 1}, 'only the own window\'s items'
+    assert sv['npc'] == {213460: 'Eigener Boss'}, 'names only of the records taken'
 
 
 def test_the_archive_merges_every_source_once(tmp_path):
