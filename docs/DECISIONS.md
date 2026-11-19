@@ -4321,3 +4321,14 @@ Kills, die schon im Archiv stehen, bleiben dort (das Archiv weiß nicht, welche 
 **Durchgesetzt durch:** `tools/tests/test_build_scan.py::test_only_own_drop_records_with_their_own_items_reach_the_archive`,
 `tests/test_drops.lua` (ein gehörtes Item steht in `it`, nicht in `oi`).
 
+## D-154 Die Export-Aufgabe des PCs lädt export_db2.ps1 weiter von GitHub
+
+**Datum:** 2026-11-19
+**Entscheidung:** `tools/install_export_task.ps1` bleibt, wie es ist: die Aufgabe "Amisia Client-Tabellen" lädt bei
+jeder Anmeldung und alle 2 Stunden die neueste `tools/export_db2.ps1` von `main` und führt sie aus.
+**Grund:** Die Sicherheitsprüfung 2026-11-19 stufte das als hoch ein (wer auf `main` pushen kann, führt Code auf dem
+PC aus; vorgeschlagen war, nur die beim Einrichten geladene Kopie zu nehmen). Der Nutzer nach der Erklärung: "Nein";
+neue Fassungen sollen ohne neues Einrichten auf dem PC ankommen.
+**Folge:** Das GitHub-Token des N100 und der Zugang zum Repo schützen auch den PC. Nicht erneut vorschlagen, außer
+der Nutzer fragt danach.
+
