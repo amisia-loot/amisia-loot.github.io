@@ -34,8 +34,9 @@ local BYTE_WINDOW, BYTE_MAX = 60, 20480
 local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
--- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, ZQ = 30, NV = 8, AC = 300, EA = 10, EQ = 300, TQ = 30 }
+-- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart, and a guild
+-- queue state with a battleground that popped, was joined or declined (QW with a P, J or L entry: QWP, F-227) apart
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, ZQ = 30, NV = 8, AC = 300, EA = 10, EQ = 300, TQ = 30, QW = 10, QWP = 1 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
 -- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
@@ -582,7 +583,29 @@ local VALID = {
     EJ = function(f) return #f >= 2 and isHex(f[1], 4) and (f[2] == "-" or (CALL_ROLE[f[2]] == true and isNum(f[3], 1, 99))) end,
     EX = function(f) return #f >= 1 and isHex(f[1], 4) end,
     EQ = function(f) return #f >= 1 and isHex(f[1], 4) end,
+    -- the guild queue for battlegrounds (Raid/GuildQueue.lua, F-227, D-155): QW 1 <battlegroundID:state:seconds>... with
+    -- 0 to 6 entries, each battleground once, state W (waited 0-86400 s), P (popped, 0-600 s left), J (joined) or L
+    -- (declined) with 0; no entry: no queue any more. A field out of its bounds drops the whole message
+    QW = function(f)
+        if #f < 1 or #f > 7 or f[1] ~= "1" then return false end
+        local seen = {}
+        for i = 2, #f do
+            local id, state, sec = f[i]:match("^(%d+):([WPJL]):(%d+)$")
+            if not id or not isNum(id, 1, 99999) or seen[tonumber(id)] then return false end
+            if not isNum(sec, 0, state == "W" and 86400 or state == "P" and 600 or 0) then return false end
+            seen[tonumber(id)] = true
+        end
+        return true
+    end,
 }
+
+-- Whether a QW carries a battleground that popped, was joined or declined (its own gap QWP: it goes at once).
+local function queueNews(f)
+    for i = 2, #f do
+        if f[i]:find(":[PJL]:") then return true end
+    end
+    return false
+end
 
 local function prefixOf(kind) return kind == "BL" and PREFIX_DATA or PREFIX_CTRL end
 
@@ -908,6 +931,19 @@ function ns.CommSend(kind, fields, chan, target, opts)
     return true
 end
 
+-- Drops the waiting messages sent with opts.key key (a state that may not go any more: the guild queue's QW on
+-- entering a battleground, F-227). Returns how many went.
+function ns.CommCancel(key)
+    local n = 0
+    for i = #queue, 1, -1 do
+        if queue[i].key == key then
+            table.remove(queue, i)
+            n = n + 1
+        end
+    end
+    return n
+end
+
 -- A third prefix in plain text (D-145, F-220): the wire format of the other layer addon, spoken by
 -- Gear/LayerForeign.lua alone. Registered here, so that Comm.lua stays the only file that registers and
 -- sends; nothing of Amisia's envelope, queue or limits: the caller keeps its own throttle. Returns whether
@@ -1203,7 +1239,7 @@ local function onMessage(prefix, text, chan, sender)
     if not check or not check(fields) then return bad(kind) end
     stats.received = stats.received + 1
     debugLine("< " .. sender .. " " .. describe(kind, fields))
-    local gapKey = (kind == "RQ" and fields[5] == "G") and "RQG" or kind
+    local gapKey = (kind == "RQ" and fields[5] == "G") and "RQG" or (kind == "QW" and queueNews(fields)) and "QWP" or kind
     local gap = KIND_GAP[gapKey]
     if gap then
         local t = now()

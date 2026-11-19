@@ -4337,3 +4337,30 @@ vertraut der PC), aber jetzt reicht ein GitHub-Zugang nicht mehr: es bräuchte d
 **Folge:** Einmal auf dem PC: in Syncthing den Ordner "Amisia PC-Skripte" annehmen (Pfad
 `%USERPROFILE%\VuloSync\_pcscripts`, Ordnertyp "Nur empfangen") und `install_export_task.ps1` von dort neu einrichten.
 Nur Committetes von `main` geht hinaus, nie eine Datei, die gerade bearbeitet wird.
+
+## D-155 Gilden-Warteschlange: geteilt als Nummer, nur an die Gilde, nie im Schlachtfeld
+
+**Datum:** 2026-11-19
+**Entscheidung:** Wer für ein Schlachtfeld ansteht, sagt es seiner Gilde mit der Nachricht `QW` (F-227,
+`Amisia_Raid/Raid/GuildQueue.lua`, Spec `docs/specs/2026-11-19-gilden-warteschlange.md`). Teilen ist von Anfang an an
+(`bgqueue.share`) und abschaltbar; aus geht einmal eine leere `QW`, danach nichts. Das Schlachtfeld geht als seine
+Nummer (`battlegroundID`, die der Client selbst zu seinem Namen nennt: `C_PvP.GetBattlegroundInfo` auf Forever, die
+fünfte Rückgabe von `GetBattlegroundInfo` auf TBC und Era), nie als Name; ein Name ohne Nummer wird übergangen, es
+gibt keine Datendatei. Im Schlachtfeld geht nichts (die wartende `QW` wird verworfen, `ns.CommCancel`), im Kampf und
+in der Kampfsperre erst danach; "Beigetreten" geht aus einem Haken an `AcceptBattlefieldPort` sofort, vor dem
+Ladebildschirm, auch im Kampf. Genommen wird eine `QW` nur über GUILD von einem Mitglied nach dem eigenen Roster
+(`ns.TrustName`, `ns.TrustWait` member), die Klasse aus dem Roster; nur im Speicher, 60 Absender, 180 s.
+Abstand je Absender 10 s, eine `QW` mit Aufgehen, Beitreten oder Ablehnen (`P`, `J`, `L`) aber 1 s (eigener
+Abstandsschlüssel `QWP` in Comm).
+**Grund:** Der Nutzer 2026-11-19 ("passt" zur Spec): an als Vorgabe, sonst sieht keiner etwas; es geht nur an die
+eigene Gilde. Die Nummer statt des Namens, damit ein deutscher und ein englischer Client dasselbe Schlachtfeld meinen.
+Forever sperrt Addon-Nachrichten im Schlachtfeld; was dort wartet, käme hinterher veraltet an. Das Roster entscheidet,
+weil jedes Feld der Nachricht frei erfunden sein kann. Der Abstand von 1 s für Aufgehen und Beitreten: beides folgt
+oft binnen Sekunden aufeinander, und "Beigetreten" kann nicht warten (danach ist man im Schlachtfeld); mit 10 s ginge
+es meist verloren. Ein Mitglied kann so nur seinen eigenen Stand öfter neu zeichnen lassen.
+**Folge:** Ob Forever schon Schlachtfelder hat, zeigt sich im Spiel; ohne sie bleibt das Fenster zu. Falsche Angaben
+eines Mitglieds über sich selbst sind möglich, über andere nicht. Nichts wird gespeichert außer der Fensterstelle
+(`settings.bgQueueWindow`).
+**Durchgesetzt durch:** `tests/test_guild_queue.lua` (Fremde, Kanal, Felder, Abstände, Schlachtfeld, Teilen aus,
+deutsch und englisch), `tests/test_guild_queue_tbc.lua` (TBC: die globale Funktion),
+`tools/tests/test_contracts.py::test_the_gap_of_every_kind_is_the_documented_one`.

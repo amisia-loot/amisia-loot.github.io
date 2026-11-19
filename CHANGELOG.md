@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(guild): the guild queue shows who of the guild waits for the same battleground (F-227)
+
+    While you queue for a battleground the window "Gilden-Warteschlange" opens: one bar per battleground with your
+    own wait and the game's estimate, under it the guild members with Amisia who wait too, in their class colour, and
+    when their queue pops, when they join and when they decline. Your queue goes to your own guild only, never from
+    inside a battleground; switch it off under Settings, Gilde, Gilden-Warteschlange. "/amisia warteschlange" opens
+    the window at any time.
+
 ## [v2.101.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.101.1) (2026-11-19)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.101.0...v2.101.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

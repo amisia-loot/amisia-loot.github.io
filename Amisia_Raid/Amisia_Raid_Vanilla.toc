@@ -55,6 +55,7 @@ Raid\LineupBuffs.lua
 Raid\GroupAccept.lua
 Raid\OnlineInvite.lua
 Raid\GuildCalls.lua
+Raid\GuildQueue.lua
 Raid\PullTimer.lua
 Raid\Signup.lua
 Raid\RaidCalendar.lua

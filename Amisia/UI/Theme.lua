@@ -565,6 +565,14 @@ T.RAIDNOTE = { W = 300, H = 220, EDGE_X = 220, MIN_W = 180, MIN_H = 90, MAX_W = 
     TOP = 24, FROM_H = 16, PAD = 10, BAR = 10, LOCK = 16, LOCK_GAP = 2,
     EDIT_H = 174, OWN_H = 64, GAP = 6, SET_W = 150, NAME_W = 120, COUNT_W = 140, MARK = 20, MARK_GAP = 4 }
 
+-- The window "Gilden-Warteschlange" (F-227, Raid/GuildQueue.lua, AmisiaGuildQueue): W wide, at first EDGE_X left of
+-- the screen's centre; the rows TOP under its top, PAD from the sides, BOTTOM over its lower edge; a battleground's
+-- bar BAR_H high on a ground of BAR_SHADE (white, its alpha), a guild member's row ROW_H high and INDENT in, the
+-- footer FOOT_H; the right text RIGHT_W wide; at most ROWS rows. Folded only its title bar, FOLD_H high; the
+-- client's "-" MIN square (MIN_OLD on a client without the template's minimize corner).
+T.BGQUEUE = { W = 250, EDGE_X = -360, TOP = 30, PAD = 10, BOTTOM = 10, BAR_H = 18, BAR_SHADE = 0.08, ROW_H = 16,
+    INDENT = 12, FOOT_H = 18, RIGHT_W = 96, ROWS = 40, FOLD_H = 30, MIN = 24, MIN_OLD = 32 }
+
 -- The window of an item that starts a quest (F-181, Gear/QuestStart.lua, AmisiaQuestStart): W wide; the
 -- item's name in the title; TOP under the window's top the item's icon ICON square in the middle, in
 -- Amisia's rounded ring (the planner's slot, T.PLANNER.DOLL) in its quality colour, the quest giver's "!"

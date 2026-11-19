@@ -214,6 +214,7 @@ function ns.ResetPositions()
     if ns.ResetLayerPosition then ns.ResetLayerPosition() end
     if ns.ResetMinimapPosition then ns.ResetMinimapPosition() end
     if ns.ResetRaidNotePosition then ns.ResetRaidNotePosition() end
+    if ns.ResetGuildQueuePosition then ns.ResetGuildQueuePosition() end
     ns.msg(L["Fensterposition zurückgesetzt."])
 end
 

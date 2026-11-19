@@ -115,3 +115,10 @@ Addons (Nutzer 2026-11-19: "so wie bei fojjicore"); eigener Code, eigene Nachric
 4. Ob Forever schon Schlachtfelder hat, zeigt sich im Spiel.
 Seit der Freigabe: die Nummer des Schlachtfelds kommt vom Client (`battlegroundID`), keine Datendatei
 (`BattlemasterList` wird nicht gebraucht).
+Beim Bau (2026-11-19), kleine Abweichungen:
+- Ein `QW` mit `P`, `J` oder `L` hat einen eigenen Abstand von 1 s (`QWP`), die übrigen 10 s: das Beitreten
+  folgt oft Sekunden nach dem Aufgehen, und im Schlachtfeld geht nichts mehr (D-155).
+- Der Einstellungsabschnitt steht im Reiter "Gilde" (neben Aufrufe und Layer), nicht unter "Raid".
+- "Beigetreten" geht auch im Kampf hinaus (der Ladebildschirm kommt gleich); alles andere wartet bis nach dem Kampf.
+- Eine Arena-Warteschlange (Teamgröße über 0) wird übergangen.
+

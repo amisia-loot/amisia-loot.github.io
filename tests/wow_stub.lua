@@ -314,6 +314,43 @@ C_ChatInfo.SendAddonMessage = function(prefix, text, chan, target)
 end
 -- Battlegrounds: STUB.battlefield (an instance of type "pvp" or "arena" comes from STUB.instance).
 _G.C_PvP = { IsActiveBattlefield = function() return STUB.battlefield and true or false end }
+-- Battleground queues (F-227): STUB.bgTypes the client's battlegrounds { { name, id } } in its language
+-- (C_PvP.GetBattlegroundInfo on Forever; the returns of the global GetBattlegroundInfo on TBC and Era, a test
+-- takes the first away in its preload); STUB.queues[slot] = { status = "queued" | "confirm" | "active", map = the
+-- battleground's name, since = STUB.clock when the wait began (else waited = ms), est = ms (0 unknown), expire = s
+-- left of the port, teamSize = an arena's (0 a battleground) } (a missing slot: "none"); STUB.maxBattlefield (3);
+-- AcceptBattlefieldPort(slot, accept) is listed in STUB.ports.
+STUB.bgTypes = { { name = "Alteractal", id = 1 }, { name = "Kriegshymnenschlucht", id = 2 }, { name = "Arathibecken", id = 3 } }
+STUB.queues, STUB.ports, STUB.maxBattlefield = {}, {}, 3
+C_PvP.GetBattlegroundInfo = function(i)
+    local b = STUB.bgTypes[i]
+    if not b then return nil end
+    return { name = b.name, battlegroundID = b.id, canEnter = true, isHoliday = false, isRandom = false }
+end
+_G.GetNumBattlegroundTypes = function() return #STUB.bgTypes end
+_G.GetBattlegroundInfo = function(i)
+    local b = STUB.bgTypes[i]
+    if not b then return nil end
+    return b.name, true, false, false, b.id
+end
+_G.GetMaxBattlefieldID = function() return STUB.maxBattlefield end
+_G.GetBattlefieldStatus = function(i)
+    local q = STUB.queues[i]
+    if not q then return "none", nil, 0 end
+    return q.status, q.map, q.teamSize or 0
+end
+_G.GetBattlefieldTimeWaited = function(i)
+    local q = STUB.queues[i]
+    if not q or q.status ~= "queued" then return 0 end
+    if q.since then return math.floor((STUB.clock - q.since) * 1000) end
+    return q.waited or 0
+end
+_G.GetBattlefieldEstimatedWaitTime = function(i) local q = STUB.queues[i]; return q and q.est or 0 end
+_G.GetBattlefieldPortExpiration = function(i)
+    local q = STUB.queues[i]
+    return q and q.status == "confirm" and (q.expire or 0) or 0
+end
+_G.AcceptBattlefieldPort = function(i, accept) STUB.ports[#STUB.ports + 1] = { i, accept and true or false } end
 Enum.SendAddonMessageResult = { Success = 0, InvalidPrefix = 1, InvalidMessage = 2, AddonMessageThrottle = 3, InvalidChatType = 4,
     NotInGroup = 5, TargetRequired = 6, InvalidChannel = 7, ChannelThrottle = 8, GeneralError = 9, NotInGuild = 10,
     AddOnMessageLockdown = 11, TargetOffline = 12 }
