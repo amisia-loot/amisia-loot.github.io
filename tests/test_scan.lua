@@ -148,3 +148,18 @@ do
     assert(#AmisiaDB.scan.retry == 1 and AmisiaDB.scan.retry[1] == 7003)
     AmisiaDB.scan.retry = {}
 end
+
+-- a paused range above the client's own items (cmax) is through: no "Fortsetzen" of hours over nothing
+do
+    local m = NS.Data("SCAN_DONE")
+    local cmax = assert(tonumber(m and m.cmax), "ScanDone has cmax")
+    local sc = AmisiaDB.scan
+    local keep = { sc.from, sc.to, sc.next }
+    sc.from, sc.to, sc.next = cmax + 9000, cmax + 3000000, cmax + 700000
+    assert(NS.ScanProgress().resumable, "paused: resumable before")
+    assert(NS.ScanCloseRangeBeyond() == true and not NS.ScanProgress().resumable, "beyond the client's items: through")
+    sc.from, sc.to, sc.next = 1, cmax, math.floor(cmax / 2)
+    assert(NS.ScanCloseRangeBeyond() == false and NS.ScanProgress().resumable, "a range within the items stays")
+    sc.from, sc.to, sc.next = keep[1], keep[2], keep[3]
+end
+

@@ -222,9 +222,28 @@ local function onResult(id, success)
     if pendingCount == 0 and ((queue and #queue == 0) or (not queue and s.next > s.to)) then finish(L["fertig"], "done") end
 end
 ns.OnEvent("ITEM_DATA_LOAD_RESULT", onResult)
--- a saved list longer than the room is cut at login, before the file is written again
+-- A range whose rest lies wholly above the client's own item table (Data/ScanDone.lua cmax, plus BEYOND for
+-- items newer than the table) has nothing left to find: it counts as through, so the tools page offers no
+-- "Fortsetzen" of hours over ids that do not exist (the range 300000-3111111 of 2026-11-18, D-151).
+local BEYOND = 10000
+local function closeRangeBeyond(s)
+    local nxt, to = tonumber(s.next), tonumber(s.to)
+    if not (nxt and to and nxt <= to) or not (ns.HasData and ns.HasData("SCAN_DONE")) then return false end
+    local ok, m = pcall(ns.Data, "SCAN_DONE")
+    local cmax = ok and type(m) == "table" and tonumber(m.cmax) or nil
+    if not cmax or cmax <= 0 or nxt <= cmax + BEYOND then return false end
+    s.next = to + 1
+    return true
+end
+ns.ScanCloseRangeBeyond = function() return AmisiaDB and type(AmisiaDB.scan) == "table" and closeRangeBeyond(AmisiaDB.scan) or false end
+
+-- a saved list longer than the room is cut at login, before the file is written again; a range beyond the
+-- client's items is closed
 ns.OnEvent("PLAYER_LOGIN", function()
-    if AmisiaDB and type(AmisiaDB.scan) == "table" then scanDB() end
+    if AmisiaDB and type(AmisiaDB.scan) == "table" then
+        scanDB()
+        closeRangeBeyond(AmisiaDB.scan)
+    end
 end)
 -- a /reload or logout during a run: what it had not finished is kept in the saved retry list
 ns.OnEvent("PLAYER_LOGOUT", function()
