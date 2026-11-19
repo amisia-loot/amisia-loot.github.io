@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): bosses without an encounter get their kill tick once seen dead or looted (F-226)
+
+    Ruuzlu (Zul'Farrak) and Death Knight Darkreaver (Scholomance) have no encounter in the client, so the game
+    reports their death nowhere. They now count as killed in the own run when you target or mouse over the corpse,
+    or open its loot, and can be marked by hand with a right-click; they count in no "n/m".
+
 - fix(dungeons): bosses without an encounter stand right after the game's bosses, before rares and trash (F-154)
 
     Ruuzlu (Zul'Farrak) and Death Knight Darkreaver (Scholomance) are listed as bosses after the game's own order,

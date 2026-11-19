@@ -128,17 +128,29 @@ function P.BossIndex(dkey, name)
 end
 
 -- Whether boss name of dkey is killed in the run. rank: its place in the game's order where the page
--- knows it (ns.Dungeons.JournalBosses matches by NPC when the loot data spells the name otherwise).
-function P.BossKilled(dkey, name, rank)
+-- knows it (ns.Dungeons.JournalBosses matches by NPC when the loot data spells the name otherwise); npc:
+-- a boss without an encounter (Ruuzlu) counts by its NPC once seen dead or looted (D-152).
+function P.BossKilled(dkey, name, rank, npc)
     local i = dkey and (rank or P.BossIndex(dkey, name))
-    return i ~= nil and ns.Runs.Killed(dkey, i)
+    if i then return ns.Runs.Killed(dkey, i) end
+    return dkey ~= nil and npc ~= nil and ns.Runs.NpcBoss(dkey, npc) and ns.Runs.NpcKilled(dkey, npc) or false
 end
 
 -- The right-click menu of a boss row (e: the row's head) on B: mark it killed or not.
 function P.BossMenu(B, owner, e)
     local dkey = B.entry and B.entry.key
     local i = dkey and (e.rank or P.BossIndex(dkey, e.text))
-    if not i or not ns.Runs.Encounters(dkey) then return end
+    if not i or not ns.Runs.Encounters(dkey) then
+        -- a boss without an encounter: by its NPC (D-152)
+        local npc = dkey and e.npc
+        if not (npc and ns.Runs.NpcBoss(dkey, npc)) then return end
+        local done = ns.Runs.NpcKilled(dkey, npc)
+        W.Menu(owner, { { done and RTEXT.unmark or RTEXT.mark, function()
+            if not ns.Runs.MarkNpc(dkey, npc, not done) then ns.msg(RTEXT.noMark) end
+            ns.Refresh()
+        end, tip = RTEXT.tip } })
+        return
+    end
     local killed = ns.Runs.Killed(dkey, i)
     W.Menu(owner, { { killed and RTEXT.unmark or RTEXT.mark, function()
         if not ns.Runs.Mark(dkey, i, not killed) then ns.msg(RTEXT.noMark) end

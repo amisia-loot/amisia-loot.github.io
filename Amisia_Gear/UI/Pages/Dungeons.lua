@@ -242,7 +242,7 @@ local function bossHeads(B, e)
     for _, row in ipairs(detailItems(e)) do
         if row.kind == "boss" then
             heads[#heads + 1] = { kind = "boss", text = row.text, shown = row.shown, b = row.b, npc = row.npc, items = row.items, n = #heads + 1,
-                rank = row.rank, killed = JP.BossKilled(e.key, row.text, row.rank) }
+                rank = row.rank, killed = JP.BossKilled(e.key, row.text, row.rank, row.npc) }
         end
     end
     B.bossSel = B.bossSel or {}
@@ -280,8 +280,8 @@ local function wishItems(e)
     local out, head = {}, nil
     for _, row in ipairs(detailItems(e)) do
         if row.kind == "boss" then
-            head = { kind = "boss", text = row.text, shown = row.shown, b = row.b, items = {}, rank = row.rank,
-                     killed = JP.BossKilled(e.key, row.text, row.rank) }
+            head = { kind = "boss", text = row.text, shown = row.shown, b = row.b, items = {}, rank = row.rank, npc = row.npc,
+                     killed = JP.BossKilled(e.key, row.text, row.rank, row.npc) }
         elseif (row.wished or row.rec) and head then
             if #head.items == 0 then out[#out + 1] = head end
             out[#out + 1] = row

@@ -85,6 +85,8 @@ end
 local function cleanRun(r)
     if type(r) ~= "table" or not numKey(r.inst) then return nil end
     r.enc = fixSet(r.enc, numKey, trueVal)
+    -- the bosses without an encounter killed in the run (Runs.lua, D-152)
+    r.npc = fixSet(r.npc, numKey, trueVal)
     r.at = tonumber(r.at)
     r.left = tonumber(r.left)
     r.reset = tonumber(r.reset)

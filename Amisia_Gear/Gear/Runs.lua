@@ -5,7 +5,10 @@
 -- dungeon when it comes back after FRESH seconds outside (the client resets an empty instance by
 -- then; leaving counts from the logout too), in a raid when its raid ID ran out (the lockout keeps
 -- the kills until then). Kept per character in AmisiaDB.bis.chars[name].run = { inst, name, enc =
--- { [encounter id] = true }, at, left, reset } (Bis.lua checks it); the pages Dungeons and Raids show
+-- { [encounter id] = true }, npc = { [NPC id] = true }, at, left, reset } (Bis.lua checks it). npc: the
+-- bosses the client has no encounter of (Ruuzlu, Darkreaver; D-152), killed once the character sees the
+-- corpse (the target or the mouseover dead, its NPC id in the GUID) or a loot window comes from it
+-- (GetLootSourceInfo), or by hand; they count in no "n/m". The pages Dungeons and Raids show
 -- it (n/m on the cards, ticks on the bosses) and refresh on "RUN". An instance map that hosts several
 -- dungeons (the halves of Blackrock Spire, the Scarlet Monastery's four wings; F-174, D-106) is one run
 -- with each dungeon's own encounters; run.here names the dungeon of the last kill since the character
@@ -18,7 +21,8 @@ ns.Runs = R
 
 local FRESH = 30 * 60       -- outside longer than this: the next entry is a fresh instance
 local RAID_WEEK = 7 * 24 * 3600
-local MAX_ENC = 40          -- encounters kept per run at most
+local MAX_ENC = 40          -- encounters kept per run at most (and as many NPC kills)
+local MAX_ID = 9999999
 
 local function now() return time() end
 
@@ -54,7 +58,7 @@ end
 
 -- A new run of instance inst (name) in run table r.
 local function fresh(r, inst, name)
-    r.inst, r.name, r.enc, r.at, r.left, r.reset, r.here = inst, name, {}, now(), nil, nil, nil
+    r.inst, r.name, r.enc, r.npc, r.at, r.left, r.reset, r.here = inst, name, {}, {}, now(), nil, nil, nil
 end
 
 -- The floors of the instances (D-72): Forever's client tables list no dungeon floors, so the
@@ -333,6 +337,106 @@ function R.Mark(dkey, i, on)
     changed()
     return true
 end
+
+---------------------------------------------------------------------------
+-- Bosses without an encounter (D-152)
+---------------------------------------------------------------------------
+-- Whether npc is a boss of the item data (BisData.lua: bossNames) of dungeon dkey that the game's order
+-- does not hold (no encounter) and that is no rare of the dungeon.
+function R.NpcBoss(dkey, npc)
+    if type(npc) ~= "number" then return false end
+    local f = R.Fact(dkey)
+    if not f then return false end
+    for _, id in ipairs(type(f.npcs) == "table" and f.npcs or {}) do
+        if id == npc then return false end
+    end
+    for _, x in ipairs(type(f.rares) == "table" and f.rares or {}) do
+        if type(x) == "table" and x[1] == npc then return false end
+    end
+    local B = ns.BIS
+    for _, e in ipairs(type(B) == "table" and type(B.DG) == "table" and B.DG or {}) do
+        if e.key == dkey then return type(e.bossNames) == "table" and type(e.bossNames[npc]) == "string" end
+    end
+    return false
+end
+
+-- Whether boss npc (one of R.NpcBoss) of dkey is killed in the run.
+function R.NpcKilled(dkey, npc)
+    local f = R.Fact(dkey)
+    local run = charRun(false)
+    return f ~= nil and run ~= nil and run.inst == f.inst and type(run.npc) == "table" and run.npc[npc] == true
+end
+
+-- Marks boss npc of dkey killed (on) or not; only for the instance the character stands in or its current
+-- run. Answers whether it could.
+function R.MarkNpc(dkey, npc, on)
+    if not R.NpcBoss(dkey, npc) then return false end
+    local f = R.Fact(dkey)
+    local run = charRun(true)
+    if not run then return false end
+    if run.inst ~= f.inst then
+        if instanceNow() ~= f.inst then return false end
+        fresh(run, f.inst, select(3, instanceNow()))
+    end
+    run.npc = type(run.npc) == "table" and run.npc or {}
+    if on then
+        local n = 0
+        for _ in pairs(run.npc) do n = n + 1 end
+        if not run.npc[npc] and n >= MAX_ENC then return false end
+    end
+    run.npc[npc] = on and true or nil
+    changed()
+    return true
+end
+
+-- The NPC id in a creature's GUID ("Creature-0-3110-0-47-644-00002E7CF2" -> 644), or nil.
+local function npcOf(guid)
+    guid = ns.Plain(guid)
+    if type(guid) ~= "string" then return nil end
+    local kind, id = guid:match("^(%a+)%-%d+%-%d+%-%d+%-%d+%-(%d+)")
+    id = tonumber(id)
+    if not id or id < 1 or id > MAX_ID or (kind ~= "Creature" and kind ~= "Vehicle") then return nil end
+    return id
+end
+
+-- A creature seen dead in the instance the character stands in: a boss without an encounter of one of its
+-- dungeons is killed in the run.
+local function seenDead(npc)
+    local inst = npc and instanceNow()
+    if not inst then return end
+    local run = charRun(false)
+    if run and run.inst == inst and type(run.npc) == "table" and run.npc[npc] then return end
+    for _, k in ipairs(R.KeysOf(inst)) do
+        if R.NpcBoss(k, npc) then
+            R.MarkNpc(k, npc, true)
+            return
+        end
+    end
+end
+R._seenDead = seenDead
+
+local function seeUnit(unit)
+    -- the cheap question first: UNIT_HEALTH of the target comes often in a fight
+    if ns.Plain(call(UnitIsDead, unit)) ~= true then return end
+    seenDead(npcOf(call(UnitGUID, unit)))
+end
+
+-- A loot window: the corpses it comes from (GetLootSourceInfo: GUID, count, GUID, count, ...).
+local function seeLoot()
+    if not instanceNow() or type(_G.GetLootSourceInfo) ~= "function" then return end
+    local n = tonumber(ns.Plain(call(_G.GetNumLootItems))) or 0
+    for slot = 1, math.min(n, 40) do
+        local src = { pcall(_G.GetLootSourceInfo, slot) }
+        if src[1] then
+            for i = 2, math.min(#src, 21), 2 do seenDead(npcOf(src[i])) end
+        end
+    end
+end
+
+ns.OnEvent("PLAYER_TARGET_CHANGED", function() seeUnit("target") end)
+ns.OnEvent("UNIT_HEALTH", function(unit) if ns.Plain(unit) == "target" then seeUnit("target") end end)
+ns.OnEvent("UPDATE_MOUSEOVER_UNIT", function() seeUnit("mouseover") end)
+ns.OnEvent("LOOT_OPENED", seeLoot)
 
 -- The client's "<instance> has been reset." (INSTANCE_RESET_SUCCESS) as a pattern: the instance's
 -- name, or nil for another line.

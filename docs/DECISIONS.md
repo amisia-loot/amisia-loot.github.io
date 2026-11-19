@@ -4278,3 +4278,22 @@ als Text).
 **Durchgesetzt durch:** `tests/test_scan.lua` (Kürzen beim Login, volle Liste nimmt nichts auf, eine Chatzeile, mit
 Platz wie bisher), `tools/tests/test_scan_archive.py::test_a_build_after_the_trim_gives_the_same_data` (der echte
 Spielstand lädt nach dem Aufräumen).
+
+## D-152 Bosse ohne Encounter zählen als getötet, sobald ihre Leiche gesehen oder geplündert wird
+
+**Datum:** 2026-11-19
+**Entscheidung:** Ein Boss der Item-Daten (`BisData.lua`: `bossNames`), den die Reihenfolge des Spiels nicht kennt (kein
+Encounter in `DungeonEncounter`, etwa Ruuzlu in Zul'Farrak und Todesritter Darkreaver in Scholomance) und der kein
+Rare-Mob des Dungeons ist, gilt im eigenen Lauf als getötet, sobald die Figur seine Leiche sieht: das Ziel oder die Maus
+auf der toten Kreatur (`UnitIsDead`, die NPC-Nummer aus `UnitGUID`) oder ein Beutefenster von ihr
+(`GetLootSourceInfo`). Von Hand geht es per Rechtsklick wie bei den anderen Bossen. Gespeichert in `run.npc` (je
+NPC-Nummer, höchstens 40); diese Bosse zählen in kein "n/m" der Leiste und der Karten, damit ein Lauf ohne den
+optionalen Boss fertig ist.
+**Grund:** Der Nutzer 2026-11-19 nach dem Vergleich mit anderen Addons ("Ja"): das Kampflog ist auf Forever für
+Addons gesperrt, ein Boss ohne Encounter meldet seinen Tod also nirgends. Das bekannte Addon, das solche Bosse abhakt,
+tut es über das Beutefenster; Amisia nimmt dazu die gesehene Leiche, wie bei den Rare-Mobs des Lauf-Fensters (D-112),
+damit der Haken auch kommt, wenn ein anderer plündert.
+**Folge:** Wer die Leiche weder anzielt noch berührt noch plündert, sieht den Boss ungetötet. Ob Forever die Kennung
+einer Kreatur in Instanzen nach dem Kampf lesbar gibt, ist im Spiel zu prüfen (ein geheimer Wert zählt nicht).
+**Durchgesetzt durch:** `tests/test_dungeon_notes.lua` (Ruuzlu als Ziel tot, Darkreaver geplündert, von Hand zurück,
+kein Zählen in n/m, kein Rare und kein Encounter-Boss).

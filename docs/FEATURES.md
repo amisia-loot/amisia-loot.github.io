@@ -38,6 +38,14 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Andere Zeilen innerhalb eines Eintrags sind ein Fehler (der Test nennt die Zeile).
 
 ## Addon: Grundlagen
+### F-226 Bosse ohne Encounter abhaken: Leiche gesehen oder geplündert
+- Version: 2.101.1
+- Status: gebaut
+- Prüfung: Wenn du in Zul'Farrak Ruuzlu tötest und seine Leiche anzielst oder mit der Maus berührst, dann hat er auf der Seite Dungeons > Zul'Farrak > Übersicht den Haken "getötet"; die Dungeon-Leiste zählt weiter nur die 8 Bosse des Spiels.
+- Prüfung: Wenn in Scholomance jemand Todesritter Darkreaver tötet und du seine Leiche plünderst, dann hat er den Haken.
+- Prüfung: Wenn du auf der Übersicht mit Rechtsklick auf Ruuzlu "nicht getötet" wählst, dann ist der Haken weg; noch einmal setzt ihn wieder.
+- Notiz: DECISIONS D-152. Die Bosse ohne Encounter stehen direkt hinter denen des Spiels, vor Rare-Mobs und Trash (F-154). Ob Forever die Kennung einer Kreatur in Instanzen nach dem Kampf lesbar gibt, ist offen: dann fehlt der Haken.
+
 
 ### F-221 Layer verhält sich genau wie das verbreitete Layer-Addon
 - Version: 2.99.0

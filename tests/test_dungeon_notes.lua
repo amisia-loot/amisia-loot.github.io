@@ -164,6 +164,31 @@ local at = {}
 for i, h in ipairs(D.bossView.list.items) do at[h.text] = at[h.text] or i end
 assert(at["Ruuzlu"] and at["Chief Ukorz Sandscalp"] < at["Ruuzlu"] and at["Ruuzlu"] < at["Sandarr Dunereaver"]
     and at["Sandarr Dunereaver"] < at["NPC 5650"], "boss without encounter before the rares, unnamed last")
+-- a boss without an encounter (D-152): killed once seen dead or looted, by hand too; no count in n/m
+local function headOf(name) for _, h in ipairs(D.bossView.list.items) do if h.text == name then return h end end end
+local R = NS.Runs
+local instBefore = STUB.instance
+STUB.instance = { name = "Zul'Farrak", type = "party", id = 209 }
+STUB.fire("PLAYER_ENTERING_WORLD")
+assert(R.NpcBoss("zf", 7797) and not R.NpcBoss("zf", 7267) and not R.NpcBoss("zf", 10080), "Ruuzlu only: no encounter boss, no rare")
+STUB.targetGUID, STUB.targetDead = "Creature-0-1-209-1-7797-00001", false
+STUB.fire("PLAYER_TARGET_CHANGED")
+assert(not R.NpcKilled("zf", 7797), "alive: not killed")
+STUB.targetDead = true
+STUB.fire("UNIT_HEALTH", "target")
+NS.ShowDungeon("zf", "bosses")
+assert(R.NpcKilled("zf", 7797) and headOf("Ruuzlu").killed, "seen dead as the target: the tick")
+local _, n, m = R.Of("zf")
+assert(n == 0 and m == 8, "no count in n/m: " .. tostring(n) .. "/" .. tostring(m))
+STUB.targetDead = false
+assert(R.MarkNpc("zf", 7797, false) and not R.NpcKilled("zf", 7797), "unmarked by hand")
+STUB.instance = { name = "Scholomance", type = "party", id = 289 }
+STUB.fire("PLAYER_LEAVING_WORLD"); STUB.fire("PLAYER_ENTERING_WORLD")
+STUB.loot = { { link = STUB.item(5195, "Brillant Smallfish", 1), name = "Brillant Smallfish", src = "Creature-0-1-289-1-14516-00003" } }
+STUB.fire("LOOT_OPENED"); STUB.fire("LOOT_CLOSED"); STUB.loot = {}
+assert(R.NpcKilled("scholo", 14516), "Darkreaver: its corpse looted")
+STUB.instance = instBefore
+STUB.fire("PLAYER_LEAVING_WORLD"); STUB.fire("PLAYER_ENTERING_WORLD")
 NS.ShowDungeon("thanes", "note")
 local v = D.noteView
 assert(v.area.box:GetText() == "Erst links die Goblins\nRhahk allein ziehen", "the field holds the note")
