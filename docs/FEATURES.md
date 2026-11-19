@@ -1377,6 +1377,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du die Warteschlange verlässt oder das Schlachtfeld betrittst, dann geht das Fenster zu.
 - Prüfung: Wenn du unter Einstellungen > Gilde "Eigene Warteschlange mit der Gilde teilen" ausschaltest, dann sehen die anderen dich spätestens nach 180 Sekunden nicht mehr, und du siehst sie weiter.
 - Notiz: Spec docs/specs/2026-11-19-gilden-warteschlange.md (freigegeben 2026-11-19).
+- Notiz: Nachtrag 2026-11-19 (D-155): der Kampf hält den eigenen Stand nicht mehr auf (wer sich im Kampf anmeldet, steht binnen Sekunden unter dem Balken); es warten nur Kampfsperre, Bosskampf und Schlachtfeld.
 
 
 ### F-223 Termin des Anmelde-Bots aus Discord in den Kalender einfügen
@@ -1452,6 +1453,9 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du bei einem Rezept "Fragen" klickst, dann öffnet sich ein Flüstern an jemanden, der es kennt (wer online ist, zuerst).
 - Prüfung: Wenn du `/amisia hersteller` eingibst, dann meldet der Chat den Stand des Rezept-Austauschs.
 - Notiz: 2.57.0: Chip "Gilde (N)" mit Anzahl, ausgegraut und erklärt, solange niemand aus der Gilde teilt.
+- Prüfung: Wenn du auf der Seite Berufe ein Rezept suchst, das ein Gildenmitglied kann, das gerade online ist und dessen Liste älter als 3 Tage ist, dann steht im Kasten "Gildenmitglieder, die es können" kurz "fragt nach neuer Liste: <Name>", und gleich danach ist seine Liste von heute.
+- Prüfung: Wenn du nach einem Dungeon die Instanz verlässt, dann kommt der Rezept-Austausch binnen etwa 20 Sekunden wieder in Gang (auch im Kampf).
+- Notiz: Nachtrag 2026-11-19 (D-12): auch im Kampf; was in einer Instanz hinaus wollte, geht nach dem Verlassen; die Suche fragt alte Hersteller gleich (dieselbe `PQ`, keine neue Nachricht).
 
 ### F-036 Drop-Daten der Gilde
 - Version: 2.3.0

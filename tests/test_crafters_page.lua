@@ -1,11 +1,12 @@
 -- Guild crafters on the professions page (Crafters.lua, UI/Pages/Professions.lua): "Hergestellt von"
 -- in the detail with online crafters first, the filter "Gilde" (only what someone of the guild knows),
 -- the button that asks a crafter by whisper (online first, never an own character), and the page
--- follows a change of the crafters.
+-- follows a change of the crafters; a search asks an old online crafter for a fresh list (F-035).
 local Cr = NS.Crafters
 local function has(text, part) return type(text) == "string" and text:find(part, 1, true) ~= nil end
 dofile(ADDON_DIR .. "/../tests/prof_fixture.lua")
 STUB.player = "Vulo Sturmwind"
+STUB.instance = { name = "Durotar", type = "none", id = 0 }
 STUB.guild = { { name = "Vulo Sturmwind", rank = 1 }, { name = "Anna Amboss", rank = 3, online = false },
     { name = "Bob Hammer", rank = 3 } }
 STUB.fire("GUILD_ROSTER_UPDATE")
@@ -65,6 +66,31 @@ STUB.tick(1)
 f.list.rows[3]:Click()
 assert(has(d.who:GetText(), NS.Theme.GREEN .. "Bob Hammer (120)|r"), d.who:GetText())
 assert(d.ask:IsShown())
+-- a search asks Bob, heard of 5 days ago and online, for a fresh list 1 s later; the detail says so (F-035)
+AmisiaDB.crafters.c["Bob Hammer"].seen = D - 5
+local sent0 = #STUB.addon
+f.search:SetText("stiefel")
+f.search.scripts.OnEnterPressed(f.search)
+assert(#f.list.items == 1 and f.list.items[1].recipe.spell == 1252229, #f.list.items)
+local function pqs()
+    local n = 0
+    for i = sent0 + 1, #STUB.addon do
+        local m = STUB.addon[i]
+        if m.text:match("^1PQ\t") and m.target == "Bob Hammer" and m.chan == "WHISPER" then n = n + 1 end
+    end
+    return n
+end
+STUB.tick(0.5)
+assert(pqs() == 0, "not at once")
+STUB.tick(1)
+assert(pqs() == 1, "Bob asked")
+assert(Cr.Asking("Bob Hammer") and not Cr.Asking("Anna Amboss"))
+f.list.rows[1]:Click()
+assert(has(d.who:GetText(), NS.Theme.GREY .. "fragt nach neuer Liste: Bob Hammer|r"), d.who:GetText())
+f.search:SetText("")
+f.search.scripts.OnEnterPressed(f.search)
+STUB.tick(92)
+assert(pqs() == 1 and not Cr.Asking("Bob Hammer"), "no answer: the line goes after 90 s")
 -- the camp view: no guild filter, nobody of the guild knows the campfire
 NS.Dispatch("berufe lager")
 assert(d:IsShown() and not f.guild:IsShown() and not d.ask:IsShown(), "the camp object in the boxes, nobody to ask")

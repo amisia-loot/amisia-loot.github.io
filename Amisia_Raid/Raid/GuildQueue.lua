@@ -7,7 +7,8 @@
 -- (10.5 s after the last plain one), at once when a queue pops, is joined (a hook on AcceptBattlefieldPort, before
 -- the loading screen) or declined (1.1 s after the last such one), every 75 s while something is in it, once empty
 -- when nothing is any more (also when bgqueue.share is switched off). Never in a battleground (the waiting QW
--- dropped), in combat or the chat lockdown (it goes once they are over), never without a guild.
+-- dropped) or in the chat lockdown and a boss fight's restriction (it goes once they are over; combat holds
+-- nothing back), never without a guild.
 -- The others' states only from members by the roster (class from it, not from the message), in memory only, 60 at
 -- most, dropped 180 s after their last QW or when the client says they went offline; a popped one shows until its
 -- port runs out (+3 s, 150 s without a time), "Beigetreten" 10 s, "Abgelehnt" 5 s.
@@ -260,11 +261,11 @@ local function freshNews(list)
     return false
 end
 
-local function heldBack(joining)
+-- Combat holds nothing back (F-227): only a battleground, the chat lockdown and the encounter
+-- restriction of a boss fight do.
+local function heldBack()
     if not ns.CommAvailable() or not ns.InGuild() or inBattleground() then return true end
     if ns.CommHeld() or ns.ChatLocked() or ns.AddOnRestricted(1) then return true end
-    -- a join goes even in combat (the loading screen is next), anything else after the fight
-    if not joining and (InCombatLockdown() or ns.AddOnRestricted(0)) then return true end
     return false
 end
 
@@ -275,8 +276,8 @@ function GQ.Fields(list)
     return fields
 end
 
--- Sends the own state when it is due (joining: the hook on AcceptBattlefieldPort). true when a QW went.
-local function update(joining)
+-- Sends the own state when it is due. true when a QW went.
+local function update()
     if inBattleground() then
         ns.CommCancel("QW")
         return false
@@ -300,7 +301,7 @@ local function update(joining)
     elseif t - lastPlainAt < GAP then
         return false
     end
-    if heldBack(joining) then return false end
+    if heldBack() then return false end
     local ttl = newsMsg and 10 or 30
     if not ns.CommSend("QW", GQ.Fields(list), "GUILD", nil, { key = "QW", ttl = ttl }) then return false end
     lastSig, lastSentAt, changeSeenAt = sig, t, nil
@@ -721,15 +722,14 @@ end
 ---------------------------------------------------------------------------
 -- Events and the clock
 ---------------------------------------------------------------------------
-local function step(joining)
+local function step()
     readOwn()
-    update(joining)
+    update()
     showHide()
 end
 GQ.Step = step
 
 ns.OnEvent("UPDATE_BATTLEFIELD_STATUS", function() step() end)
-ns.OnEvent("PLAYER_REGEN_ENABLED", function() step() end)
 ns.OnEvent("ADDON_RESTRICTION_STATE_CHANGED", function() C_Timer.After(0, function() step() end) end)
 ns.OnEvent("PLAYER_ENTERING_WORLD", function()
     GQ.Rebuild()
@@ -749,8 +749,8 @@ local function onPort(slot, accept)
     if not id then return end
     news[id] = { s = accept and "J" or "L", at = now() }
     -- the client's status may still say "confirm": the join is the state from now on
-    if not update(accept and true or false) then
-        C_Timer.After(NEWS_GAP, function() update(accept and true or false) end)
+    if not update() then
+        C_Timer.After(NEWS_GAP, function() update() end)
     end
 end
 if type(rawget(_G, "AcceptBattlefieldPort")) == "function" and type(hooksecurefunc) == "function" then

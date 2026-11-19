@@ -233,6 +233,21 @@ zwei Konten einigen. Drop-, Quellen- und Rezeptaustausch: nur Gildenmitglieder, 
 beide Seiten ziehen, niemand ist maßgeblich; Daten werden vereinigt, nie überschrieben.
 **Grund:** Ein gehörter, falscher Satz verdrängte sonst echte Beobachtungen.
 **Folge:** Jeder empfangene Satz wird geprüft wie ein gespeicherter.
+**Nachtrag 2026-11-19 (F-035, Rezeptaustausch):** Der Rezeptaustausch (`Gear/Crafters.lua`) läuft auch im Kampf;
+es halten ihn nur die Kampfsperre (`ns.CommHeld`), ein laufender Raid-Abgleich und "Rezepte teilen" aus auf. In einer
+Instanz oder einem Schlachtfeld geht weiter nichts hinaus, aber was hinaus wollte, wartet: die Ankündigung `PV`,
+die Anfragen `PQ` und die Antwort auf eine Anfrage, die dort ankam (ohne `PW` von drinnen, höchstens `serveMax`,
+genommen nur bis `askKeep`); alles geht 5 bis 15 s nach dem Verlassen (`PLAYER_ENTERING_WORLD`,
+`ZONE_CHANGED_NEW_AREA`), mit allen bisherigen Deckeln. Neu: eine Suche auf der Seite Berufe fragt 1 s nach der
+Eingabe die Hersteller ihrer Treffer, deren Liste älter als 3 Tage ist und die laut Roster online sind, gleich nach
+einer neuen Liste (`Cr.AskOld`): dieselbe `PQ` an den Hersteller selbst, keine neue Nachrichtenart; höchstens 6 in
+der Minute, einer je Hersteller in 60 s (der Abstand, den der Empfänger für `PQ` hält; der Nutzer nannte 30 s als
+Obergrenze), innerhalb der 20 Anfragen der Stunde, nie in einer Instanz, der Sperre oder mit Teilen aus. Grund:
+Nutzer 2026-11-19 nach dem Vergleich mit dem Änderungsprotokoll eines anderen Addons; wer im Kampf oder im Dungeon
+war, kam sonst erst eine Stunde später dran, und eine Suche zeigte veraltete Hersteller. Bis dahin: nie im Kampf,
+in einer Instanz kam eine Anfrage nie an (verworfen). Durchgesetzt durch `tests/test_crafters_sync.lua` (Kampf,
+Instanz und der Weg hinaus, die späte Antwort, die Suche mit ihren Grenzen) und `tests/test_crafters_page.lua`
+(die Zeile "fragt nach neuer Liste").
 **Durchgesetzt durch:** `tests/test_collector.lua`, `tests/test_collect_trust.lua`,
 `tools/tests/test_collect_records.py::test_the_build_trusts_own_values_and_heard_ones_two_accounts_agree_on`.
 
@@ -4346,9 +4361,9 @@ Nur Committetes von `main` geht hinaus, nie eine Datei, die gerade bearbeitet wi
 (`bgqueue.share`) und abschaltbar; aus geht einmal eine leere `QW`, danach nichts. Das Schlachtfeld geht als seine
 Nummer (`battlegroundID`, die der Client selbst zu seinem Namen nennt: `C_PvP.GetBattlegroundInfo` auf Forever, die
 fünfte Rückgabe von `GetBattlegroundInfo` auf TBC und Era), nie als Name; ein Name ohne Nummer wird übergangen, es
-gibt keine Datendatei. Im Schlachtfeld geht nichts (die wartende `QW` wird verworfen, `ns.CommCancel`), im Kampf und
-in der Kampfsperre erst danach; "Beigetreten" geht aus einem Haken an `AcceptBattlefieldPort` sofort, vor dem
-Ladebildschirm, auch im Kampf. Genommen wird eine `QW` nur über GUILD von einem Mitglied nach dem eigenen Roster
+gibt keine Datendatei. Im Schlachtfeld geht nichts (die wartende `QW` wird verworfen, `ns.CommCancel`), in der
+Kampfsperre und der Sperre eines Bosskampfs (Einschränkung 1) erst danach; der Kampf hält nichts auf; "Beigetreten"
+geht aus einem Haken an `AcceptBattlefieldPort` sofort, vor dem Ladebildschirm. Genommen wird eine `QW` nur über GUILD von einem Mitglied nach dem eigenen Roster
 (`ns.TrustName`, `ns.TrustWait` member), die Klasse aus dem Roster; nur im Speicher, 60 Absender, 180 s.
 Abstand je Absender 10 s, eine `QW` mit Aufgehen, Beitreten oder Ablehnen (`P`, `J`, `L`) aber 1 s (eigener
 Abstandsschlüssel `QWP` in Comm).
@@ -4360,7 +4375,11 @@ oft binnen Sekunden aufeinander, und "Beigetreten" kann nicht warten (danach ist
 es meist verloren. Ein Mitglied kann so nur seinen eigenen Stand öfter neu zeichnen lassen.
 **Folge:** Ob Forever schon Schlachtfelder hat, zeigt sich im Spiel; ohne sie bleibt das Fenster zu. Falsche Angaben
 eines Mitglieds über sich selbst sind möglich, über andere nicht. Nichts wird gespeichert außer der Fensterstelle
-(`settings.bgQueueWindow`).
+(`settings.bgQueueWindow`). Bis 2.102.1 wartete jede `QW` außer "Beigetreten" auch im Kampf bis nach dem Kampf.
+**Nachtrag 2026-11-19 (F-227):** Der eigene Stand geht auch im Kampf hinaus (Nutzer 2026-11-19 nach dem Vergleich mit
+dem Änderungsprotokoll eines anderen Addons): wer beim Questen oder in der Welt kämpft, während seine Warteschlange
+läuft oder aufgeht, erschien sonst erst nach dem Kampf, oft zu spät. Es warten nur noch die Kampfsperre und die
+Sperre eines Bosskampfs (dort sperrt der Client Addon-Nachrichten) und das Schlachtfeld.
 **Durchgesetzt durch:** `tests/test_guild_queue.lua` (Fremde, Kanal, Felder, Abstände, Schlachtfeld, Teilen aus,
-deutsch und englisch), `tests/test_guild_queue_tbc.lua` (TBC: die globale Funktion),
+Kampf geht, Bosskampfsperre wartet, deutsch und englisch), `tests/test_guild_queue_tbc.lua` (TBC: die globale Funktion),
 `tools/tests/test_contracts.py::test_the_gap_of_every_kind_is_the_documented_one`.

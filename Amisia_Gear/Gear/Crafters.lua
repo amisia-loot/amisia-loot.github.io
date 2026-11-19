@@ -12,8 +12,11 @@
 -- neither pushes: a blob nobody asked for is dropped, a request takes its one answer. Only between
 -- guild members, only the sender's own characters of this guild, and a heard crafter must stand in
 -- the roster and be the sender or its known alt (the website's alts list); a list keeps only the
--- spells of the own recipe index; per sender and in all the store stays within byte caps; never in an instance, a battleground, in combat, in the lockdown or while a raid is
--- synced; at the lowest priority of the queue within fixed byte caps.
+-- spells of the own recipe index; per sender and in all the store stays within byte caps; never in the lockdown or
+-- while a raid is synced (combat holds nothing back); inside an instance or a battleground nothing goes, what wanted
+-- to (an announcement, a request, an answer to one) waits and goes 5 to 15 s after the character is out again; at
+-- the lowest priority of the queue within fixed byte caps. A search on the professions page asks the heard
+-- crafters of its hits whose list is older than 3 days and who are online now at once (Cr.AskOld, the same PQ).
 --
 -- Crafter protocol 1. Older clients do not know PV and drop it as an unknown message; they never send
 -- PQ, so nothing else reaches them.
@@ -54,6 +57,11 @@ local LIM = {
     storeBytes = 393216,                -- bytes of bitsets and lists kept at most (the oldest crafters go first)
     viaBytes = 24576,                   -- bytes of bitsets and lists kept at most from one sender
     bitsMax = 300,                      -- hex characters of one bitset (1200 recipes)
+    outWait = 5, outSpread = 10,        -- seconds after leaving an instance before the exchange talks again
+    askOldDays = 3,                     -- a search asks a crafter heard of more than 3 days ago
+    askPerMinute = 6,                   -- asks of a search in a minute
+    askGap = 60,                        -- seconds between two requests to one crafter (the receiver's gap for PQ)
+    askScan = 200,                      -- hits of a search looked at
 }
 ns.CRAFTERS_LIMITS = LIM
 
@@ -62,7 +70,7 @@ local KEY_PREFIX = "0000-00-01:"
 
 local stats = { bytes = 0, pv = 0, pq = 0, pw = 0, served = 0, blobs = 0, crafters = 0, bad = 0, unasked = 0, refused = 0,
                 outsider = 0, kept = 0, mismatch = 0, pulls = 0, busy = 0, other = 0, pruned = 0, missed = 0, foreign = 0,
-                capped = 0, unknown = 0 }
+                capped = 0, unknown = 0, searched = 0 }
 local pqTimes = {}
 local asked = {}          -- nonce -> { low, f, at }
 local peers = {}          -- { name, low, d, n, at, nb, f, retry }
@@ -73,6 +81,9 @@ local lastBlob
 local partsLog = {}
 local firstAt, lastPV, lastD
 local nonceSeq
+local askedAt = {}        -- lower name -> GetTime() of the last request to it
+local searchAsks = {}     -- GetTime() of the search's requests of the last minute
+local asking = {}         -- lower name -> GetTime() until which a search's request to it waits for its answer
 
 local function now() return GetTime() end
 local function today() return ns.DropsToday and ns.DropsToday() or 0 end
@@ -361,18 +372,45 @@ local function battlefield()
     return ok and ns.Plain(on) == true
 end
 
-function ns.CraftersCanTalk()
-    if not AmisiaDB or not ns.Get("crafters.share") then return false end
-    if not ns.CommAvailable() or not ns.CommPacking() then return false end
-    if type(IsInGuild) ~= "function" or ns.Plain(IsInGuild()) ~= true then return false end
-    if type(IsInInstance) == "function" and ns.Plain((IsInInstance())) == true then return false end
+local function inside()
+    if type(IsInInstance) == "function" and ns.Plain((IsInInstance())) == true then return true end
     local _, kind = GetInstanceInfo()
     kind = ns.Plain(kind)
-    if kind ~= nil and kind ~= "none" then return false end
-    if type(InCombatLockdown) == "function" and InCombatLockdown() then return false end
-    if ns.CommHeld() then return false end
-    if (ns.Active and ns.Active() ~= nil and ns.CommReady()) or battlefield() then return false end
-    return true
+    if kind ~= nil and kind ~= "none" then return true end
+    return battlefield()
+end
+
+-- Whether the character is inside an instance or a battleground, or came out of one only moments ago (5 to 15 s,
+-- so the guild's members leaving one dungeon do not all talk at once). What wanted to go waits meanwhile.
+local wasInside, outAt = false, nil
+local function away()
+    if inside() then
+        wasInside, outAt = true, nil
+        return true
+    end
+    if wasInside then
+        wasInside = false
+        outAt = now() + LIM.outWait + math.random() * LIM.outSpread
+    end
+    if outAt and now() >= outAt then outAt = nil end
+    return outAt ~= nil
+end
+ns.OnEvent("PLAYER_ENTERING_WORLD", function() away() end)
+ns.OnEvent("ZONE_CHANGED_NEW_AREA", function() away() end)
+
+-- Whether nothing may go and nothing waits: sharing off, no messages, no guild, the lockdown, a raid synced.
+-- Combat holds nothing back.
+local function shut()
+    if not AmisiaDB or not ns.Get("crafters.share") then return true end
+    if not ns.CommAvailable() or not ns.CommPacking() then return true end
+    if type(IsInGuild) ~= "function" or ns.Plain(IsInGuild()) ~= true then return true end
+    if ns.CommHeld() then return true end
+    return ns.Active ~= nil and ns.Active() ~= nil and ns.CommReady() and true or false
+end
+
+function ns.CraftersCanTalk()
+    local out = away()
+    return not shut() and not out
 end
 local canTalk = function() return ns.CraftersCanTalk() end
 
@@ -496,6 +534,7 @@ local function startNext()
     local nonce = nextNonce()
     if not send("PQ", { tostring(ns.CRAFT_PROTO), f, tostring(nonce) }, "WHISPER", p.name) then return end
     pqTimes[#pqTimes + 1] = t
+    askedAt[p.low] = t
     stats.pulls = stats.pulls + 1
     asked[nonce] = { low = p.low, f = f, at = t }
     pull = { name = p.name, low = p.low, d = p.d, n = p.n, f = f, nonce = nonce, deadline = t + LIM.pqWait, retry = p.retry }
@@ -733,6 +772,7 @@ ns.CommOnBlob("PK", function(sender, tbl, chan, key)
         return
     end
     asked[nonce] = nil
+    asking[low] = nil
     local mine = pull and pull.nonce == nonce
     local list = checkBlob(tbl, ask)
     if not list then
@@ -779,14 +819,23 @@ ns.CommOn("PQ", function(sender, f, chan)
             stats.refused = stats.refused + 1
             return
         end
-        if not canTalk() then return end
+        if shut() then return end
+        -- inside an instance the request waits for the way out (as long as the asker takes the answer, serveKeep);
+        -- a refusal is not sent from there, the asker asks again
+        local wait = away()
         local low = name:lower()
-        if not shareLeft(low) then return sendPW(name, low, LIM.doneWait) end
+        if not shareLeft(low) then
+            if wait then return end
+            return sendPW(name, low, LIM.doneWait)
+        end
         -- an asker has one request open at a time: a new one replaces what still waits for it
         for i = #serve, 1, -1 do
             if serve[i].low == low then table.remove(serve, i) end
         end
-        if #serve >= LIM.serveMax then return sendPW(name, low, LIM.busyWait) end
+        if #serve >= LIM.serveMax then
+            if wait then return end
+            return sendPW(name, low, LIM.busyWait)
+        end
         serve[#serve + 1] = { name = name, low = low, f = f[2], nonce = tonumber(f[3]), at = now() }
     end)
 end)
@@ -1165,6 +1214,74 @@ function Cr.Whisper(name, what)
 end
 
 ---------------------------------------------------------------------------
+-- Asking on a search (F-035): the heard crafters of the hits whose list is old and who are online now
+---------------------------------------------------------------------------
+-- Asks the heard crafters of spells (the hits of a search, the first askScan) whose list was last heard of more
+-- than askOldDays days ago and whom the roster names online for a fresh list: the same PQ a pull sends, to the
+-- crafter itself, its answer taken like a pull's. Oldest first; askPerMinute requests a minute, one request to a
+-- crafter per askGap seconds, within the requests of the hour (pqPerHour); never where the exchange may not
+-- talk (canTalk: an instance, the lockdown, sharing off, ...), never to an own character or the one being pulled.
+-- Returns the names asked.
+function Cr.AskOld(spells)
+    local out = {}
+    if type(spells) ~= "table" or #spells == 0 or not canTalk() then return out end
+    local s = store(false)
+    local r = roster()
+    if not s or not r then return out end
+    local t, d = now(), today()
+    local keep = {}
+    for _, at in ipairs(searchAsks) do
+        if t - at < 60 then keep[#keep + 1] = at end
+    end
+    searchAsks = keep
+    local bySpell, seen, list = build().bySpell, {}, {}
+    for i = 1, math.min(#spells, LIM.askScan) do
+        for name, e in pairs(bySpell[tonumber(spells[i])] or NONE) do
+            local low = name:lower()
+            if not e.own and not seen[low] then
+                seen[low] = true
+                local c, m = s.c[name], r[low]
+                if type(c) == "table" and type(c.seen) == "number" and d - c.seen > LIM.askOldDays and m and m.online
+                    and not (pull and pull.low == low) and t - (askedAt[low] or -math.huge) >= LIM.askGap then
+                    list[#list + 1] = { name = name, low = low, seen = c.seen }
+                end
+            end
+        end
+    end
+    table.sort(list, function(a, b)
+        if a.seen ~= b.seen then return a.seen < b.seen end
+        return a.low < b.low
+    end)
+    for _, c in ipairs(list) do
+        if #searchAsks >= LIM.askPerMinute or hourCount() >= LIM.pqPerHour then break end
+        local src = s.src[c.low]
+        local f = src and src.f or "B"
+        local nonce = nextNonce()
+        if send("PQ", { tostring(ns.CRAFT_PROTO), f, tostring(nonce) }, "WHISPER", c.name) then
+            pqTimes[#pqTimes + 1] = t
+            searchAsks[#searchAsks + 1] = t
+            askedAt[c.low] = t
+            asked[nonce] = { low = c.low, f = f, at = t }
+            asking[c.low] = t + LIM.pqWait
+            stats.searched = stats.searched + 1
+            out[#out + 1] = c.name
+        end
+    end
+    if #out > 0 then
+        -- the page says "fragt nach" while the answers are awaited, and no more once they are not
+        ns.Fire("CRAFTERS_CHANGED")
+        C_Timer.After(LIM.pqWait + 1, function() ns.Fire("CRAFTERS_CHANGED") end)
+    end
+    return out
+end
+
+-- Whether a search's request to name waits for its answer (the page's "fragt nach").
+function Cr.Asking(name)
+    local till = type(name) == "string" and asking[name:lower()]
+    return till and now() < till or false
+end
+
+---------------------------------------------------------------------------
 -- The professions per crafter (the members page): read only, no profession data needed
 ---------------------------------------------------------------------------
 local BITS = {}            -- [hex digit] = the bits it sets
@@ -1299,7 +1416,7 @@ end
 ---------------------------------------------------------------------------
 ns.CRAFTERS_SETTINGS = { key = "crafters", label = L["Hersteller der Gilde"], order = 51, group = "prof", pages = { "professions" }, items = {
     { key = "crafters.share", type = "toggle", label = L["Rezepte mit der Gilde teilen"], default = true,
-      tip = L["Welche Rezepte deine Charaktere dieser Gilde kennen; nur außerhalb von Instanzen und Kämpfen"] },
+      tip = L["Welche Rezepte deine Charaktere dieser Gilde kennen; nicht aus Instanzen (was dort wartet, geht danach)"] },
     { key = "crafters.tooltip", type = "toggle", label = L["Hersteller im Item-Tooltip"], default = true,
       tip = L["Eine graue Zeile an hergestellten Items: wer aus der Gilde sie herstellen kann."] },
 } }

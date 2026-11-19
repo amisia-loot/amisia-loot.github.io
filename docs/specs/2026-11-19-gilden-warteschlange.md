@@ -61,8 +61,9 @@ Addons (Nutzer 2026-11-19: "so wie bei fojjicore"); eigener Code, eigene Nachric
 
 - **Im Schlachtfeld**: Forever sperrt Addon-Nachrichten dort (so verhält sich das Vorbild); nichts wird gesendet,
   die Sendewarteschlange für diese Nachrichtenart verworfen, das Fenster ist zu. "Beigetreten" geht vor dem Laden.
-- **Kampf und Kampfsperre**: nichts wird gesendet; der Stand geht nach dem Kampf (`PLAYER_REGEN_ENABLED`) bzw. wenn
-  die Sperre endet. Ein Aufgehen im Kampf geht sofort danach.
+- **Kampf und Kampfsperre**: der Kampf hält nichts auf, der Stand geht auch im Kampf hinaus. In der Kampfsperre und
+  der Sperre eines Bosskampfs wird nichts gesendet; der Stand geht, wenn die Sperre endet (seit dem Nachtrag
+  2026-11-19, vorher wartete auch der Kampf).
 - **Mehrere Warteschlangen** (bis zu drei Plätze): jede einzeln, höchstens 3 wartend und 2 aufgegangen je Spieler.
 - **`/reload` während des Wartens**: die Wartezeit kommt vom Spiel, der Stand geht 2 s später neu hinaus; die
   anderen Gildenmitglieder sind bis zu ihrem nächsten Wiederholen nicht sichtbar.
@@ -120,5 +121,7 @@ Beim Bau (2026-11-19), kleine Abweichungen:
   folgt oft Sekunden nach dem Aufgehen, und im Schlachtfeld geht nichts mehr (D-155).
 - Der Einstellungsabschnitt steht im Reiter "Gilde" (neben Aufrufe und Layer), nicht unter "Raid".
 - "Beigetreten" geht auch im Kampf hinaus (der Ladebildschirm kommt gleich); alles andere wartet bis nach dem Kampf.
+  Nachtrag 2026-11-19 (Nutzer, nach dem Vergleich mit dem Änderungsprotokoll eines anderen Addons): der Kampf hält
+  gar nichts mehr auf; es warten nur die Kampfsperre, die Sperre eines Bosskampfs und das Schlachtfeld (D-155).
 - Eine Arena-Warteschlange (Teamgröße über 0) wird übergangen.
 

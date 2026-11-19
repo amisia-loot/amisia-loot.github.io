@@ -5,6 +5,25 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(guild): the guild queue shares your own queue in combat too (F-227)
+
+    Your battleground queue went to the guild only after a fight ended, so guild members often saw you late or not
+    at all while you fought in the world. Now it goes at once in combat as well; it still waits during a boss
+    fight's lockdown and never goes from inside a battleground.
+
+- fix(professions): the recipe exchange runs in combat and catches up after an instance (F-035)
+
+    Sharing recipes with the guild stopped in every fight, and inside a dungeon a guild member's request was lost.
+    Combat no longer stops it. Inside an instance or a battleground still nothing is sent, but the announcement,
+    your requests and the answers you owe wait and go out a few seconds after you are out again.
+
+- feat(professions): a recipe search asks guild crafters with an old list for a fresh one (F-035)
+
+    When you search on the professions page and a hit names a guild member who is online but whose shared list is
+    more than three days old, Amisia asks that member for a fresh list a second after the search instead of waiting
+    for the hourly exchange; the crafter box says "fragt nach neuer Liste: <name>" meanwhile. At most six requests a
+    minute and one per member a minute, never in an instance, in a boss fight's lockdown or with sharing off.
+
 ## [v2.102.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.102.1) (2026-11-19)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.102.0...v2.102.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

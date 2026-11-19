@@ -5,7 +5,8 @@
 -- sender's own characters of this guild travel; Pug is ignored both ways; an unchanged digest pulls
 -- nothing and only marks the crafters seen; a change pulls again; other profession data is pulled
 -- as lists; forged, malformed, hostile and unasked data is refused; the caps hold (bytes, requests,
--- parts, crafters); nothing goes in an instance, in combat, in the lockdown or with sharing off;
+-- parts, crafters); combat holds nothing back; inside an instance nothing goes, it waits and goes after the way
+-- out (an answer too); nothing in the lockdown or with sharing off; a search asks old online crafters (F-035);
 -- another protocol and an unknown kind change nothing; old crafters are pruned at load.
 local VULO, FRAK, KIM, PUG = "Vulo Sturmwind", "Fraktur", "Kim Eisherz", "Pug"
 local MEMBERS = { VULO, FRAK, KIM }
@@ -272,19 +273,69 @@ assert(crafter(FRAK, VULO).p[164].r == 47 and crafter(FRAK, "Vulo Zweit"), "the 
 C(VULO, "NS.CRAFTERS_LIMITS.blobParts = 20")
 
 ---------------------------------------------------------------------------
--- nothing in an instance, in combat, in the lockdown, or with sharing off
+-- combat holds nothing back; inside an instance nothing goes and it all goes 5 to 15 s after the way out;
+-- nothing in the lockdown or with sharing off
 ---------------------------------------------------------------------------
-local function quiet(label, on, off)
-    C(VULO, on)
-    C(VULO, "AmisiaDB.prof.chars['Vulo Sturmwind'][164].rank = AmisiaDB.prof.chars['Vulo Sturmwind'][164].rank + 1; NS.Fire('PROF_CHANGED', 164)")
-    local t = C(VULO, "STUB.clock")
-    BUS.tick(4000)
-    assert(BUS.count(function(m) return craftMsg(m) and m.sender == VULO and m.t >= t end) == 0, label)
-    C(VULO, off)
+local function bump()
+    return C(VULO, [[local p = AmisiaDB.prof.chars['Vulo Sturmwind'][164]
+        p.rank = p.rank + 1; NS.Fire('PROF_CHANGED', 164); return p.rank]])
 end
-quiet("instance", "STUB.instance = { name = 'Höhlen', type = 'party', id = 1 }", "STUB.instance = { name = 'Durotar', type = 'none', id = 0 }")
-quiet("combat", "STUB.combat = true", "STUB.combat = false")
-quiet("sharing off", "NS.Set('crafters.share', false)", "NS.Set('crafters.share', true)")
+local function fromVulo(t) return BUS.count(function(m) return craftMsg(m) and m.sender == VULO and m.t >= t end) end
+local function enter(name) C(name, "STUB.instance = { name = 'Höhlen', type = 'party', id = 1 }; STUB.fire('PLAYER_ENTERING_WORLD')") end
+local function out(name) C(name, "STUB.instance = { name = 'Durotar', type = 'none', id = 0 }; STUB.fire('PLAYER_ENTERING_WORLD')") end
+-- in combat (both): announced, asked and answered
+C(VULO, "STUB.combat = true")
+C(KIM, "STUB.combat = true")
+local tc = C(VULO, "STUB.clock")
+local rc = bump()
+BUS.tick(700)
+assert(BUS.count({ kind = "PV", sender = VULO, from = tc }) == 1, "the announcement goes in combat")
+assert(BUS.count({ kind = "PQ", sender = KIM, target = VULO, from = tc }) == 1, "Kim asks in combat")
+assert(crafter(KIM, VULO).p[164].r == rc, "and has the answer")
+C(VULO, "STUB.combat = false")
+C(KIM, "STUB.combat = false")
+-- inside an instance: nothing; out again: the announcement 5 to 15 s later, the pulls after it
+enter(VULO)
+local ti = C(VULO, "STUB.clock")
+local ri = bump()
+BUS.tick(4000)
+assert(fromVulo(ti) == 0, "nothing from inside an instance")
+assert(C(VULO, "NS.CraftersCanTalk()") == false)
+out(VULO)
+local to = C(VULO, "STUB.clock")
+BUS.tick(4)
+assert(fromVulo(ti) == 0 and C(VULO, "NS.CraftersCanTalk()") == false, "not at once after the way out")
+BUS.tick(17)
+assert(BUS.count({ kind = "PV", sender = VULO, from = to + 5 }) == 1, "the announcement that waited goes 5 to 20 s after")
+BUS.tick(120)
+assert(crafter(KIM, VULO).p[164].r == ri and crafter(FRAK, VULO).p[164].r == ri, "pulled after the way out")
+-- an answer: Kim asks while Vulo is inside; the answer waits and goes once Vulo is out
+local ta = C(VULO, "STUB.clock")
+local ra = bump()
+BUS.tick(300)   -- the change gap of 10 minutes since the announcement after the way out
+assert(BUS.count({ kind = "PV", sender = VULO, from = ta }) == 0)
+for _ = 1, 4000 do
+    if BUS.count({ kind = "PV", sender = VULO, from = ta }) > 0 then break end
+    BUS.tick(0.1)
+end
+assert(BUS.count({ kind = "PV", sender = VULO, from = ta }) == 1)
+enter(VULO)
+BUS.tick(60)
+assert(BUS.count({ kind = "PQ", sender = KIM, target = VULO, from = ta }) == 1, "Kim asks Vulo in the instance")
+assert(BUS.count(function(m) return (isPK(m) or m.kind == "PW") and m.sender == VULO and m.t >= ta end) == 0,
+    "no answer and no refusal from inside")
+assert(C(VULO, "NS.CraftersState().serving") >= 1, "the request waits")
+out(VULO)
+BUS.tick(60)
+assert(BUS.count(function(m) return isPK(m) and m.sender == VULO and m.target == KIM and m.t >= ta end) >= 1, "answered after the way out")
+assert(crafter(KIM, VULO).p[164].r == ra, "Kim takes the late answer")
+-- sharing off: nothing
+C(VULO, "NS.Set('crafters.share', false)")
+local ts = C(VULO, "STUB.clock")
+bump()
+BUS.tick(4000)
+assert(fromVulo(ts) == 0, "sharing off")
+C(VULO, "NS.Set('crafters.share', true)")
 BUS.lock(true)
 local tl = C(VULO, "STUB.clock")
 C(VULO, "AmisiaDB.prof.chars['Vulo Sturmwind'][164].rank = 60; NS.Fire('PROF_CHANGED', 164)")
@@ -293,6 +344,80 @@ assert(BUS.count(function(m) return craftMsg(m) and m.t >= tl end) == 0, "lockdo
 BUS.lock(false)
 BUS.tick(4000)
 assert(crafter(KIM, VULO).p[164].r == 60, "after the lockdown it goes on")
+
+---------------------------------------------------------------------------
+-- a search on the professions page asks the old online crafters of its hits (F-035): 1 s after it was entered,
+-- oldest first, 6 a minute, one request per crafter a minute, never from an instance or with sharing off
+---------------------------------------------------------------------------
+BUS.tick(400)
+local function pqTo(from, target, t)
+    return BUS.count(function(m) return m.kind == "PQ" and m.sender == from and m.target == target and m.t >= t end)
+end
+local function search(name, text)
+    C(name, ([[local f = NS.PageFrame("professions")
+        f.search:SetText(%q)
+        f.search.scripts.OnEnterPressed(f.search)]]):format(text))
+end
+-- seven more blacksmiths at Kim, heard of long ago, online in Kim's roster (no client answers them)
+C(KIM, [[local ix = NS.Crafters._index(164)
+    for i = 1, 7 do
+        local n = "Schmied " .. string.char(64 + i)
+        AmisiaDB.crafters.c[n] = { via = n, self = true, seen = NS.DropsToday() - 10 - i,
+            p = { [164] = { r = 100, m = 150, h = ix.hash, b = NS.Crafters._toBits(ix, { [2663] = true }) } } }
+        STUB.guild[#STUB.guild + 1] = { name = n, rank = 4, online = true, class = "WARRIOR" }
+    end
+    -- Schmied G is offline, Schmied F was heard of 3 days ago
+    STUB.guild[#STUB.guild].online = false
+    AmisiaDB.crafters.c["Schmied F"].seen = NS.DropsToday() - 3
+    STUB.fire("GUILD_ROSTER_UPDATE")
+    NS.Crafters.Changed()
+    NS.Dispatch("berufe schmied")]])
+C(KIM, ("AmisiaDB.crafters.c['Vulo Sturmwind'].seen = %d"):format(D - 4))
+local tq = C(KIM, "STUB.clock")
+search(KIM, "kupfer")
+BUS.tick(0.5)
+assert(BUS.count({ kind = "PQ", sender = KIM, from = tq }) == 0, "not while typing")
+BUS.tick(0.6)
+-- Schmied G..A (11..17 days, oldest first) and Vulo (4 days): six, then the minute's cap
+local askedNow = BUS.count({ kind = "PQ", sender = KIM, from = tq })
+assert(askedNow == 6, "six requests in a minute: " .. askedNow)
+for _, n in ipairs({ "Schmied A", "Schmied B", "Schmied C", "Schmied D", "Schmied E" }) do
+    assert(pqTo(KIM, n, tq) == 1, n .. " asked")
+end
+assert(pqTo(KIM, "Schmied G", tq) == 0, "an offline crafter is not asked")
+assert(pqTo(KIM, "Schmied F", tq) == 0, "a list of 3 days is not old")
+assert(pqTo(KIM, VULO, tq) == 1, "Vulo asked")
+assert(pqTo(KIM, FRAK, tq) == 0, "Fraktur makes none of the hits")
+assert(C(KIM, "NS.CraftersStats().searched") >= 6)
+BUS.tick(30)
+assert(crafter(KIM, VULO).seen == D, "Vulo's fresh answer taken")
+assert(C(KIM, "NS.Crafters.Asking('Vulo Sturmwind')") == false and C(KIM, "NS.Crafters.Asking('Schmied A')") == true,
+    "asking until the answer")
+-- again within the minute: nobody (the cap, a minute per crafter); Vulo is fresh now
+local tq2 = C(KIM, "STUB.clock")
+search(KIM, "kupferarm")
+BUS.tick(2)
+assert(BUS.count({ kind = "PQ", sender = KIM, from = tq2 }) == 0, "nobody again within the minute")
+-- a minute later the ones without an answer once more, Vulo not (fresh)
+BUS.tick(60)
+local tq3 = C(KIM, "STUB.clock")
+search(KIM, "kupfer")
+BUS.tick(1.5)
+assert(BUS.count({ kind = "PQ", sender = KIM, from = tq3 }) == 5 and pqTo(KIM, VULO, tq3) == 0, "the old ones again, Vulo not")
+-- inside an instance, with sharing off: no request
+BUS.tick(65)
+enter(KIM)
+local tq4 = C(KIM, "STUB.clock")
+search(KIM, "kupferarm")
+BUS.tick(2)
+assert(BUS.count({ kind = "PQ", sender = KIM, from = tq4 }) == 0, "no request from inside an instance")
+out(KIM)
+BUS.tick(20)
+C(KIM, "NS.Set('crafters.share', false)")
+search(KIM, "kupfer")
+BUS.tick(2)
+assert(BUS.count({ kind = "PQ", sender = KIM, from = tq4 }) == 0, "no request with sharing off")
+C(KIM, "NS.Set('crafters.share', true)")
 
 ---------------------------------------------------------------------------
 -- pruning at load: a crafter not heard of for 45 days is gone and pulled again when announced

@@ -46,6 +46,24 @@ end
 
 local function color(c, text) return ("|c%s%s|r"):format(c, text) end
 
+-- A search (or the chip Gilde with a search) asks the heard crafters of its hits whose list is old and who are
+-- online for a fresh one, 1 s after it was entered (Crafters.AskOld, F-035); a newer search replaces it.
+local askSeq = 0
+local function askSoon()
+    askSeq = askSeq + 1
+    local mine = askSeq
+    C_Timer.After(1, function()
+        if mine ~= askSeq or not page or not page:IsShown() or not Cr.AskOld then return end
+        local s = state()
+        if not s.search or s.search == "" then return end
+        local spells = {}
+        for _, e in ipairs(page.list and page.list.items or {}) do
+            if e.recipe then spells[#spells + 1] = e.recipe.spell end
+        end
+        Cr.AskOld(spells)
+    end)
+end
+
 local function itemText(id, fallback)
     local name, q = Pr.ItemInfo(id)
     if not name then nameMissing = true end
@@ -441,6 +459,12 @@ local function guildText(spell, offline)
     end
     local text = #shown > 0 and Cr.Text(shown, 12, true) or (GREY .. L["Gerade niemand online."] .. "|r")
     if hidden > 0 then text = text .. "\n" .. GREY .. L["%d offline"]:format(hidden) .. "|r" end
+    -- the crafters a search asked for a fresh list (F-035)
+    local asking = {}
+    for _, c in ipairs(makers) do
+        if Cr.Asking and Cr.Asking(c.name) then asking[#asking + 1] = c.name end
+    end
+    if #asking > 0 then text = text .. "\n" .. GREY .. L["fragt nach neuer Liste: %s"]:format(table.concat(asking, ", ")) .. "|r" end
     return text, true
 end
 
@@ -1859,6 +1883,7 @@ local function create(parent)
     f.search = W.SearchBox(f, P.SEARCH_W, function(text)
         state().search = text ~= "" and text or nil
         ns.Refresh()
+        askSoon()
     end, L["Rezept suchen"])
     -- the filter menu: Amisia's funnel opens a small panel with the filters under it
     f.filterBtn = W.IconButton(f, P.FILTER_BTN, { file = P.FILTER_ICON }, function()
@@ -1897,6 +1922,7 @@ local function create(parent)
         local s = state()
         s.guild = not s.guild or nil
         ns.Refresh()
+        askSoon()
     end)
     W.FitChip(f.guild)
     W.Tooltip(f.guild, L["Gilde"], function()

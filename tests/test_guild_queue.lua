@@ -4,9 +4,9 @@
 -- AcceptBattlefieldPort) and a decline, every 75 s while queued (with the window closed too); a member's state
 -- stands under its battleground (popped first), "Aufgegangen", "Beigetreten" 10 s, "Abgelehnt" 5 s; leaving the
 -- queue closes the window and sends the empty QW; with bgqueue.share off one empty QW and nothing more; a sender
--- outside the guild, a bad field and the gaps; nothing inside a battleground (the waiting QW dropped); a German
--- and an English client mean the same battleground by its number; 180 s without a QW and the offline line drop a
--- member; the class from the roster; the sound.
+-- outside the guild, a bad field and the gaps; combat holds nothing back, a boss fight's restriction does; nothing
+-- inside a battleground (the waiting QW dropped); a German and an English client mean the same battleground by its
+-- number; 180 s without a QW and the offline line drop a member; the class from the roster; the sound.
 local V, K, Li, A, P = "Vulo Sturmwind", "Kim Eisherz", "Lia Weide", "Ann Smith", "Pug"
 BUS.setGuild({ { name = V, rank = 1 }, { name = K, rank = 4 }, { name = Li, rank = 4 }, { name = A, rank = 4 },
                { name = P, rank = 4 }, { name = "Anna Berg", rank = 4 } })
@@ -91,6 +91,26 @@ r = rows(V)
 assert(r[1].id == 2 and r[1].mine and r[3].kind == "bar" and r[3].id == 3 and not r[3].mine and r[3].right == "",
     "the own bar first, then Kim's battleground")
 assert(C(V, "NS.GuildQueue.Get('" .. K .. "').class") == "WARRIOR", "the class from the roster")
+
+---------------------------------------------------------------------------
+-- combat holds nothing back; a boss fight's restriction does (the state goes once it ends)
+---------------------------------------------------------------------------
+BUS.tick(11)
+local kb = qw({ sender = K })
+C(K, "STUB.combat = true")
+queue(K, 2, "queued", "Kriegshymnenschlucht")
+BUS.tick(3)
+assert(qw({ sender = K }) == kb + 1 and has(lastQW(K), "\t2:W:"), "a change in combat goes 2 s later: " .. tostring(lastQW(K)))
+assert(C(V, "NS.GuildQueue.Get('" .. K .. "').entries[2] ~= nil"), "Vulo sees Kim waiting in his fight")
+C(K, "STUB.restricted = true; STUB.fire('ADDON_RESTRICTION_STATE_CHANGED')")
+leave(K, 2)
+BUS.tick(15)
+assert(qw({ sender = K }) == kb + 1, "the boss fight's restriction holds the change back")
+C(K, "STUB.restricted = false; STUB.fire('ADDON_RESTRICTION_STATE_CHANGED')")
+BUS.tick(1)
+assert(qw({ sender = K }) == kb + 2 and not has(lastQW(K), "\t2:W:"), "it goes once the restriction ends, still in combat: "
+    .. tostring(lastQW(K)))
+C(K, "STUB.combat = false")
 
 ---------------------------------------------------------------------------
 -- the resend every 75 s, with the window closed too
