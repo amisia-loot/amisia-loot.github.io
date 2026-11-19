@@ -73,7 +73,8 @@ local function debugLine(text, always)
         if #keep >= 20 then return end
         keep[#keep + 1] = t
     end
-    DEFAULT_CHAT_FRAME:AddMessage("|cff999999Amisia Sync: " .. text .. "|r")
+    -- what others sent shows as text: a bar of theirs could draw a texture or a clickable link
+    DEFAULT_CHAT_FRAME:AddMessage("|cff999999Amisia Sync: " .. tostring(text):gsub("|", "||") .. "|r")
 end
 
 local noted = {}   -- reason -> time of the last debug note, once a minute

@@ -1542,7 +1542,7 @@ function itemKind(it){
 }
 const BINDNAME = {BoP: 'Binds when picked up', BoE: 'Binds when equipped', BoU: 'Binds when used'};
 function bindTag(it){ return it && it.bind ? '<span class="diff" title="'+esc(BINDNAME[it.bind] || it.bind)+'">'+esc(it.bind)+'</span>' : ''; }
-function zTag(z){ return '<span class="zone '+z+(ZSOON[z]?' soon':'')+'">'+esc(ZSHORT[z]||z)+'</span>'; }
+function zTag(z){ return '<span class="zone '+esc(z)+(ZSOON[z]?' soon':'')+'">'+esc(ZSHORT[z]||z)+'</span>'; }
 function rName(r){ return '<span class="rname" style="color:'+clsVar(r.cls)+'">'+esc(r.name)+'</span>'; }
 function bossOptions(sel, withAll){
   let h = withAll ? '<option value="">Every boss</option>' : '';
@@ -1557,7 +1557,7 @@ function raiderOptions(sel, first){
   const rs = [...state.raiders].sort((a,b)=>a.name.localeCompare(b.name));
   return (first||'') + rs.map(r => '<option value="'+esc(r.id)+'"'+(r.id===sel?' selected':'')+'>'+esc(r.name)+' · '+esc(r.cls)+'</option>').join('');
 }
-function classOptions(sel){ return CLASSES.concat(sel && !CLASSES.includes(sel) ? [sel] : []).map(c => '<option'+(c===sel?' selected':'')+'>'+c+'</option>').join(''); }
+function classOptions(sel){ return CLASSES.concat(sel && !CLASSES.includes(sel) ? [sel] : []).map(c => '<option'+(c===sel?' selected':'')+'>'+esc(c)+'</option>').join(''); }
 
 /* ---------------- dialogs (browser alert/confirm are blocked inside the artifact frame) ---------------- */
 let dlgResolve = null, toastTimer = null;
@@ -1693,7 +1693,7 @@ async function renderAccounts(){
     const isOw = a.role ? a.role === 'owner' : ids.includes((ownerEmail||'').toLowerCase());
     const isEd = a.role ? a.role === 'editor' : ids.some(x => editorSet.has(x));
     const label = esc(a.name || a.email) + (a.email && a.name ? ' <span class="faint">' + esc(a.email) + '</span>' : '');
-    const role = isOw ? '<span class="st ok">owner</span>' : isEd ? '<span class="st ok">editor</span>' : '<button class="btn sm ghost" data-mkeditor="' + esc(a.name || a.email) + '">Make editor</button>';
+    const role = isOw ? '<span class="st ok">owner</span>' : isEd ? '<span class="st ok">editor</span>' : (a.email ? '<button class="btn sm ghost" data-mkeditor="' + esc(a.email) + '">Make editor</button>' : '<span class="faint" title="no confirmed e-mail: add the Discord name by hand">-</span>');
     // link the account to a character with the rank Raider or Trial
     const m = a.id ? MEMBERS.find(x => x.user_id === a.id) : null, gone = m && !raiderById(m.raider);
     const link = !a.id ? '' : '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;width:100%;padding:2px 0 8px;border-bottom:1px solid var(--line)">'
@@ -1754,9 +1754,9 @@ function renderOnline(){
   }
   const offs = Object.values(officers).sort((a, b) => (a.role === 'owner' ? 0 : 1) - (b.role === 'owner' ? 0 : 1) || a.name.localeCompare(b.name));
   const bar = $('#onlineBar'); bar.hidden = !PRESENCE.length;
-  bar.innerHTML = offs.map(o => '<span class="onl" title="'+esc(o.name)+' is on the page now"><i></i>'+esc(o.name)+'<em>'+o.role+'</em></span>').join('')
+  bar.innerHTML = offs.map(o => '<span class="onl" title="'+esc(o.name)+' is on the page now"><i></i>'+esc(o.name)+'<em>'+esc(o.role)+'</em></span>').join('')
     + (viewers ? '<span class="onl v" title="signed-in people on the page without editor rights"><i></i>'+viewers+' viewer'+(viewers===1?'':'s')+'</span>' : '');
-  $('#onlineList').innerHTML = (offs.length ? offs.map(o => esc(o.name)+' <span class="faint">'+o.role+(o.n > 1 ? ' ×'+o.n : '')+'</span>').join(', ') : '<span class="faint">no officer on the page</span>') + (viewers ? ' · '+viewers+' signed-in viewer'+(viewers===1?'':'s') : '');
+  $('#onlineList').innerHTML = (offs.length ? offs.map(o => esc(o.name)+' <span class="faint">'+esc(o.role)+(o.n > 1 ? ' ×'+o.n : '')+'</span>').join(', ') : '<span class="faint">no officer on the page</span>') + (viewers ? ' · '+viewers+' signed-in viewer'+(viewers===1?'':'s') : '');
   document.querySelectorAll('.pres').forEach(el => {
     const id = el.dataset.pres;
     const on = id && id === (ownerEmail||'').toLowerCase() ? offs.some(o => o.role === 'owner') : offs.some(o => o.name.toLowerCase() === id);
@@ -2569,7 +2569,7 @@ async function loadWishes(){
   renderAll();
   if (!wishChannel) wishChannel = SUPA.channel('wishes').on('postgres_changes', {event: '*', schema: 'public', table: 'wishlist'}, () => loadWishes()).subscribe();
 }
-function prioTag(p){ return '<span class="prio p' + p + '">' + (PRIO[p] || 'Medium') + '</span>'; }
+function prioTag(p){ return '<span class="prio p' + esc(p) + '">' + esc(PRIO[p] || 'Medium') + '</span>'; }
 function renderWishForm(){
   const kr = $('#wfRaider').value, kb = $('#wfBoss').value, ki = $('#wfItem').value;
   $('#wfRaider').innerHTML = raiderOptions(kr, '<option value="">Choose a raider…</option>');
@@ -3655,7 +3655,7 @@ function matStock(id){
 function bankLine(id){
   const b = state.bank;
   if (!b || !b.items || !(id in b.items)) return '';
-  return '<div class="counted" title="Counted in the guild bank by the Amisia addon. Loot deposited or handed out after '+esc(fmtShort(b.date)+' '+b.time)+' is not in this number.">Counted in the bank: <b>'+b.items[id]+'</b> · '+esc(fmtShort(b.date))+' '+esc(b.time)+' · '+esc(b.by)
+  return '<div class="counted" title="Counted in the guild bank by the Amisia addon. Loot deposited or handed out after '+esc(fmtShort(b.date)+' '+b.time)+' is not in this number.">Counted in the bank: <b>'+esc(b.items[id])+'</b> · '+esc(fmtShort(b.date))+' '+esc(b.time)+' · '+esc(b.by)
     + (bankIncomplete(b) ? ' · <span class="warn">'+(b.total > b.tabs ? (b.total - b.tabs)+' tab'+(b.total - b.tabs === 1 ? '' : 's')+' hidden' : 'not every tab loaded')+'</span>' : '') + '</div>';
 }
 // The need the officers set in the addon against the last count: short (red) below the minimum,
@@ -3677,9 +3677,9 @@ function needInfo(id){
 function needLine(id){
   const n = needInfo(id);
   if (!n) return '';
-  const want = (n.min ? 'at least <b>' + n.min + '</b>' : '') + (n.target ? (n.min ? ', ' : '') + 'target <b>' + n.target + '</b>' : '');
-  const where = n.level === 'low' ? '<span class="low"><b>' + n.short + '</b> missing</span>' : n.level === 'tgt' ? '<span class="tgt"><b>' + n.short + '</b> to the target</span>' : n.level === 'ok' ? '<span class="ok">enough</span>' : 'not counted yet';
-  return '<div class="need" title="' + esc(n.pledges.map(p => p.name + ': ' + p.count).join(', ')) + '">Guild needs ' + want + ' · ' + where + (n.pledged ? ' · <b>' + n.pledged + '</b> pledged' : '') + '</div>';
+  const want = (n.min ? 'at least <b>' + esc(n.min) + '</b>' : '') + (n.target ? (n.min ? ', ' : '') + 'target <b>' + esc(n.target) + '</b>' : '');
+  const where = n.level === 'low' ? '<span class="low"><b>' + esc(n.short) + '</b> missing</span>' : n.level === 'tgt' ? '<span class="tgt"><b>' + esc(n.short) + '</b> to the target</span>' : n.level === 'ok' ? '<span class="ok">enough</span>' : 'not counted yet';
+  return '<div class="need" title="' + esc(n.pledges.map(p => p.name + ': ' + p.count).join(', ')) + '">Guild needs ' + want + ' · ' + where + (n.pledged ? ' · <b>' + esc(n.pledged) + '</b> pledged' : '') + '</div>';
 }
 // The guild bank log the addon exported, newest first, filtered by name or item.
 function renderBankLog(){
@@ -3692,7 +3692,7 @@ function renderBankLog(){
   const rows = list.filter(e => !q || (e.name + ' ' + (e.item ? anyItemName(e.item) : 'gold')).toLowerCase().includes(q)).slice(0, 200);
   $('#matLogBody').innerHTML = rows.map(e => '<tr><td class="muted" style="white-space:nowrap">' + esc(new Date(e.hi * 1000).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})) + '</td>'
     + '<td>' + esc(e.name) + '</td><td>' + esc(KIND[e.kind] || e.kind) + ' · ' + (e.item ? esc(anyItemName(e.item)) : 'gold') + '</td>'
-    + '<td class="num">' + (e.item ? e.count : esc(money(e.count))) + '</td><td class="muted">' + (e.tab ? 'Tab ' + e.tab : 'Money') + (e.kind === 'move' ? ' (' + e.t1 + ' → ' + e.t2 + ')' : '') + '</td></tr>').join('')
+    + '<td class="num">' + (e.item ? esc(e.count) : esc(money(e.count))) + '</td><td class="muted">' + (e.tab ? 'Tab ' + esc(e.tab) : 'Money') + (e.kind === 'move' ? ' (' + esc(e.t1) + ' → ' + esc(e.t2) + ')' : '') + '</td></tr>').join('')
     || '<tr><td colspan="5"><div class="empty" style="padding:24px"><b>Nothing matches</b>Try another name or item.</div></td></tr>';
 }
 function matOptions(sel){ return matsHere().map(m => '<option value="'+esc(m.id)+'"'+(m.id===Number(sel)?' selected':'')+'>'+esc(m.name)+'</option>').join(''); }
@@ -3703,7 +3703,7 @@ function renderMats(){
     $('#matStock').innerHTML = mats.map(m => { const st = matStock(m.id); return '<div class="mat">'+icoHTML(ITEM[m.id])+'<div><div class="nm">'+esc(m.name)+'</div><div class="nums"><span><b>'+st.looted+'</b>looted in raids</span></div>'+bankLine(m.id)+'</div></div>'; }).join('');
     return;
   }
-  $('#matStock').innerHTML = mats.length ? mats.map(m => { const s = matStock(m.id); return '<div class="mat">'+icoHTML(ITEM[m.id])+'<div><div class="nm">'+esc(m.name)+'</div><div class="nums"><span class="bank"><b>'+s.bank+'</b>in the bank</span><span><b>'+s.looted+'</b>looted</span><span><b>'+s.handed+'</b>handed out</span><span class="open"><b>'+s.open+'</b>requested</span></div>'+bankLine(m.id)+needLine(m.id)+'</div></div>'; }).join('')
+  $('#matStock').innerHTML = mats.length ? mats.map(m => { const s = matStock(m.id); return '<div class="mat">'+icoHTML(ITEM[m.id])+'<div><div class="nm">'+esc(m.name)+'</div><div class="nums"><span class="bank"><b>'+esc(s.bank)+'</b>in the bank</span><span><b>'+esc(s.looted)+'</b>looted</span><span><b>'+esc(s.handed)+'</b>handed out</span><span class="open"><b>'+esc(s.open)+'</b>requested</span></div>'+bankLine(m.id)+needLine(m.id)+'</div></div>'; }).join('')
     : '<div class="empty" style="grid-column:1/-1"><b>No tracked materials</b>No tracked materials for World of Warcraft Forever yet. The TBC counts are in the TBC archive. The Amisia addon learns them on its own: trade goods that drop in a raid and are looted or handed out there show up here after the next import.</div>';
   for (const id of ['#matItem','#mqItem','#mgItem','#msItem']) { const keep = $(id).value; $(id).innerHTML = (id === '#matItem' ? '<option value="">Every material</option>' : '') + matOptions(keep); }
   for (const id of ['#mqRaider','#mgRaider']) { const keep = $(id).value; $(id).innerHTML = raiderOptions(keep, '<option value="">Choose a raider…</option>'); }
@@ -3743,7 +3743,7 @@ function renderMats(){
         + '<td class="muted" style="white-space:nowrap">'+date+(r.received_at && r.kind === 'request' ? '<div class="faint" style="font-size:12px">'+(r.status === 'declined' ? 'declined ' : 'got ')+new Date(r.received_at).toLocaleDateString('en-GB', {day: 'numeric', month: 'short'})+'</div>' : '')+'</td>'
         + '<td>'+(rd ? rName(rd) : r.raider_name ? '<span class="rname">'+esc(r.raider_name)+'</span>' : '<span class="faint">—</span>')+(r.kind === 'handout' ? '<span class="kind">handout</span>' : r.kind === 'stock' ? '<span class="kind">stock</span>' : '')+'</td>'
         + '<td><span class="item">'+icoHTML(ITEM[r.item])+'<span class="nm q'+(ITEM[r.item] ? ITEM[r.item].q || 4 : 4)+'">'+esc(matName(r.item))+'</span></span></td>'
-        + '<td class="num">'+(r.qty > 0 && r.kind === 'stock' ? '+' : '')+r.qty+'</td>'
+        + '<td class="num">'+(r.qty > 0 && r.kind === 'stock' ? '+' : '')+esc(r.qty)+'</td>'
         + '<td class="note">'+esc(r.purpose || '')+(r.reply ? '<div class="faint" style="font-size:12px;font-style:normal">Reply: '+esc(r.reply)+'</div>' : '')+'</td>'
         + '<td class="muted">'+esc(r.requested_name || '')+(r.received_by && r.status !== 'open' && r.kind === 'request' ? '<div class="faint" style="font-size:12px">'+(r.status === 'declined' ? 'declined by ' : 'ticked by ')+esc(r.received_by)+'</div>' : '')+'</td>'
         + '<td class="acts">'+acts+'</td></tr>';

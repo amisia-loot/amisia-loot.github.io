@@ -38,10 +38,15 @@ local function splitCsv(line, delim)
     return out
 end
 
+-- The lines of a pasted list, each cut to MAX_LINE bytes and trimmed in linear time ("^%s*(.-)%s*$" is
+-- quadratic on a long run of spaces: one crafted line of 100 KB froze the client for a minute).
+local MAX_LINE = 2000
 local function splitLines(text)
     local out = {}
     for line in (text or ""):gmatch("[^\r\n]+") do
-        line = line:match("^%s*(.-)%s*$")
+        line = line:sub(1, MAX_LINE)
+        local first = line:find("%S")
+        line = first and line:match(".*%S", first) or ""
         if line ~= "" then out[#out + 1] = line end
     end
     return out
@@ -72,6 +77,7 @@ local MAX_CODE = 24576        -- characters of a pasted code
 local MAX_JSON = 262144       -- bytes unpacked
 local MAX_DEPTH = 20          -- nesting of the JSON (the code has 5); the client's reader is not asked deeper
 local MAX_RESERVES = 2000
+local MAX_TEXT = 65536        -- bytes of a pasted list (a raid's list is a few KB; the code has its own cap)
 local MAX_NAME, MAX_NOTE = 48, 60
 local ZLIB = 1                -- Enum.CompressionMethod.Zlib (in game 2026-10-11)
 
@@ -264,7 +270,9 @@ function ns.ParseSoftRes(text)
     local function add(item, name)
         if not item or not name then return false end
         -- what the raid can be sent (F-107): item ids 1-9999999, names without digits or separators
-        if item < 1 or item > 9999999 or item % 1 ~= 0 or #name > MAX_NAME or name:find("[%d,;:|]") then return false end
+        if item < 1 or item > 9999999 or item % 1 ~= 0 or #name > MAX_NAME or name:find("[%d,;:|%c]") then return false end
+        -- every kind of list keeps to the code's cap: the saved list must stay loadable (D-151)
+        if total >= MAX_RESERVES then return false end
         name = aliased(name, renamed)
         sets[item] = sets[item] or {}
         total = total + 1
@@ -287,6 +295,10 @@ function ns.ParseSoftRes(text)
         if extra.err and extra.err ~= "empty" then byItem, count, times, total, renamed = {}, 0, {}, 0, {} end
         for _, names in pairs(byItem) do table.sort(names) end
         return byItem, count, bad, times, total, renamed, extra
+    end
+    if type(text) == "string" and #text > MAX_TEXT then
+        extra.err = "big"
+        return {}, 0, bad, {}, 0, {}, extra
     end
     local all = splitLines(text)
     if #all > 0 and all[1]:lower():gsub("%s", ""):find("itemid", 1, true) then
@@ -1269,7 +1281,7 @@ function ns.SoftResPreview(text)
     local raw = loaded and loaded.raw or ""
     local out = { head = head, label = label, raid = IsInRaid() and true or false, missing = {}, hard = {}, rows = {},
                   reservers = c.reservers,
-                  same = loaded ~= nil and (text == nil or text:match("^%s*(.-)%s*$") == raw:match("^%s*(.-)%s*$")) }
+                  same = loaded ~= nil and (text == nil or trim(text) == trim(raw)) }
     for _, name in ipairs(c.missing) do out.missing[#out.missing + 1] = { name = name, class = classes[name:lower()] } end
     for id, h in pairs(type(list.hard) == "table" and list.hard or {}) do
         out.hard[#out.hard + 1] = { item = id, to = h.to or "", note = h.note or "", sort = ns.ItemName(id) }

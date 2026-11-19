@@ -240,7 +240,9 @@ function ns.ParsePointsSite(text)
                 end
                 sys = sys:lower()
                 if not SYSTEMS[sys] then return nil, HEAD_FAIL end
-                res.game, res.date, res.sys, res.asOf, head, read = game, day, sys, tonumber(asOf) or 0, true, 1
+                -- an epoch of at most 10 digits: 400 digits would be inf, which the saved file cannot hold
+                local stamp = #asOf <= 10 and tonumber(asOf) or 0
+                res.game, res.date, res.sys, res.asOf, head, read = game, day, sys, stamp, true, 1
             elseif line == "#END" then
                 break
             elseif read >= MAX_LINES then

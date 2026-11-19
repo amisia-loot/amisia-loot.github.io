@@ -9,7 +9,9 @@ local L = ns.L
 -- (UnitName's second value). A dash stays: it belongs to the surname.
 function ns.FullName(name, surname)
     if type(name) ~= "string" then return nil end
-    name = name:match("^%s*(.-)%s*$"):gsub("%s+", " ")
+    -- trimmed in linear time ("^%s*(.-)%s*$" is quadratic on a long run of spaces in a pasted name)
+    local first = name:find("%S")
+    name = (first and name:match(".*%S", first) or ""):gsub("%s+", " ")
     if type(surname) == "string" and surname ~= "" and not name:find(" ", 1, true) then
         name = name .. " " .. surname
     end

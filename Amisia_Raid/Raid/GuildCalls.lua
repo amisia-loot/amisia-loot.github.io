@@ -51,6 +51,8 @@ local VALID_ROLE = { T = true, H = true, S = true }
 local calls = {}             -- [lower sender] = another's call
 local mine = {}              -- [lower creator] = { id, role, at }: the own sign-ups
 local announced = {}         -- ["lower sender:id"] = true: the chat line went
+local saidAt = {}            -- [lower sender] = time of its last chat line: one a sender per CHAT_GAP
+local CHAT_GAP = 300
 local focus                  -- the lower sender the page shows first (a click on [Anmelden])
 local lastEA                 -- GetTime() of the last own EA to the guild
 local announceDue            -- GetTime() when the own call goes to the guild next
@@ -701,7 +703,12 @@ local function take(name, f)
     local key = low .. ":" .. c.id
     if fresh and not announced[key] then
         announced[key] = true
-        if c.state == "O" and ns.Get("guildCalls.chat") ~= false then ns.msg(GC.ChatLine(c)) end
+        -- a new call id every 10 s would else put a line into every member's chat each time
+        local t = now()
+        if c.state == "O" and ns.Get("guildCalls.chat") ~= false and not (saidAt[low] and t - saidAt[low] < CHAT_GAP) then
+            saidAt[low] = t
+            ns.msg(GC.ChatLine(c))
+        end
     end
     changed()
 end

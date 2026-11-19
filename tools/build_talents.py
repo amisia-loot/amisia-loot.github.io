@@ -264,7 +264,8 @@ def _conditional(text, i):
 
 
 def _eval(expr):
-    if not re.fullmatch(r'[0-9.+\-*/() e]+', expr or ''):
+    # "**" (a power) is refused: "9**9**9" from a tampered table would never finish
+    if not re.fullmatch(r'[0-9.+\-*/() e]+', expr or '') or '**' in expr or len(expr) > 200:
         return None
     try:
         v = eval(expr, {'__builtins__': {}}, {})  # noqa: S307 - digits and operators only

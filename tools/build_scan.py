@@ -100,14 +100,20 @@ BIND_NAME = {1: 'BoP', 2: 'BoE', 3: 'BoU'}
 
 
 # ---------------------------------------------------------------- SavedVariables
-def lua_to_py(v):
-    """Recursively converts a lupa table: 1..n arrays become lists, everything else dicts."""
+MAX_DEPTH = 60   # AmisiaDB nests a few levels; a loop or a crafted file goes far deeper
+
+def lua_to_py(v, depth=0):
+    """Recursively converts a lupa table: 1..n arrays become lists, everything else dicts. Deeper than
+    MAX_DEPTH (a table that holds itself, a file written to loop) stops with ValueError instead of
+    running out of stack."""
     if not hasattr(v, 'items'):
         return v
+    if depth > MAX_DEPTH:
+        raise ValueError('the tables nest deeper than %d levels' % MAX_DEPTH)
     keys = list(v.keys())
     if keys and all(isinstance(k, int) for k in keys) and sorted(keys) == list(range(1, len(keys) + 1)):
-        return [lua_to_py(v[k]) for k in range(1, len(keys) + 1)]
-    return {k: lua_to_py(v[k]) for k in keys}
+        return [lua_to_py(v[k], depth + 1) for k in range(1, len(keys) + 1)]
+    return {k: lua_to_py(v[k], depth + 1) for k in keys}
 
 
 # A SavedVariables file is Lua the client wrote, but it comes from another machine: it runs in a
@@ -123,6 +129,8 @@ for _, k in ipairs({ "os", "io", "require", "package", "debug", "dofile", "loadf
     _G[k] = nil
 end
 return function(src, name, budget)
+    -- a precompiled chunk (starts with ESC) is refused: Lua 5.1 bytecode can break out of the sandbox
+    if src:byte(1) == 27 then return nil, "binary chunk refused" end
     local f, err = loadstring(src, "@" .. name)
     if not f then return nil, tostring(err) end
     local env = {}
@@ -138,11 +146,16 @@ return function(src, name, budget)
 end
 '''
 SV_BUDGET = 200000000   # Lua instructions
+SV_MAX_BYTES = 64 * 1024 * 1024   # a real file is a few MB; a bigger one is refused before it runs
 
 
 def run_sv(text, name, budget=SV_BUDGET):
     """Runs the text of a SavedVariables file in the sandbox. Returns (its globals as a Lua table, None)
     or (None, the Lua error)."""
+    if text.startswith('\x1b'):
+        return None, 'binary chunk refused'
+    if len(text) > SV_MAX_BYTES:
+        return None, f'the file is larger than {SV_MAX_BYTES // (1024 * 1024)} MB'
     from lupa.lua51 import LuaRuntime
     lua = LuaRuntime(register_eval=False, register_builtins=False, unpack_returned_tuples=True)
     run = lua.execute(SV_SANDBOX)

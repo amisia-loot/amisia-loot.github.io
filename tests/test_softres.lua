@@ -128,3 +128,20 @@ do
     assert(count == 2 and #bad == 0, "two reservations: " .. tostring(count) .. ", bad " .. #bad)
     assert(byItem[32235] and byItem[32235][1] == "Fraktur" and byItem[32837][1] == "Anna", "names from Raider Name")
 end
+
+-- security (2026-11-19): a crafted paste neither freezes the client nor fills the saved list
+do
+    local t0 = os.clock()
+    local _, n = NS.ParseSoftRes("Anna" .. (" "):rep(100000) .. "32235")
+    assert(os.clock() - t0 < 2, "a long line of spaces is read in linear time")
+    assert(n == 0, "a line cut at 2000 bytes is no reservation")
+    local big = {}
+    for i = 1, 3000 do big[#big + 1] = "Anna" .. string.char(97 + i % 26) .. string.char(97 + math.floor(i / 26) % 26) .. " " .. (1000 + i) end
+    local text = table.concat(big, "\n")
+    local _, count = NS.ParseSoftRes(text)
+    assert(count <= 2000, "at most 2000 reservations: " .. count)
+    local _, _, _, _, _, _, extra = NS.ParseSoftRes(("Anna 32235\n"):rep(7000))
+    assert(extra.err == "big", "a paste over 64 KB is refused")
+    local _, c2 = NS.ParseSoftRes("An\1na 32235")
+    assert(c2 == 0, "a name with a control character is refused")
+end

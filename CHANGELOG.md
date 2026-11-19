@@ -5,6 +5,25 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(security): a crafted paste no longer freezes the client or fills the saved data (F-091, F-059)
+
+    Soft-reserve lists, site blocks and pasted names are trimmed in linear time and cut per line, a pasted list
+    over 64 KB is refused, every kind of list keeps to 2000 reservations, and names with control characters are
+    refused. A points block's time stamp is limited to an epoch, so an endless number can no longer reach the
+    saved file.
+
+- fix(security): text from other players shows as text in the sync debug line; one call line per sender per 5 minutes (F-211)
+
+    With "sync.debug" on, a bar in another player's message could draw a texture or a clickable link in the chat.
+    A guild member sending a new call every few seconds now puts at most one line in every member's chat per
+    five minutes.
+
+- fix(site): every value of the saved ledger is escaped; "Make editor" uses the confirmed e-mail (F-058)
+
+    Bank log, needs, material counts, the online bar and the class and priority tags escape what they show, so a
+    tampered ledger cannot run script on the page. "Make editor" stored the display name ("Member" for e-mail
+    accounts), which matched whoever owned that Discord name; it now stores the confirmed e-mail only.
+
 - feat(dungeons): bosses without an encounter get their kill tick once seen dead or looted (F-226)
 
     Ruuzlu (Zul'Farrak) and Death Knight Darkreaver (Scholomance) have no encounter in the client, so the game

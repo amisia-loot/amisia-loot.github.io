@@ -257,6 +257,7 @@ local S = {}
 -- runs the map constants file; MAP for the data files (an unknown key gives nil, so its
 -- coordinates fall away instead of failing the file)
 function S.maps(src)
+    assert(src:byte(1) ~= 27, "binary chunk refused")
     local f = assert(loadstring(src, "@maps.lua"))
     -- MAP: the shared table the newer file (since October 2026) fills from its local _MAP; the older
     -- one assigns MAP itself
@@ -275,6 +276,7 @@ function S.mapNames()
 end
 -- the item export (_.ItemDB = {...}): runs with an empty namespace and nothing else
 function S.itemdb(src)
+    assert(src:byte(1) ~= 27, "binary chunk refused")
     local f = assert(loadstring(src, "@ItemDB.lua"))
     local ienv = { _ = {} }
     setfenv(f, ienv)
@@ -569,6 +571,8 @@ function S.new() return { insts = {}, quests = {}, npcs = {}, objs = {}, items =
 -- error text when the file failed (what it recorded before still counts)
 function S.run(src, name, out)
     rec, OUT = {}, out
+    -- a precompiled chunk is refused: Lua 5.1 bytecode can break out of the sandbox
+    if src:byte(1) == 27 then return "binary chunk refused" end
     local f, err = loadstring(src, "@" .. name)
     if not f then return tostring(err) end
     setfenv(f, env)

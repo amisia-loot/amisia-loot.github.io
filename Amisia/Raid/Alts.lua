@@ -210,7 +210,10 @@ function ns.SiteBlocks(text)
     local out, cur, buf = {}, nil, nil
     if type(text) ~= "string" then return out end
     for raw in text:gmatch("[^\r\n]+") do
-        local line = raw:gsub("^\239\187\191", ""):match("^%s*(.-)%s*$")
+        -- cut and trimmed in linear time ("^%s*(.-)%s*$" is quadratic on a long run of spaces)
+        local line = raw:sub(1, 2000):gsub("^\239\187\191", "")
+        local first = line:find("%S")
+        line = first and line:match(".*%S", first) or ""
         local kind = line:match("^#AMISIA%-WL%s") and "wl" or line:match("^#AMISIA%-ALTS%s") and "alts"
             or line:match("^#AMISIA%-LC%s") and "lc" or line:match("^#AMISIA%-PTS%s") and "pts"
             or line:match("^#AMISIA%-RAID%s") and "raid" or nil
