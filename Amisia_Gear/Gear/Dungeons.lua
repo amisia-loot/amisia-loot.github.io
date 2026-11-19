@@ -2340,10 +2340,27 @@ function D.JournalBosses(dkey, bosses)
                 b = { name = name, npc = npc, items = {}, perRun = 0, known = D.KnownLoot(dkey, name) } }
         end
     end
-    local big = #order + 1
+    -- after the game's order: the bosses the client has no encounter of (Ruuzlu, Darkreaver), then the
+    -- rares (DungeonData's rares), then drops of an NPC without a name, the "Trash" last
+    local rare = {}
+    for _, r in ipairs(f and type(f.rares) == "table" and f.rares or {}) do
+        if type(r) == "table" then
+            if type(r[1]) == "number" then rare[r[1]] = true end
+            local k = nameKey(r[2])
+            if k then rare[k] = true end
+        end
+    end
+    local function tier(x)
+        if x.rank then return 0 end
+        if x.name == "Trash" then return 4 end
+        if (x.npc and rare[x.npc]) or rare[nameKey(x.name) or ""] then return 2 end
+        if type(x.name) == "string" and x.name:match("^NPC %d+$") then return 3 end
+        return 1
+    end
+    for _, x in ipairs(out) do x.tier = tier(x) end
     table.sort(out, function(x, y)
-        local rx, ry = x.rank or big, y.rank or big
-        if rx ~= ry then return rx < ry end
+        if x.tier ~= y.tier then return x.tier < y.tier end
+        if x.rank and y.rank and x.rank ~= y.rank then return x.rank < y.rank end
         return x.at < y.at
     end)
     return out

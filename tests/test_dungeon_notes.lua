@@ -158,6 +158,12 @@ assert(not D.pathView:IsShown() and D.bossView:IsShown(), "a boss asked for leav
 local chosen
 for _, h in ipairs(D.bossView.list.items) do if h.on then chosen = h end end
 assert(chosen and chosen.n == 2 and chosen.rank == 2, "the bar's boss 2 is the second boss: " .. tostring(chosen and chosen.text))
+-- after the game's bosses: the ones without an encounter (Ruuzlu), then the rares, then unnamed NPCs
+NS.ShowDungeon("zf", "bosses")
+local at = {}
+for i, h in ipairs(D.bossView.list.items) do at[h.text] = at[h.text] or i end
+assert(at["Ruuzlu"] and at["Chief Ukorz Sandscalp"] < at["Ruuzlu"] and at["Ruuzlu"] < at["Sandarr Dunereaver"]
+    and at["Sandarr Dunereaver"] < at["NPC 5650"], "boss without encounter before the rares, unnamed last")
 NS.ShowDungeon("thanes", "note")
 local v = D.noteView
 assert(v.area.box:GetText() == "Erst links die Goblins\nRhahk allein ziehen", "the field holds the note")

@@ -9,7 +9,7 @@ Writes two lazy data files of the addon:
   npcs ask for. Q: every quest id of the client table QuestV2 (as ranges "<step>.<length>", base 36,
   steps from the end of the previous range). NA: phase A of the NPC scan, every NPC id the shipped data
   names (the bosses of DungeonData.lua and BisData.lua, the quest givers of QuestData.lua, the rares,
-  mobs and vendors of GearData.lua, the NPC points "U:<id>" of MapData.lua; "<step>,<step>", base 36,
+  mobs and vendors of GearData.lua and the NPCs of its unnamed drops ("NPC <id>"), the NPC points "U:<id>" of MapData.lua; "<step>,<step>", base 36,
   steps from the previous id). NB: phase B, the id ranges where Forever's new NPCs live: the ids of
   that data from FOREVER_MIN up, in clusters no more than GAP apart, each padded by PAD ({from, to}).
   The data files are read as the addon reads them, so this build runs after the others.
@@ -24,6 +24,7 @@ Without QuestV2 the quest list is empty; without a scan the names file holds no 
 import argparse
 import csv
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -143,6 +144,9 @@ def data_npcs(data=DATA):
                 add(r[6], 'mob')
             elif kind in ('V', 'P'):
                 add(r[7], 'vendor')
+            elif kind == 'D' and isinstance(r[3], str) and re.match(r'^NPC \d+$', r[3]):
+                # a drop of an NPC no data names ("NPC 5650" on the dungeon page): the scan learns its name
+                add(r[3][4:], 'unnamed drop')
     ns = _load(os.path.join(data, 'MapData.lua'))
     if ns is not None and ns.MAP is not None:
         for k in _keys(ns.MAP.P):

@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(dungeons): bosses without an encounter stand right after the game's bosses, before rares and trash (F-154)
+
+    Ruuzlu (Zul'Farrak) and Death Knight Darkreaver (Scholomance) are listed as bosses after the game's own order,
+    then the rare mobs, then loot of an NPC without a name, the trash last. The NPC scan now also asks for the
+    names of those unnamed NPCs ("NPC 5650"), so the page shows their names after the next scan.
+
 ## [v2.101.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.101.0) (2026-11-18)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.100.6...v2.101.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

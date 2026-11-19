@@ -208,6 +208,8 @@ def test_phase_a_holds_the_npcs_of_the_data():
     assert 644 in found and 'dungeon boss' in found[644]       # Rhahk'Zor, the Deadmines
     assert len(found) > 1500
     assert any('quest giver' in s for s in found.values()) and any('rare' in s for s in found.values())
+    # a drop of an NPC no data names ("NPC 5650" in Zul'Farrak): the scan learns its name
+    assert 5650 in found and 'unnamed drop' in found[5650]
 
 
 # ---------------------------------------------------------------- the builders using the scans
