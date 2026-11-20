@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.102.3](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.102.3) (2026-11-20)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.102.2...v2.102.3) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(gear): epic world drops show in the planner's suggestions, marked and ranked lower (F-149)
 
     An epic item that only drops at random in the world (and perhaps sells in the auction house), such as
