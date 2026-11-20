@@ -506,6 +506,7 @@ local function walk(v, ctx, depth)
                          classes = classMask(t.classes), lvl = type(t.lvl) == "number" and t.lvl or nil,
                          pre = pre, sqreq = type(t.sourceQuestNumRequired) == "number" and t.sourceQuestNumRequired or nil,
                          alt = ids(t.altQuests), raceMask = c.raceMask, skill = skillOf(t.requireSkill),
+                         learnedAt = type(t.learnedAt) == "number" and t.learnedAt or nil,
                          breadcrumb = t.isBreadcrumb == true, repeatable = t.repeatable == true or t.isDaily == true,
                          maps = mapList(t.maps), sitems = sitems, qitems = qitems, qnpcs = qnpcs, wing = ctx.wing })
         c.quest = id
@@ -543,6 +544,9 @@ local function walk(v, ctx, depth)
         emit("fps", { id = id, file = ctx.file, zone = ctx.zone, npc = ids(t.cr)[1], pts = points(t), races = c.races })
     elseif kind == "prof" then
         c.prof = NAMED[id] or ctx.prof
+    elseif (kind == "recipe" or kind == "r") and type(id) == "number" and ctx.quest then
+        -- a recipe the quest teaches itself (recipe(9957) or r(11452) in its groups: "The Old Ways")
+        emit("recipes", { id = id, file = ctx.file, quest = ctx.quest })
     elseif kind == "o" and type(id) == "number" then
         emit("objs", { id = id, file = ctx.file, zone = ctx.zone, pts = points(t), maps = mapList(t.maps) })
         c.obj = id
@@ -566,7 +570,7 @@ local function walk(v, ctx, depth)
     for _, x in ipairs(t) do walk(x, c, depth + 1) end
 end
 
-function S.new() return { insts = {}, quests = {}, npcs = {}, objs = {}, items = {}, fps = {}, encs = {} } end
+function S.new() return { insts = {}, quests = {}, npcs = {}, objs = {}, items = {}, fps = {}, encs = {}, recipes = {} } end
 -- runs one data file and walks what it handed to root(); the records go into out. Returns the
 -- error text when the file failed (what it recorded before still counts)
 function S.run(src, name, out)
@@ -870,8 +874,10 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
      'instances': {ATT instance id: {'name', 'area', 'maps', 'points', 'file', 'old', 'mapID'}},
      'quests': {id: {'name', 'minLevel', 'faction', 'classes', 'givers', 'giver', 'points', 'objects',
                      'startItem', 'inside', 'zone', 'inst', 'pre', 'sqreq' (how many of pre are needed:
-                     0 all, else ATT's sourceQuestNumRequired), 'alt', 'rewards', 'file', 'old',
+                     0 all, else ATT's sourceQuestNumRequired), 'alt', 'rewards', 'recipes' (the
+                     recipe spells it teaches itself: recipe() or r() in its groups), 'file', 'old',
                      'races' (mask, bit race id - 1, 0 any of the faction), 'skill' (skill line or 0),
+                     'learnedAt' (the profession rank it asks, ATT's learnedAt, or 0),
                      'breadcrumb', 'repeatable', 'maps' (uiMapIDs the data names for the quest),
                      'startItems' (the items that start it), 'items' (the items it works with, F-173:
                      its own provider items, qi/qis, the provider items of its objectives; sorted),
@@ -964,6 +970,7 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
                'pre': [int(p) for p in r.get('pre') or []], 'sqreq': _int(r.get('sqreq')) or 0, 'alt': [int(p) for p in r.get('alt') or []],
                'rewards': [], 'file': r['file'], 'old': old(r['file']),
                'races': int(r.get('raceMask') or 0), 'skill': _int(r.get('skill')) or 0,
+               'learnedAt': _int(r.get('learnedAt')) or 0, 'recipes': [],
                'breadcrumb': bool(r.get('breadcrumb')), 'repeatable': bool(r.get('repeatable')),
                'maps': [int(m) for m in r.get('maps') or []],
                'startItems': [int(i) for i in r.get('sitems') or []],
@@ -1077,6 +1084,12 @@ def load(base=ATT_CACHE, items=True, wago=None, dirs=DATA_DIRS):
         elif hdr == 'ZONE_DROPS' or r.get('crs'):
             zone_drops.append((item, [int(c) for c in r.get('crs') or []], inst, zone, o))
             drop_points.setdefault(item, []).extend(pts(r.get('pts')))
+    # the recipes a quest teaches itself (recipe(spell) or r(spell) in its groups), as the items of its rewards
+    for r in raw.get('recipes') or []:
+        q = quests.get(_int(r.get('quest')))
+        spell = _int(r.get('id'))
+        if q is not None and spell and q['old'] == old(r.get('file')) and spell not in q['recipes']:
+            q['recipes'].append(spell)
     # mobs the zone drops name only by id (crs): a record with their name, the drop's zone and,
     # where the data says where the item drops, those points (the mobs that drop it stand there)
     for item, crs, inst, zone, o in zone_drops:

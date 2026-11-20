@@ -2129,6 +2129,32 @@ Angelegt, die Wege, keine Fensterzeilen, Umzug), `tests/test_goals_picks.lua`, `
 
 **Durchgesetzt durch:** `tests/test_prof_trainers.lua` (Lesen, Filter zurück, Zuordnung, Prüfung beim Laden, Lernstufe, Quelle, Kürzen, Kampf, Befehl), `tools/tests/test_build_professions.py` (Prüfung wie im Addon, Archiv, `N`, `L`, `TD`).
 
+**Nachtrag 2026-11-20 (Rezepte, die eine Quest selbst lehrt; Phantom-Rezeptitems):** Eine Datenprüfung fand Rezepte, die eine
+Quest direkt lehrt, ohne diese Quelle (Orkische Kriegsgamaschen, Zauber 9957: "Quelle unbekannt", "Rezept: Item 7994", Lernstufe 1).
+- `tools/att_data.py` liest je Quest die Rezepte, die sie selbst lehrt (`recipe(spell)` oder `r(spell)` in ihren Gruppen), und ihr
+  `learnedAt` (`quests[id]['recipes']`, `['learnedAt']`).
+- `build_professions.py` gibt einem solchen Rezept die Quelle `Q<quest>` in `R` (höchstens 12, nach Quest-ID; Camping 101 hat eine
+  je Startgebiet). Hat das Rezept sonst nur die Lernstufe 1 als Rückfall (kein Rezeptitem mit Rang, kein gelesener Lehrer, nicht
+  mit dem Beruf gelernt), ist seine Lernstufe das kleinste `learnedAt` dieser Quests. `Q` hält jetzt
+  `"name|level|faction|giver|point"` (der Questgeber in `N` mit Ort); dieselbe Form gilt für die Quests der Rezeptitems (`I`) und
+  der Reagenzien (`RS`). `build_gear.py` nimmt für die Herstellungsquelle (`C`, Fertigkeit) dieselbe Lernstufe (7929: 210).
+- **Phantom-Rezeptitems:** Ein Rezeptitem, das der Client in `ItemXItemEffect` mit einem Rezept verbindet, das aber kein
+  `ItemSparse` eines Builds auf der Platte (`~/addons/_wago`, `~/addons/_cache/wago`) und nicht AllTheThings' `ItemDB` kennt, gibt es
+  nicht; seine Verbindung fällt weg (310 solcher Verbindungen, im Stand 1.60.1.70959 183 Einträge weniger in `I`, alle ohne Quelle).
+  Ausnahme: Hätte das Rezept dann gar keine Quelle in einem Beruf ohne Lehrerliste (Kochen, Gifte, Verhütten), bleibt die Verbindung,
+  sonst hielte das Addon es für ein Lehrer-Rezept (Säuberungseintopf, Kritterkeks, Obsidiandurchtränkter Thoriumbarren).
+- Das Addon zeigt eine solche Quest in "Gelernt bei" wie andere Quests: Name in der Sprache des Clients (Client, Quest-Scan, sonst
+  Englisch), Stufe, Fraktion, Questgeber mit Ort und Wegpunkt; nur die Quests der eigenen Fraktion (und beider), die anderen nur,
+  wenn keine bleibt; höchstens drei Zeilen. Der Filter "Quest" findet sie; die Route plant sie nicht.
+
+**Grund:** Auftrag 2026-11-20 nach der Datenprüfung (Orcish War Leggings: Quest 2756 "The Old Ways", Aturk the Anvil, `learnedAt`
+210, Horde).
+
+**Durchgesetzt durch:** `tools/tests/test_att_data.py` (Rezepte und `learnedAt` einer Quest), `tools/tests/test_build_professions.py`
+(`Q<quest>`, Lernstufe aus `learnedAt` nur beim Rückfall, Phantom weg, Phantom behalten ohne Lehrerliste, `Q`-Form),
+`tools/tests/test_build_gear.py` (Fertigkeit aus `learnedAt`), `tests/test_professions_quest.lua` (Quelle, Rang 210, Name, Fraktion,
+Questgeber, Wegpunkt, Filter).
+
 ## D-87 Offiziersansicht nur für Offiziere der Gilde und den Autor
 
 **Datum:** 2026-11-08

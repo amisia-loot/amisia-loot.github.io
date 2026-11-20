@@ -9,6 +9,17 @@ root(ROOTS.Zones, m(MAP.TEST_VALE, {
 				i(273086),	-- Blueprint: Anvil
 			},
 		}),
+		q(2756, {	-- The Old Ways
+			qg = 7792,	-- Aturk the Anvil
+			coord = { 80.6, 23.2, MAP.TEST_VALE },
+			requireSkill = BLACKSMITHING,
+			learnedAt = 210,
+			races = HORDE_ONLY,
+			lvl = 40,
+			groups = {
+				recipe(9957),	-- Orcish War Leggings (taught by the quest itself)
+			},
+		}),
 	}),
 	n(PROFESSIONS, {
 		prof(ALCHEMY, {

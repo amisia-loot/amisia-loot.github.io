@@ -5,6 +5,19 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- data(data): add the save file of 2026-11-19: new items, item sources, observed quests and quest items
+
+    2 items (72 changed), 82 item sources (36 changed), 24 observed quests and 13 quest items join the archives and
+    the gear, dungeon quest and map data.
+
+- fix(professions): recipes a quest teaches show that quest and its learn rank (F-051)
+
+    Recipes that a quest teaches directly, such as Orcish War Leggings from "The Old Ways", showed "source unknown",
+    a recipe item that does not exist and learn rank 1. They now name the quest under "Learned from" with its level,
+    faction, quest giver and place (a click sets the waypoint), learnable from the rank the quest asks (210 for the
+    leggings), and the source filter "Quest" finds them; the Camping 101 recipes list the quest of your start zones.
+    Recipe items the game does not have are no longer listed as a recipe's source.
+
 - fix(guild): the guild queue shares your own queue in combat too (F-227)
 
     Your battleground queue went to the guild only after a fight ended, so guild members often saw you late or not

@@ -30,6 +30,12 @@ def data():
 
 
 @pytest.fixture(scope='module')
+def checked():
+    """With every ItemSparse build of the fixture (known_item_ids): the phantom recipe items show."""
+    return bp.combine(bp.read_client(REAGENTS, WAGO), bp.read_att(ATT), known=bp.known_item_ids(WAGO))
+
+
+@pytest.fixture(scope='module')
 def plain():
     return bp.combine(bp.read_client(WAGO), bp.read_att(ATT))
 
@@ -88,7 +94,9 @@ def test_names_of_sources(data):
     assert data['N'][80300] == 'Skyforged Golem|1455:7000:7000|'
     assert data['N'][80400] == 'Vale Ooze|1455|', 'a mob named only by id: the zone of its drop'
     assert data['N'][80200].startswith("Gor'mak|1455:4980:2960|")
-    assert data['Q'] == {70900: 'The Anvil Plan'}
+    assert data['Q'] == {70900: 'The Anvil Plan|20||80900|1455:4000:5000',
+                         2756: 'The Old Ways|40|H|7792|1455:8060:2320'}, 'name|level|faction|giver|point'
+    assert data['N'][7792].startswith('Aturk the Anvil|1455:8060:2320|'), 'the giver is in N with his place'
 
 
 def test_trainer_lists_skip_removed_and_rank_spells(data):
@@ -337,3 +345,42 @@ def test_shipped_reagent_sources():
     assert n > 200
     assert P.RS[2770].startswith('H186@'), 'Copper Ore: mined'
     assert P.RS[2447].startswith('H182@'), 'Peacebloom: a herb'
+
+
+def test_quest_teaches_a_recipe(checked):
+    """F-051: a quest that teaches the recipe itself (recipe(9957) in "The Old Ways") is its source
+    Q<quest>, its learnedAt the learn rank where the recipe has no other (the 1 fallback)."""
+    bs = lines(checked, 164)
+    assert bs[9957] == '9957:7929:1:210:225:245:Q2756', 'quest source, learn rank from learnedAt, no phantom item'
+    assert checked['report']['quest recipes'] == 1
+    assert 2756 in checked['Q'] and 7792 in checked['N']
+
+
+def test_learned_at_only_replaces_the_fallback():
+    att = dict(bp.read_att(ATT))
+    att['quest_recipes'] = {3491: [(70901, 300)], 3321: [(70902, 0)]}
+    att['quests'] = {**att['quests'], 70901: ('Late Quest', 50, '', 0, ''), 70902: ('No Rank', 0, 'A', 0, '')}
+    bs = lines(bp.combine(bp.read_client(WAGO), att), 164)
+    assert bs[3491] == '3491:3848:1:105:130:170:T3,Q70901', "MinSkillLineRank's 105 stays"
+    assert bs[3321] == '3321:3471:1:10:35:75:I3609,Q70902', "the recipe item's rank stays; no learnedAt"
+
+
+def test_phantom_recipe_items(checked, data):
+    """A recipe item the client links (ItemXItemEffect) that no ItemSparse build has and the ItemDB does
+    not know is left out (7994); in a skill line without a trainer list a recipe it alone teaches keeps
+    it (else the addon would presume a trainer: 263505)."""
+    assert bp.phantom_items(bp.read_client(WAGO), bp.read_att(ATT), bp.known_item_ids(WAGO)) == {7994, 263505}
+    assert 7994 not in checked['I'], 'a phantom recipe item is no recipe item'
+    assert lines(checked, 185)[1270632] == '1270632:263507:1:1:80:85:I263505', 'kept: cooking has no trainer list'
+    assert 263505 in checked['I']
+    assert checked['report']['phantom links'] == 2 and checked['report']['phantom links kept'] == 1
+    assert lines(data, 164)[9957] == '9957:7929:1:210:225:245:I7994,Q2756', 'nothing to check against: the link stays'
+    assert bp.phantom_items(bp.read_client(WAGO), bp.read_att(ATT)) == set()
+
+
+def test_read_itemdb_ids_and_known_item_ids(tmp_path):
+    (tmp_path / '.config' / 'exports').mkdir(parents=True)
+    (tmp_path / '.config' / 'exports' / 'ItemDB.lua').write_text('_.ItemDB = {\n[25]={name="A"},\n[7929]={name="B"},\n}\n')
+    assert bp.read_itemdb_ids(str(tmp_path)) == {25, 7929}
+    assert {118, 7000, 3609} <= bp.known_item_ids(WAGO, str(tmp_path / 'none'))
+    assert 7994 not in bp.known_item_ids(WAGO)

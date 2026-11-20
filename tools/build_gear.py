@@ -123,12 +123,25 @@ def log(*a):
 
 
 # ---------------------------------------------------------------- recipes (client tables)
-def client_crafts(wago_dir, att_crafted=()):
+def quest_learned(quests):
+    """{recipe spell: the lowest learnedAt of the quests that teach it themselves} from att_data.load()'s
+    quests (recipe() or r() in a quest's groups, its learnedAt; F-051): only quests that name a rank."""
+    out = {}
+    for q in (quests or {}).values():
+        at = q.get('learnedAt') or 0
+        for sp in q.get('recipes') or ():
+            if at > 0:
+                out[sp] = min(at, out.get(sp, at))
+    return out
+
+
+def client_crafts(wago_dir, att_crafted=(), quest_at=None):
     """{profession key: [(item, skill)]} of the client's recipes: the item a recipe makes (SpellEffect)
     and the skill it needs, the higher of SkillLineAbility's MinSkillLineRank and the RequiredSkillRank
-    of the recipe item that teaches it. Recipes in the Season of Discovery spell range count only for
-    items AllTheThings lists as crafted for Forever (as in build_professions.py). Empty without the
-    tables."""
+    of the recipe item that teaches it; where both leave the fallback 1, the rank the quest that teaches
+    the recipe asks (quest_at: quest_learned(), as build_professions.py's learn rank). Recipes in the
+    Season of Discovery spell range count only for items AllTheThings lists as crafted for Forever (as
+    in build_professions.py). Empty without the tables."""
     import build_professions
     client = build_professions.read_client(wago_dir)
     if not client['sla'] or not client['create']:
@@ -152,6 +165,8 @@ def client_crafts(wago_dir, att_crafted=()):
         if not key or not made or (lo <= spell < hi and made[0] not in forever):
             continue
         skill = max(v['min'], taught.get(spell, 0), 1)
+        if skill == 1 and (quest_at or {}).get(spell):
+            skill = quest_at[spell]
         rows = out.setdefault(key, {})
         rows[made[0]] = min(skill, rows.get(made[0], skill))
     return {k: sorted(rows.items()) for k, rows in sorted(out.items())}
@@ -1435,7 +1450,7 @@ def main(argv=None):
     else:
         log('no tools/gear_itemsparse.json: weapon speeds come from tooltips in game')
 
-    crafts = client_crafts(args.wago, att.get('crafted', []))
+    crafts = client_crafts(args.wago, att.get('crafted', []), quest_learned(att.get('quests')))
     log(f'client recipes: {sum(len(r) for r in crafts.values())} crafted items with their skill')
     forever_raids = load_forever_raids()
     log(f'wowsrc: {len(wowsrc.get("dungeons", []))} dungeons; '

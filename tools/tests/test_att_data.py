@@ -342,3 +342,12 @@ def test_a_creature_named_only_in_an_encounter_is_a_boss_of_its_instance():
     assert [n for n, *_ in ix[237]['npcs']].count(5721) == 1, 'the NPC record of the instance is not doubled'
     assert att_data.find_boss(ix, 237, 'Gone Drake') == (None, None, None), 'an old encounter adds nobody'
     assert att_data.find_boss(ix, 238, 'Hazzas') == (None, None, None), 'only in the encounter\'s instance'
+
+
+def test_recipes_a_quest_teaches_and_its_learned_at(db):
+    """F-051: recipe(spell) or r(spell) in a quest's groups is a recipe it teaches itself; learnedAt the rank
+    it asks."""
+    q = db['quests'][72003]
+    assert q['recipes'] == [72903, 72904] and q['learnedAt'] == 150 and q['skill'] == 171
+    assert q['rewards'] == [61099], 'the items stay rewards; the recipe is no item'
+    assert db['quests'][72001]['recipes'] == [] and db['quests'][72001]['learnedAt'] == 0

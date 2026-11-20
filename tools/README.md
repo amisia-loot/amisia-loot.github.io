@@ -648,7 +648,8 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
   collector (drops, merchants, quests, the auction house as players met them; German names).
 - The client tables in `--wago` (`client_crafts`): the item each recipe makes (`SpellEffect`) and the
   skill it needs, the higher of `SkillLineAbility.MinSkillLineRank` and the `RequiredSkillRank` of the
-  recipe item that teaches it (`ItemXItemEffect`, `ItemSparse`). Season of Discovery recipes (spells
+  recipe item that teaches it (`ItemXItemEffect`, `ItemSparse`); where both leave 1, the `learnedAt` of
+  the quest that teaches the recipe itself (`quest_learned`, as `build_professions.py`). Season of Discovery recipes (spells
   400000-999999) only for items ATT lists as crafted for Forever, as in `build_professions.py`.
 - wowsrc.com dungeon pages (drop chances) are kept in `tools/gear_wowsrc.json`;
   `--refresh-wowsrc` downloads them again, `--no-wowsrc` leaves them out.
@@ -1081,7 +1082,20 @@ python tools/build_professions.py [--wago DIR] [--att ~/addons/_cache/att] [--sc
   `profession db/*.lua` (recipe item -> recipe), and the zone and dungeon files through
   `att_data.load()` (vendors, drops, quests of the recipe items; the favor vendors by the list
   their goods name; the vendors of reagents and recipe items, without those that want another
-  currency or items, `sold_cost`).
+  currency or items, `sold_cost`; the recipes a quest teaches itself, `recipe()` or `r()` in a quest,
+  with its `learnedAt`), and the ids of `.config/exports/ItemDB.lua`.
+- Recipe source `Q<quest>` (F-051, D-86 Nachtrag 2026-11-20): a quest that teaches the recipe itself
+  (Orcish War Leggings from "The Old Ways"), at most 12 by quest id. Where the recipe has only the
+  fallback learn rank 1 (no recipe item with a rank, no trainer read, not learned with the profession),
+  the lowest `learnedAt` of those quests is its learn rank. `Q = { [quest] = "name|level|faction|giver|point" }`:
+  English name, quest level (0 unknown), `A`/`H`/empty, the giver (in `N` with his place, 0 none),
+  the quest's own start `uiMapID:x:y` or empty; the quests of `I` and `RS` too.
+- Phantom recipe items: a recipe item the client links to its recipe (`ItemXItemEffect`) that no
+  `ItemSparse` build on disk (every copy in `--wago`, `~/addons/_wago` and `~/addons/_cache/wago`) and
+  no AllTheThings `ItemDB` knows does not exist (7994, 5577, 2556, the Season of Discovery 215150 ...): its
+  link is left out (310 links, 183 recipe items fewer in 1.60.1.70959, none had a source). Only where the
+  recipe would then have no source at all in a skill line without a trainer list (cooking, poisons,
+  smelting) the link stays, or the addon would take it for a trainer's. The build reports both counts.
 - `V = { [item] = "copper:npc,..." }`: every reagent of `G` and every recipe item of `I` a vendor
   sells for gold. The price of one: `BuyPrice` of `ItemSparse` is for `VendorStackCount` of it
   (Empty Vial 20 copper for 5), divided and rounded up, at least 1; an item with `BuyPrice` 0 is
@@ -1124,9 +1138,9 @@ python tools/build_professions.py [--wago DIR] [--att ~/addons/_cache/att] [--sc
   Armorsmithing, Gnomish and Goblin Engineering, Dragonscale, Elemental and Tribal Leatherworking):
   only its trainer teaches it, to characters who chose it; before 2026-11-06 these were `T0`. Other
   lists without a tier stay `T0` (First Aid's apprentice and journeyman list, the master trainers'
-  Shadoweave, the Discolored Healing Potions). A recipe ATT names only inside a quest or an NPC
-  (`r(...)` in the zone files: Restorative Potion, Dimensional Ripper - Everlook), one it comments
-  out (Gordok Ogre Suit) or one new to Forever it does not list (the Glacial and Frosty sets) has no
+  Shadoweave, the Discolored Healing Potions). A recipe ATT names only inside an NPC or an object
+  (Dimensional Ripper - Everlook; inside a quest it is `Q<quest>` since 2026-11-20: Restorative Potion), one it comments
+  out (Gordok Ogre Suit, Gurubashi Mojo Madness in Zul'Gurub) or one new to Forever it does not list (the Glacial and Frosty sets) has no
   source; the addon counts such a recipe as a trainer's only in a skill line without a trainer list
   (cooking, poisons, smelting).
 - No names of recipes or items go in: the addon asks the client (German). NPC and quest names are

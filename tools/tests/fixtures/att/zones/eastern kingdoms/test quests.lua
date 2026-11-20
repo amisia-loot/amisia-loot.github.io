@@ -27,8 +27,14 @@ root(ROOTS.Character, {
 				["qg"] = 82002,	-- Alchemist Fixture
 				["coord"] = { 55.5, 44.4, MAP.TEST_CITY },
 				["requireSkill"] = ALCHEMY,
+				["learnedAt"] = 150,
 				["races"] = ALLIANCE_ONLY,
 				["lvl"] = 15,
+				["groups"] = {
+					recipe(72903),	-- Fixture Elixir (the quest teaches it itself)
+					r(72904),	-- Fixture Tonic (the older word for the same)
+					i(61099),	-- Mixing Flask
+				},
 			}),
 			q(72004, {	-- Go See the Captain
 				["qg"] = 82002,	-- Alchemist Fixture

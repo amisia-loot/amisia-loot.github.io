@@ -20,8 +20,13 @@ Inputs:
 - AllTheThings' Forever data (MIT, see tools/att_data.py and Amisia/LICENSES/):
   .config/structures/*.lua (trainer recipes per tier, the specialisations' recipes, Merchant's Favor
   recipes with price and standing per faction), profession db/*.lua (recipe item -> recipe), and the zone and dungeon files
-  through att_data.load() (vendors, drops, quests of the recipe items; the favor vendors; the vendors
-  of reagents and recipe items for the price list V).
+  through att_data.load() (vendors, drops, quests of the recipe items; the quests that teach a recipe
+  themselves, recipe() or r() in a quest, with their learnedAt (R's Q<quest>, F-051); the favor vendors; the
+  vendors of reagents and recipe items for the price list V), and the ids of .config/exports/ItemDB.lua.
+- Every ItemSparse build on disk (only the ids): a recipe item the client links to its recipe
+  (ItemXItemEffect) that no build has a row for and AllTheThings' ItemDB does not know is a phantom
+  (7994 for Orcish War Leggings); its link is left out, unless the recipe would then have no source
+  at all in a skill line without a trainer list (the addon would take it for a trainer's).
 - The scan archive (tools/scan_archive.json, the item collector's notes): the merchants the players
   saw selling a reagent or recipe item ("Haendler: Name [npc]"), for V beside AllTheThings, which
   lists only collectible vendor goods (no thread, dyes or vials).
@@ -31,7 +36,8 @@ Inputs:
   learning cost (L).
 
 Names are not written for recipes and items: the addon asks the client (German). Only NPC and quest
-names (English, from AllTheThings' comments) go in, for sources the client cannot name.
+names (English, from AllTheThings' comments) go in, for sources the client cannot name; a quest with
+its level, faction, giver and start.
 Recipes in the Season of Discovery number range (spells 400000-999999) that AllTheThings does not
 list for Forever are left out.
 """
@@ -84,6 +90,7 @@ OVER = re.compile(r'May be placed over an? ([^.]+?) to replace it', re.I)
 WRIT = re.compile(r"^Craftsman's Writ: (.+)$")
 CERT = re.compile(r'^(.+) Certification$')
 MAX_SOURCES = 6     # sources per recipe item
+MAX_QUESTS = 12     # quests per recipe a quest teaches itself (Q<quest> in R; Camping 101: one per start zone)
 SOURCE_ORDER = {'F': 0, 'V': 1, 'Q': 2, 'D': 3, 'Z': 4, 'W': 5}
 MAX_VENDORS = 6     # vendors per item of the price list V
 MAX_REAGENT_SOURCES = 6   # sources per reagent in RS (besides V and the recipes that make it)
@@ -320,7 +327,12 @@ def read_att(base, db=None):
         pt = n['points'][0] if n['points'] else None
         npcs[nid] = (n['name'] or '', f'{pt[0]}:{pt[1]}:{pt[2]}' if pt else (str(n['zone']) if n.get('zone') else ''),
                      n['faction'] or '')
-    quests = {qid: q['name'] or '' for qid, q in db['quests'].items()}
+    quests = {qid: quest_info(q, npcs) for qid, q in db['quests'].items()}
+    # the recipes a quest teaches itself (recipe(spell) or r(spell) in its groups, F-051): {spell: [(quest, learnedAt)]}
+    quest_recipes = {}
+    for qid, q in sorted(db['quests'].items()):
+        for sp in q.get('recipes') or ():
+            quest_recipes.setdefault(sp, []).append((qid, q.get('learnedAt') or 0))
     # the trainers: the NPCs the zone files list under a profession in the header PROFESSIONS, with a
     # place ({skill line: [npc ids]})
     trainers = {}
@@ -334,12 +346,52 @@ def read_att(base, db=None):
     return {'commit': db.get('commit'), 'trainer': trainer, 'spec': spec, 'favor': favor, 'trainers': trainers,
             'profdb': read_profession_db(base),
             'vendors': read_favor_vendors(base), 'sources': sources, 'npcs': npcs, 'quests': quests, 'sold': sold,
-            'gathered': db.get('gathered') or {}}
+            'gathered': db.get('gathered') or {}, 'quest_recipes': quest_recipes, 'itemdb': read_itemdb_ids(base)}
 
 
 def empty_att():
     return {'commit': None, 'trainer': {}, 'spec': set(), 'favor': {}, 'trainers': {}, 'profdb': {}, 'vendors': {'A': [], 'H': []}, 'sources': {},
-            'npcs': {}, 'quests': {}, 'sold': {}, 'gathered': {}}
+            'npcs': {}, 'quests': {}, 'sold': {}, 'gathered': {}, 'quest_recipes': {}, 'itemdb': set()}
+
+
+def quest_info(q, npcs):
+    """(English name, level, faction 'A'/'H'/'', giver npc or 0, the quest's own start "uiMapID:x:y" or '')
+    of an att_data quest: what Q holds. The giver is the first with a record in npcs (its place is in N)."""
+    giver = next((g for g in q.get('givers') or () if g in npcs), 0)
+    pt = (q.get('points') or [None])[0]
+    return (q.get('name') or '', q.get('minLevel') or 0, q.get('faction') or '', giver,
+            f'{pt[0]}:{pt[1]}:{pt[2]}' if pt else '')
+
+
+_ITEMDB_KEY = re.compile(r'^\[(\d+)\]=', re.M)
+
+
+def read_itemdb_ids(base):
+    """The item ids of AllTheThings' export of the client's item table (.config/exports/ItemDB.lua);
+    only the ids: whether an item exists at all (a phantom recipe item, see combine())."""
+    path = os.path.join(base, '.config', 'exports', 'ItemDB.lua')
+    if not os.path.exists(path):
+        return set()
+    with open(path, encoding='utf-8-sig') as fh:
+        return {int(x) for x in _ITEMDB_KEY.findall(fh.read())}
+
+
+def known_item_ids(*dirs):
+    """The ids of every ItemSparse copy on disk in the folders (all builds, not only the newest):
+    an item none of them has rows for and AllTheThings' ItemDB does not know is a phantom."""
+    import csv
+    out = set()
+    for d in dirs:
+        if not d or not os.path.isdir(d):
+            continue
+        for name in sorted(os.listdir(d)):
+            if re.match(r'^ItemSparse(\.\d+)*\.csv$', name):
+                with open(os.path.join(d, name), encoding='utf-8', newline='') as fh:
+                    for row in csv.DictReader(fh):
+                        i = _int(row.get('ID'))
+                        if i:
+                            out.add(i)
+    return out
 
 
 def read_seen_vendors(path):
@@ -497,16 +549,34 @@ def trainer_offers(trainers):
     return out
 
 
-def combine(client, att, seen=None, cooldowns=None, trainers=None):
+def phantom_items(client, att, known=None):
+    """The recipe items of the client's teach links (ItemXItemEffect) that exist nowhere: no row in the
+    newest ItemSparse, none in any other build on disk (known: known_item_ids()) and not in
+    AllTheThings' ItemDB. The client keeps such links of items it never shipped (7994 for Orcish War
+    Leggings, which a quest teaches); a recipe must not show them as its source. Empty when neither
+    the other builds nor the ItemDB are given (nothing to check against)."""
+    itemdb = att.get('itemdb') or set()
+    if not known and not itemdb:
+        return set()
+    have = set(client['items']) | set(known or ()) | set(itemdb)
+    return {item for item in client['teach'] if item not in have}
+
+
+def combine(client, att, seen=None, cooldowns=None, trainers=None, known=None):
     """The neutral form render() writes: P, R, I, G, V, S, CD, N, Q, TR, CAMP, FAVOR, L, TD, client,
     source, report. seen: read_seen_vendors()'s merchants (none when not given); cooldowns: the
     hand-kept cooldown recipes (read_cooldown_file()), used only without the client table
-    SpellCooldowns; trainers: the trainer archive's readings (load_trainer_archive()['trainers'])."""
+    SpellCooldowns; trainers: the trainer archive's readings (load_trainer_archive()['trainers']);
+    known: the item ids of every ItemSparse build on disk (known_item_ids()), for phantom_items()."""
     trained = trainer_offers(trainers or {})
     with_trainer = set()      # the recipes that got their trainer (N): their costs go into L
+    phantoms = phantom_items(client, att, known)
     teach = dict(att['profdb'])
     teach.update(client['teach'])          # the client's own link wins
     spec = att.get('spec') or set()
+    # the skill lines whose trainer's recipes the data lists (T, S): elsewhere a recipe without any
+    # source counts as a trainer's (Prof.PresumedTrainer in the addon)
+    listed_lines = {sl for (sl, sp), a in client['sla'].items() if a['acquire'] != 1 and (sp in att['trainer'] or sp in spec)}
     att_spells = set(att['trainer']) | spec | set(att['profdb'].values())
     for item in att['favor']:
         if item in teach:
@@ -514,14 +584,18 @@ def combine(client, att, seen=None, cooldowns=None, trainers=None):
     by_spell_items = {}
     for item, sp in teach.items():
         by_spell_items.setdefault(sp, []).append(item)
-    report = {'sod dropped': 0, 'reagents': 'table' if client['reagentTable'] else 'client', 'recipes': {}}
-    recipes, used_items, dropped = {}, set(), set()
+    report = {'sod dropped': 0, 'reagents': 'table' if client['reagentTable'] else 'client', 'recipes': {},
+              'phantom items': len(phantoms), 'quest recipes': 0}
+    quest_recipes = att.get('quest_recipes') or {}
+    recipes, used_items, dropped, quests_used = {}, set(), set(), set()
     for (sl, sp), a in sorted(client['sla'].items()):
         if sl not in dict(PROFESSIONS):
             continue
         create = client['create'].get(sp)
         is_enchant = sp in client['enchant']
-        taught = sorted(by_spell_items.get(sp, []))
+        taught_all = sorted(by_spell_items.get(sp, []))
+        # a phantom recipe item's link is left out (phantom_items())
+        taught = [i for i in taught_all if i not in phantoms]
         if not create and not is_enchant and not taught:
             continue                      # a rank spell, a specialisation or a passive: no recipe
         if SOD_RANGE[0] <= sp < SOD_RANGE[1] and sp not in att_spells:
@@ -535,6 +609,17 @@ def combine(client, att, seen=None, cooldowns=None, trainers=None):
             src.append(f'T{att["trainer"][sp]}')
         elif sp in spec:
             src.append('S')
+        offer = trained.get(sp)
+        if offer and a['acquire'] == 1:
+            offer = None
+        qs = sorted(quest_recipes.get(sp, []))[:MAX_QUESTS]
+        if len(taught) < len(taught_all):
+            report['phantom links'] = report.get('phantom links', 0) + 1
+            # without it the recipe would have no source at all in a skill line without a trainer
+            # list, and the addon would take it for a trainer's: there the link stays
+            if not (src or taught or offer or qs) and sl not in listed_lines:
+                taught = taught_all
+                report['phantom links kept'] = report.get('phantom links kept', 0) + 1
         ranks = []
         for item in taught:
             src.append(f'I{item}')
@@ -544,13 +629,21 @@ def combine(client, att, seen=None, cooldowns=None, trainers=None):
                 ranks.append(r)
         learn = min(ranks) if ranks else max(1, a['min'])
         # a trainer read in the game: its rank is the game's own (with a recipe item, the earlier)
-        offer = trained.get(sp)
-        if offer and a['acquire'] != 1:
+        if offer:
             rank = max(1, offer['rank'])
             learn = min(ranks + [rank]) if ranks else rank
             src += [f'N{n}' for n in offer['npcs']]
             with_trainer.add(sp)
             report['trainer recipes'] = report.get('trainer recipes', 0) + 1
+        # the quests that teach it themselves (F-051): Q<quest>; with the 1 fallback the learn rank is
+        # the lowest learnedAt they ask
+        if qs:
+            src += [f'Q{q}' for q, _ in qs]
+            quests_used.update(q for q, _ in qs)
+            report['quest recipes'] += 1
+            asked = [at for _, at in qs if at > 0]
+            if learn == 1 and asked and a['acquire'] != 1:
+                learn = min(asked)
         item, count = create if create else (0, 0)
         line = f'{sp}:{item}:{count}:{learn}:{a["yellow"]}:{a["grey"]}:{",".join(src)}'
         recipes.setdefault(sl, []).append((a['yellow'], a['grey'], sp, line))
@@ -561,7 +654,7 @@ def combine(client, att, seen=None, cooldowns=None, trainers=None):
     P = [(sl, key) for sl, key in PROFESSIONS if sl in R]
 
     # recipe items: the recipe, the required rank and reputation, the sources
-    I, npcs_used, quests_used = {}, set(), set()
+    I, npcs_used = {}, set()
     favor_items = set(att['favor'])
     for item in sorted(used_items | (favor_items & set(teach))):
         sp = teach.get(item)
@@ -646,6 +739,13 @@ def combine(client, att, seen=None, cooldowns=None, trainers=None):
             npcs_used.add(nid)
     report['trainers'] = {'read': len(TD), 'recipes': report.get('trainer recipes', 0),
                           'offers not in the data': len(set(trained) - listed)}
+    # the quests (I, RS and R's Q tokens) with their giver (in N)
+    Q = {}
+    for qid in sorted(quests_used):
+        name, level, fac, giver, pt = att['quests'].get(qid) or ('', 0, '', 0, '')
+        if giver:
+            npcs_used.add(giver)
+        Q[qid] = f'{name}|{level}|{fac}|{giver}|{pt}'
     N = {}
     for nid in sorted(npcs_used):
         name, where, fac = att['npcs'].get(nid, ('', '', ''))
@@ -655,7 +755,6 @@ def combine(client, att, seen=None, cooldowns=None, trainers=None):
         if e and not re.match(r'^\d+:\d+:\d+$', where or '') and e.get('p'):
             where = e['p']
         N[nid] = f'{name}|{where}|{fac}'
-    Q = {qid: att['quests'].get(qid, '') for qid in sorted(quests_used)}
 
     return {'P': P, 'R': R, 'I': I, 'G': G, 'V': V, 'RS': RS, 'S': S, 'CD': CD, 'N': N, 'Q': Q, 'TR': TR, 'CAMP': camp_objects(client),
             'FAVOR': favor_info(client, att, R), 'L': L, 'TD': TD, 'client': client['client'],
@@ -778,7 +877,8 @@ def render(data, built):
            '-- P: { skill line, key } in display order. R: [skill line] = recipes',
            '-- "spell:item:count:learn:yellow:grey:src" (item 0: an enchant or other spell; src: A learned with',
            '-- the profession, T1-T4 trainer tier, T0 trainer without tier, S a specialisation\'s trainer, I<item>',
-           '-- recipe item, N<npc> a trainer read in the game (then learn is that trainer\'s rank), empty unknown).',
+           '-- recipe item, N<npc> a trainer read in the game (then learn is that trainer\'s rank), Q<quest> a quest that',
+           '-- teaches it itself (in Q; learn its learnedAt where the recipe has no other rank), empty unknown).',
            '-- I: [recipe item] = "spell:rank:faction:standing:sources" (F<price>@<standing><A|H> Merchant\'s Favor,',
            '-- V<npc> vendor, Q<quest> quest, D<npc> drop, Z<uiMapID> zone drop, W world drop). G: [spell] =',
            '-- "item:n,..." reagents (only with the SpellReagents table). V: [item] = "copper:npc,..." a reagent or',
@@ -790,7 +890,9 @@ def render(data, built):
            '-- S: [item] = copper a vendor pays for one (SellPrice) of a reagent not in V (the route\'s estimate).',
            '-- CD: [spell] = 1 a recipe with a cooldown (SpellCooldowns, else tools/prof_cooldowns.json): no route step.',
            '-- N: [npc] = "Name|uiMapID:x:y|A/H/" (English).',
-           '-- Q: [quest] = English name. CAMP: "item:skillLine:rank:useSpell:recipeSpell:slots:overItem".',
+           '-- Q: [quest] = "name|level|faction|giver|point": English name, quest level (0 unknown), A/H/empty, the giver',
+           '-- (in N, 0 none), the quest\'s own start "uiMapID:x:y" or empty.',
+           '-- CAMP: "item:skillLine:rank:useSpell:recipeSpell:slots:overItem".',
            '-- TR: [skill line] = { npc, ... } the trainers with a place (AllTheThings\' zone files), each in N.',
            '-- L: [spell] = copper a trainer read in the game asks. TD: [npc] = the time of its reading the data holds.',
            'ns.PROFESSIONS = {',
@@ -851,7 +953,9 @@ def main(argv=None):
         seen = read_seen_vendors(args.scan_archive) if args.scan_archive else {}
         svs = build_scan_archive.default_svs() if args.sv is None else args.sv
         trainers = update_trainers(svs, args.trainers)
-        data = combine(client, att, seen, read_cooldown_file(), trainers)
+        import client_tables
+        known = known_item_ids(args.wago, *[d for _, d in client_tables.sources()])
+        data = combine(client, att, seen, read_cooldown_file(), trainers, known)
     text = render(data, time.strftime('%Y-%m-%d'))
     old = None
     if os.path.exists(args.out):
@@ -874,6 +978,8 @@ def main(argv=None):
     tr = rep.get('trainers') or {}
     log(f'  trainers read in the game: {tr.get("read", 0)}, recipes with their rank: {tr.get("recipes", 0)}, '
         f'offers not in the data: {tr.get("offers not in the data", 0)}')
+    log(f'  recipes a quest teaches: {rep.get("quest recipes", 0)}, phantom recipe items left out: '
+        f'{rep.get("phantom items", 0)}')
     cd = rep.get('cooldowns') or {}
     log(f'  sell prices (estimate): {len(data["S"])} reagents; cooldown recipes: {cd.get("recipes", 0)} '
         f'(from the {cd.get("from", "-")})')

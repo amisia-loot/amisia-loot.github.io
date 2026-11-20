@@ -537,6 +537,12 @@ def test_recipes_and_their_skill_come_from_the_client_tables(tmp_path):
     # mining is no crafting profession; a Season of Discovery recipe only for an item ATT has for Forever
     assert crafts == {'blacksmithing': [(44, 50)], 'tailoring': [(40, 1), (41, 125)]}
     assert build_gear.client_crafts(str(tmp_path / 'none')) == {}
+    # a recipe a quest teaches itself (F-051): its learnedAt where the recipe has only the 1 fallback
+    at = build_gear.quest_learned({1: {'recipes': [100, 101], 'learnedAt': 210}, 2: {'recipes': [100], 'learnedAt': 0},
+                                   3: {'recipes': [100], 'learnedAt': 190}})
+    assert at == {100: 190, 101: 210}
+    crafts = build_gear.client_crafts(str(w), att_crafted=[(44, 'blacksmithing')], quest_at=at)
+    assert crafts['tailoring'] == [(40, 190), (41, 125)], "the pattern's 125 stays"
 
 
 def test_reputation_and_quest_types_reach_the_data(tmp_path):

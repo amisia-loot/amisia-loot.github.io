@@ -864,9 +864,8 @@ function R.ReagentSources(item)
         elseif k == "Z" then
             zones[#zones + 1] = num(rest)
         elseif k == "Q" then
-            local d = data()
-            local name = d and d.Q and d.Q[num(rest)]
-            quests[#quests + 1] = (name ~= nil and name ~= "") and name or ("Quest " .. rest)
+            -- the client's or the quest scan's name first (Q holds more than the name, F-051)
+            quests[#quests + 1] = Pr.QuestName(num(rest))
         elseif k == "W" then
             world = true
         end

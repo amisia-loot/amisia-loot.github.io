@@ -177,13 +177,16 @@ local function parse(line, skill)
     local spell, item, count, learn, yellow, grey, src = line:match("^(%d+):(%d+):(%d+):(%d+):(%d+):(%d+):(.*)$")
     if not spell then return nil end
     local r = { spell = num(spell), item = num(item), count = num(count), learn = num(learn), yellow = num(yellow),
-        grey = num(grey), skill = skill, src = {}, items = {}, trainers = {} }
+        grey = num(grey), skill = skill, src = {}, items = {}, trainers = {}, quests = {} }
     r.green = math.floor((r.yellow + r.grey) / 2)
     for tok in src:gmatch("[^,]+") do
         local recipeItem = tok:match("^I(%d+)$")
         local trainer = tok:match("^N(%d+)$")
+        local quest = tok:match("^Q(%d+)$")
         if recipeItem then r.items[#r.items + 1] = num(recipeItem)
         elseif trainer then r.trainers[#r.trainers + 1] = num(trainer)
+        -- a quest that teaches the recipe itself (F-051)
+        elseif quest then r.quests[#r.quests + 1] = num(quest)
         else r.src[#r.src + 1] = tok end
     end
     return r
@@ -265,6 +268,37 @@ function Pr.Npc(id)
         out.zone = num(where)
     end
     return out
+end
+
+-- A quest of the data (Q: "name|level|faction|giver|point", an older file the name alone): { id, name
+-- (English), level (0 unknown), faction ("A", "H", "" both), giver (an NPC of N or nil), point (the
+-- quest's own start { map, x, y } or nil) and pos (the same as "uiMapID:x:y") }, or nil.
+function Pr.Quest(id)
+    id = tonumber(id)
+    local d = data()
+    local s = id and d and d.Q and d.Q[id]
+    if type(s) ~= "string" then return nil end
+    local name, level, fac, giver, where = s:match("^([^|]*)|(%d*)|([AH]?)|(%d*)|(.*)$")
+    if not name then return { id = id, name = s ~= "" and s or nil, level = 0, faction = "" } end
+    local out = { id = id, name = name ~= "" and name or nil, level = num(level), faction = fac,
+        giver = num(giver) > 0 and num(giver) or nil }
+    local m, x, y = where:match("^(%d+):(%d+):(%d+)$")
+    if m then out.point, out.pos = { map = num(m), x = num(x) / 10000, y = num(y) / 10000 }, where end
+    return out
+end
+
+-- The name of a quest in the client's language where it is known (the client's title, the quest
+-- scan's), else the data's English one, else "Quest <id>".
+function Pr.QuestName(id)
+    id = tonumber(id)
+    local api = _G.C_QuestLog
+    local t = id and ns.Plain(call(api and api.GetTitleForQuestID, id))
+    if type(t) == "string" and t ~= "" then return t end
+    t = id and ns.ScannedQuestTitle and ns.ScannedQuestTitle(id)
+    if type(t) == "string" and t ~= "" then return t end
+    local q = Pr.Quest(id)
+    if q and q.name then return q.name end
+    return L["Quest %d"]:format(id or 0)
 end
 
 ---------------------------------------------------------------------------
@@ -696,9 +730,46 @@ local function posText(pos)
     return z and Pr.ZoneName(z) or nil, nil
 end
 
+local MAX_QUEST_LINES = 3   -- quests that teach a recipe shown at most (Camping 101: one per start zone)
+
+-- A quest as a source line: "Quest: <name> (Stufe 40, Horde), <giver>, <zone> 81, 23" and the point
+-- of its giver (else the quest's own start), or nil.
+local function questLine(qid)
+    local q = Pr.Quest(qid) or { id = qid, level = 0, faction = "" }
+    local parts = {}
+    if q.level > 0 then parts[#parts + 1] = L["Stufe %d##Quest"]:format(q.level) end
+    if q.faction ~= "" then parts[#parts + 1] = Pr.FACTION_NAME[q.faction] or q.faction end
+    local text = L["Quest: %s"]:format(Pr.QuestName(qid)) .. (#parts > 0 and (" (" .. table.concat(parts, ", ") .. ")") or "")
+    local npc = q.giver and Pr.Npc(q.giver)
+    local point = npc and npc.point or q.point
+    if npc then
+        -- the name the NPC scan found in the client's language (D-104) before the data's English one
+        local name = ns.ScannedNpcName and ns.ScannedNpcName(npc.id) or npc.name or ("NPC " .. npc.id)
+        local w = where(npc) or (q.pos and posText(q.pos))
+        text = text .. ", " .. name .. (w and (", " .. w) or "")
+    elseif q.pos then
+        local w = posText(q.pos)
+        if w then text = text .. ", " .. w end
+    end
+    return text, point
+end
+
+-- The quests that teach a recipe itself, those of the own faction (and of both): the others only
+-- when no quest is left.
+local function ownQuests(r)
+    local me = ns.OwnFaction and ns.OwnFaction()
+    local own, all = {}, {}
+    for _, qid in ipairs(r.quests or {}) do
+        local q = Pr.Quest(qid)
+        all[#all + 1] = qid
+        if not me or not q or q.faction == "" or q.faction == me then own[#own + 1] = qid end
+    end
+    return #own > 0 and own or all
+end
+
 -- The sources of a recipe as lines: { kind = "A"|"T"|"V"|"F"|"D"|"Z"|"W"|"Q"|"?", text, point,
--- own }. kind order: with the profession, trainer, recipe items (favor, vendor, quest, drop), what
--- the collector saw.
+-- own }. kind order: with the profession, trainer, the quests that teach it themselves, recipe items
+-- (favor, vendor, quest, drop), what the collector saw.
 function Pr.Sources(r)
     local out = {}
     local function add(kind, text, point, extra)
@@ -731,6 +802,15 @@ function Pr.Sources(r)
             add("T", L["Lehrer: %s%s"]:format(npc and npc.name or ("NPC " .. id), w and (", " .. w) or ""), npc and npc.point, { npc = id })
         end
     end
+    -- the quests that teach it themselves (F-051): learn rank r.learn is the rank they ask
+    local quests = ownQuests(r)
+    for i = 1, math.min(#quests, MAX_QUEST_LINES) do
+        local text, point = questLine(quests[i])
+        add("Q", text, point, { quest = quests[i] })
+    end
+    if #quests > MAX_QUEST_LINES then
+        add("Q", L["... und %d weitere Quests"]:format(#quests - MAX_QUEST_LINES), nil, { more = true })
+    end
     local myFaction = ns.OwnFaction()
     for _, itemId in ipairs(r.items) do
         local ri = Pr.RecipeItem(itemId)
@@ -751,9 +831,8 @@ function Pr.Sources(r)
                 add(k, ("%s: %s%s"):format(label, npc and npc.name or ("NPC " .. rest), w and (", " .. w) or ""),
                     npc and npc.point, { npc = num(rest), item = itemId })
             elseif k == "Q" then
-                local d = data()
-                local name = d and d.Q and d.Q[num(rest)]
-                add("Q", ("Quest: %s"):format(name ~= nil and name ~= "" and name or ("Quest " .. rest)), nil, { quest = num(rest), item = itemId })
+                local text, point = questLine(num(rest))
+                add("Q", text, point, { quest = num(rest), item = itemId })
             elseif k == "Z" then
                 add("Z", L["Zonendrop: %s"]:format(Pr.ZoneName(num(rest)) or ("Zone " .. rest)), nil, { item = itemId })
             elseif k == "W" then
@@ -798,7 +877,7 @@ end
 -- reputation, an instance or is new to Forever (F-137 review).
 local trainerLists
 function Pr.PresumedTrainer(r)
-    if #r.src > 0 or #r.items > 0 or Pr.HasTrainer(r) then return false end
+    if #r.src > 0 or #r.items > 0 or #(r.quests or {}) > 0 or Pr.HasTrainer(r) then return false end
     fresh()
     if not trainerLists or trainerLists.data ~= data() then trainerLists = { data = data() } end
     local has = trainerLists[r.skill]
@@ -822,6 +901,7 @@ function Pr.SourceKinds(r)
     for _, tok in ipairs(r.src) do
         if tok == "A" or tok == "S" or tok:match("^T") then set.T = true end
     end
+    if #(r.quests or {}) > 0 then set.Q = true end
     for _, itemId in ipairs(r.items) do
         local ri = Pr.RecipeItem(itemId)
         for _, tok in ipairs(ri and ri.sources or {}) do
