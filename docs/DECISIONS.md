@@ -4479,6 +4479,8 @@ Liste von Hand führt sie unter `"holiday"` (`{"<item id>": "warum"}`), der Date
 Winterhauch-Mützen 21524 und 21525, die Bosse nur zum Fest fallen lassen; die Client-Tabelle markiert sie nicht).
 Die Versorgungsoffiziere der Schlachtfelder ("... Supply Officer") zählen als PvP-Händler (P, wie die Quartiermeister),
 weil ihre Ware Ruf beim Schlachtfeld braucht; P ist im Planer standardmäßig aus.
+Ebenso, nach Namen in der Liste von Hand (`"pvp_vendors"`), die Quartiermeister des Schlachtfelds Darkspear
+Islands im Brachland (Bryanna Embreeze, Creeg Bothunk), die foreverchanges ohne NPC-Nummer nennt (Nutzer: "ja").
 
 ## D-157 Amisia unter GPL-3.0; Item-Quellen auch aus QuestieDB
 

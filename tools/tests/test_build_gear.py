@@ -994,3 +994,16 @@ def test_web_entries_become_records_of_our_kinds():
     w = recs(13)
     assert w and w[0][:4] == ('W', None, 0, 0) and zone_rows[w[0][4]] == 'Nowhere Land', \
         'a zone the client does not know keeps its name'
+
+
+def test_hand_pvp_vendors_by_name():
+    # user 2026-11-20: the Darkspear Islands quartermasters count as PvP vendors
+    names = build_gear.load_hand_pvp_vendors(str(build_gear.HAND))
+    assert 'Bryanna Embreeze' in names and 'Creeg Bothunk' in names
+    old = set(build_gear.PVP_VENDOR_NAMES)
+    build_gear.PVP_VENDOR_NAMES.update(names)
+    try:
+        assert build_gear.is_pvp_vendor(None, 'Bryanna Embreeze') and not build_gear.is_pvp_vendor(None, 'Someone Else')
+    finally:
+        build_gear.PVP_VENDOR_NAMES.clear()
+        build_gear.PVP_VENDOR_NAMES.update(old)

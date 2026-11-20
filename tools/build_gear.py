@@ -446,13 +446,18 @@ class Sources:
         return self.index[rec]
 
 
-def is_pvp_vendor(title):
+# Vendors by name that sell for battleground reputation but carry no PvP title in our data (the hand file's
+# "pvp_vendors": the Darkspear Islands quartermasters the fan site names without an NPC id; user 2026-11-20)
+PVP_VENDOR_NAMES = set()
+
+
+def is_pvp_vendor(title, name=None):
     """PvP rank quartermasters: their gear needs an honour rank, not just gold."""
     title = str(title or '')
     # the battleground supply officers (Silverwing, Arathor, Frostwolf...) sell for reputation with the
     # battleground: PvP as well (user 2026-11-20)
     return ('Quartermaster' in title and ('Armor' in title or 'Accessories' in title) or 'Legacy' in title
-            or 'Supply Officer' in title)
+            or 'Supply Officer' in title or (name is not None and str(name) in PVP_VENDOR_NAMES))
 
 
 def zone_name(const):
@@ -510,6 +515,21 @@ def load_hand_holidays(path=HAND):
             raise HandSourceError(f'{os.path.basename(path)}: holiday "{key}" needs an item id and a reason')
         out[int(key)] = why
     return out
+
+
+def load_hand_pvp_vendors(path=HAND):
+    """{vendor name: why} of the hand file's "pvp_vendors" object (vendors that count as PvP, P)."""
+    if not path or not os.path.exists(path):
+        return {}
+    with open(path, encoding='utf-8') as fh:
+        data = json.load(fh)
+    v = data.get('pvp_vendors') if isinstance(data, dict) else None
+    if v is None:
+        return {}
+    if not isinstance(v, dict) or not all(isinstance(k, str) and k.strip() and isinstance(w, str) and w.strip()
+                                          for k, w in v.items()):
+        raise HandSourceError(f'{os.path.basename(path)}: "pvp_vendors" must be {{"<vendor name>": "why"}}')
+    return dict(v)
 
 
 def load_hand_sources(path=HAND, facts=()):
@@ -1099,7 +1119,7 @@ def web_records(entries_of, src, places, facts, quests, npcs, zone_ref, zone_tex
             elif kind == 'vendor' and name:
                 nid, n = (e['npc'], npcs.get(e['npc'])) if e.get('npc') else att_npc(name)
                 n = n or {}
-                k = 'P' if is_pvp_vendor(n.get('title')) else 'V'
+                k = 'P' if is_pvp_vendor(n.get('title'), n.get('name') or name) else 'V'
                 z = zone_of(zone) if zone else zone_ref((n.get('zone') or (n.get('points') or [[None]])[0][0]))
                 recs.append(('pvp' if k == 'P' else 'vendor',
                              src.add(k, n.get('name') or name, z, n.get('faction') or None, n.get('title'), None, nid)))
@@ -1984,6 +2004,7 @@ def main(argv=None):
     try:
         hand = load_hand_sources(HAND, facts)
         holidays = load_hand_holidays(HAND)
+        PVP_VENDOR_NAMES.update(load_hand_pvp_vendors(HAND))
     except HandSourceError as e:
         raise SystemExit(str(e))
     log(f'hand sources (tools/forever_gear_sources.json): {sum(len(v) for v in hand.values())} for {len(hand)} items')

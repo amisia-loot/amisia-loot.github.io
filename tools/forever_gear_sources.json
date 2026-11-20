@@ -14,5 +14,9 @@
   "holiday": {
     "21524": "Rote Winterhauchmütze: droppt nur zum Winterhauchfest (Nutzer 2026-11-20: Festtags-Items raus)",
     "21525": "Grüne Winterhauchmütze: droppt nur zum Winterhauchfest (Nutzer 2026-11-20: Festtags-Items raus)"
+  },
+  "pvp_vendors": {
+    "Bryanna Embreeze": "Quartiermeister des Schlachtfelds Darkspear Islands (AllTheThings npc 263569); Ware braucht Ruf beim Schlachtfeld (Nutzer 2026-11-20: als PvP)",
+    "Creeg Bothunk": "Quartiermeister des Schlachtfelds Darkspear Islands (AllTheThings npc 263570); Ware braucht Ruf beim Schlachtfeld (Nutzer 2026-11-20: als PvP)"
   }
 }
