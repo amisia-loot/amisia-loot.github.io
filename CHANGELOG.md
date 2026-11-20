@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(gear): the planner's item search no longer makes the game stall (F-123)
+
+    Every key stroke read and folded the names of all ~25000 items again and asked the server for 150 more, and
+    each answer started the next full search. Names are now read and folded once a session, a missing one is asked
+    once (60 per search at most), the same search keeps its result, and new names refresh it once a second.
+
 ## [v2.102.2](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.102.2) (2026-11-20)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.102.1...v2.102.2) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

@@ -15,7 +15,7 @@ local C = {}
 ns.Catalog = C
 
 C.MAX = 200          -- search hits at most
-local ASK_MAX = 150  -- names asked for per search at most (the loader works them off by and by)
+local ASK_MAX = 60   -- names asked of the server per search at most (each id once a session)
 
 -- the categories in their order; a set goes to the first one any of its pieces' sources names
 C.CATS = {
@@ -223,6 +223,46 @@ local function itemName(id)
     return nil
 end
 
+-- The search's names, kept for the session: each item's name is read from the client once and folded once
+-- (umlauts, case); an item the client does not hold yet is asked of the server once and taken when its
+-- GET_ITEM_INFO_RECEIVED comes. Before (2.102.2) every key stroke read and folded all ~25000 names again and
+-- asked 150 more, whose answers started the next full search: the game nearly stood still.
+local names, folded = {}, {}   -- item id -> name / folded name
+local missing = {}             -- item id -> "wait" (asked, answer pending) or "ask" (still to ask)
+local namesVersion = 0         -- bumped by every name that arrives (a kept result is stale then)
+local function nameOf(id)
+    local f = folded[id]
+    if f then return f end
+    if missing[id] then return nil end
+    local name = itemName(id)
+    if name then
+        names[id], folded[id] = name, ns.Fold(name)
+        return folded[id]
+    end
+    missing[id] = "ask"
+    return nil
+end
+ns.OnEvent("GET_ITEM_INFO_RECEIVED", function(id)
+    id = tonumber(ns.Plain(id))
+    if not id or not missing[id] then return end
+    local name = itemName(id)
+    if name then
+        missing[id], names[id], folded[id] = nil, name, ns.Fold(name)
+        namesVersion = namesVersion + 1
+    end
+end)
+local function askName(id)
+    missing[id] = "wait"
+    local fn = C_Item and C_Item.RequestLoadItemDataByID
+    if type(fn) == "function" then pcall(fn, id) end
+end
+-- Whether names asked for are still on their way (the planner refreshes a search while they come).
+function C.NamesPending()
+    for _, v in pairs(missing) do if v == "wait" then return true end end
+    return false
+end
+local kept   -- the last search: { key, out, n, missing }
+
 -- The items of the gear data whose name holds text (umlauts and case do not matter) and whose
 -- required level is in lo..hi, the best gain for the own character first (no gain last, then by
 -- name): list (C.MAX at most), how many matched, how many names are still missing (asked for).
@@ -232,19 +272,21 @@ function C.Search(text, lo, hi, o)
     if q == "" or not ns.HasData("GEAR") then return {}, 0, 0 end
     local d = ns.Data("GEAR")
     o = o or ns.BisOpts()
-    local found, missing, asked = {}, 0, 0
+    -- the same search with no new name since: the kept result (a refresh of the page reads it again)
+    local key = table.concat({ q, lo, hi, namesVersion, tostring(ns.BisStamp and ns.BisStamp() or "") }, "\1")
+    if kept and kept.key == key then return kept.out, kept.n, kept.missing end
+    local found, nMissing, asked = {}, 0, 0
     for id, row in pairs(d.I or {}) do
         local lv = tonumber(row[4]) or 0
         if lv >= lo and lv <= hi then
-            local name = itemName(id)
-            if name then
-                if ns.Fold(name):find(q, 1, true) then found[#found + 1] = { id = id, name = name } end
+            local f = nameOf(id)
+            if f then
+                if f:find(q, 1, true) then found[#found + 1] = { id = id, name = names[id] } end
             else
-                missing = missing + 1
-                -- the loader asks the client; the name arrives with GET_ITEM_INFO_RECEIVED
-                if asked < ASK_MAX then
+                nMissing = nMissing + 1
+                if missing[id] == "ask" and asked < ASK_MAX then
                     asked = asked + 1
-                    Gear.Stats(id)
+                    askName(id)
                 end
             end
         end
@@ -263,9 +305,13 @@ function C.Search(text, lo, hi, o)
     end)
     local n = #out
     for i = C.MAX + 1, n do out[i] = nil end
-    return out, n, missing
+    kept = { key = key, out = out, n = n, missing = nMissing }
+    return out, n, nMissing
 end
 
 -- Test hook: forget the set list.
-function C._reset() all, allKey, levelAll, levelKey = nil, nil, nil, nil end
+function C._reset()
+    all, allKey, levelAll, levelKey = nil, nil, nil, nil
+    names, folded, missing, kept, namesVersion = {}, {}, {}, nil, 0
+end
 end)

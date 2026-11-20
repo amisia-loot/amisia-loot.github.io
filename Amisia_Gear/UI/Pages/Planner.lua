@@ -1319,7 +1319,8 @@ local namesDue = false
 ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()
     if namesDue or not onPage() or not (K.nameMissing() or query:find("%S")) then return end
     namesDue = true
-    C_Timer.After(0.3, function()
+    -- a search takes the names that came in once a second (each answer would else start a full search)
+    C_Timer.After(query:find("%S") and 1 or 0.3, function()
         namesDue = false
         memo.key = nil
         if onPage() then ns.Refresh() end

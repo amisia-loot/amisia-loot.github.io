@@ -54,6 +54,20 @@ assert(n == 3 and hits[1].id == 401 and hits[2].id == 402 and hits[3].id == 406,
 hits, n = Cat.Search("HELM", 20, 60)
 assert(n == 2, "the level range")
 assert(select(2, Cat.Search("  ", 1, 60)) == 0, "no text: nothing")
+-- 2.102.3: names are read and folded once a session, a missing one asked once, the same search kept
+do
+    local calls, getInfo = 0, C_Item.GetItemInfo
+    C_Item.GetItemInfo = function(...) calls = calls + 1 return getInfo(...) end
+    Cat._reset()
+    Cat.Search("helm", 1, 60)
+    local first = calls
+    assert(first > 0, "the first search reads the names")
+    Cat.Search("helm", 1, 60)
+    Cat.Search("HELM", 1, 60)
+    Cat.Search("stiefel", 1, 60)
+    assert(calls == first, "later searches read no name again: " .. calls .. " vs " .. first)
+    C_Item.GetItemInfo = getInfo
+end
 -- the level sets: per range of ten levels the best per slot at the range's top, for the own spec
 assert(Cat.ValidCat("level") and Cat.CATS[1].key == "level", "the level sets first")
 assert(Cat.Count("level", 1, 60) == 6 and Cat.Count("level", 1, 7) == 1 and Cat.Count("level", 25, 45) == 3)
