@@ -40,6 +40,9 @@ Where an item comes from (tools/att_data.py reads all of it, MIT licence, see LI
   - Item sources kept by hand in tools/forever_gear_sources.json (D-156): what the user saw in game or
     told, each entry with where it came from ("src"); added after all the others where none says the same.
     A bad entry stops the build (load_hand_sources).
+  - QuestieDB's Forever data (tools/questie_data.py, GPL-3.0, D-157), read from its download in
+    ~/addons/_cache/questiedb (`python3 tools/build.py questie`; this build never downloads it): NPC drops,
+    objects, vendors and quest rewards, only for an item none of the sources above names (questie_sources).
 
 The scanned gear no source names at all goes to Amisia_Gear/Data/GearNoSource.lua (lazy GEAR_NOSRC, the
 planner's "ohne bekannte Quelle", D-107): the rows and stats of GearData.lua without sources, minus test
@@ -70,6 +73,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import att_data  # noqa: E402  (the AllTheThings reader)
+import questie_data  # noqa: E402  (the QuestieDB reader, D-157)
 import lua_data  # noqa: E402  (the lazy form of the data file)
 import build_scan  # noqa: E402  (scan dump parsing is shared)
 import build_scan_archive  # noqa: E402  (the scan archive the builds read under the SavedVariables)
@@ -808,14 +812,181 @@ def is_junk(name):
     return bool(build_scan.JUNK_NAME.search(name)) or bool(re.match(r'OLD[A-Z]', name))
 
 
+# ---------------------------------------------------------------- QuestieDB (D-157)
+def questie_sources(questie, src, places, facts, quests, npcs, zone_ref, npc_zone, quest_rec, obs, obs_quest,
+                    skip=()):
+    """{item id: [(kind for the counts, source number), ...]} from QuestieDB (tools/questie_data.py) for the
+    items not in skip (the ones another source names already). An NPC that the dungeon facts name as a boss
+    gives a D record of that dungeon under the facts' boss name (X for a raid of the facts); another NPC inside
+    a dungeon a D record when AllTheThings calls it a boss, else the dungeon's trash; outside instances a rare
+    (QuestieDB rank 2 or 4, or AllTheThings' rare) an R record, any other mob a W record with its levels and
+    zone. More than WORLD_DROP_NPCS mobs (bosses aside) make one world drop with their level range (and their
+    zone when they share one). An object gives its dungeon's trash inside one, else a W record of its name and
+    zone. A vendor gives V (P for a PvP rank quartermaster; AllTheThings' record where it knows the NPC), a
+    quest Q (AllTheThings' record, else the collector's, else QuestieDB's). Raids outside the facts and
+    instances Amisia does not know are left out, as for AllTheThings' drops."""
+    if not questie:
+        return {}
+    qn, qo, qq = questie.get('npcs') or {}, questie.get('objects') or {}, questie.get('quests') or {}
+    zones, area_inst = questie.get('zones') or {}, questie.get('area_inst') or {}
+    area_names = questie.get('area_names') or {}
+    boss_of = {}   # npc id -> (fact, boss name of the facts' order)
+    for f in facts or ():
+        for b, n in zip(f.get('order') or [], f.get('npcs') or []):
+            if n:
+                boss_of.setdefault(n, (f, b))
+
+    def place_of(area):
+        """(inside an instance, its dungeon place or None for one Amisia does not know, uiMapID or None).
+        An area of the open world without a map of its own whose name is a dungeon's (QuestieDB files the
+        mobs of Blackrock Spire under such an area) counts as that dungeon."""
+        inst = area_inst.get(area)
+        if inst:
+            place = places.of_instance(inst)
+            return True, (place if place[0] else None), None
+        if area not in zones and area in area_names:
+            place = places.by_key.get(dungeon_key(area_names[area]))
+            if place is not None:
+                return True, tuple(place), None
+        return False, None, zones.get(area)
+
+    def boss_rec(nid):
+        f, boss = boss_of[nid]
+        place = places.of_name(f['name'])
+        if not place[0]:
+            place = (f['name'], f.get('inst'), f.get('area'))
+        dname, inst, area = places.split(place, boss, nid)
+        if f.get('kind') == 'raid':
+            return 'raid', src.add('X', dname, boss, inst or 0, area or 0, 1, 0)
+        return 'dungeon', src.add('D', dname, boss, None, inst, area)
+
+    def zone_of(n, att_npc):
+        ui = place_of(n.get('zone'))[2]
+        return zone_ref(ui or npc_zone(att_npc))
+
+    out = {}
+    for iid in sorted(questie.get('items') or {}):
+        if iid in skip:
+            continue
+        it = questie['items'][iid]
+        recs = []
+        # --- drops of NPCs
+        bosses, others = [], []
+        for nid in it['npcs']:
+            n = qn.get(nid)
+            if nid in boss_of:
+                bosses.append(boss_rec(nid))
+                continue
+            if not n or not n.get('name'):
+                continue
+            an = npcs.get(nid)
+            inside, place, _ = place_of(n.get('zone'))
+            if inside:
+                if not place:
+                    continue   # an instance Amisia does not know
+                dname, inst, area = places.split(place, n['name'], nid)
+                if dname in RAIDS:
+                    continue
+                if an and 'boss' in an.get('kinds', ()):
+                    bosses.append(('dungeon', src.add('D', dname, an.get('name') or n['name'], None, inst, area)))
+                else:
+                    others.append(('trash', dname, n))
+            elif n.get('rank') in (2, 4) or (an and 'rare' in an.get('kinds', ())):
+                others.append(('rare', nid, n))
+            else:
+                others.append(('mob', nid, n))
+        recs += bosses
+        if len(others) > WORLD_DROP_NPCS:
+            dungeons = {o[1] for o in others if o[0] == 'trash'}
+            if len(dungeons) == 1 and all(o[0] == 'trash' for o in others):
+                recs.append(('world', src.add('W', f'Trash ({dungeons.pop()})', 0, 0)))
+            else:
+                outside = [o[2] for o in others if o[0] != 'trash']
+                lo = min((n['min'] for n in outside if n.get('min')), default=0)
+                hi = max((n['max'] for n in outside if n.get('max')), default=0)
+                zs = {zone_of(o[2], npcs.get(o[1])) for o in others if o[0] != 'trash'}
+                zone = zs.pop() if len(zs) == 1 else None
+                recs.append(('world', src.add('W', None, lo, hi or lo, zone)))
+        else:
+            for kind, key, n in others:
+                if kind == 'trash':
+                    recs.append(('world', src.add('W', f'Trash ({key})', 0, 0)))
+                elif kind == 'rare':
+                    recs.append(('rare', src.add('R', n['name'], n.get('max') or 0, zone_of(n, npcs.get(key)), key)))
+                else:
+                    recs.append(('world', src.add('W', n['name'], n.get('min') or 0, n.get('max') or 0,
+                                                  zone_of(n, npcs.get(key)), key)))
+        # --- objects (chests and the like)
+        objs = []
+        for oid in it['objects']:
+            o = qo.get(oid)
+            if not o or not o.get('name'):
+                continue
+            inside, place, ui = place_of(o.get('zone'))
+            if inside:
+                if not place:
+                    continue
+                dname = places.split(place)[0]
+                if dname in RAIDS:
+                    continue
+                objs.append(('W', f'Trash ({dname})', 0, 0))
+            else:
+                objs.append(('W', o['name'], 0, 0, zone_ref(ui)))
+        if len(objs) > WORLD_DROP_NPCS:
+            zs = {r[4] if len(r) > 4 else None for r in objs}
+            objs = [('W', None, 0, 0, zs.pop() if len(zs) == 1 else None)]
+        recs += [('world', src.add(*r)) for r in objs]
+        # --- vendors
+        for nid in it['vendors']:
+            n, an = qn.get(nid) or {}, npcs.get(nid)
+            if an:
+                k = 'P' if is_pvp_vendor(an.get('title')) else 'V'
+                recs.append(('pvp' if k == 'P' else 'vendor',
+                             src.add(k, an.get('name') or n.get('name') or f'NPC {nid}', zone_of(n, an),
+                                     an.get('faction') or n.get('friendly'), an.get('title'), None, nid)))
+            elif n.get('name'):
+                k = 'P' if is_pvp_vendor(n.get('title')) else 'V'
+                recs.append(('pvp' if k == 'P' else 'vendor',
+                             src.add(k, n['name'], zone_of(n, None), n.get('friendly'), n.get('title'), None, nid)))
+        # --- quest rewards
+        for qid in it['quests']:
+            aq = quests.get(qid)
+            num = quest_rec(qid, aq) if aq else None
+            if aq and num is None:
+                continue   # a raid quest
+            if num is None and qid in (obs.get('q') or {}):
+                num = obs_quest(qid, obs['q'][qid])
+            if num is None:
+                q = qq.get(qid)
+                if not q or not q.get('name'):
+                    continue
+                inside, place, ui = place_of(q.get('zone'))
+                if inside and place and places.split(place)[0] in RAIDS:
+                    continue
+                dname = places.split(place)[0] if place else None
+                num = src.add('Q', q['name'], q.get('level') or 0, q.get('min') or 0, q.get('faction'),
+                              zone_ref(ui), qid, q.get('classes') or 0, dname)
+            recs.append(('quest', num))
+        seen, uniq = set(), []
+        for kind, num in recs:
+            if num not in seen:
+                seen.add(num)
+                uniq.append((kind, num))
+        if uniq:
+            out[iid] = uniq
+    return out
+
+
 def build(scan_items, collected, att, crafts=None, wowsrc=None,
           itemsparse=None, forever_raids=None, facts=None, prev_items=None, observed=None, scanned=None,
-          hand=None):
+          hand=None, questie=None):
     """Joins the sources to the items. att is the neutral form of tools/att_data.py (att_data.empty_db()
     for none); crafts client_crafts' form (None for none); observed the source
     collector's records (build_scan.collect_observed); scanned the quest scan's rewards
     (scan_quest_rewards); hand the item sources kept by hand (load_hand_sources, D-156), added after all
-    the others where none of them says the same. The ids any source names are kept as src.named (no_source). Returns the source
+    the others where none of them says the same; questie QuestieDB's data (tools/questie_data.py, with
+    'zones' and 'area_inst', D-157), only for the items no source above names (questie_sources).
+    The ids any source names are kept as src.named (no_source). Returns the source
     records, the kept items {id: (item, source numbers, level, class mask, speed, skill line)}, the
     zone names, link counts, what was left out and why, wowsrc names without an item, and the ids to
     ask the client for."""
@@ -1163,6 +1334,13 @@ def build(scan_items, collected, att, crafts=None, wowsrc=None,
                 stats['hand, known already'] = stats.get('hand, known already', 0) + 1
                 continue
             note(iid, num, 'hand ' + kind)
+
+    # --- QuestieDB (D-157): only for an item none of the sources above names (the hand file wins: it came
+    # first); its drops, objects, vendors and quest rewards as records of the same kinds as the others
+    for iid, recs in questie_sources(questie, src, places, facts, quests, npcs, zone_ref, npc_zone, quest_rec,
+                                     obs, obs_quest, skip=set(found)).items():
+        for kind, num in recs:
+            note(iid, num, 'questie ' + kind)
 
     # --- keep what the item table knows and a character can wear
     keep = {}
@@ -1557,6 +1735,10 @@ def main(argv=None):
                          'replace the shipped file)')
     ap.add_argument('--refresh-wowsrc', action='store_true', help='download the wowsrc.com dungeon pages again')
     ap.add_argument('--no-wowsrc', action='store_true', help='leave the wowsrc.com dungeon pages out')
+    ap.add_argument('--questie', default=questie_data.QUESTIE_CACHE,
+                    help=f'QuestieDB download (default {questie_data.QUESTIE_CACHE}; python3 tools/build.py questie '
+                         'refreshes it, D-157); a missing one gives no QuestieDB sources')
+    ap.add_argument('--no-questie', action='store_true', help='leave QuestieDB out')
     ap.add_argument('--show-unmatched', action='store_true')
     ap.add_argument('--itemsparse', help='ItemSparse CSV export of the Forever client (wago.tools, with hotfixes), or a '
                                          'folder holding ItemSparse[.<build>].csv; refreshes tools/gear_itemsparse.json')
@@ -1627,9 +1809,18 @@ def main(argv=None):
     except HandSourceError as e:
         raise SystemExit(str(e))
     log(f'hand sources (tools/forever_gear_sources.json): {sum(len(v) for v in hand.values())} for {len(hand)} items')
+    # QuestieDB (D-157): read from its cache only, never downloaded here; its zones are AreaTable ids
+    questie = None if args.no_questie else questie_data.load(args.questie)
+    if questie:
+        questie['zones'] = questie_data.area_zones(args.wago)
+        questie['area_inst'] = att_data.read_area_instances(args.wago)[0]
+        questie['area_names'] = questie_data.area_names(args.wago)
     src, keep, zone_rows, stats, dropped, unmatched, missing = build(
         scan_items, collected, att, crafts, wowsrc, itemsparse, forever_raids, facts,
-        prev_items, observed, scanned, hand)
+        prev_items, observed, scanned, hand, questie)
+    if questie:
+        took = {k[len('questie '):]: v for k, v in stats.items() if k.startswith('questie ')}
+        log(f'QuestieDB: {sum(took.values())} sources for items no other source names: {took}')
     log(f'quest scan rewards: {len(scanned)} quests with reward items, {stats.get("scan quest", 0)} items took one as their source')
     missing = client_known(missing, args.wago)
     sources = [att_data.ATT_SOURCE + (f' at {att["commit"][:10]}' if att.get('commit') else ''), 'the Amisia item scan']
@@ -1639,6 +1830,8 @@ def main(argv=None):
         sources.append('wowsrc.com')
     if hand:
         sources.append('item sources kept by hand (tools/forever_gear_sources.json)')
+    if questie and any(k.startswith('questie ') for k in stats):
+        sources.append(questie_data.QUESTIE_SOURCE + (f' at {questie["commit"][:10]}' if questie.get('commit') else ''))
     rep = client_reputation(args.wago)
     # a build into another file keeps its own copy of the quest type archive beside it (a test's trial build
     # with the synced SavedVariables once wrote their new quest types into tools/quest_tag_archive.json on every

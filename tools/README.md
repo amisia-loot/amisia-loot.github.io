@@ -35,6 +35,8 @@ python3 tools/build.py perf [--sv FILE] [--rows N]
   `att_data.py`; e.g. a fresh download in `~/addons/_cache/att_<date>` to compare before it replaces the
   cache); `--refresh-att` downloads the AllTheThings data first. `data` never asks wago.tools: it builds
   from what is on disk, so the same files give the same data.
+- `questie` downloads QuestieDB's Forever data into `~/addons/_cache/questiedb` (`questie_data.py`, below;
+  D-157). `data` only reads that cache.
 - `tables` downloads the client tables from wago.tools (`fetch_tables.py`, below): the newest `wowf` build
   or `--version`, every table of `client_tables.TABLES` or only `--tables`. The one step that asks the site.
   `--locale deDE` writes `<Table>.<build>.deDE.csv` beside the others (the builders' chooser never takes such a
@@ -623,6 +625,34 @@ the licence text ships in `Amisia/LICENSES/AllTheThings-MIT.txt`, approved by th
 Tests: `tools/tests/test_att_data.py` on the hand-made fixtures `tools/tests/fixtures/att` (the older
 form) and `tools/tests/fixtures/att_new` (the form since 2026-11-05).
 
+## questie_data.py: QuestieDB's Forever data (D-157)
+
+```
+python3 tools/build.py questie      # = tools/questie_data.py [--dest DIR] [--ref master]
+```
+
+- Downloads from QuestieDB's GitHub repository (branch `master`) through the GitHub API (the token of `gh`), one
+  request after the other with a pause of a second, only `data/Forever/*.lua` (the item, NPC, object and quest
+  tables) and the repository's `LICENSE.md` and `PROVENANCE.md`, into `~/addons/_cache/questiedb`
+  (`$AMISIA_QUESTIE_CACHE`) with the commit in `COMMIT`; files an older download had and the repository no longer
+  has are removed. Never committed, never fetched by `build.py data`.
+- Licence: GPL-3.0 for contributions since 2026-10-21; older content imported from Questie has no clear licence
+  (its authors: "when in doubt all rights reserved", alright with copies under the GPLv3). Amisia is GPL-3.0 and
+  names it with this caveat in `Amisia/LICENSES/THIRD-PARTY.md`.
+- `load()` runs each file in a sandbox like the SavedVariables (`SANDBOX`: lupa without its python bridge, an
+  environment holding only `QuestieLoader:ImportModule`, no string methods, an instruction budget, a chunk
+  starting with ESC refused, the file and each data string `"return {...}"` in it). The field numbers come from
+  the files' own key tables (`itemKeys`, `npcKeys`, ...). It keeps the weapons and armour (item class 2 and 4)
+  with a source: `npcDrops`, `objectDrops`, `vendors`, `questRewards`; and for the NPCs, objects and quests they
+  name: names, levels, rank, title, faction, the main zone (an AreaTable id), the quest level, required level,
+  races (as A/H) and classes. `area_zones()` turns AreaTable ids into uiMapIDs (`UiMapAssignment`, up the parent
+  areas), `area_names()` names the top areas (and QuestieDB's own id 1585, Blackrock Depths) so `build_gear.py`
+  can place a dungeon area without an instance map by its name.
+- QuestieDB has Classic ids only (items up to about 20000, NPCs up to about 18000): no new Forever items.
+
+Tests: `tools/tests/test_questie_data.py` (a cut of the files in their format under
+`tools/tests/fixtures/questiedb`, the sandbox, the download without network).
+
 ## build_gear.py
 
 Builds `Amisia_Gear/Data/GearData.lua` for the addon's gear window (`/amisia gear`, WoW Forever only):
@@ -654,7 +684,8 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
 - wowsrc.com dungeon pages (drop chances) are kept in `tools/gear_wowsrc.json`;
   `--refresh-wowsrc` downloads them again, `--no-wowsrc` leaves them out.
 - Item sources kept by hand (D-156): `tools/forever_gear_sources.json`, for an item none of the sources above
-  knows. Only what the user saw in game or told, never copied from another addon, Wowhead or foreverchanges.
+  knows. Only what the user saw in game or told; other sources come through their own scripts (QuestieDB below),
+  never copied by hand, and never from Wowhead.
   Add an entry under `"items"`, keyed by the item id as a string, with `"src"` saying who saw it when:
 
   ```json
@@ -670,6 +701,15 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
   sources; one an automatic source already gives (same boss and dungeon, quest or NPC) is not added twice. Then
   `python3 tools/build.py data`: an item the scan or client has stats for joins `I`; one without goes to `M`
   until `/amisia scan gear` has asked the client for it.
+- QuestieDB (D-157, `questie_data.py` below): last of all and only for an item that none of the sources above
+  (hand file included) names, its NPC drops, objects, vendors and quest rewards (`questie_sources`): a boss of
+  `tools/forever_dungeons.json` by NPC id -> `D` (a raid there -> `X`) under the facts' boss name; another NPC in
+  a dungeon -> `D` when AllTheThings calls it a boss, else `W "Trash (<dungeon>)"`; outside, a rare (rank 2 or 4,
+  or ATT's) -> `R`, another mob -> `W` with its levels and zone; more than `WORLD_DROP_NPCS` mobs -> one `W`
+  world drop with their level range; an object -> its dungeon's trash, else `W` with its name and zone; a vendor
+  -> `V` (`P` for a rank quartermaster); a quest -> `Q` (ATT's or the collector's record where they know it).
+  Raids outside the facts and unknown instances are left out. `--questie DIR` reads another download,
+  `--no-questie` leaves it out; a missing download prints a note and adds nothing.
 - In game, `/amisia scan gear` (outside instances) asks the client for every item the planner lists
   plus the ids its sources name but no item table knows (`M` in GearData.lua, items Forever still
   hides until they are revealed). It stores each item's stats too. Log out, rebuild: the stats go

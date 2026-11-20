@@ -11,6 +11,7 @@
 ## AddonCompartmentFuncOnEnter: Amisia_OnAddonCompartmentEnter
 ## AddonCompartmentFuncOnLeave: Amisia_OnAddonCompartmentLeave
 ## X-Curse-Project-ID: 1783476
+## X-License: GPL-3.0
 # Written by tools/build.py from Amisia.toc (D-57): without the Forever-only files. Edit Amisia.toc.
 
 Locales\Locale.lua

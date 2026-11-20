@@ -382,6 +382,8 @@ def test_no_links_to_fan_sites():
 WOWHEAD_FETCH_KNOWN = {'build_scan.py'}
 # the one tool that may ask wago.tools, and only along its API and CSV routes (DECISIONS.md D-101)
 WAGO_FETCHER = 'fetch_tables.py'
+# the one tool that downloads QuestieDB, through the GitHub API (DECISIONS.md D-157)
+QUESTIE_FETCHER = 'questie_data.py'
 
 
 def test_no_tool_fetches_from_the_forbidden_sites():
@@ -392,6 +394,10 @@ def test_no_tool_fetches_from_the_forbidden_sites():
             assert not re.search(r'^\s*(import|from)\s+fetch_tables\b', text, re.M), \
                 f'tools/{name} imports the fetcher (build.py tables runs it as its own program)'
         assert 'foreverchanges' not in text.lower(), f'tools/{name} names foreverchanges'
+        if name != QUESTIE_FETCHER:
+            assert 'questie/questiedb' not in text.lower(), \
+                f'tools/{name} names the QuestieDB repository (only tools/{QUESTIE_FETCHER} downloads it, D-157)'
+            assert 'questie_data.refresh(' not in text, f'tools/{name} downloads QuestieDB (build.py questie does)'
         if name not in WOWHEAD_FETCH_KNOWN:
             assert not re.search(r'https?://[^\s\'"]*wowhead\.com', text), f'tools/{name} fetches from Wowhead'
     # the fetcher: every wago.tools URL it names is one of the two allowed routes, it asks nothing else
@@ -404,13 +410,28 @@ def test_no_tool_fetches_from_the_forbidden_sites():
     body = body[:body.index('\ndef ')]
     assert body.index('check_url(url)') < body.index('urlopen('), 'http_get checks the URL before it asks'
     assert not re.search(r'method=[\'"](?!GET)', text), 'GET only'
+    # the QuestieDB fetcher: the GitHub API of that one repository, one place that asks the network
+    text = read(os.path.join(TOOLS, QUESTIE_FETCHER))
+    for url in re.findall(r'https?://[^\s\'"\)\]]+', text):
+        assert re.match(r'^https://(api\.github\.com/repos/\{QUESTIE_REPO\}|github\.com/Questie/questiedb\b|amisia-loot\.github\.io)',
+                        url), f'tools/{QUESTIE_FETCHER} names {url}'
+    assert "QUESTIE_REPO = 'Questie/questiedb'" in text
+    assert text.count('urlopen(') == 1, f'tools/{QUESTIE_FETCHER}: one place that asks the network'
 
 
-def test_no_questie_data_left():
+# the tools that may read QuestieDB (D-157): its reader and the gear build; build.py only runs the reader's download
+QUESTIE_READERS = {'questie_data.py', 'build_gear.py', 'build.py'}
+
+
+def test_questie_data_only_through_its_reader():
     for name, text in tool_files():
-        assert 'questie' not in text.lower(), f'tools/{name} still reads QuestieDB (no licence, removed 2026-10-06)'
+        if name not in QUESTIE_READERS:
+            assert 'questie' not in text.lower(), f'tools/{name} reads QuestieDB (only {sorted(QUESTIE_READERS)}, D-157)'
     for rel, text in addon_files(skip=('Locales/',)):
-        assert 'questie' not in text.lower(), f'{rel} still names QuestieDB'
+        if rel == 'Data/GearData.lua':
+            assert 'questie' not in text.lower().split('local _, ns', 1)[1], f'{rel} names QuestieDB outside its header'
+            continue
+        assert 'questie' not in text.lower(), f'{rel} names QuestieDB (only the header of Data/GearData.lua, D-157)'
 
 
 def header(text):
@@ -424,6 +445,7 @@ def header(text):
 
 def test_every_generated_file_names_its_generator_and_sources():
     licence = read(os.path.join(ADDON, 'LICENSES', 'AllTheThings-MIT.txt'))
+    third = read(os.path.join(ADDON, 'LICENSES', 'THIRD-PARTY.md'))
     data = addon_files(skip=('Core/', 'Raid/', 'Gear/', 'Collect/', 'UI/', 'Locales/'))
     data = [(rel, text) for rel, text in data if rel.startswith('Data/')]
     assert len(data) >= 10
@@ -437,11 +459,30 @@ def test_every_generated_file_names_its_generator_and_sources():
         if 'AllTheThings' in head:
             assert 'MIT' in head and 'LICENSES' in head, f'{rel}: AllTheThings data without its MIT credit'
             assert rel in licence, f'{rel} uses AllTheThings data but LICENSES/AllTheThings-MIT.txt does not list it'
-        assert not re.search(r'OneForAll|AtlasLoot|GPL', head), f'{rel}: data under a copyleft licence (D-04)'
+        if 'QuestieDB' in head:
+            assert 'GPL-3.0' in head and 'LICENSES/THIRD-PARTY.md' in head, f'{rel}: QuestieDB data without its credit'
+            assert rel in third, f'{rel} uses QuestieDB data but LICENSES/THIRD-PARTY.md does not name it'
+        # D-157: Amisia is GPL-3.0, QuestieDB came in; other addons' data only after the user decides it (D-04)
+        assert not re.search(r'OneForAll|AtlasLoot', head), f'{rel}: data of another addon nobody decided on (D-04)'
     for rel in re.findall(r'Data/\w+\.lua', licence):
         assert os.path.exists(modules.path_of(rel)), f'LICENSES names {rel}, which does not exist'
-    assert sorted(os.listdir(os.path.join(ADDON, 'LICENSES'))) == ['AllTheThings-MIT.txt'], \
-        'a new licence file: decide it with the user first (D-04)'
+    assert sorted(os.listdir(os.path.join(ADDON, 'LICENSES'))) == ['AllTheThings-MIT.txt', 'THIRD-PARTY.md'], \
+        'a new licence file: decide it with the user first (D-04, D-157)'
+
+
+def test_amisia_ships_the_gpl_in_every_folder():
+    """D-157: Amisia is GPL-3.0; the licence text stands at the root and in each addon folder (the release zip
+    takes the tracked files of the folders), each TOC says so."""
+    gpl = read(os.path.join(ROOT, 'LICENSE'))
+    assert gpl.lstrip().startswith('GNU GENERAL PUBLIC LICENSE') and 'Version 3, 29 June 2007' in gpl
+    for module in modules.MODULES:
+        base = modules.folder(module)
+        assert read(os.path.join(base, 'LICENSE')) == gpl, f'{base}/LICENSE is not the GPL-3.0 text of the root'
+        for toc in sorted(f for f in os.listdir(base) if f.endswith('.toc')):
+            assert '\n## X-License: GPL-3.0\n' in read(os.path.join(base, toc)), f'{toc} has no ## X-License: GPL-3.0'
+    third = read(os.path.join(ADDON, 'LICENSES', 'THIRD-PARTY.md'))
+    for word in ('AllTheThings', 'MIT', 'QuestieDB', 'GPL-3.0', 'github.com/Questie/questiedb', 'all rights reserved'):
+        assert word in third, f'LICENSES/THIRD-PARTY.md does not say {word}'
 
 
 def test_bis_picks_are_a_bis_recommendation_not_a_guild_one():

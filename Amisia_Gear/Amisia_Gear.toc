@@ -9,6 +9,7 @@
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia_Gear
 ## Dependencies: Amisia
 ## OptionalDeps: Amisia_Raid
+## X-License: GPL-3.0
 
 Gear\Module.lua
 Locales\enUS_gear.lua

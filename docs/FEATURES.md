@@ -1855,6 +1855,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du mit "AH" an ein Item kommst, dann hat es eine feste Quelle (z. B. hergestellt oder Dungeon-Drop, bindet beim Anlegen); ein Item, das nur im Auktionshaus gesehen wurde, kommt nicht.
 - Prüfung: Wenn du im Katalog nach "Prophezeiung" suchst, dann zeigen die Items der Stufe 30 Namen und Symbol, und der Tooltip nennt Slot, Gegenstandsstufe, Werte, Quellen und "Aus Amisias Scan: der Server beschreibt dieses Item nicht (mehr)."
 - Notiz: Wunsch des Nutzers 2026-11-05 ("können wir bei den set nur realistischge sachen rein machen die man würklich bekommt", Bildschirmfoto der Tabelle voller 288xxx-Epics). DECISIONS D-59.
+- Prüfung: Wenn du im Katalog die ID 19572 suchst, dann nennt das Item als Quelle "Händler: Illiyana Moonblaze" statt "Quelle unbekannt".
+- Notiz: Nachtrag 2026-11-20: Items, die keine eigene Quelle kennt, bekommen ihre Quellen aus QuestieDB (DECISIONS D-157, "Alles wie die anderen"); im ersten Bau 465 Items mehr mit Quelle.
 
 ### F-122 Seite Raids
 - Version: 2.45.0

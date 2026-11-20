@@ -11,6 +11,7 @@
 ## AddonCompartmentFuncOnEnter: Amisia_OnAddonCompartmentEnter
 ## AddonCompartmentFuncOnLeave: Amisia_OnAddonCompartmentLeave
 ## X-Curse-Project-ID: 1783476
+## X-License: GPL-3.0
 
 Locales\Locale.lua
 Locales\enUS_core.lua

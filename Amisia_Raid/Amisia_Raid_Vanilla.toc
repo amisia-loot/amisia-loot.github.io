@@ -8,6 +8,7 @@
 ## Category: VuloUI
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia_Raid
 ## Dependencies: Amisia
+## X-License: GPL-3.0
 # Written by tools/build.py from Amisia_Raid.toc (D-57): without the Forever-only files. Edit Amisia_Raid.toc.
 
 Raid\Module.lua

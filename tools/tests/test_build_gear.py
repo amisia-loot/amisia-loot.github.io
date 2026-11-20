@@ -1,6 +1,7 @@
 """The pure parts of tools/build_gear.py: source interning, wowsrc pages, the item master (scan over
 the last build over the item export), places of dungeons, and the join of AllTheThings' data (as
-tools/att_data.py hands it over) and the collector with the items. No QuestieDB."""
+tools/att_data.py hands it over) and the collector with the items; QuestieDB (as tools/questie_data.py
+hands it over) only for items no other source names (D-157)."""
 import json
 import os
 import sys
@@ -61,11 +62,11 @@ def test_parse_wowsrc_page():
                  'bosses': [{'name': 'Edwin VanCleef', 'items': [{'n': 'Cruel Barb', 'l': 19, 'd': '12.5%', 'nw': False}]}]}
 
 
-def test_no_questie_left():
+def test_the_gear_build_reads_questiedb_but_never_downloads_it():
+    """D-157: build.py questie downloads, the data build only reads the cache (questie_data.load)."""
     with open(build_gear.__file__, encoding='utf-8') as fh:
         src = fh.read()
-    assert 'questie' not in src.lower(), 'no data of that unlicensed database'
-    assert not hasattr(build_gear, 'load_questie')
+    assert 'questie_data.load(' in src and 'questie_data.refresh(' not in src
 
 
 def test_join_keeps_wearable_items_and_quest_levels():
@@ -816,3 +817,76 @@ def test_the_real_hand_file_gives_18316_its_boss_pusillin():
     src, keep, *_ = build_gear.build(scan, {}, att(), facts=facts, hand=hand)
     recs = [src.rows[n - 1] for n in keep[18316][1]]
     assert recs == [('D', 'Dire Maul', 'Pusillin', None, 429)], 'a boss drop of Dire Maul, instance 429'
+
+
+# ---------------------------------------------------------------- QuestieDB (D-157)
+def qnpc(name, zone, lo=20, hi=21, rank=0, title=None, friendly=None):
+    return {'name': name, 'min': lo, 'max': hi, 'rank': rank, 'zone': zone, 'title': title, 'friendly': friendly}
+
+
+def qitem(npcs=(), objects=(), vendors=(), quests=()):
+    return {'name': 'x', 'npcs': list(npcs), 'objects': list(objects), 'vendors': list(vendors), 'quests': list(quests)}
+
+
+def questie(items, npcs=None, objects=None, quests=None):
+    """QuestieDB's neutral form (tools/questie_data.py) with the zone maps build_gear.main adds: Elwynn 12 and
+    Westfall 40 outdoors, 1581 inside the Deadmines (instance 36), 1583 an area named after Dire Maul."""
+    return {'commit': 'c0ffee', 'items': items, 'npcs': npcs or {}, 'objects': objects or {}, 'quests': quests or {},
+            'zones': {12: 1429, 40: 1436}, 'area_inst': {1581: 36, 2159: 249}, 'area_names': {1583: 'Dire Maul'}}
+
+
+def test_questie_gives_sources_only_to_items_no_other_source_names():
+    a = att(instances=DEADMINES, npcs={645: npc('Cookie', {'boss'}, zone=291, inst=63)},
+            drops=[(20, 645, 'boss', 63, 291, False, None)])
+    q = questie({20: qitem(npcs=[299]), 21: qitem(npcs=[299])}, npcs={299: qnpc('Young Wolf', 12, 1, 2)})
+    scan = {20: scan_item('Cookie Hat', q=3), 21: scan_item('Wolf Hat', q=3)}
+    src, keep, _, stats, *_ = build_gear.build(scan, {}, a, facts=FACTS, questie=q)
+    assert [src.rows[n - 1] for n in keep[20][1]] == [('D', 'The Deadmines', 'Cookie', None, 36, 1581)], \
+        'ATT names 20 already: QuestieDB adds nothing'
+    assert [src.rows[n - 1] for n in keep[21][1]] == [('W', 'Young Wolf', 1, 2, 1429, 299)], \
+        'the mob with its levels, its zone as a uiMapID'
+    assert stats['questie world'] == 1 and 21 in src.named
+
+
+def test_a_hand_source_wins_over_questie(tmp_path):
+    hand = build_gear.load_hand_sources(
+        hand_file(tmp_path, {'30': [hand_entry('D', dungeon='dire', boss='Pusillin', npc=14354)]}), HAND_FACTS)
+    q = questie({30: qitem(npcs=[299], vendors=[900])},
+                npcs={299: qnpc('Young Wolf', 12), 900: qnpc('Griselda', 12, title='Shoe Merchant', friendly='A')})
+    src, keep, _, stats, *_ = build_gear.build({30: scan_item('Pusillin Hat', q=3)}, {}, att(), facts=HAND_FACTS,
+                                               hand=hand, questie=q)
+    assert [src.rows[n - 1] for n in keep[30][1]] == [('D', 'Dire Maul', 'Pusillin', None, 429)]
+    assert not any(k.startswith('questie') for k in stats)
+
+
+def test_questie_sources_become_records_of_our_kinds():
+    facts = HAND_FACTS + [{'key': 'onyxia2', 'name': "Onyxia's Lair", 'kind': 'raid', 'inst': 249, 'area': 2159,
+                           'order': ['Onyxia'], 'npcs': [10184]}]
+    a = att(instances=DEADMINES, npcs={657: npc('Defias Pirate', {'mob'}, inst=63)})
+    many = list(range(1000, 1008))
+    npcs = {14354: qnpc('Pusillin', 1583), 657: qnpc('Defias Pirate', 1581), 901: qnpc('Mother Fang', 40, 10, 10, rank=4),
+            900: qnpc('Griselda', 12, title='Shoe Merchant', friendly='A'), 10184: qnpc('Onyxia', 2159, 63, 63, rank=3),
+            1100: qnpc('Onyxian Whelp', 2159)}
+    npcs.update({n: qnpc(f'Mob {n}', 40 if n % 2 else 12, 10 + n % 5, 12 + n % 5) for n in many})
+    items = {1: qitem(npcs=[14354]), 2: qitem(npcs=[657]), 3: qitem(npcs=[901]), 4: qitem(npcs=many),
+             5: qitem(objects=[2039]), 6: qitem(vendors=[900]), 7: qitem(quests=[4711]), 8: qitem(npcs=[10184]),
+             9: qitem(npcs=[1100]), 10: qitem(objects=[3000])}
+    q = questie(items, npcs=npcs, objects={2039: {'name': 'Hidden Strongbox', 'zone': 40},
+                                           3000: {'name': 'Dusty Chest', 'zone': 1581}},
+                quests={4711: {'name': 'Die Fackel', 'level': 30, 'min': 25, 'faction': 'A', 'classes': 0, 'zone': 40}})
+    scan = {i: scan_item(f'Item {i}', q=3) for i in items}
+    scan[8] = scan_item('Onyxia Hat', q=4, lvl=60)
+    src, keep, *_ = build_gear.build(scan, {}, a, facts=facts, questie=q)
+
+    def recs(i):
+        return [src.rows[n - 1] for n in keep[i][1]] if i in keep else None
+    assert recs(1) == [('D', 'Dire Maul', 'Pusillin', None, 429)], "a boss of the facts by its NPC, the facts' name"
+    assert recs(2) == [('W', 'Trash (The Deadmines)', 0, 0)], 'a mob inside a dungeon: its trash'
+    assert recs(3) == [('R', 'Mother Fang', 10, 1436, 901)], 'a rare outside'
+    assert recs(4) == [('W', None, 10, 16)], 'more than six mobs: one world drop with their levels, two zones: none'
+    assert recs(5) == [('W', 'Hidden Strongbox', 0, 0, 1436)], 'an object outside: its name and zone'
+    assert recs(6) == [('V', 'Griselda', 1429, 'A', 'Shoe Merchant', None, 900)]
+    assert recs(7) == [('Q', 'Die Fackel', 30, 25, 'A', 1436, 4711, 0)]
+    assert recs(8) == [('X', "Onyxia's Lair", 'Onyxia', 249, 2159, 1, 0)], 'a raid boss of the facts: X'
+    assert recs(9) is None, 'raid trash is left out, as for AllTheThings'
+    assert recs(10) == [('W', 'Trash (The Deadmines)', 0, 0)], 'an object inside a dungeon: its trash'

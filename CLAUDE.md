@@ -41,7 +41,10 @@
   built on `auto/sv-<date>`, D-122); release only when the user asks.
 - Client tables may be fetched from wago.tools, but only by `python3 tools/build.py tables`
   (`tools/fetch_tables.py`: its API and CSV exports of product `wowf`, one request at a time, nothing twice;
-  DECISIONS D-101, which changed D-03). `build.py data` never touches the network; it takes per table the
-  newest and fullest copy on disk (`tools/client_tables.py`). Never download from Wowhead or foreverchanges
-  by script, and never use another addon's code or data (D-03, D-04).
+  DECISIONS D-101, which changed D-03). QuestieDB (GPL-3.0) only by `python3 tools/build.py questie`
+  (`tools/questie_data.py`, GitHub API, D-157). `build.py data` never touches the network; it takes per table the
+  newest and fullest copy on disk (`tools/client_tables.py`). Amisia is GPL-3.0 (D-157). Never Wowhead (its
+  robots.txt bars AI agents); foreverchanges not yet (step 2, within its robots.txt). Other addons' data only
+  under a compatible licence with a notice in `Amisia/LICENSES/`; their code never, unless GPL-compatible and noted
+  there (D-03, D-04, D-157).
 - Subagents only `opus-medium` or `sonnet-medium`, never Fable, no nested agents (DECISIONS D-31).

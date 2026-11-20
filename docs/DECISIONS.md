@@ -62,6 +62,13 @@ wird nicht erweitert. wowsrc.com ist eine vom Nutzer akzeptierte Eingabe (D-04),
 **Nachtrag 2026-11-10 (D-101):** Für wago.tools gilt seit 2026-11-10 D-101: `tools/fetch_tables.py` (nur dieses
 Skript) lädt dort die CSV-Exporte der Client-Tabellen über die beiden Wege, die robots.txt und llms.txt der Seite
 Programmen jetzt erlauben. Wowhead und foreverchanges bleiben verboten wie oben.
+**Nachtrag 2026-11-20 (D-157):** Der Nutzer auf die Frage, ob Item-Quellen wie bei den bekannten Addons
+(OneForAll, FojjiCore, Questie, AtlasLoot) übernommen werden sollen, mit allen Folgen genannt: "Alles wie die
+anderen". Seitdem lädt `tools/questie_data.py` (nur dieses Skript, `python3 tools/build.py questie`) die
+Forever-Daten von QuestieDB über die GitHub-API, eine Anfrage nach der anderen. foreverchanges.pro und
+metaforge.app erlauben Item-Seiten in ihrer robots.txt; sie kommen erst in einem zweiten Schritt und nur in dem
+Rahmen, den ihre robots.txt erlaubt (bis dahin bleibt foreverchanges im Test verboten). Wowhead bleibt verboten:
+seine robots.txt sperrt KI-Agenten ausdrücklich (anthropic-ai, ClaudeBot, Claude-Web), Amisia hält das ein.
 
 ## D-04 Lizenzen der Datenquellen
 
@@ -89,8 +96,18 @@ Quellen, jede mit AllTheThings-Daten steht in dessen Lizenzdatei. Eine neue Lize
 `Amisia/LICENSES/` oder eine Quelle mit Copyleft entscheidet der Nutzer vorher. Fremde Addons sonst
 nie nennen (D-05).
 **Durchgesetzt durch:** `tools/tests/test_contracts.py::test_every_generated_file_names_its_generator_and_sources`,
-`tools/tests/test_contracts.py::test_no_questie_data_left`, `tools/tests/test_build_quests.py::test_the_licence_names_every_file_from_allthethings`,
+`tools/tests/test_contracts.py::test_questie_data_only_through_its_reader`, `tools/tests/test_build_quests.py::test_the_licence_names_every_file_from_allthethings`,
 `tools/tests/test_build_gear.py::test_recipes_and_their_skill_come_from_the_client_tables`.
+**Nachtrag 2026-11-20 (D-157):** Der Nutzer: "Alles wie die anderen" (Item-Quellen wie die bekannten Addons
+nehmen, D-03/D-04 dafür lockern, Amisia wird GPL-3.0; die Lizenz des CurseForge-Projekts hat er schon auf GPL-3.0
+gestellt). Damit gilt: Amisia steht unter der GPL-3.0 (`LICENSE` im Repo und in jedem der drei Addon-Ordner,
+`## X-License: GPL-3.0` in jeder TOC). Das Verbot von Copyleft-Daten oben entfällt. QuestieDB (GPL-3.0 für Beiträge
+seit 21.10.2026, ältere aus Questie übernommene Inhalte mit unklarer Lizenz, "when in doubt all rights reserved")
+ist erlaubt und kommt per Skript von GitHub (`tools/questie_data.py`); `Amisia/LICENSES/THIRD-PARTY.md` nennt es mit
+diesem Vorbehalt, neben AllTheThings (MIT). Daten anderer Addons nur unter einer verträglichen Lizenz und mit
+Hinweis in `Amisia/LICENSES/`; Code anderer Addons nie, außer GPL-verträglich und dort vermerkt. Der Satz "QuestieDB
+hat keine Lizenz und ist entfernt" oben gilt seitdem nicht mehr. OneForAll und AtlasLoot sind noch nicht wieder
+in den Builds (der Test verbietet sie im Kopf der Daten weiter, bis sie jemand mit Lizenzhinweis einbaut).
 
 ## D-05 Keine anderen Addons nennen
 
@@ -4451,3 +4468,55 @@ bis ihn jemand entfernt; die Datei ist klein und wird im Commit geprüft.
 **Durchgesetzt durch:** `tools/tests/test_build_gear.py::test_bad_hand_entries_stop_the_build`,
 `tools/tests/test_build_gear.py::test_hand_sources_come_after_the_automatic_ones_and_never_twice`,
 `tools/tests/test_build_gear.py::test_the_real_hand_file_gives_18316_its_boss_pusillin`, `tests/test_gear.lua`.
+**Nachtrag 2026-11-20 (D-157):** In die Datei kommen weiter nur Tatsachen, die der Nutzer gesehen oder gesagt hat.
+Andere Quellen kommen über ihre eigenen Skripte (QuestieDB über `tools/questie_data.py`), nie von Hand
+abgeschrieben. Ein Eintrag von Hand gewinnt gegen QuestieDB: QuestieDB füllt nur Items, die nach allen anderen
+Quellen und der Datei hier noch keine Quelle haben.
+
+## D-157 Amisia unter GPL-3.0; Item-Quellen auch aus QuestieDB
+
+**Datum:** 2026-11-20
+**Entscheidung:** Amisia steht ab jetzt unter der GNU General Public License, Version 3: der Text als `LICENSE` im
+Repo und in `Amisia/`, `Amisia_Raid/`, `Amisia_Gear/` (die Release-Zip nimmt die getrackten Dateien der Ordner),
+`## X-License: GPL-3.0` in jeder TOC (auch den von `build.py tocs` geschriebenen `_TBC`/`_Vanilla`).
+`Amisia/LICENSES/THIRD-PARTY.md` nennt die fremden Daten: AllTheThings (MIT, Text in `AllTheThings-MIT.txt`) und
+QuestieDB (GPL-3.0, github.com/Questie/questiedb, mit dem Vorbehalt seiner `LICENSE.md`).
+Item-Quellen kommen jetzt auch aus QuestieDB (Ordner `data/Forever`):
+- `tools/questie_data.py` (`python3 tools/build.py questie`) lädt nur `data/Forever/*.lua`, `LICENSE.md` und
+  `PROVENANCE.md` über die GitHub-API nach `~/addons/_cache/questiedb`, eine Anfrage nach der anderen mit Pause.
+  `build.py data` lädt nie; fehlt der Download, gibt es keine QuestieDB-Quellen (mit Hinweis).
+- Die Dateien laufen in einer Sandbox wie die SavedVariables (lupa ohne Python-Brücke, leere Umgebung, keine
+  String-Methoden, Befehlsgrenze, vorkompilierter Code abgelehnt, auch in den Daten-Strings).
+- `tools/build_gear.py` (`questie_sources`) nimmt QuestieDB nur für ein Item, das nach AllTheThings, Scan, Sammlern,
+  Quest-Scan, Client-Tabellen, wowsrc, den Raids der Seite und der Datei von Hand (D-156) noch keine Quelle hat:
+  ein NPC, den die Dungeondaten als Boss führen, als D (Raid: X) unter dem Bossnamen der Dungeondaten; ein anderer
+  NPC im Dungeon als D, wenn AllTheThings ihn Boss nennt, sonst als Trash des Dungeons; draußen ein Rarmob (Rang 2
+  oder 4) als R, ein anderer Gegner als W mit Stufen und Gebiet; mehr als sechs Gegner (Bosse ausgenommen) als ein
+  Weltdrop mit ihrer Stufenspanne; ein Objekt im Dungeon als dessen Trash, draußen als W mit Name und Gebiet; ein
+  Händler als V (PvP-Rangrüstmeister P), eine Quest als Q (der Datensatz von AllTheThings oder des Sammlers, wo es
+  ihn gibt). Raids außerhalb der Dungeondaten und unbekannte Instanzen bleiben weg wie bei AllTheThings. Die
+  Gebiete von QuestieDB (AreaTable-IDs) werden über `UiMapAssignment`/`AreaTable` zu uiMapIDs; ein Gebiet ohne
+  eigene Karte mit dem Namen eines Dungeons (Blackrock Spire, QuestieDBs eigene ID 1585 für Blackrock Depths) gilt
+  als dieser Dungeon. Im Addon sehen diese Quellen aus wie alle anderen; der Kopf von `GearData.lua` nennt
+  QuestieDB. Die Regel der epischen Weltdrops (D-59) bleibt.
+**Grund:** Der Nutzer am 2026-11-20 auf die Frage mit allen Folgen (Lizenz, D-03/D-04, CurseForge): "Alles wie die
+anderen" - Item-Quellen so nehmen wie die bekannten Addons (OneForAll, FojjiCore, Questie, AtlasLoot) und dafür
+GPL-3.0 werden; die Lizenz des CurseForge-Projekts hat er selbst schon umgestellt. Über 1600 gescannte Items standen
+bis dahin als "ohne bekannte Quelle" im Planer. Wowhead bleibt draußen: seine robots.txt sperrt KI-Agenten
+(anthropic-ai, ClaudeBot, Claude-Web) ausdrücklich.
+**Folge:** Erster Bau am 2026-11-20 (QuestieDB 9cf27d6491), gegen einen Bau derselben Eingaben ohne QuestieDB:
+465 Items mehr in `GearData.lua` (7784 -> 8249), davon
+441 aus `GearNoSource.lua` (1605 -> 1164 ohne Quelle); nach Art 274 Händler (vor allem die Rüstmeister der
+Schlachtfelder), 181 Quests, 5 Bosse, 7 Weltdrops; 107 Item-IDs mehr für `/amisia scan gear` (213 -> 320).
+QuestieDB kennt nur Items und NPCs mit Classic-IDs, keine neuen Forever-Items (ab 200000). Der Vorbehalt der
+QuestieDB-Lizenz für alte, aus Questie übernommene Inhalte bleibt bestehen und steht in `THIRD-PARTY.md`.
+Schritt 2 (foreverchanges, MetaForge im Rahmen ihrer robots.txt) ist offen. Vorher (D-04, 2026-11-04): keine
+Copyleft-Daten, QuestieDB entfernt.
+**Durchgesetzt durch:** `tools/tests/test_contracts.py::test_amisia_ships_the_gpl_in_every_folder`,
+`tools/tests/test_contracts.py::test_questie_data_only_through_its_reader`,
+`tools/tests/test_contracts.py::test_no_tool_fetches_from_the_forbidden_sites`,
+`tools/tests/test_contracts.py::test_every_generated_file_names_its_generator_and_sources`,
+`tools/tests/test_questie_data.py` (Format, Sandbox gegen Bytecode, Download Datei für Datei),
+`tools/tests/test_build_gear.py::test_questie_gives_sources_only_to_items_no_other_source_names`,
+`tools/tests/test_build_gear.py::test_a_hand_source_wins_over_questie`,
+`tools/tests/test_build_gear.py::test_questie_sources_become_records_of_our_kinds`.

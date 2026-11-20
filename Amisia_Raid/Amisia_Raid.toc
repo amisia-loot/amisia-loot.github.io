@@ -8,6 +8,7 @@
 ## Category: VuloUI
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia_Raid
 ## Dependencies: Amisia
+## X-License: GPL-3.0
 
 Raid\Module.lua
 Locales\enUS_raid.lua

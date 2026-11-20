@@ -5,6 +5,20 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- data(gear): item sources from QuestieDB where none of our sources knew one (F-132)
+
+    Items that none of Amisia's own sources could place now take their sources from QuestieDB's WoW Forever data:
+    boss and mob drops, chests, vendors and quest rewards. They look like every other source in the planner. The
+    first build gives 465 more items a source (441 of them were "ohne bekannte Quelle" before), mostly the
+    battleground supply officers' gear, quest rewards and a few dungeon boss drops; about 1160 scanned items still
+    have none. Sources Amisia already knew, and sources entered by hand, always come first.
+
+- chore(license): Amisia is GPL-3.0 (D-157)
+
+    Amisia is now free software under the GNU General Public License, version 3. Each of the three addon folders
+    carries the licence text as LICENSE, and `LICENSES/THIRD-PARTY.md` in the core names the data Amisia is built
+    from: AllTheThings (MIT) and QuestieDB (GPL-3.0).
+
 - data(data): add the save file of 2026-11-20: quest places, map points, an entrance and a quest item
 
     Dark Iron Legacy places, two quest points on the map, the Blackrock Depths entrance and one quest item join the

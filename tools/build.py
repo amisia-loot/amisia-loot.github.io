@@ -2,6 +2,7 @@
 
     python3 tools/build.py data [--sv FILE] [--wago DIR] [--att DIR] [--refresh-att]
     python3 tools/build.py tables [--version V] [--tables T ...]
+    python3 tools/build.py questie
     python3 tools/build.py diff [OLD NEW] [--out FILE]
     python3 tools/build.py check
     python3 tools/build.py tocs
@@ -22,6 +23,10 @@ data     rebuilds every generated file in Amisia_Gear/Data in dependency order (
 tables   downloads the client tables the builders read from wago.tools' CSV exports for the newest
          wowf build (or --version) into ~/addons/_cache/wago (tools/fetch_tables.py, D-101): its two
          allowed routes only, one request at a time, a table already there is never asked for again.
+questie  downloads QuestieDB's WoW Forever data (data/Forever/*.lua, LICENSE.md, PROVENANCE.md of
+         QuestieDB's GitHub repository, GPL-3.0, D-157) through the GitHub API into ~/addons/_cache/questiedb
+         (tools/questie_data.py), one request at a time. data reads that cache only and never downloads it;
+         without it the gear build has no QuestieDB sources.
 diff     what a new client build brings (tools/build_diff.py, D-103): the client tables of two builds on
          disk compared (default: the build of the data on main against the newest on disk), new,
          removed and changed rows of items, quests, dungeons, bosses, flight points and the spells of
@@ -358,6 +363,12 @@ def cmd_tables(args):
     if getattr(args, 'locale', None):
         cmd += ['--locale', args.locale]
     rc, _ = run(cmd)
+    return rc
+
+
+def cmd_questie(args):
+    """QuestieDB's Forever data into its cache (tools/questie_data.py, D-157); data never downloads it."""
+    rc, _ = run([sys.executable, os.path.join(ROOT, 'tools', 'questie_data.py')])
     return rc
 
 
@@ -903,6 +914,7 @@ def main(argv=None):
     tb.add_argument('--tables', nargs='*', default=None, help='only these tables (default: every table the builders read)')
     tb.add_argument('--locale', default=None, choices=('enUS', 'deDE'),
                     help='string columns in this language (deDE: DungeonEncounter for the boss matching of the NPC scan, D-104)')
+    sub.add_parser('questie', help='download QuestieDB\'s Forever data into ~/addons/_cache/questiedb (tools/questie_data.py, D-157)')
     df = sub.add_parser('diff', help='what a new client build brings: the tables of two builds compared (tools/build_diff.py)')
     df.add_argument('builds', nargs='*', help='OLD NEW (default: the build of the data on main, the newest on disk)')
     df.add_argument('--out', default=None, help='also write the full report into this file')
@@ -943,7 +955,7 @@ def main(argv=None):
         os.environ['AMISIA_BUILD_VENV'] = '1'
         rest = sys.argv[1:] if argv is None else list(argv)
         os.execv(VENV_PY, [VENV_PY, os.path.abspath(__file__)] + rest)
-    return {'data': cmd_data, 'tables': cmd_tables, 'diff': cmd_diff, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release,
+    return {'data': cmd_data, 'tables': cmd_tables, 'questie': cmd_questie, 'diff': cmd_diff, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release,
             'github-release': cmd_github_release,
             'testlist': cmd_testlist, 'tested': cmd_tested, 'errors': cmd_errors, 'perf': cmd_perf, 'tocs': cmd_tocs}[args.cmd](args)
 
