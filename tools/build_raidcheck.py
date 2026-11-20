@@ -36,8 +36,9 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import att_data  # noqa: E402
 import lua_data  # noqa: E402
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
-OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'RaidCheckData.lua')
+OUT = modules.data_file('RaidCheckData.lua')
 WAGO = os.path.expanduser('~/addons/_wago')
 
 REQUIRED = ['Item', 'ItemEffect', 'ItemXItemEffect', 'SpellEffect', 'SpellMisc', 'SpellDuration', 'SpellName']

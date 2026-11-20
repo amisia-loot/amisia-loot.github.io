@@ -40,8 +40,9 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 from att_data import wago_csv  # noqa: E402
 import lua_data  # noqa: E402  (the lazy form of the data file)
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
-OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'TalentData.lua')
+OUT = modules.data_file('TalentData.lua')
 WAGO = os.path.expanduser('~/addons/_wago')
 
 REQUIRED = [

@@ -14,7 +14,7 @@
     python3 tools/build.py errors [--sv FILE] [--all]
     python3 tools/build.py perf [--sv FILE] [--rows N]
 
-data     rebuilds every generated file in Amisia_Gear/Data in dependency order (dungeons, gear, map,
+data     rebuilds every generated file (Data/* of the core and the modules, tools/modules.py DATA_HOME) in dependency order (dungeons, gear, map,
          dungeon quests, quests, professions, talents, mage scrolls, raid check, enchants, dungeon art, BiS), stops at the first error
          and shows what changed. Without --wago it first chooses per client table the newest, fullest
          copy of the user's export (~/addons/_wago), the wago.tools exports (~/addons/_cache/wago) and
@@ -41,7 +41,7 @@ check    the syntax check, the addon tests (German, then English), the translati
          (tools/ui_layout.py), the tool tests (they include the "generated file is current" checks),
          a UTF-8 check of the addon files, the TOC against the folder, luacheck. Exit code 1 when
          anything fails. Ends with a note (never a failure) when the game caught errors of Amisia.
-tocs     writes the core's ## Version into the modules' TOCs (Amisia_Raid.toc, Amisia_Gear.toc) and each
+tocs     writes the core's ## Version into the modules' TOCs (Amisia_Gear.toc, Amisia_Dungeons.toc, ...) and each
          folder's <folder>_TBC.toc and <folder>_Vanilla.toc: its TOC without the Forever parts (D-57,
          D-130); check fails while they differ, release writes them with the new version.
 snapshots  draws every page (raider, officer and expert view) and side window from the test stub
@@ -79,6 +79,10 @@ import time
 import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if os.path.dirname(os.path.abspath(__file__)) not in sys.path:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import modules  # noqa: E402  (the parts and their folders, F-202, F-228)
+
 ADDON_REL = 'Amisia'
 VENV_PY = os.path.expanduser('~/.venvs/amisia/bin/python')
 WAGO = os.path.expanduser('~/addons/_wago')
@@ -135,7 +139,7 @@ def has_lupa():
 # ---------------------------------------------------------------- TOC
 # The core and its modules (F-202, D-130): one addon folder each, its TOC <folder>.toc at its root. The
 # core's TOC holds the version (D-16); the modules' TOCs carry the same (set_toc_version, check_toc).
-ADDON_FOLDERS = ('Amisia', 'Amisia_Raid', 'Amisia_Gear')
+ADDON_FOLDERS = tuple(modules.FOLDERS[m] for m in modules.PARTS)   # the core first (F-228, D-158)
 
 
 def addon_folders(root=ROOT):
@@ -169,7 +173,7 @@ def set_toc_version(root, version):
 # The classic clients load a TOC with their suffix instead of <folder>.toc. They do not honour
 # [AllowLoadGameType camelot] (TBC Anniversary loaded the gear part with it), so their TOCs are the
 # folder's TOC without the Forever parts (D-57): without the lines with the camelot mark, and without
-# any file when the folder's ## Interface does not name that client (Amisia_Gear, Forever only, D-130).
+# any file when the folder's ## Interface does not name that client (the modules, Forever only, D-130, D-158).
 # Written by flavor_tocs and checked by check_toc.
 FLAVORS = {'_TBC': '20506', '_Vanilla': '11509'}
 FLAVOR_TOCS = {'Amisia' + suffix + '.toc': interface for suffix, interface in FLAVORS.items()}
@@ -203,7 +207,7 @@ def flavor_toc(text, interface, folder=ADDON_REL):
 
 
 def flavor_toc_names(root=ROOT):
-    """The classic TOCs relative to root ("Amisia_Raid/Amisia_Raid_TBC.toc"), every folder's."""
+    """The classic TOCs relative to root ("Amisia_Gear/Amisia_Gear_TBC.toc"), every folder's."""
     return [f'{folder}/{folder}{suffix}.toc' for folder in addon_folders(root) for suffix in FLAVORS]
 
 
@@ -353,7 +357,7 @@ def cmd_data(args):
         done.append(f'{name} {time.time() - t0:.0f}s')
     say()
     say('built: ' + ', '.join(done) + (('; skipped: ' + ', '.join(skipped)) if skipped else ''))
-    stat = git(ROOT, 'diff', '--stat', '--', 'Amisia_Gear/Data', 'tools', 'Amisia-Website/data', 'Amisia-Website/index.html').rstrip()
+    stat = git(ROOT, 'diff', '--stat', '--', *sorted({os.path.relpath(os.path.dirname(f), ROOT) for f in modules.data_files()}), 'tools', 'Amisia-Website/data', 'Amisia-Website/index.html').rstrip()
     say('changed:\n' + stat if stat else 'changed: nothing (every generated file is current)')
     return 0
 
@@ -419,7 +423,7 @@ def luacheck_cmd():
 
 def addon_files(root=ROOT, folder=None):
     """The files of an addon folder relative to it; without folder those of every folder relative to
-    root ("Amisia_Raid/Raid/Awards.lua")."""
+    root ("Amisia_Gear/Gear/Bis.lua")."""
     if folder is None:
         return [f'{d}/{rel}' for d in addon_folders(root) for rel in addon_files(root, d)]
     base = os.path.join(root, folder)
@@ -669,7 +673,7 @@ def release_test_list(root, version):
 # ---------------------------------------------------------------- release
 def build_zip(root, out=None):
     """Amisia-Website/Amisia.zip from the tracked files of the addon folders (the core and its modules, one
-    top folder each: Amisia/, Amisia_Raid/, Amisia_Gear/), without dotfiles."""
+    top folder each: Amisia/, Amisia_Gear/, Amisia_Dungeons/, Amisia_Talents/), without dotfiles."""
     out = out or os.path.join(root, 'Amisia-Website', 'Amisia.zip')
     n = 0
     os.makedirs(os.path.dirname(out), exist_ok=True)

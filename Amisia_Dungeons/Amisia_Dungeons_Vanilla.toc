@@ -1,0 +1,14 @@
+## Interface: 11509
+## Title: Amisia: Dungeons & Raids
+## Title-deDE: Amisia: Dungeons & Raids
+## Notes: Amisia's dungeon module, WoW Forever only: what every dungeon and raid brings (bosses, loot, quests), the quest pages, the map with routes and pins, runs, best times and the run timer. With Amisia: Gear it also shows your upgrades per dungeon. Needs Amisia.
+## Notes-deDE: Dungeon-Modul von Amisia, nur WoW Forever: was jeder Dungeon und Raid bringt (Bosse, Beute, Quests), die Quest-Seiten, die Karte mit Routen und Markierungen, Läufe, Bestzeiten und der Speedrun-Timer. Mit Amisia: Ausrüstung zeigt es auch deine Upgrades je Dungeon. Braucht Amisia.
+## Author: mrvulo
+## Version: 2.103.1
+## Category: VuloUI
+## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia_Dungeons
+## Dependencies: Amisia
+## OptionalDeps: Amisia_Gear
+## X-License: GPL-3.0
+# Written by tools/build.py from Amisia_Dungeons.toc (D-57, D-130): Amisia_Dungeons loads on WoW Forever only, this client gets no file. Edit Amisia_Dungeons.toc.
+

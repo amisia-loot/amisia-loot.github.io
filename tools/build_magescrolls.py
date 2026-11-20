@@ -36,8 +36,9 @@ sys.path.insert(0, HERE)
 import att_data  # noqa: E402
 import build_talents  # noqa: E402  (the spell text resolver)
 import lua_data  # noqa: E402
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
-OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'MageScrollData.lua')
+OUT = modules.data_file('MageScrollData.lua')
 WAGO = os.path.expanduser('~/addons/_wago')
 
 REQUIRED = ['ItemSparse', 'Item', 'SkillLine', 'SkillLineAbility', 'Spell', 'SpellName', 'SpellMisc', 'SpellEffect',

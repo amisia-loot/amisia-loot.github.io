@@ -14,8 +14,9 @@ ROOT = os.path.dirname(TOOLS)
 ADDON = os.path.join(ROOT, 'Amisia_Gear')   # the gear module holds the data (F-202)
 sys.path.insert(0, TOOLS)
 import build_dungeonart  # noqa: E402
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
-OUT = os.path.join(ADDON, 'Data', 'DungeonArt.lua')
+OUT = modules.data_file('DungeonArt.lua')
 SNAPSHOT = os.path.join(TOOLS, 'forever_dungeon_art.json')
 
 MAP_HEAD = 'ID,Directory,MapName_lang,InstanceType,LoadingScreenID\n'
@@ -128,8 +129,7 @@ def test_the_generated_file_is_valid_lua():
 
 
 def test_the_toc_loads_the_art_on_forever_before_the_planner():
-    with open(os.path.join(ADDON, 'Amisia_Gear.toc'), encoding='utf-8') as fh:
-        lines = [l.strip() for l in fh if l.strip() and not l.startswith('#')]
-    assert 'Data\\DungeonArt.lua' in lines
-    names = [re.sub(r'\s*\[.*\]', '', l) for l in lines]
-    assert names.index('Data\\DungeonData.lua') < names.index('Data\\DungeonArt.lua') < names.index('Gear\\Dungeons.lua')
+    # every part's TOC in load order (core, gear, dungeons, talents; F-228): paths with "/"
+    names = [n for n, _, _ in modules.toc_entries()]
+    assert modules.module_of('Data/DungeonArt.lua') == 'dungeons'
+    assert names.index('Data/DungeonData.lua') < names.index('Data/DungeonArt.lua') < names.index('Gear/Dungeons.lua')

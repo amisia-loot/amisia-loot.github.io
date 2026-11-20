@@ -73,9 +73,12 @@ local function ownKey()
     return s and ns.RaidKey and ns.RaidKey(s) or "-"
 end
 
--- The loaded modules (F-202, D-130): "r" the raid module, "g" the gear module ("rg", "r", "g", "").
+-- The loaded parts (F-202, D-130; F-228, D-158): "r" the raid part (the core's since F-228, always there;
+-- older versions without it ran Amisia without raid), then a letter per loaded module: "g" Ausrüstung,
+-- "d" Dungeons & Raids, "t" Talente ("rgdt" all). Before F-228 "g" stood for all three.
 local function ownModules()
-    return (ns.HasModule("raid") and "r" or "") .. (ns.HasModule("gear") and "g" or "")
+    return "r" .. (ns.HasModule("gear") and "g" or "") .. (ns.HasModule("dungeons") and "d" or "")
+        .. (ns.HasModule("talents") and "t" or "")
 end
 ns.VersionModules = ownModules
 

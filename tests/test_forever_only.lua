@@ -41,14 +41,19 @@ end
 ---------------------------------------------------------------------------
 -- the TOCs
 ---------------------------------------------------------------------------
--- the core (Amisia) and the raid module (Amisia_Raid) target all three clients, the gear module
--- (Amisia_Gear) Forever only (F-202, D-130): a folder of its own instead of a mark per file
+-- the core (Amisia, with the raid part since F-228) targets all three clients, every module (Amisia_Gear,
+-- ...) Forever only (F-202, D-130; F-228, D-158): a folder of its own instead of a mark per file
 local toc = readFile(ADDON_TOCS[1])
-local tocs = { core = toc, raid = readFile(ADDON_TOCS[2]), gear = readFile(ADDON_TOCS[3]) }
+local tocs, order = { core = toc }, { "core" }
+for i = 2, #ADDON_TOCS do
+    local part = assert(ADDON_TOCS[i]:match("Amisia_(%a+)%.toc$"), ADDON_TOCS[i]):lower()
+    tocs[part] = readFile(ADDON_TOCS[i])
+    order[#order + 1] = part
+end
 for part, text in pairs(tocs) do
     local interface = {}
     for v in text:gmatch("## Interface:%s*([^\r\n]+)") do interface[#interface + 1] = v end
-    local want = part == "gear" and "16001" or "16001, 20506, 11509"
+    local want = part == "core" and "16001, 20506, 11509" or "16001"
     assert(#interface == 1 and interface[1] == want, part .. ": ## Interface: " .. table.concat(interface, "|"))
     assert(not text:find("AllowLoadGameType tbc", 1, true), part .. ": no TBC line")
     assert(not text:find("## AllowLoadGameType", 1, true), part .. ": no TOC-wide load condition")
@@ -56,7 +61,8 @@ for part, text in pairs(tocs) do
 end
 -- the Forever parts (D-57): exactly these load on Forever only, every other file on all three clients
 local FOREVER_FILES = { ["Core/Duels.lua"] = true, ["Core/SelfTestLayer.lua"] = true, ["Raid/Handover.lua"] = true, ["UI/GearDoll.lua"] = true,
-                        ["UI/SlotCard.lua"] = true, ["UI/DuelInfo.lua"] = true }
+                        ["UI/SlotCard.lua"] = true, ["UI/DuelInfo.lua"] = true,
+                        ["UI/ItemKit.lua"] = true }
 for _, page in ipairs({ "Gear", "JournalParts", "Dungeons", "RaidJournal", "Map", "Professions", "Quests", "Talents", "MageScrolls", "Duels",
                         "Tools", "Export", "Planner" }) do
     FOREVER_FILES["UI/Pages/" .. page .. ".lua"] = true
@@ -70,22 +76,21 @@ for part, text in pairs(tocs) do
         if not line:find("^#") and line:find("%S") then
             local name = line:gsub("%s*%[[^%]]*%]", ""):gsub("\\", "/"):match("^%s*(.-)%s*$")
             local camelot = line:find("%[AllowLoadGameType camelot%]") ~= nil
-            if part == "gear" then
-                -- the whole module is Forever's: its locale files and its first file too, no mark
-                assert(not camelot, name .. ": the gear module's files need no mark")
-                assert(foreverOnly(name) or name:find("^Locales/") or name == "Gear/Module.lua", name .. " in the gear module")
+            if part ~= "core" then
+                -- a whole module is Forever's: its locale files and its first file too, no mark
+                assert(not camelot, name .. ": a module's files need no mark")
+                assert(foreverOnly(name) or name:find("^Locales/") or name:find("/Module%.lua$"), name .. " in the module " .. part)
                 gear = gear + 1
             else
-                -- the raid module keeps the mark on its two Forever-only features
+                -- the core marks its Forever-only files (D-57)
                 assert(camelot == (foreverOnly(name) and true or false),
-                    name .. (camelot and " loads on Forever only but belongs to the raid part" or " is a Forever part without its load condition"))
-                assert(not camelot or part == "raid", name .. ": a mark in the core")
+                    name .. (camelot and " loads on Forever only but belongs to every client" or " is a Forever part without its load condition"))
                 if camelot then tagged = tagged + 1 end
             end
         end
     end
 end
-assert(tagged == 2 and gear > 50, "the Forever files: " .. tagged .. " marked, " .. gear .. " in the gear module")
+assert(tagged >= 2 and gear > 50, "the Forever files: " .. tagged .. " marked, " .. gear .. " in the modules")
 local version = toc:match("## Version:%s*([^\r\n]+)")
 assert(version and version == NS.VERSION, "TOC version and ns.VERSION agree: " .. tostring(version) .. " / " .. tostring(NS.VERSION))
 assert(version and tonumber(version:match("^(%d+)")) >= 2, "the Forever-only addon is 2.0.0 or later: " .. tostring(version))
@@ -95,7 +100,7 @@ assert(version and tonumber(version:match("^(%d+)")) >= 2, "the Forever-only add
 ---------------------------------------------------------------------------
 -- every file the TOC loads (the test runtime has no directory listing), and the TBC files of 1.9
 local files = {}
-for _, part in ipairs({ "core", "raid", "gear" }) do
+for _, part in ipairs(order) do
     for line in tocs[part]:gmatch("[^\r\n]+") do
         if not line:find("^#") and line:find("%S") then
             files[#files + 1] = (line:gsub("%s*%[[^%]]*%]", ""):gsub("\\", "/"):match("^%s*(.-)%s*$"))

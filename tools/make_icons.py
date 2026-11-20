@@ -7,9 +7,10 @@ renamed to .tga stays invisible), from the picture the user chose (2026-10-15):
   round portrait (every visible pixel within FIT of the radius), so the client's round mask and gold
   ring cut nothing off; the ground stays see-through (the windows and the minimap button lay a black
   disc under it, W.DISC).
-- Amisia_Raid.tga and Amisia_Gear.tga (128x128, F-202): the icons of the modules in the addon list, the
-  same picture with a small round badge at the bottom right: a dark disc with a gold ring and the gold
-  line art of the module's tab (make_ui_icons.py: Lucide "dices" for Raid, "shield" for Gear).
+- Amisia_Gear.tga, Amisia_Dungeons.tga and Amisia_Talents.tga (128x128, F-202, F-228): the icons of the
+  modules in the addon list, the same picture with a small round badge at the bottom right: a dark disc
+  with a gold ring and the gold line art of the module's tab (make_ui_icons.py: Lucide "shield" for
+  Ausrüstung, "swords" for Dungeons & Raids, "sparkles" for Talente).
 
     python tools/make_icons.py [--preview DIR]
 
@@ -57,7 +58,7 @@ def write_tga(img, path):
 
 
 # module -> the Lucide icon on its badge (the tab icons of make_ui_icons.py: tab_raid, tab_gear)
-BADGES = {'Amisia_Raid': 'dices', 'Amisia_Gear': 'shield'}
+BADGES = {'Amisia_Gear': 'shield', 'Amisia_Dungeons': 'swords', 'Amisia_Talents': 'sparkles'}
 BADGE = 66                 # the badge's diameter at SIZE px
 BADGE_RING = 4             # its gold ring
 BADGE_GROUND = (22, 15, 8, 245)

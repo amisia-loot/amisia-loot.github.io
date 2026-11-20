@@ -78,6 +78,7 @@ import web_sources  # noqa: E402  (the fan sites' parsed item pages, D-157 step 
 import lua_data  # noqa: E402  (the lazy form of the data file)
 import build_scan  # noqa: E402  (scan dump parsing is shared)
 import build_scan_archive  # noqa: E402  (the scan archive the builds read under the SavedVariables)
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
 WOW_ROOT = os.environ.get('AMISIA_WOW_ROOT', r'C:\Program Files (x86)\World of Warcraft')
 # Forever moved from the beta product folder to its own (2026-10-31); the old one still counts
@@ -96,9 +97,9 @@ QUEST_TAG_CODES = ('G', 'D', 'R', 'P')
 WAGO = os.path.expanduser('~/addons/_wago')
 # ItemSparse class bits of the nine Classic classes; a mask holding all of them limits nothing.
 ALL_CLASSES = 1 | 2 | 4 | 8 | 16 | 64 | 128 | 256 | 1024
-OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'GearData.lua')
-NOSRC_OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'GearNoSource.lua')
-GEAR_LUA = os.path.join(ROOT, 'Amisia_Gear', 'Gear', 'Gear.lua')
+OUT = modules.data_file('GearData.lua')
+NOSRC_OUT = modules.data_file('GearNoSource.lua')
+GEAR_LUA = os.path.join(ROOT, 'Amisia', 'Gear', 'Gear.lua')   # the item library is the core's (F-228)
 USER_AGENT = att_data.USER_AGENT
 
 # Equipment slots worth planning. Shirts, tabards, bags and ammo are left out.

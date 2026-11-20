@@ -16,9 +16,10 @@ ADDON = os.path.join(ROOT, 'Amisia_Gear')   # the gear module holds the data (F-
 sys.path.insert(0, TOOLS)
 import build_talents  # noqa: E402
 import lua_data  # noqa: E402
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
 FIX = os.path.join(HERE, 'fixtures', 'talents')
-OUT = os.path.join(ADDON, 'Data', 'TalentData.lua')
+OUT = modules.data_file('TalentData.lua')
 
 # node ids of the fixture (tests/fixtures/talents, made in this order)
 A1, A2, A3, A4, F1, R1, PARKED = range(105801, 105808)
@@ -139,7 +140,7 @@ def test_lua_is_valid_and_loads():
 
 
 def test_shipped_data_file_in_toc_and_valid():
-    with open(os.path.join(ADDON, 'Amisia_Gear.toc'), encoding='utf-8') as fh:
+    with open(modules.data_toc('TalentData.lua'), encoding='utf-8') as fh:
         toc = fh.read()
     assert 'Data\\TalentData.lua' in toc
     assert toc.index('Data\\TalentData.lua') < toc.index('Gear\\Talents.lua')

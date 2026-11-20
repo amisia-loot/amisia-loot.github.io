@@ -8,10 +8,10 @@
 -- Loading (D-128, D-130): the client runs an addon's files first and loads its SavedVariables after
 -- them, but most files translate texts while they load. So this file, the first of the core's TOC, runs
 -- at once; every other file puts its body in ns.Load(function() ... end). Amisia is a core (this addon)
--- and the modules Amisia_Raid and Amisia_Gear, addons of their own that load right after it and share
--- its namespace (their Module.lua). This file runs the bodies once AmisiaDB (and with it the chosen
--- language) is there and every module that will load has loaded its files: core, raid, gear, each in
--- TOC order; then the core's own ADDON_LOADED (ns.CoreLoaded). A body that fails stops only itself, as
+-- and its modules (F-228, D-158: Amisia_Gear, Amisia_Dungeons, Amisia_Talents; the raid part is the core's), addons of their own
+-- that load right after it and share its namespace (their Module.lua). This file runs the bodies once
+-- AmisiaDB (and with it the chosen language) is there and every module that will load has loaded its
+-- files: core, then each module, each in TOC order; then the core's own ADDON_LOADED (ns.CoreLoaded). A body that fails stops only itself, as
 -- a failing file did.
 local ADDON, ns = ...
 -- the start of loading Amisia's files, for /amisia leistung (Core/Perf.lua, F-184): this is the first file
@@ -60,16 +60,24 @@ end
 ---------------------------------------------------------------------------
 -- The core and its modules (F-202, D-130)
 ---------------------------------------------------------------------------
--- The modules' first file (Raid/Module.lua, Gear/Module.lua) points the module's namespace at this one.
+-- The modules' first file (Gear/Module.lua) points the module's namespace at this one.
 _G.AmisiaCore = ns
 -- the core's addon name: the ADDON_LOADED the handlers of every part wait for (ns.CoreLoaded)
 ns.ADDON = ADDON
--- the modules whose files are loaded: { raid = true, gear = true } (ns.HasModule, Core/Registry.lua)
+-- the modules whose files are loaded: { gear = true, dungeons = true, talents = true } (ns.HasModule,
+-- Core/Registry.lua)
 ns.MODULES = {}
--- the modules' addons in load order (the gear module's TOC names the raid module as optional
--- dependency, so the client loads it after the raid module); gear loads on WoW Forever only
-ns.MODULE_ADDONS = { { key = "raid", addon = "Amisia_Raid" }, { key = "gear", addon = "Amisia_Gear", forever = true } }
-local PARTS = { core = 1, raid = 2, gear = 3 }
+-- the modules' addons in load order (each module's TOC names the ones before it as optional
+-- dependencies, so the client loads them in this order); all load on WoW Forever only
+ns.MODULE_ADDONS = { { key = "gear", addon = "Amisia_Gear", forever = true },
+                     { key = "dungeons", addon = "Amisia_Dungeons", forever = true },
+                     { key = "talents", addon = "Amisia_Talents", forever = true } }
+local PARTS = { core = 1, gear = 2, dungeons = 3, talents = 4 }
+-- the addons that were modules once and are the core's now (F-228: Amisia_Raid): a folder left over
+-- from an update by hand loads its files a second time; their bodies never run (ns.LoadPart), and
+-- Core/Modules.lua says to delete the folder (ns.OLD_MODULES_LOADED)
+local OLD_PARTS = { raid = "Amisia_Raid" }
+ns.OLD_MODULES_LOADED = {}
 local own = { [ADDON] = "core" }
 for _, m in ipairs(ns.MODULE_ADDONS) do own[m.addon] = m.key end
 
@@ -91,8 +99,13 @@ end
 
 -- The files' bodies per part, each in TOC order, until ns.RunLoad runs them; after it a body runs at
 -- once (a test that loads one file again, a module the client loads late).
-local bodies, ran = { {}, {}, {} }, false
+local bodies, ran = {}, false
+for _, i in pairs(PARTS) do bodies[i] = {} end
 function ns.LoadPart(part, fn)
+    if OLD_PARTS[part] then
+        ns.OLD_MODULES_LOADED[OLD_PARTS[part]] = true
+        return
+    end
     if ran then
         fn()
     else
@@ -102,8 +115,8 @@ function ns.LoadPart(part, fn)
 end
 function ns.Load(fn) ns.LoadPart("core", fn) end
 
--- Chooses the language from AmisiaDB and runs the files' bodies (once): the core's, the raid module's,
--- the gear module's. Each runs protected: its error goes to the client's error handler and the next
+-- Chooses the language from AmisiaDB and runs the files' bodies (once): the core's, then each module's
+-- in load order. Each runs protected: its error goes to the client's error handler and the next
 -- body runs.
 function ns.RunLoad()
     if ran then return end

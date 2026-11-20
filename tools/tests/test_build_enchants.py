@@ -14,9 +14,10 @@ ADDON = os.path.join(ROOT, 'Amisia_Gear')   # the gear module holds the data (F-
 sys.path.insert(0, TOOLS)
 import build_enchants  # noqa: E402
 import lua_data  # noqa: E402
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
 FIX = os.path.join(HERE, 'fixtures', 'wago_enchants')
-OUT = os.path.join(ADDON, 'Data', 'EnchantData.lua')
+OUT = modules.data_file('EnchantData.lua')
 
 
 @pytest.fixture(scope='module')
@@ -60,13 +61,14 @@ def test_render_is_lazy_lua(data):
 
 
 def test_shipped_data_file_in_toc_and_valid():
-    with open(os.path.join(ADDON, 'Amisia_Gear.toc'), encoding='utf-8') as fh:
+    with open(modules.data_toc('EnchantData.lua'), encoding='utf-8') as fh:
         toc = fh.read()
     assert 'Data\\EnchantData.lua' in toc
     assert 'Gear\\Enchants.lua' in toc
     assert toc.index('Data\\EnchantData.lua') < toc.index('Gear\\Enchants.lua')
-    for name in ('Amisia_Gear_TBC.toc', 'Amisia_Gear_Vanilla.toc'):
-        with open(os.path.join(ADDON, name), encoding='utf-8') as fh:
+    for flavor in ('_TBC', '_Vanilla'):
+        name = modules.data_toc('EnchantData.lua', flavor)
+        with open(name, encoding='utf-8') as fh:
             assert 'Enchant' not in fh.read(), f'{name}: Forever only'
     with open(OUT, encoding='utf-8') as fh:
         src = fh.read()

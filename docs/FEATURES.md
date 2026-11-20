@@ -38,6 +38,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Andere Zeilen innerhalb eines Eintrags sind ein Fehler (der Test nennt die Zeile).
 
 ## Addon: Grundlagen
+### F-228 Module je Reiter: Ausrüstung, Dungeons & Raids, Talente; Raid, Berufe, Gilde im Kern
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du "Amisia: Ausrüstung" abhakst und einloggst, dann kommt kein Lua-Fehler, der Reiter Ausrüstung fehlt und Dungeons & Raids zeigt Bosse, Beute und Quests ohne Upgrade-Angaben.
+- Prüfung: Wenn du "Amisia: Dungeons & Raids" abhakst, dann laufen Ausrüstungsplaner, Berufe, Talente, Raid und Gilde ohne Lua-Fehler.
+- Prüfung: Wenn du "Amisia: Talente" abhakst, dann fehlt nur der Reiter Talente.
+- Prüfung: Wenn du alle drei Module abhakst, dann sind Berufe, Raid und Gilde (mit Layer, Duellen, Werkzeugen) da, und im Raid zeichnet Amisia auf.
+- Prüfung: Wenn du auf TBC Anniversary einloggst, dann laden Kern und Raid wie bisher; Berufe und die drei Module fehlen ohne Fehler, und es gibt keinen "Amisia: Raid"-Eintrag mehr.
+- Notiz: Spec `docs/specs/2026-11-20-module-reiter.md`, DECISIONS D-158. Ändert D-130: `Amisia_Raid` geht im Kern auf, neu `Amisia_Dungeons` und `Amisia_Talents`; Item-Bibliothek, Item-Zeilen (`UI/ItemKit.lua`), Sammeln, Berufe, Layer, Duelle, Werkzeuge und die gemeinsamen Daten im Kern (nur Forever).
+- Notiz: Gebaut 2026-11-20, noch nicht released. Nach dem Release einmal `tools/install_junctions.ps1` als Administrator am PC (entfernt die Verknüpfung `Amisia_Raid`, legt `Amisia_Dungeons` und `Amisia_Talents` an) und WoW ganz neu starten.
+
 ### F-226 Bosse ohne Encounter abhaken: Leiche gesehen oder geplündert
 - Version: 2.101.1
 - Status: gebaut

@@ -1,0 +1,1871 @@
+-- Amisia gear planner: the best item per slot a class can get by a given level, from quests,
+-- dungeons, crafting, vendors, rare mobs, world drops and the auction house. GearData.lua lists the
+-- items and where they come from (tools/build_gear.py), GearWeights.lua the stat weights per class,
+-- spec and level. The stats themselves come from the client, because Forever changed many items.
+local ADDON, ns = ...
+ns.Load(function()
+local L = ns.L
+
+local Gear = {}
+ns.Gear = Gear
+
+-- A flat copy of a table (the options, before one field changes).
+function Gear.Copy(t)
+    local out = {}
+    for k, v in pairs(t) do out[k] = v end
+    return out
+end
+
+-- Hooks OnShow of the client's group loot (roll) frames with fn, each frame once, now and again on
+-- PLAYER_ENTERING_WORLD (the frames may come later).
+function Gear.HookRollFrames(fn)
+    local hooked = setmetatable({}, { __mode = "k" })
+    local function hook()
+        for i = 1, tonumber(_G.NUM_GROUP_LOOT_FRAMES) or 4 do
+            local f = _G["GroupLootFrame" .. i]
+            if type(f) == "table" and type(f.HookScript) == "function" and not hooked[f] then
+                hooked[f] = true
+                f:HookScript("OnShow", fn)
+            end
+        end
+    end
+    hook()
+    ns.OnEvent("PLAYER_ENTERING_WORLD", hook)
+end
+
+-- Level ranges of the overview. An item counts for a range when its level is at most the upper end,
+-- and it is scored with the weights of the bracket that upper end lies in.
+Gear.COLUMNS = {
+    { 1, 9 }, { 10, 14 }, { 15, 19 }, { 20, 24 }, { 25, 29 }, { 30, 34 },
+    { 35, 39 }, { 40, 44 }, { 45, 49 }, { 50, 54 }, { 55, 59 }, { 60, 60 },
+}
+
+-- Rows of the table. inv is the inventory slot of the equipped item.
+Gear.SLOTS = {
+    { key = "HEAD", name = L["Kopf"], inv = 1 },
+    { key = "NECK", name = L["Hals"], inv = 2 },
+    { key = "SHOULDER", name = L["Schultern"], inv = 3 },
+    { key = "BACK", name = L["Rücken"], inv = 15 },
+    { key = "CHEST", name = L["Brust"], inv = 5 },
+    { key = "WRIST", name = L["Handgelenke"], inv = 9 },
+    { key = "HANDS", name = L["Hände"], inv = 10 },
+    { key = "WAIST", name = L["Taille"], inv = 6 },
+    { key = "LEGS", name = L["Beine"], inv = 7 },
+    { key = "FEET", name = L["Füße"], inv = 8 },
+    { key = "FINGER1", name = L["Finger"], inv = 11 },
+    { key = "FINGER2", name = L["Finger"], inv = 12 },
+    { key = "TRINKET1", name = L["Schmuck"], inv = 13 },
+    { key = "TRINKET2", name = L["Schmuck"], inv = 14 },
+    { key = "MAINHAND", name = L["Waffenhand"], inv = 16 },
+    { key = "OFFHAND", name = L["Schildhand"], inv = 17 },
+    { key = "RANGED", name = L["Distanz"], inv = 18 },
+}
+
+-- equip location (without INVTYPE_) -> the group of rows it competes for
+local GROUP = {
+    HEAD = "HEAD", NECK = "NECK", SHOULDER = "SHOULDER", CLOAK = "BACK", CHEST = "CHEST", ROBE = "CHEST",
+    WRIST = "WRIST", HAND = "HANDS", WAIST = "WAIST", LEGS = "LEGS", FEET = "FEET", FINGER = "FINGER",
+    TRINKET = "TRINKET", ["2HWEAPON"] = "2H", WEAPON = "1H", WEAPONMAINHAND = "MH", WEAPONOFFHAND = "OHW",
+    SHIELD = "SHIELD", HOLDABLE = "HELD", RANGED = "RANGED", RANGEDRIGHT = "RANGED", THROWN = "RANGED",
+    RELIC = "RANGED",
+}
+Gear.GROUP = GROUP
+
+-- Who may wear what, from which level (Classic rules: mail for hunters and shamans and plate for
+-- warriors and paladins from 40, dual wield for rogues from 10, for warriors and hunters from 20).
+-- Armour subclasses: 1 cloth, 2 leather, 3 mail, 4 plate, 6 shield, 7 libram, 8 idol, 9 totem.
+local ARMOR = {
+    WARRIOR = { [1] = 1, [2] = 1, [3] = 1, [4] = 40, [6] = 1 },
+    PALADIN = { [1] = 1, [2] = 1, [3] = 1, [4] = 40, [6] = 1, [7] = 1 },
+    HUNTER = { [1] = 1, [2] = 1, [3] = 40 },
+    ROGUE = { [1] = 1, [2] = 1 },
+    PRIEST = { [1] = 1 },
+    SHAMAN = { [1] = 1, [2] = 1, [3] = 40, [6] = 1, [9] = 1 },
+    MAGE = { [1] = 1 },
+    WARLOCK = { [1] = 1 },
+    DRUID = { [1] = 1, [2] = 1, [8] = 1 },
+}
+-- Weapon subclasses: 0 axe, 1 two-hand axe, 2 bow, 3 gun, 4 mace, 5 two-hand mace, 6 polearm, 7 sword,
+-- 8 two-hand sword, 10 staff, 13 fist weapon, 15 dagger, 16 thrown, 18 crossbow, 19 wand.
+-- The number is the level the class learns the weapon at; Forever teaches druids polearms from 20 and
+-- rogues one-hand axes (SkillRaceClassInfo skill 229, SkillLineAbility spell 196).
+local WEAPON = {
+    WARRIOR = { [0] = 1, [1] = 1, [2] = 1, [3] = 1, [4] = 1, [5] = 1, [6] = 1, [7] = 1, [8] = 1, [10] = 1, [13] = 1, [15] = 1, [16] = 1, [18] = 1 },
+    PALADIN = { [0] = 1, [1] = 1, [4] = 1, [5] = 1, [6] = 1, [7] = 1, [8] = 1 },
+    HUNTER = { [0] = 1, [1] = 1, [2] = 1, [3] = 1, [6] = 1, [7] = 1, [8] = 1, [10] = 1, [13] = 1, [15] = 1, [16] = 1, [18] = 1 },
+    ROGUE = { [0] = 1, [2] = 1, [3] = 1, [4] = 1, [7] = 1, [13] = 1, [15] = 1, [16] = 1, [18] = 1 },
+    PRIEST = { [4] = 1, [10] = 1, [15] = 1, [19] = 1 },
+    SHAMAN = { [0] = 1, [1] = 1, [4] = 1, [5] = 1, [10] = 1, [13] = 1, [15] = 1 },
+    MAGE = { [7] = 1, [10] = 1, [15] = 1, [19] = 1 },
+    WARLOCK = { [7] = 1, [10] = 1, [15] = 1, [19] = 1 },
+    DRUID = { [4] = 1, [5] = 1, [6] = 20, [10] = 1, [13] = 1, [15] = 1 },
+}
+local DUAL_WIELD = { ROGUE = 10, WARRIOR = 20, HUNTER = 20 }
+local RELIC = { [7] = "PALADIN", [8] = "DRUID", [9] = "SHAMAN" }
+-- Index of the first source number in an item row.
+Gear.FIRST_SOURCE = 11
+-- Class bits (1 << (classID - 1)), used by class quests and the item rows' class masks
+local CLASS_BIT = { WARRIOR = 1, PALADIN = 2, HUNTER = 4, ROGUE = 8, PRIEST = 16, SHAMAN = 64, MAGE = 128, WARLOCK = 256, DRUID = 1024 }
+Gear.CLASS_BIT = CLASS_BIT
+
+Gear.CLASS_NAMES = {
+    WARRIOR = L["Krieger"], PALADIN = L["Paladin"], HUNTER = L["Jäger"], ROGUE = L["Schurke"], PRIEST = L["Priester"],
+    SHAMAN = L["Schamane"], MAGE = L["Magier"], WARLOCK = L["Hexenmeister"], DRUID = L["Druide"],
+}
+
+---------------------------------------------------------------------------
+-- Stats
+---------------------------------------------------------------------------
+
+-- C_Item.GetItemStats keys -> scoring keys
+local STAT = {
+    ITEM_MOD_STRENGTH_SHORT = "STR", ITEM_MOD_AGILITY_SHORT = "AGI", ITEM_MOD_STAMINA_SHORT = "STA",
+    ITEM_MOD_INTELLECT_SHORT = "INT", ITEM_MOD_SPIRIT_SHORT = "SPI",
+    ITEM_MOD_HEALTH_REGEN_SHORT = "HP5", ITEM_MOD_HEALTH_REGENERATION_SHORT = "HP5",
+    ITEM_MOD_MANA_REGENERATION_SHORT = "MP5", ITEM_MOD_POWER_REGEN0_SHORT = "MP5",
+    ITEM_MOD_SPELL_POWER_SHORT = "SPP", ITEM_MOD_SPELL_DAMAGE_DONE_SHORT = "SPD", ITEM_MOD_SPELL_HEALING_DONE_SHORT = "HEAL",
+    ITEM_MOD_ARCANE_DAMAGE_DONE_SHORT = "SP_ARCANE", ITEM_MOD_FIRE_DAMAGE_DONE_SHORT = "SP_FIRE",
+    ITEM_MOD_NATURE_DAMAGE_DONE_SHORT = "SP_NATURE", ITEM_MOD_FROST_DAMAGE_DONE_SHORT = "SP_FROST",
+    ITEM_MOD_SHADOW_DAMAGE_DONE_SHORT = "SP_SHADOW", ITEM_MOD_HOLY_DAMAGE_DONE_SHORT = "SP_HOLY",
+    ITEM_MOD_HIT_RATING_SHORT = "HIT", ITEM_MOD_HIT_MELEE_RATING_SHORT = "MHIT", ITEM_MOD_HIT_RANGED_RATING_SHORT = "MHIT",
+    ITEM_MOD_HIT_SPELL_RATING_SHORT = "SHIT",
+    ITEM_MOD_CRIT_RATING_SHORT = "CRIT", ITEM_MOD_CRIT_MELEE_RATING_SHORT = "MCRIT", ITEM_MOD_CRIT_RANGED_RATING_SHORT = "MCRIT",
+    ITEM_MOD_CRIT_SPELL_RATING_SHORT = "SCRIT",
+    ITEM_MOD_HASTE_RATING_SHORT = "HASTE", ITEM_MOD_EXPERTISE_RATING_SHORT = "EXP",
+    ITEM_MOD_HASTE_MELEE_RATING_SHORT = "HASTE", ITEM_MOD_HASTE_RANGED_RATING_SHORT = "HASTE",
+    ITEM_MOD_HASTE_SPELL_RATING_SHORT = "SHASTE",
+    ITEM_MOD_ATTACK_POWER_SHORT = "AP", ITEM_MOD_MELEE_ATTACK_POWER_SHORT = "AP",
+    ITEM_MOD_RANGED_ATTACK_POWER_SHORT = "RAP", ITEM_MOD_FERAL_ATTACK_POWER_SHORT = "FAP",
+    RESISTANCE0_NAME = "ARMOR", ITEM_MOD_EXTRA_ARMOR_SHORT = "ARMOR",
+    ITEM_MOD_DEFENSE_SKILL_RATING_SHORT = "DEF", ITEM_MOD_DODGE_RATING_SHORT = "DODGE",
+    ITEM_MOD_PARRY_RATING_SHORT = "PARRY", ITEM_MOD_BLOCK_RATING_SHORT = "BLOCK", ITEM_MOD_BLOCK_VALUE_SHORT = "BLOCKVAL",
+    ITEM_MOD_DAMAGE_PER_SECOND_SHORT = "DPS",
+    ITEM_MOD_RESILIENCE_RATING_SHORT = "RES", ITEM_MOD_SPELL_PENETRATION_SHORT = "SPEN",
+    EMPTY_SOCKET_RED = "SOCK", EMPTY_SOCKET_YELLOW = "SOCK", EMPTY_SOCKET_BLUE = "SOCK", EMPTY_SOCKET_META = "META",
+}
+-- Some clients answer GetItemStats without "_SHORT" for ratings and spell power (Classic engines
+-- do), so both spellings map to the same key.
+do
+    local long = {}
+    for k, v in pairs(STAT) do
+        local plain = k:match("^(.-)_SHORT$")
+        if plain then long[plain] = v end
+    end
+    for k, v in pairs(long) do STAT[k] = STAT[k] or v end
+end
+Gear.STAT = STAT
+
+-- The stat key of a stat name of the data (the client's key without ITEM_MOD_ and _SHORT, or the
+-- long spelling), or nil.
+function Gear.StatKey(k) return STAT["ITEM_MOD_" .. k] or STAT[k] end
+
+-- Adds a stat text of the data ("STRENGTH=5;RESISTANCE0_NAME=40") to s and returns s.
+local function parseStats(s, text)
+    for k, v in text:gmatch("([%w_]+)=([^;]+)") do
+        local key = STAT["ITEM_MOD_" .. k] or STAT[k]
+        v = tonumber(v)
+        if key and v and v ~= 0 then s[key] = (s[key] or 0) + v end
+    end
+    return s
+end
+
+-- Rating needed for 1 % (1 skill point for defence) at level 60. Forever's ratings come from TBC:
+-- Lionheart Helm's Classic 2 % crit became 28 crit rating. Below 60 a point of rating is worth
+-- more, on TBC's curve (level - 8) / 52; Forever ends at 60, so higher levels count as 60.
+-- GearWeights.lua carries the values the build used (corrected by in-game measurements once
+-- known); these are the defaults without it.
+local RATING_60 = { HIT = 10, SHIT = 8, CRIT = 14, HASTE = 10, EXP = 10, DODGE = 12, PARRY = 15, BLOCK = 5, DEF = 1.5 }
+
+local function rating60(kind)
+    local r = ns.GEAR_WEIGHTS and ns.GEAR_WEIGHTS.ratings
+    return (r and tonumber(r[kind])) or RATING_60[kind]
+end
+
+local function ratingPerPoint(kind, level)
+    local scale
+    if level <= 10 then scale = 2 / 52
+    else scale = (math.min(level, 60) - 8) / 52 end
+    return 1 / (rating60(kind) * scale)
+end
+Gear.RatingPerPoint = ratingPerPoint
+
+-- The client's stats of an item (C_Item.GetItemStats), turned into scoring keys, plus the weapon
+-- speed and the classes the item is limited to (both only appear in the tooltip).
+function Gear.ReadStats(item)
+    local link = type(item) == "number" and ("item:" .. item) or item
+    local raw = C_Item.GetItemStats(link)
+    if not raw then return nil end
+    local s = {}
+    for k, v in pairs(raw) do
+        local key = STAT[k]
+        if key and type(v) == "number" and v ~= 0 then s[key] = (s[key] or 0) + v end
+    end
+    local id = type(item) == "number" and item or ns.ItemID(item)
+    local row = id and Gear.Item(id)
+    if row then
+        -- the generated data knows class limits and weapon speed, which saves a tooltip per item
+        if (row[9] or 0) > 0 and s.DPS then s.SPEED = row[9] end
+        return s
+    end
+    local tip = id and C_TooltipInfo and C_TooltipInfo.GetItemByID and C_TooltipInfo.GetItemByID(id)
+    if tip and tip.lines then
+        local classesPrefix = ITEM_CLASSES_ALLOWED and ITEM_CLASSES_ALLOWED:match("^(.-)%%s")
+        for _, line in ipairs(tip.lines) do
+            local right = line.rightText
+            if s.DPS and not s.SPEED and type(right) == "string" then
+                local num = right:match("(%d+[%.,]%d+)")
+                if num then s.SPEED = tonumber((num:gsub(",", "."))) end
+            end
+            local left = line.leftText
+            if classesPrefix and classesPrefix ~= "" and type(left) == "string" and left:sub(1, #classesPrefix) == classesPrefix then
+                -- the class names may come coloured
+                local names = left:sub(#classesPrefix + 1):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+                s.CLASSES = Gear.ParseClasses(names)
+            end
+        end
+    end
+    return s
+end
+
+-- Data/GearNoSource.lua once built and of the same build (Gear/NoSource.lua builds it; nothing here does).
+local function noSource()
+    local N = ns.GearNoSource
+    return N and N.Data(false) or nil
+end
+
+-- Stats the item scan saw, as GearData.lua keeps them: "STRENGTH=5;RESISTANCE0_NAME=40" (the client's
+-- keys without ITEM_MOD_ and _SHORT; STAT knows the long spelling too).
+function Gear.ScannedStats(id)
+    local d = ns.Data("GEAR")
+    local text = d and d.ST and d.ST[id]
+    if not text then
+        local n = d and noSource()
+        text = n and type(n.ST) == "table" and n.ST[id] or nil
+    end
+    if not text then return nil end
+    local s = parseStats({}, text)
+    local row = Gear.Item(id)
+    if row and (row[9] or 0) > 0 and s.DPS then s.SPEED = row[9] end
+    return s
+end
+
+-- "Krieger, Paladin" -> { WARRIOR = true, PALADIN = true } with the client's own class names.
+local classByName
+function Gear.ParseClasses(text)
+    if not classByName then
+        classByName = {}
+        for token, name in pairs(Gear.CLASS_NAMES) do classByName[name] = token end
+        for _, list in ipairs({ _G.LOCALIZED_CLASS_NAMES_MALE or {}, _G.LOCALIZED_CLASS_NAMES_FEMALE or {} }) do
+            for token, name in pairs(list) do classByName[name] = token end
+        end
+    end
+    local out = {}
+    for name in tostring(text):gmatch("[^,]+") do
+        name = name:match("^%s*(.-)%s*$")
+        if classByName[name] then out[classByName[name]] = true end
+    end
+    return next(out) and out or nil
+end
+
+-- German names of the scored stats, for the explanation of a score.
+Gear.STAT_LABELS = {
+    STR = L["Stärke"], AGI = L["Beweglichkeit"], STA = L["Ausdauer"], INT = L["Intelligenz"], SPI = L["Willenskraft"],
+    AP = L["Angriffskraft"], RAP = L["Distanzangriffskraft"], FAP = L["Angriffskraft (Gestalt)"], SPD = L["Zauberschaden"],
+    HEAL = L["Heilung"], SPP = L["Zaubermacht"], SP_ARCANE = L["Schaden (Arkan)"], SP_FIRE = L["Schaden (Feuer)"],
+    SP_NATURE = L["Schaden (Natur)"], SP_FROST = L["Schaden (Frost)"], SP_SHADOW = L["Schaden (Schatten)"], SP_HOLY = L["Schaden (Heilig)"],
+    HIT = L["Trefferwertung"], HITSP = L["Trefferwertung (Zauber)"], MHIT = L["Trefferwertung"], SHIT = L["Zaubertrefferwertung"], CRIT = L["kritische Trefferwertung"],
+    MCRIT = L["kritische Trefferwertung"], SCRIT = L["Zauberkritwertung"], HASTE = L["Tempowertung"], SHASTE = L["Zaubertempowertung"], EXP = L["Waffenkundewertung"],
+    DEF = L["Verteidigungswertung"], DODGE = L["Ausweichwertung"], PARRY = L["Parierwertung"], BLOCK = L["Blockwertung"],
+    BLOCKVAL = L["Blockwert"], ARMOR = L["Rüstung"], MP5 = L["Mana alle 5 Sek."], HP5 = L["Gesundheit alle 5 Sek."],
+    DPS = L["Waffenschaden pro Sekunde"], SPEED = L["Waffentempo"], SOCK = L["Sockel"], META = L["Meta-Sockel"],
+    RES = L["Abhärtungswertung"], SPEN = L["Zauberdurchschlag"], SETB = L["Setbonus"],
+}
+
+-- A number in the language's form: whole numbers plain, otherwise one decimal ("2,5" / "2.5").
+local deNum = ns.Num
+Gear.Num = deNum
+
+-- Every term of a score: add(key, value, weight, rating kind or nil). The score is their sum, so
+-- Gear.Score and Gear.ScoreParts can never disagree. tools/build_bis.py has the same function
+-- (terms/score); tools/tests/test_score_parity.py holds the two equal.
+local function terms(s, w, level, kind, class, add)
+    local function W(k) return w[k] or 0 end
+    for _, k in ipairs({ "STR", "AGI", "STA", "INT", "SPI", "HP5", "MP5", "AP", "RAP", "ARMOR", "BLOCKVAL" }) do
+        add(k, s[k], W(k))
+    end
+    if class == "DRUID" then add("FAP", s.FAP, W("AP")) end
+    -- spell power works for damage and healing; the older stats for one of them
+    add("SPP", s.SPP, W("SP") + W("HEAL"))
+    add("SPD", s.SPD, W("SP"))
+    add("HEAL", s.HEAL, W("HEAL"))
+    for _, school in ipairs({ "SP_ARCANE", "SP_FIRE", "SP_NATURE", "SP_FROST", "SP_SHADOW", "SP_HOLY" }) do
+        add(school, s[school], W(school))
+    end
+    -- ratings in percent at this level. Forever's hit, crit and haste work for weapons and spells
+    -- alike; the melee and spell kinds count for their own side only. Generic hit is two parts:
+    -- the melee part (melee rate, melee room) and the spell part HITSP (spell rate, spell room), so
+    -- the hit cap limits a caster's generic hit as much as its spell hit.
+    local critW = W("CRIT") + W("SCRIT")
+    add("HIT", s.HIT, W("HIT"), "HIT")
+    add("HITSP", s.HIT, W("SHIT"), "SHIT")
+    add("MHIT", s.MHIT, W("HIT"), "HIT")
+    add("SHIT", s.SHIT, W("SHIT"), "SHIT")
+    add("CRIT", s.CRIT, critW, "CRIT")
+    add("MCRIT", s.MCRIT, W("CRIT"), "CRIT")
+    add("SCRIT", s.SCRIT, W("SCRIT"), "CRIT")
+    -- without a haste weight four fifths of the crit weight
+    local hasteW = w.HASTE or 0.8 * critW
+    add("HASTE", s.HASTE, hasteW, "HASTE")
+    add("SHASTE", s.SHASTE, hasteW, "HASTE")
+    add("EXP", s.EXP, w.EXP or 0.8 * W("HIT"), "EXP")
+    add("DODGE", s.DODGE, W("DODGE"), "DODGE")
+    add("PARRY", s.PARRY, W("PARRY"), "PARRY")
+    add("BLOCK", s.BLOCK, W("BLOCK"), "BLOCK")
+    add("DEF", s.DEF, W("DEF"), "DEF")
+    -- a gem per socket (a rare gem of the main stat), the meta gem; the socket bonus is not counted
+    add("SOCK", s.SOCK, W("GEM"))
+    add("META", s.META, W("META"))
+    add("RES", s.RES, W("RES"))
+    add("SPEN", s.SPEN, W("SPEN"))
+    if s.DPS and kind then
+        local spd
+        if kind == "RANGED" then
+            add("DPS", s.DPS, W("RDPS"))
+            spd = "SPD_RANGED"
+        else
+            -- an off-hand weapon hits for half its damage, and wielding two adds a miss chance to
+            -- both hands (about a fifth); both land on the off hand, so main hands stay comparable.
+            -- OHDPS is that factor (0.25 unless the weights say otherwise).
+            add("DPS", s.DPS, W("DPS") * (kind == "OH" and (w.OHDPS or 0.25) or 1))
+            spd = "SPD_" .. kind
+        end
+        -- weapon speed counts in seconds above the slot's reference speed (SPDREF_*)
+        if s.SPEED then add("SPEED", s.SPEED - (w["SPDREF_" .. kind] or 0), W(spd)) end
+    end
+    -- a set's bonus, which the set plan puts on the piece that completes a threshold
+    if s.SETB then add("SETB", s.SETB, 1) end
+end
+
+-- How much of a rating term counts under the hit cap: cap = { HIT = the melee and ranged hit
+-- still useful in percent, SHIT = the spell hit } (nil or a missing side: everything counts). The
+-- melee terms (HIT, MHIT) take the melee room, the spell terms (SHIT, HITSP) the spell room.
+local function capped(key, converted, cap)
+    if not cap then return converted end
+    local room
+    if key == "HIT" or key == "MHIT" then room = cap.HIT
+    elseif key == "SHIT" or key == "HITSP" then room = cap.SHIT end
+    if room == nil then return converted end
+    return math.max(0, math.min(converted, room))
+end
+
+-- Score of a stat table for one weight set at one level. kind is the weapon's place: "2H", "MH",
+-- "OH" or "RANGED"; nil for everything else. cap (optional): the hit still useful, see capped().
+function Gear.Score(s, w, level, kind, class, cap)
+    local score = 0
+    terms(s, w, level, kind, class, function(key, value, weight, rating)
+        if value and value ~= 0 and weight ~= 0 then
+            if rating then
+                score = score + capped(key, value * ratingPerPoint(rating, level), cap) * weight
+            else
+                score = score + value * weight
+            end
+        end
+    end)
+    return score
+end
+
+-- The same score in parts: { { key, label, amount (text), value, weight, points }, ... } with the
+-- largest part first and parts without points left out. Ratings show as percent with the rating
+-- in brackets ("1,2 % (26)"), defence as skill points; weight is then per percent or point. Hit
+-- over the cap is a part of its own with 0 points (over = true), so the parts still sum up.
+function Gear.ScoreParts(s, w, level, kind, class, cap)
+    local parts = {}
+    terms(s, w, level, kind, class, function(key, value, weight, rating)
+        if not value or value == 0 or weight == 0 then return end
+        local amount, converted = deNum(value), value
+        local label = Gear.STAT_LABELS[key] or key
+        if rating then
+            converted = value * ratingPerPoint(rating, level)
+            local counted = capped(key, converted, cap)
+            if counted < converted - 1e-9 then
+                parts[#parts + 1] = { key = key .. "_OVER", label = L["%s über der Grenze"]:format(label), over = true,
+                    amount = ("%s %%"):format(deNum(converted - counted, 1)), value = converted - counted, weight = 0,
+                    points = 0 }
+                converted = counted
+                if converted <= 0 then return end
+            end
+            if rating == "DEF" then
+                amount = L["%s Punkte (%d)"]:format(deNum(converted, 1), math.floor(value + 0.5))
+            else
+                amount = ("%s %% (%d)"):format(deNum(converted, 1), math.floor(value + 0.5))
+            end
+        elseif key == "SPEED" then
+            amount = ("%s s"):format(deNum(s.SPEED, 1))
+        end
+        parts[#parts + 1] = { key = key, label = label, amount = amount, value = value,
+            weight = weight, points = converted * weight }
+    end)
+    table.sort(parts, function(a, b)
+        if a.points ~= b.points then return a.points > b.points end
+        return a.key < b.key
+    end)
+    return parts
+end
+
+-- One part as text: "30 Stärke x 2,0 = 60", "Waffentempo 3,6 s: +12", "Setbonus: +18",
+-- "0,8 % Trefferwertung über der Grenze: 0".
+function Gear.PartText(p)
+    if p.over then return ("%s %s: 0"):format(p.amount, p.label) end
+    if p.key == "SPEED" then return ("%s %s: %+d"):format(p.label, p.amount, math.floor(p.points + 0.5)) end
+    if p.key == "SETB" then return ("%s: %+d"):format(p.label, math.floor(p.points + 0.5)) end
+    local wt = p.weight == math.floor(p.weight) and deNum(p.weight, 1)
+        or (deNum(p.weight, 2):gsub("0$", ""))
+    return ("%s %s x %s = %s"):format(p.amount, p.label, wt, deNum(p.points))
+end
+
+-- What one point of score is worth: the weights' unit when it weighs 1, else the first of attack
+-- power, spell damage, healing and stamina that does; nil when none fits.
+local UNIT_LABELS = { AP = L["Angriffskraft"], SP = L["Zauberschaden"], HEAL = L["Heilung"], STA = L["Ausdauer"] }
+Gear.UNIT_LABELS = UNIT_LABELS
+function Gear.Unit(w)
+    if not w then return nil end
+    if w.unit and UNIT_LABELS[w.unit] and w[w.unit] == 1 then return w.unit end
+    for _, k in ipairs({ "AP", "SP", "HEAL", "STA" }) do
+        if w[k] == 1 then return k end
+    end
+    return nil
+end
+
+-- "+14 Punkte, so viel wie 14 Angriffskraft", or "+14 Punkte" without a unit.
+function Gear.UnitText(points, w)
+    local n = math.floor(points + 0.5)
+    local unit = Gear.Unit(w)
+    if unit then return L["%+d Punkte, so viel wie %d %s"]:format(n, n, UNIT_LABELS[unit]) end
+    return L["%+d Punkte"]:format(n)
+end
+
+---------------------------------------------------------------------------
+-- Items
+---------------------------------------------------------------------------
+
+local function data() return ns.Data("GEAR") end
+function Gear.Available() return ns.HasData("GEAR") and ns.HasData("GEAR_WEIGHTS") end
+
+-- The level cap of the loaded data set.
+function Gear.Cap()
+    local d = data()
+    return d and d.cap or 60
+end
+
+-- The item's row: equip location, class, subclass, level, quality, bind, item level, class mask
+-- (0 = every class), weapon speed, profession needed to wear it (Gear.WearProf), sources...
+-- A BiS pick GearData.lua does not list has its row in ns.BIS.PI (no sources, plus name); an item of
+-- Data/GearNoSource.lua its row there once the planner built that file (Gear/NoSource.lua, D-107).
+function Gear.Item(id)
+    local d = data()
+    local row = d and d.I[id]
+    if row then return row end
+    local B = ns.BIS
+    row = d and type(B) == "table" and type(B.PI) == "table" and B.PI[id] or nil
+    if row then return row end
+    local n = d and noSource()
+    return n and type(n.I) == "table" and n.I[id] or nil
+end
+
+-- The name and icon the scan saw for an item only the server describes (GearData N and IC, D-59):
+-- what stands in while the client has nothing. The name is the German client's, so only there.
+local function scanField(key, id)
+    local d = ns.HasData("GEAR") and ns.Data("GEAR")
+    local v = d and type(d[key]) == "table" and d[key][id] or nil
+    if v ~= nil then return v end
+    local n = noSource()
+    return n and type(n[key]) == "table" and n[key][id] or nil
+end
+
+function Gear.ScanName(id)
+    if not (GetLocale and GetLocale() == "deDE") then return nil end
+    return scanField("N", id)
+end
+
+function Gear.ScanIcon(id) return scanField("IC", id) end
+
+local QUALITY_RGB = { [0] = { 0.62, 0.62, 0.62 }, { 1, 1, 1 }, { 0.12, 1, 0 }, { 0, 0.44, 0.87 }, { 0.64, 0.21, 0.93 },
+    { 1, 0.5, 0 } }
+
+-- Whether the client's item table lacks the item (only the server describes it, D-59). A plain cache
+-- miss (GetItemInfo nil until the server answers) is no such item: GetItemInfoInstant reads the
+-- client's own table and knows it at once.
+local function clientLacks(id)
+    if not C_Item then return true end
+    if C_Item.GetItemInfoInstant then return C_Item.GetItemInfoInstant(id) == nil end
+    return not (C_Item.GetItemInfo and C_Item.GetItemInfo(id))
+end
+
+-- The tooltip waiting for its item's info: shown again once it arrived, while its owner still holds it
+-- (the client rebuilds a tooltip for a loaded item and drops the lines added to it).
+local waiting
+ns.OnEvent("GET_ITEM_INFO_RECEIVED", function(itemID, success)
+    local w = waiting
+    if not w or tonumber(itemID) ~= w.id then return end
+    waiting = nil
+    if success == false then return end
+    C_Timer.After(0, function()
+        if w.tt:IsShown() and (not w.tt.IsOwned or w.tt:IsOwned(w.owner)) then w.again() end
+    end)
+end)
+
+-- A tooltip for an item the client cannot describe (not in its item table): the name in its quality's
+-- colour, slot, item level, required level, the scanned stats, up to three sources and a grey note.
+-- Leaves a tooltip the client filled alone; true when it wrote one. For an item the client knows but
+-- has not loaded yet, owner and again (optional) show the tooltip anew once the item info arrives.
+function Gear.ScanTooltip(tt, id, owner, again)
+    if not (tt and id) then return false end
+    if not clientLacks(id) then
+        if again and owner and not (C_Item.GetItemInfo and C_Item.GetItemInfo(id)) then
+            waiting = { tt = tt, id = id, owner = owner, again = again }
+        end
+        return false
+    end
+    local row = Gear.Item(id)
+    if not row then return false end
+    tt:ClearLines()
+    local c = QUALITY_RGB[row[5] or 1] or QUALITY_RGB[1]
+    tt:AddLine(Gear.ScanName(id) or row.name or ("Item " .. id), c[1], c[2], c[3])
+    local slot = _G["INVTYPE_" .. tostring(row[1])]
+    if type(slot) == "string" then tt:AddLine(slot, 1, 1, 1) end
+    if (row[7] or 0) > 0 then tt:AddLine(L["Gegenstandsstufe %d"]:format(row[7]), 1, 0.82, 0) end
+    local stats, lines = Gear.ScannedStats(id) or Gear.ComputedStats(id) or {}, {}
+    for k, v in pairs(stats) do
+        if type(v) == "number" and Gear.STAT_LABELS[k] and k ~= "SPEED" then
+            lines[#lines + 1] = (k == "DPS" and "%.1f %s" or "%+d %s"):format(v, Gear.STAT_LABELS[k])
+        end
+    end
+    table.sort(lines)
+    for _, line in ipairs(lines) do tt:AddLine(line, 1, 1, 1) end
+    if (row[4] or 0) > 1 then tt:AddLine(L["Benötigt Stufe %d"]:format(row[4]), 1, 1, 1) end
+    local n = 0
+    for i = Gear.FIRST_SOURCE, #row do
+        local rec = Gear.Source(row[i])
+        if rec and n < 3 then
+            n = n + 1
+            tt:AddLine(Gear.SourceText(rec), 0.85, 0.85, 0.85, true)
+        end
+    end
+    tt:AddLine(L["Aus Amisias Scan: der Server beschreibt dieses Item nicht (mehr)."], 0.6, 0.6, 0.6, true)
+    tt:Show()
+    return true
+end
+
+-- Whether a class (and spec) can wear the item at a level, by item type alone.
+function Gear.Usable(class, row, level, spec)
+    local loc, classID, sub = row[1], row[2], row[3]
+    local group = GROUP[loc]
+    if not group then return false end
+    if loc == "RELIC" then return RELIC[sub] == class end
+    if classID == 4 then
+        if sub == 0 or loc == "CLOAK" or loc == "HOLDABLE" then return true end
+        local from = ARMOR[class] and ARMOR[class][sub]
+        return from ~= nil and level >= from
+    elseif classID == 2 then
+        local from = WEAPON[class] and WEAPON[class][sub]
+        if not from or level < from then return false end
+        if loc == "WEAPONOFFHAND" then return Gear.CanDualWield(class, level, spec) end
+        return true
+    end
+    return false
+end
+
+-- Whether a class dual wields at a level (spec is kept for the callers; no Forever spec adds it).
+function Gear.CanDualWield(class, level, spec)
+    return DUAL_WIELD[class] ~= nil and level >= DUAL_WIELD[class]
+end
+
+-- The client's skill lines without the headers (the core's, Gear/Professions.lua, F-228).
+function Gear.SkillLines() return ns.SkillLines() end
+
+-- Professions by the client's skill names (German and English, lower case; Juwelenschleifen is an
+-- older German name of jewelcrafting) and their skill line ids,
+-- as the Forever client and the data's "profession needed to wear it" field give them.
+Gear.PROF_BY_NAME = {
+    schneiderei = "tailoring", tailoring = "tailoring", lederverarbeitung = "leatherworking", leatherworking = "leatherworking",
+    schmiedekunst = "blacksmithing", blacksmithing = "blacksmithing", ingenieurskunst = "engineering", engineering = "engineering",
+    juwelierskunst = "jewelcrafting", juwelenschleifen = "jewelcrafting", jewelcrafting = "jewelcrafting",
+    alchimie = "alchemy", alchemy = "alchemy", verzauberkunst = "enchanting", enchanting = "enchanting",
+}
+Gear.PROF_ID = { tailoring = 197, leatherworking = 165, blacksmithing = 164, engineering = 202, jewelcrafting = 755,
+    alchemy = 171, enchanting = 333 }
+
+-- The profession an item needs to be worn: skill line and rank (always 0, any rank), or nil.
+-- Field 10 of a row is 0 or the skill line.
+function Gear.WearProf(row)
+    local p = row and row[10]
+    if type(p) == "number" and p > 0 then return p, 0 end
+    return nil
+end
+
+-- The source record by number: kind first, then fields as described in GearData.lua.
+function Gear.Source(n)
+    local d = data()
+    return d and d.S[n]
+end
+
+-- Order sources are listed in: a raid where it is one, then what every character can count on.
+local KIND_ORDER = { X = 0, Q = 1, D = 2, C = 3, V = 4, R = 5, W = 6, A = 7, P = 8 }
+Gear.KIND_ORDER = KIND_ORDER
+-- Filter group per source kind: rare mobs and world drops share one switch (Gear.FilterKey).
+Gear.FILTER_OF = { X = "X", Q = "Q", D = "D", C = "C", V = "V", R = "W", W = "W", A = "A", P = "P" }
+
+-- Realistic sources (D-59): a fixed source can be planned for (a quest, a boss, a recipe, a vendor,
+-- a PvP rank, a named rare mob); a random world drop cannot ("expect random items, never a given
+-- one"). Rare mobs count without the world drop switch, a world drop only with it and never an epic
+-- one; the auction house only for an item with a fixed source, or a non-epic world drop with the
+-- switch on.
+local FIXED = { X = true, Q = true, D = true, C = true, V = true, P = true, R = true }
+function Gear.HasFixedSource(row)
+    if not row then return false end
+    for i = Gear.FIRST_SOURCE, #row do
+        local rec = Gear.Source(row[i])
+        if rec and FIXED[rec[1]] then return true end
+    end
+    return false
+end
+
+-- Whether an item may come from other players (the AH chip, the play style "Kaufbar") with the
+-- source switches: it has a fixed source, or it is a non-epic world drop and world drops are on.
+function Gear.BuyRealistic(row, sources)
+    if Gear.HasFixedSource(row) then return true end
+    return (sources and sources.W) and (row and (row[5] or 0) < 4) or false
+end
+
+-- The filter switch a source belongs to.
+function Gear.FilterKey(rec)
+    local k = rec[1]
+    return Gear.FILTER_OF[k] or k
+end
+
+local function sourceFaction(rec)
+    local k = rec[1]
+    local f
+    if k == "Q" then f = rec[5]
+    elseif k == "V" or k == "P" then f = rec[4] end
+    if f == "" then return nil end
+    return f
+end
+
+-- The place a source is at, for "here" and for excluding a place: "I:<instance id>" for raids and
+-- dungeons ("N:<name>" for dungeon records without one), "Z:<zone>" for quests, vendors, rare
+-- mobs and world drops with a zone; nil for crafting and the auction house.
+function Gear.PlaceOf(rec)
+    local k, z = rec[1], nil
+    if k == "X" or k == "D" then
+        local inst = k == "X" and rec[4] or rec[5]
+        -- Forever data built before the game field held a zone there, no instance id
+        local d = data()
+        if k == "D" and d and not d.game then inst = nil end
+        if type(inst) == "number" and inst > 0 then return "I:" .. inst end
+        return rec[2] and ("N:" .. rec[2]) or nil
+    elseif k == "Q" then z = rec[6]
+    elseif k == "V" or k == "P" then z = rec[3]
+    elseif k == "R" then z = rec[4]
+    elseif k == "W" then z = rec[5] end
+    if type(z) == "number" and z ~= 0 then return "Z:" .. z end
+    return nil
+end
+
+-- Whether one source passes the filters: kind switched on, faction and class fit, and neither its
+-- boss nor its place is excluded
+-- (opts.exclude = { boss = { [name] = true }, place = { [Gear.PlaceOf key] = true } }). With
+-- opts.prof "mine" and the own professions in opts.skills ({ tailoring = 375, ... }), a crafted
+-- item that binds on pickup (row given) counts only with that profession and skill.
+local function sourceOk(rec, opts, row, worldEpic)
+    if not rec then return false end
+    local kind = rec[1]
+    if worldEpic then
+        -- an epic world drop for the suggestions only (Gear.WorldEpicOk): no switch, no epic rule
+        if kind ~= "W" then return false end
+    else
+        -- a named rare mob is a fixed source: no switch (D-59)
+        if kind ~= "R" and not opts.sources[Gear.FilterKey(rec)] then return false end
+        if kind == "W" and row and (row[5] or 0) >= 4 then return false end
+        if kind == "A" and row and not Gear.BuyRealistic(row, opts.sources) then return false end
+    end
+    -- the play style of the own options (Gear/PlayStyle.lua, F-124; the module Ausrüstung's, F-228)
+    if opts.style and ns.PlayStyle and not ns.PlayStyle.RecOk(rec, row, opts.style) then return false end
+    if rec[1] == "C" and row and row[6] == 1 and opts.prof == "mine" and type(opts.skills) == "table" then
+        if (opts.skills[rec[2]] or 0) < (rec[3] or 0) then return false end
+    end
+    local fac = sourceFaction(rec)
+    if fac and opts.faction and fac ~= opts.faction then return false end
+    if rec[1] == "Q" and (rec[8] or 0) > 0 and opts.class and not Gear.HasClassBit(rec[8], opts.class) then
+        return false
+    end
+    local ex = opts.exclude
+    if ex then
+        if ex.boss and (rec[1] == "X" or rec[1] == "D") and rec[3] and ex.boss[rec[3]] then return false end
+        if ex.place and next(ex.place) then
+            local place = Gear.PlaceOf(rec)
+            if place and ex.place[place] then return false end
+        end
+    end
+    return true
+end
+
+function Gear.SourceOk(rec, opts, row) return sourceOk(rec, opts, row, false) end
+
+-- Epic world drops in the planner's suggestions (D-59 Nachtrag 2026-11-20, setting bis.epicWorld):
+-- they never count for a target, but the suggestions show them, marked, ranked as if their score were
+-- WORLD_EPIC_FACTOR of it (so they stand above an item you can get on purpose only when clearly better).
+Gear.WORLD_EPIC_FACTOR = 0.9
+
+-- Whether rec makes row an epic world drop the suggestions may show: an epic item without a fixed
+-- source (only W, perhaps A) whose world drop passes the other filters (play style, faction, places);
+-- the world drop switch does not matter.
+function Gear.WorldEpicOk(rec, opts, row)
+    if not (rec and rec[1] == "W" and row and (row[5] or 0) >= 4) or Gear.HasFixedSource(row) then return false end
+    return sourceOk(rec, opts, row, true)
+end
+
+-- Whether a class bit mask includes a class.
+function Gear.HasClassBit(mask, class)
+    local b = CLASS_BIT[class]
+    if not b then return false end
+    if bit and bit.band then return bit.band(mask, b) ~= 0 end
+    return math.floor(mask / b) % 2 == 1
+end
+
+-- The sources of an item that pass the filters, best first.
+function Gear.Sources(id, opts)
+    local row = Gear.Item(id)
+    local out = {}
+    if not row then return out end
+    for i = Gear.FIRST_SOURCE, #row do
+        local rec = Gear.Source(row[i])
+        if not opts or Gear.SourceOk(rec, opts, row) then out[#out + 1] = rec end
+    end
+    -- with the play style "Kaufbar" an item that does not bind on pickup is bought from other players;
+    -- with "Jetzt holbar" an item whose reputation is not reached has no source
+    local st = opts and opts.style
+    if st and ns.PlayStyle then
+        if not ns.PlayStyle.ItemOk(id, st) then return {} end
+        if ns.PlayStyle.BuyOk(row, st, opts.sources) then
+            local hasAH = false
+            for _, rec in ipairs(out) do if rec[1] == "A" then hasAH = true end end
+            if not hasAH then out[#out + 1] = ns.PlayStyle.AH_REC end
+        end
+    end
+    table.sort(out, function(a, b)
+        local ka, kb = KIND_ORDER[a[1]] or 9, KIND_ORDER[b[1]] or 9
+        if ka ~= kb then return ka < kb end
+        return tostring(a[2] or "") < tostring(b[2] or "")
+    end)
+    return out
+end
+
+---------------------------------------------------------------------------
+-- Loading item data
+---------------------------------------------------------------------------
+
+local stats = {}      -- id -> stat table, or false when the client has no data for it
+local memo, memoKey = {}, nil   -- id -> scores of the class, spec and weighting in memoKey
+local pending = {}    -- id -> { at = time requested, tries = n }
+local queue = {}      -- ids still to request
+local queued = {}
+local ticker
+local clock = 0
+local REQUESTS_PER_TICK, MAX_PENDING, TIMEOUT, MAX_TRIES = 15, 100, 6, 2
+-- An item whose tries all timed out counts as failed, but a busy server may just have been slow:
+-- once RETRY_AFTER seconds have passed it is asked again when it is needed next, up to MAX_ROUNDS
+-- rounds in all (a failed answer by event is final).
+local RETRY_AFTER, MAX_ROUNDS = 60, 3
+local timedOut = {}   -- id -> { at = time of the last timeout, rounds = n }
+local CACHE_VERSION = "v3"
+local arrived = false   -- an answer came by event since the last tick
+local waits = 0         -- how often Gear.Stats answered without the item's final stats
+local listeners = {}
+
+local function now() return GetTime and GetTime() or clock end
+
+local function cacheDB()
+    if not AmisiaDB then return nil end
+    local d = data()
+    local build = (GetBuildInfo and select(2, GetBuildInfo())) or "?"
+    -- bump CACHE_VERSION when what is stored per item changes
+    local key = CACHE_VERSION .. "/" .. (d and d.built or "?") .. "/" .. tostring(build)
+    AmisiaDB.gear = AmisiaDB.gear or {}
+    local g = AmisiaDB.gear
+    if g.key ~= key then
+        g.key, g.stats = key, {}
+    end
+    g.stats = g.stats or {}
+    return g
+end
+
+-- Stats are kept between sessions as "KEY=value;..." so a reopened window has them at once.
+local function encode(s)
+    local parts = {}
+    for k, v in pairs(s) do
+        if k == "CLASSES" then
+            local names = {}
+            for token in pairs(v) do names[#names + 1] = token end
+            table.sort(names)
+            parts[#parts + 1] = "CLASSES=" .. table.concat(names, ",")
+        else
+            parts[#parts + 1] = k .. "=" .. tostring(v)
+        end
+    end
+    table.sort(parts)
+    return table.concat(parts, ";")
+end
+
+local function decode(str)
+    local s = {}
+    for k, v in tostring(str):gmatch("([%w_]+)=([^;]*)") do
+        if k == "CLASSES" then
+            s.CLASSES = {}
+            for token in v:gmatch("[^,]+") do s.CLASSES[token] = true end
+        else
+            s[k] = tonumber(v)
+        end
+    end
+    return s
+end
+
+local function notify()
+    for _, fn in ipairs(listeners) do fn() end
+end
+
+function Gear.OnData(fn) listeners[#listeners + 1] = fn end
+
+local function finishItem(id, s)
+    stats[id] = s or false
+    memo[id] = nil
+    if s then
+        local g = cacheDB()
+        if g then g.stats[id] = encode(s) end
+    end
+end
+
+local function cached(id)
+    if C_Item and C_Item.IsItemDataCachedByID then return C_Item.IsItemDataCachedByID(id) end
+    return C_Item.GetItemInfo(id) ~= nil
+end
+
+local function tick()
+    if not GetTime then clock = clock + 0.1 end
+    local t = now()
+    local changed = arrived
+    arrived = false
+    -- answers that arrived without an event, and timeouts
+    for id, p in pairs(pending) do
+        if cached(id) then
+            pending[id] = nil
+            finishItem(id, Gear.ReadStats(id))
+            changed = true
+        elseif t - p.at > TIMEOUT then
+            if p.tries < MAX_TRIES then
+                p.at, p.tries = t, p.tries + 1
+                C_Item.RequestLoadItemDataByID(id)
+            else
+                pending[id] = nil
+                finishItem(id, nil)
+                local f = timedOut[id] or { rounds = 0 }
+                f.at, f.rounds = t, f.rounds + 1
+                timedOut[id] = f
+                changed = true
+            end
+        end
+    end
+    local n, open = 0, 0
+    for _ in pairs(pending) do open = open + 1 end
+    while #queue > 0 and n < REQUESTS_PER_TICK and open < MAX_PENDING do
+        local id = table.remove(queue)
+        queued[id] = nil
+        if stats[id] == nil and not pending[id] then
+            if cached(id) then
+                finishItem(id, Gear.ReadStats(id))
+                changed = true
+            else
+                pending[id] = { at = t, tries = 1 }
+                C_Item.RequestLoadItemDataByID(id)
+                open = open + 1
+                n = n + 1
+            end
+        end
+    end
+    if changed then notify() end
+    if #queue == 0 and not next(pending) and ticker then
+        ticker:Cancel()
+        ticker = nil
+        notify()
+    end
+end
+
+local function onLoaded(id, success)
+    id = tonumber(id)
+    if not id or not pending[id] then return end
+    pending[id] = nil
+    finishItem(id, success ~= false and Gear.ReadStats(id) or nil)
+    arrived = true
+end
+ns.OnEvent("ITEM_DATA_LOAD_RESULT", onLoaded)
+
+-- A counter raised whenever Gear.Stats answers for an item still waiting for its stats: a result
+-- made while it did not move holds only final stats (the client cannot change them any more).
+function Gear.StatsWaits() return waits end
+
+-- Stats of an item, or nil while unknown (it is then requested). The second value is true for an
+-- item the server never described, which is skipped rather than waited for; the stats the build
+-- computed for it (Gear.ComputedStats) still count then.
+function Gear.Stats(id)
+    local s = stats[id]
+    if s == false then
+        local f = timedOut[id]
+        if not (f and f.rounds < MAX_ROUNDS and now() - f.at >= RETRY_AFTER) then return Gear.ComputedStats(id), true end
+        -- timed out a while ago: asked again below
+        stats[id], s = nil, nil
+    end
+    if s ~= nil then return s end
+    local g = cacheDB()
+    if g and g.stats[id] then
+        s = decode(g.stats[id])
+        stats[id] = s
+        return s
+    end
+    -- what the item scan saw needs no request at all
+    s = Gear.ScannedStats(id)
+    if s then
+        stats[id] = s
+        return s
+    end
+    if not pending[id] and cached(id) then
+        finishItem(id, Gear.ReadStats(id))
+        -- no stats: this answer is nil, the next one says failed
+        if not stats[id] then waits = waits + 1 end
+        return stats[id] or nil
+    end
+    waits = waits + 1
+    if not queued[id] and not pending[id] then
+        queued[id] = true
+        queue[#queue + 1] = id
+    end
+    if not ticker and C_Timer and C_Timer.NewTicker and C_Item and C_Item.RequestLoadItemDataByID then
+        ticker = C_Timer.NewTicker(0.1, ns.Perf.Wrap("Ticker Gear items", tick))
+    end
+    -- meanwhile the stats the build computed from the client tables, if any (marked SC); the
+    -- client's answer replaces them when it comes
+    return Gear.ComputedStats(id)
+end
+
+-- Stats tools/build_bis.py computed for an item no scan has seen (ns.BIS.SC), marked SC = true;
+-- nil without. They hold the allocations, the armour, a weapon's damage per second (its speed comes
+-- from the item row, as for scanned stats) and the plain stats of equip effects; procs and use
+-- effects are not in them (Gear.EffectText names those).
+local computedCache, computedFor = {}, nil
+function Gear.ComputedStats(id)
+    local B = ns.BIS
+    local text = type(B) == "table" and type(B.SC) == "table" and B.SC[id]
+    if not text then return nil end
+    if computedFor ~= B then computedCache, computedFor = {}, B end
+    local s = computedCache[id]
+    if s then return s end
+    s = parseStats({ SC = true }, tostring(text))
+    local row = s.DPS and Gear.Item(id)
+    if row and (row[9] or 0) > 0 then s.SPEED = row[9] end
+    computedCache[id] = s
+    return s
+end
+
+-- The effects of an item the scoring does not count (ns.BIS.FX, from the client tables: use
+-- effects, chances on hit, equip effects other than plain stats), as German text
+-- ("Chance bei Treffer: Fireball (176 Feuerschaden)"; several joined by "; "), or nil. In English
+-- the German words tools/build_bis.py composes (describe, item_effects) are put in English here; a
+-- part it does not know stays as it is. The patterns match the generated German text, they are not
+-- shown.
+local FX_TRIGGER = {
+    ["Benutzen"] = L["Benutzen"], ["Anlegen"] = L["Anlegen"],                 -- l10n-ok: generated data matched
+    ["Chance bei Treffer"] = L["Chance bei Treffer"], ["Effekt"] = L["Effekt"], -- l10n-ok: generated data matched
+}
+local FX_SCHOOL = {
+    Heilig = L["Heilig##Schule"], Feuer = L["Feuer##Schule"], Natur = L["Natur##Schule"],
+    Frost = L["Frost##Schule"], Schatten = L["Schatten##Schule"], Arkan = L["Arkan##Schule"],
+}
+local FX_STAT = {
+    ["Stärke"] = Gear.STAT_LABELS.STR, ["Beweglichkeit"] = Gear.STAT_LABELS.AGI,                -- l10n-ok: generated data matched
+    ["Ausdauer"] = Gear.STAT_LABELS.STA, ["Intelligenz"] = Gear.STAT_LABELS.INT,                -- l10n-ok: generated data matched
+    ["Willenskraft"] = Gear.STAT_LABELS.SPI, ["Rüstung"] = Gear.STAT_LABELS.ARMOR,              -- l10n-ok: generated data matched
+    ["Angriffskraft"] = Gear.STAT_LABELS.AP, ["Distanzangriffskraft"] = Gear.STAT_LABELS.RAP,   -- l10n-ok: generated data matched
+    ["Zaubermacht"] = Gear.STAT_LABELS.SPP, ["Zauberschaden"] = Gear.STAT_LABELS.SPD,           -- l10n-ok: generated data matched
+    ["Mana alle 5 Sek."] = Gear.STAT_LABELS.MP5, ["Zauberdurchschlag"] = Gear.STAT_LABELS.SPEN, -- l10n-ok: generated data matched
+    ["Trefferwertung"] = Gear.STAT_LABELS.HIT, ["Zaubertrefferwertung"] = Gear.STAT_LABELS.SHIT, -- l10n-ok: generated data matched
+    ["kritische Trefferwertung"] = Gear.STAT_LABELS.CRIT,                                       -- l10n-ok: generated data matched
+    ["kritische Zaubertrefferwertung"] = L["kritische Zaubertrefferwertung"],                   -- l10n-ok: generated data matched
+    ["Verteidigungswertung"] = Gear.STAT_LABELS.DEF,                                            -- l10n-ok: generated data matched
+}
+-- { pattern of the German part, its text with the captures in the same order }
+local FX_PART = {
+    { "^(%S+) Leben entziehen$", L["%s Leben entziehen"] },          -- l10n-ok: generated data matched
+    { "^(%S+) Heilung je Tick$", L["%s Heilung je Tick"] },          -- l10n-ok: generated data matched
+    { "^(%S+) Heilung$", L["%s Heilung"] },                          -- l10n-ok: generated data matched
+    { "^1 zusätzlicher Angriff$", L["1 zusätzlicher Angriff"] },     -- l10n-ok: generated data matched
+    { "^(%S+) zusätzliche Angriffe$", L["%s zusätzliche Angriffe"] }, -- l10n-ok: generated data matched
+    { "^(%S+) Mana$", "%s Mana" },
+    { "^absorbiert (%S+) Schaden$", L["absorbiert %s Schaden"] },    -- l10n-ok: generated data matched
+    { "^%+(%S+) %% Lauftempo$", L["+%s %% Lauftempo"] },             -- l10n-ok: generated data matched
+    { "^verlangsamt um (%S+) %%$", L["verlangsamt um %s %%"] },      -- l10n-ok: generated data matched
+    { "^(%S+) %% Schaden: (.+)$", L["%s %% Schaden: %s"] },          -- l10n-ok: generated data matched
+    { "^(%S+) Schaden: (.+)$", L["%s Schaden: %s"] },                -- l10n-ok: generated data matched
+    { "^(.+) verbessert$", L["%s verbessert"] },                     -- l10n-ok: generated data matched
+}
+
+local function fxPart(p)
+    for _, e in ipairs(FX_PART) do
+        local a, b = p:match(e[1])
+        if a then return e[2]:format(a, b) end
+    end
+    -- "176 Feuerschaden", "35 Schaden je Tick", "10 Feuerschaden an Angreifern"
+    local n, school, rest = p:match("^(%S+) (%a*)schaden(.*)$")
+    if not n then
+        n, rest = p:match("^(%S+) Schaden(.*)$")    -- l10n-ok: generated data matched
+        school = ""
+    end
+    if n and (school == "" or FX_SCHOOL[school]) then
+        local dmg = school == "" and L["%s Schaden"]:format(n) or L["%s %sschaden"]:format(n, FX_SCHOOL[school])
+        if rest == "" then return dmg end
+        if rest == " je Tick" then return L["%s je Tick"]:format(dmg) end            -- l10n-ok: generated data matched
+        if rest == " an Angreifern" then return L["%s an Angreifern"]:format(dmg) end -- l10n-ok: generated data matched
+        return nil
+    end
+    local v, stat = p:match("^([%+%-]%S+) (.+)$")
+    if v and FX_STAT[stat] then return v .. " " .. FX_STAT[stat] end
+    return nil
+end
+
+-- "Fireball (176 Feuerschaden, ...)": the spell name may hold " (" itself, so the first bracket
+-- whose every part is known wins.
+local function fxRest(rest)
+    rest = rest:gsub("^Zauber (%d+)", function(n) return L["Zauber %s"]:format(n) end) -- l10n-ok: generated data matched
+    if rest:sub(-1) ~= ")" then return rest end
+    local from = 1
+    while true do
+        local pos = rest:find(" (", from, true)
+        if not pos then return rest end
+        local out, ok = {}, true
+        for part in (rest:sub(pos + 2, -2) .. ", "):gmatch("(.-), ") do
+            local t = fxPart(part)
+            if not t then ok = false break end
+            out[#out + 1] = t
+        end
+        if ok then return rest:sub(1, pos - 1) .. " (" .. table.concat(out, ", ") .. ")" end
+        from = pos + 1
+    end
+end
+
+local function fxEnglish(text)
+    local lines = {}
+    for line in (text .. "; "):gmatch("(.-); ") do
+        local trig, rest = line:match("^(.-): (.*)$")
+        if trig and FX_TRIGGER[trig] then line = FX_TRIGGER[trig] .. ": " .. fxRest(rest) end
+        lines[#lines + 1] = line
+    end
+    return table.concat(lines, "; ")
+end
+
+local fxShown = {}   -- German text -> English text
+function Gear.EffectText(id)
+    local B = ns.BIS
+    local text = type(B) == "table" and type(B.FX) == "table" and B.FX[tonumber(id) or id]
+    if type(text) ~= "string" or text == "" then return nil end
+    if ns.GERMAN then return text end
+    local en = fxShown[text]
+    if not en then
+        en = fxEnglish(text)
+        fxShown[text] = en
+    end
+    return en
+end
+
+-- The random suffixes seen on an item: { [suffix id] = stat table } from the build (ns.BIS.RP,
+-- the guild's collectors) and the own collector (AmisiaDB.scan.suffix); nil when none was seen.
+-- Each table holds the item's full stats with that suffix, as C_Item.GetItemStats gave them.
+-- Parsed once per item and kept while the build's and the collector's tables of the item stay the
+-- same tables; the collector calls Gear.SuffixNoted when it adds a suffix to the item.
+local suffixCache = {}   -- id -> { rp = table, own = table, out = result or false }
+function Gear.SuffixNoted(id) suffixCache[id] = nil end
+function Gear.SuffixStats(id)
+    local B = ns.BIS
+    local rp = type(B) == "table" and type(B.RP) == "table" and B.RP[id]
+    local own = AmisiaDB and type(AmisiaDB.scan) == "table" and type(AmisiaDB.scan.suffix) == "table" and AmisiaDB.scan.suffix[id]
+    -- the planner asks for every item: most have none, and that answer costs nothing
+    if type(rp) ~= "table" and type(own) ~= "table" then return nil end
+    rp = type(rp) == "table" and rp or nil
+    own = type(own) == "table" and own or nil
+    local c = suffixCache[id]
+    if c and c.rp == rp and c.own == own then return c.out or nil end
+    local out
+    local function addText(suffix, text)
+        if type(text) ~= "string" then return end
+        local s = parseStats({}, text)
+        if next(s) then
+            local row = Gear.Item(id)
+            if row and (row[9] or 0) > 0 and s.DPS then s.SPEED = row[9] end
+            out = out or {}
+            out[suffix] = s
+        end
+    end
+    if rp then for suffix, text in pairs(rp) do addText(suffix, text) end end
+    if own then for suffix, text in pairs(own) do addText(suffix, text) end end
+    suffixCache[id] = { rp = rp, own = own, out = out or false }
+    return out
+end
+
+-- How many requested items are still on their way.
+function Gear.Loading()
+    local n = #queue
+    for _ in pairs(pending) do n = n + 1 end
+    return n
+end
+
+-- Test hook: run the loader once without waiting for the ticker.
+Gear._tick = tick
+function Gear._reset()
+    wipe(stats); wipe(pending); wipe(queue); wipe(queued); wipe(suffixCache); wipe(timedOut)
+    arrived = false
+    waits = waits + 1
+    memo, memoKey = {}, nil
+    if ticker then ticker:Cancel(); ticker = nil end
+end
+
+---------------------------------------------------------------------------
+-- Picking the best items
+---------------------------------------------------------------------------
+
+function Gear.Specs(class)
+    local w = ns.GEAR_WEIGHTS
+    return w and w.specs[class] or {}
+end
+
+function Gear.SpecInfo(class, specKey)
+    for _, sp in ipairs(Gear.Specs(class)) do
+        if sp.key == specKey then return sp end
+    end
+    return Gear.Specs(class)[1]
+end
+
+-- The constants of the weighting "Raid" (F-225, D-150: a boss fight at the level cap; level, levels,
+-- meleeMiss, dwMiss, spellMiss, targetDodge, scarce), or nil with data that has none.
+function Gear.RaidModel()
+    local c = ns.GEAR_WEIGHTS and ns.GEAR_WEIGHTS.model
+    return type(c) == "table" and type(c.raid) == "table" and c.raid or nil
+end
+
+-- Whether the weighting "Raid" has numbers of its own for a spec at a level: from the level the data
+-- names, where the spec has a raid set (healers and own weights have none). Elsewhere "Raid" reads
+-- Speedrun.
+function Gear.RaidOn(class, specKey, kind, level)
+    if kind ~= "Raid" then return false end
+    local r, sp = Gear.RaidModel(), Gear.SpecInfo(class, specKey)
+    return r ~= nil and type(sp) == "table" and type(sp.Raid) == "table" and (tonumber(level) or 0) >= (r.level or 60)
+end
+
+-- The weight set of a spec for a level. A weighting without a set of its own for the bracket ("Raid"
+-- below the level cap and for healers) reads Speedrun's.
+function Gear.Weights(class, specKey, kind, level)
+    local sp = Gear.SpecInfo(class, specKey)
+    if not sp then return nil end
+    if sp.all then return sp.all end
+    local sets = sp[kind] or sp.Speedrun
+    local brackets = ns.GEAR_WEIGHTS.brackets
+    for i, upper in ipairs(brackets) do
+        if level <= upper then return sets[i] or sp.Speedrun[i] end
+    end
+    return sets[#brackets] or sp.Speedrun[#brackets]
+end
+
+-- Scores are kept per class, spec and weighting (memo, declared with the loader), so a redraw only
+-- scores items that are new to it.
+local PLACE_SLOT = { MH = 1, OH = 2, ["2H"] = 3, RANGED = 4 }
+-- slot group -> the row whose worn item a hit cap is reckoned against
+local CAP_ROW = { HEAD = "HEAD", NECK = "NECK", SHOULDER = "SHOULDER", BACK = "BACK", CHEST = "CHEST", WRIST = "WRIST",
+    HANDS = "HANDS", WAIST = "WAIST", LEGS = "LEGS", FEET = "FEET", FINGER = "FINGER1", TRINKET = "TRINKET1",
+    ["2H"] = "MAINHAND", ["1H"] = "MAINHAND", MH = "MAINHAND", OHW = "OFFHAND", SHIELD = "OFFHAND", HELD = "OFFHAND",
+    RANGED = "RANGED" }
+Gear.CAP_ROW = CAP_ROW
+-- slot group -> the weapon place of an item of that group by itself (Gear.Score's kind)
+Gear.GROUP_PLACE = { ["2H"] = "2H", ["1H"] = "MH", MH = "MH", OHW = "OH", RANGED = "RANGED" }
+
+-- The weapon place (Gear.Score's kind) of an item of slot group group worn in slotKey, or nil.
+function Gear.WeaponPlace(slotKey, group)
+    if slotKey == "MAINHAND" then return group == "2H" and "2H" or "MH" end
+    if slotKey == "OFFHAND" then return (group == "1H" or group == "OHW") and "OH" or nil end
+    if slotKey == "RANGED" then return "RANGED" end
+    return nil
+end
+
+local function hasHit(s) return s.HIT or s.MHIT or s.SHIT end
+
+local function scoreOf(id, s, w, level, place, class, cap)
+    -- an item with hit rating under a cap depends on what is worn: never kept
+    if cap and hasHit(s) then return Gear.Score(s, w, level, place, class, cap) end
+    local byId = memo[id]
+    if not byId then byId = {}; memo[id] = byId end
+    local k = level * 5 + (place and PLACE_SLOT[place] or 0)
+    local v = byId[k]
+    if not v then
+        v = Gear.Score(s, w, level, place, class)
+        byId[k] = v
+    end
+    return v
+end
+
+-- The effort of getting an item from its sources that pass the filters (the cheapest one), in
+-- ns.BIS.EF's unit (about one dungeon run = 3); nil without data.
+local KIND_EFFORT = { V = "V", C = "C", A = "A", Q = "Q", D = "D", R = "R", W = "W", P = "P", X = "X" }
+local function sourceEffort(rec, ef)
+    local k = rec[1]
+    if k == "D" then
+        local v, p = rec[4], nil
+        if type(v) == "number" then p = v > 1 and v / 100 or v
+        elseif type(v) == "string" then
+            local n = tonumber((v:gsub(",", ".")):match("%d+%.?%d*"))
+            p = n and n / 100
+        end
+        p = (p and p > 0) and p or 0.15
+        return math.min(ef.DMAX or 30, (ef.D or 3) / p)
+    end
+    local key = KIND_EFFORT[k]
+    return key and ef[key] or nil
+end
+
+-- Orders the options within tie percent of the best by effort (cheapest first), the score
+-- deciding among equal efforts; an option moved ahead of a better one is marked easier. Scores
+-- are never changed.
+local function effortOrder(list, tie)
+    if not tie or tie <= 0 or #list < 2 then return end
+    local top = list[1][2]
+    local floor = top - math.abs(top) * tie / 100
+    local n = 0
+    for i, e in ipairs(list) do
+        if e[2] >= floor then n = i else break end
+    end
+    if n < 2 then return end
+    local head = {}
+    for i = 1, n do head[i] = list[i] end
+    table.sort(head, function(a, b)
+        local ea, eb = a.effort or 99, b.effort or 99
+        if ea ~= eb then return ea < eb end
+        if a[2] ~= b[2] then return a[2] > b[2] end
+        return a[1] < b[1]
+    end)
+    for i = 1, n do
+        local e = head[i]
+        list[i] = e
+        -- ahead of a better option
+        for j = i + 1, n do
+            if head[j][2] > e[2] then e.easier = true break end
+        end
+    end
+end
+
+-- The bonus of a set as a stat table per threshold: { [threshold] = stats or false (not scored) }.
+local setBonusCache, setBonusFor = {}, nil
+local function setBonuses(sid, set)
+    local S = type(ns.BIS) == "table" and ns.BIS.SET or nil
+    if setBonusFor ~= S then setBonusCache, setBonusFor = {}, S end
+    local b = setBonusCache[sid]
+    if b then return b end
+    b = {}
+    for _, pair in ipairs(type(set.b) == "table" and set.b or {}) do
+        local thr, text = tonumber(pair[1]), pair[2]
+        if thr then
+            local s = false
+            if type(text) == "string" and text ~= "" then
+                s = parseStats({}, text)
+            end
+            b[thr] = s
+        end
+    end
+    setBonusCache[sid] = b
+    return b
+end
+
+-- The bonuses of set sid per threshold (setBonuses), for Bis.lua's comparison with the worn gear.
+function Gear.SetBonusesOf(sid)
+    local S = type(ns.BIS) == "table" and type(ns.BIS.SET) == "table" and ns.BIS.SET or nil
+    local set = S and S[sid]
+    return set and setBonuses(sid, set) or {}
+end
+
+-- item -> set id, for the sets of ns.BIS.SET.
+local setOfItem, setOfFor = {}, nil
+function Gear.SetOf(id)
+    local B = ns.BIS
+    local S = type(B) == "table" and type(B.SET) == "table" and B.SET or nil
+    if setOfFor ~= S then
+        setOfItem, setOfFor = {}, S
+        for sid, set in pairs(S or {}) do
+            for _, item in ipairs(type(set.items) == "table" and set.items or {}) do setOfItem[item] = sid end
+        end
+    end
+    return setOfItem[id]
+end
+
+local SET_SLOTS = { "HEAD", "NECK", "SHOULDER", "BACK", "CHEST", "WRIST", "HANDS", "WAIST", "LEGS", "FEET" }
+
+-- The set plan: for up to two sets with at least two reachable pieces, k pieces of the set plus
+-- the best single items elsewhere against the single picks; a set that wins takes its slots, its
+-- pieces carry set = { id, name, have, total, bonus } and a share of the bonus (setb, added to
+-- their score): each piece its loss against the single best of its slot plus an equal part of
+-- the net gain, so the shares sum to the bonus and every piece scores above the single item it
+-- displaced. ns.BisCompare counts the share as the part SETB. Linear per set (pieces sorted by
+-- their loss).
+local function setPlan(res, w, level, class)
+    local B = ns.BIS
+    local S = type(B) == "table" and type(B.SET) == "table" and B.SET or nil
+    if not S then return end
+    -- chosen: the sets already applied; without it the second pass could take the rest of the same
+    -- set and count its bonus twice
+    local used, chosen = {}, {}
+    for _ = 1, 2 do
+        local bestSet
+        -- per free slot the first option of every set (one pass per list)
+        local firstOf = {}
+        for _, slot in ipairs(SET_SLOTS) do
+            if not used[slot] then
+                local f = {}
+                for i, e in ipairs(res[slot]) do
+                    local sid = Gear.SetOf(e[1])
+                    if sid ~= nil and f[sid] == nil then f[sid] = i end
+                end
+                firstOf[slot] = f
+            end
+        end
+        for sid, set in pairs(S) do
+            local bon = setBonuses(sid, set)
+            local scored = false
+            if not chosen[sid] then
+                for _, s in pairs(bon) do if s then scored = true break end end
+            end
+            if scored then
+                -- per free slot the best piece of the set among the options and its loss
+                local pieces = {}
+                for _, slot in ipairs(SET_SLOTS) do
+                    if not used[slot] then
+                        local list = res[slot]
+                        local i = firstOf[slot][sid]
+                        if i then
+                            pieces[#pieces + 1] = { slot = slot, i = i, loss = list[1][2] - list[i][2] }
+                        end
+                    end
+                end
+                if #pieces >= 2 then
+                    table.sort(pieces, function(a, b)
+                        if a.loss ~= b.loss then return a.loss < b.loss end
+                        return a.slot < b.slot
+                    end)
+                    local loss, bonus = 0, 0
+                    for k = 1, #pieces do
+                        loss = loss + pieces[k].loss
+                        local s = bon[k]
+                        if s then bonus = bonus + Gear.Score(s, w, level, nil, class) end
+                        if bon[k] ~= nil and bonus - loss > 0 and (not bestSet or bonus - loss > bestSet.net) then
+                            bestSet = { sid = sid, set = set, k = k, net = bonus - loss, bonus = bonus, pieces = pieces }
+                        end
+                    end
+                end
+            end
+        end
+        if not bestSet then return end
+        chosen[bestSet.sid] = true
+        local info = { id = bestSet.sid, name = bestSet.set.name, have = bestSet.k, total = #bestSet.set.items,
+            bonus = bestSet.bonus }
+        local extra = bestSet.net / bestSet.k
+        for k = 1, bestSet.k do
+            local p = bestSet.pieces[k]
+            local list = res[p.slot]
+            local e = table.remove(list, p.i)
+            e.set = info
+            e.setb = p.loss + extra
+            e[2] = e[2] + e.setb
+            table.insert(list, 1, e)
+            used[p.slot] = true
+        end
+        res.sets = res.sets or {}
+        res.sets[#res.sets + 1] = info
+    end
+end
+
+-- BiS picks (ns.BIS.PICK, from tools/bis_picks.json): hand-kept items the scoring alone misses
+-- (procs, equip effects), each { class, spec, from, to, slot, item, note, src }. The picks of a
+-- class, spec and level as { [slotKey] = pick }, for a weapon plan: a two-hand pick in the
+-- MAINHAND row only with the plan "auto" or "2H" (it then drops main and off hand picks), a
+-- one-hand or off-hand pick only without "2H", an off-hand weapon only without "SHIELD" and a
+-- shield or held item only without "DW". Items the class cannot wear at the level and excluded
+-- items (exclude.item) are left out; the source filters do not apply (a pick's source may be unknown).
+function Gear.PicksFor(class, spec, level, plan, exclude)
+    local B = ns.BIS
+    local list = type(B) == "table" and type(B.PICK) == "table" and B.PICK or nil
+    local out = {}
+    if not list or not class then return out end
+    plan = plan or "auto"
+    local exItem = type(exclude) == "table" and exclude.item or nil
+    local two = false
+    for _, p in ipairs(list) do
+        if type(p) == "table" and p.class == class and p.spec == spec and type(p.from) == "number" and type(p.to) == "number"
+            and level >= p.from and level <= p.to and type(p.slot) == "string" and not (exItem and exItem[p.item]) then
+            local row = Gear.Item(p.item)
+            local group = row and GROUP[row[1]]
+            local ok = row and Gear.Usable(class, row, level, spec)
+                and not ((row[8] or 0) > 0 and not Gear.HasClassBit(row[8], class))
+            if ok and (p.slot == "MAINHAND" or p.slot == "OFFHAND") then
+                if group == "2H" then
+                    ok = p.slot == "MAINHAND" and (plan == "auto" or plan == "2H")
+                    two = two or ok
+                elseif plan == "2H" then
+                    ok = false
+                elseif p.slot == "OFFHAND" then
+                    local weapon = group == "1H" or group == "OHW"
+                    ok = not ((plan == "SHIELD" and weapon) or (plan == "DW" and not weapon))
+                end
+            end
+            if ok and not out[p.slot] then out[p.slot] = p end
+        end
+    end
+    if two then
+        out.OFFHAND = nil
+        local mh = out.MAINHAND
+        if mh and GROUP[Gear.Item(mh.item)[1]] ~= "2H" then out.MAINHAND = nil end
+    end
+    return out
+end
+
+-- Best items per slot for one level range.
+-- opts: class, spec, kind ("Speedrun"/"Hardcore"/"Raid"), faction ("Alliance"/"Horde" short A/H or nil),
+-- sources (set of filter keys), level (upper end of the range); optional
+-- exclude ({ item = {[id] = true}, boss = {[name] = true}, place = {[Gear.PlaceOf key] = true} }),
+-- plan ("auto", "2H", "DW", "SHIELD"; auto picks the larger sum), suffix ("best": an item's best
+-- seen random suffix counts, "base": base stats only), sets (false: no set plan), tie (percent
+-- within which effort orders the options), cap ({ [row] = { HIT = %, SHIT = % } }: hit still
+-- useful per row), picks (false: no BiS picks; else Gear.PicksFor's picks go first in their rows,
+-- marked pick = the pick, scored as any option; a two-hand pick makes the plan "auto" two-hand, a
+-- main or off-hand pick one-hand), worldEpic (true: also collect the epic world drops apart, res.world,
+-- for the suggestions only; Gear.WorldList, Gear.MergeWorld).
+-- Returns { [slotKey] = { {id, score, effort, suffix, sc, easier, set, pick}, ... best first }, plan =
+-- "2H" or "1H", twoHandScore, oneHandScore, dwScore, shieldScore, sets, missing = n, total = n, world }.
+function Gear.Best(opts)
+    local d = data()
+    local res = { plan = "1H", missing = 0, total = 0 }
+    for _, sl in ipairs(Gear.SLOTS) do res[sl.key] = {} end
+    if not d then return res end
+    local level, class = opts.level, opts.class
+    local w = Gear.Weights(class, opts.spec, opts.kind, level)
+    if not w then return res end
+    local dual = Gear.CanDualWield(class, level, opts.spec)
+    local lists = { ["2H"] = {}, MH = {}, OH = {}, FINGER = {}, TRINKET = {} }
+    local key = class .. "/" .. tostring(opts.spec) .. "/" .. tostring(opts.kind)
+    if key ~= memoKey then memo, memoKey = {}, key end
+    local caps = opts.cap
+    local useSuffix = opts.suffix ~= "base"
+    local B = ns.BIS
+    local ef = type(B) == "table" and type(B.EF) == "table" and B.EF or nil
+    local function score(id, st, place, group)
+        local cap = caps and caps[CAP_ROW[group] or ""]
+        local v = scoreOf(id, st, w, level, place, class, cap)
+        local suffix
+        local variants = useSuffix and Gear.SuffixStats(id)
+        if variants then
+            -- the best variant (ties: the lowest suffix id), kept with the scores unless a hit cap
+            -- makes it depend on what is worn; a new variants table (Gear.SuffixStats) is a new entry
+            local byId, k, best
+            local keep = not cap
+            if cap then
+                keep = true
+                for _, vs in pairs(variants) do if hasHit(vs) then keep = false break end end
+            end
+            if keep then
+                byId = memo[id]
+                if not byId then byId = {}; memo[id] = byId end
+                k = -1 - (level * 5 + (place and PLACE_SLOT[place] or 0))
+                best = byId[k]
+                if best and best.variants ~= variants then best = nil end
+            end
+            if not best then
+                best = { variants = variants }
+                for sfx, vs in pairs(variants) do
+                    local x = Gear.Score(vs, w, level, place, class, cap)
+                    if not best.v or x > best.v or (x == best.v and sfx < best.sfx) then best.v, best.sfx = x, sfx end
+                end
+                if keep then byId[k] = best end
+            end
+            if best.v and best.v > v then v, suffix = best.v, best.sfx end
+        end
+        local e = { id, v, suffix = suffix, sc = st.SC or nil }
+        return e
+    end
+    local exItem = opts.exclude and opts.exclude.item
+    local curEffort
+    local function put(list, e)
+        e.effort = curEffort
+        list[#list + 1] = e
+    end
+
+    -- the epic world drops (opts.worldEpic, D-59 Nachtrag): kept apart, by the same groups, never in
+    -- the lists above (targets, set plan and weapon plan do not see them); res.world
+    local world = opts.worldEpic and { ["2H"] = {}, MH = {}, OH = {}, FINGER = {}, TRINKET = {} } or nil
+    if world then
+        for _, sl in ipairs(Gear.SLOTS) do world[sl.key] = {} end
+    end
+    -- an item's options by its group: into = the lists of the weapons, rings and trinkets, slots = the
+    -- lists of the other slots (the same table for the world drops)
+    local function add(into, slots, id, s, group)
+        if group == "1H" or group == "MH" then
+            put(into.MH, score(id, s, "MH", group))
+            if group == "1H" and dual then
+                local e = score(id, s, "OH", "OHW")
+                e.weapon = true
+                put(into.OH, e)
+            end
+        elseif group == "OHW" then
+            local e = score(id, s, "OH", group)
+            e.weapon = true
+            put(into.OH, e)
+        elseif group == "SHIELD" or group == "HELD" then
+            put(into.OH, score(id, s, nil, group))
+        elseif group == "2H" then
+            put(into["2H"], score(id, s, "2H", group))
+        elseif group == "RANGED" then
+            put(slots.RANGED, score(id, s, "RANGED", group))
+        elseif group == "FINGER" or group == "TRINKET" then
+            put(into[group], score(id, s, nil, group))
+        elseif slots[group] then
+            put(slots[group], score(id, s, nil, group))
+        end
+    end
+
+    for id, row in pairs(d.I) do
+        if not (exItem and exItem[id]) and (row[4] or 0) <= level and Gear.Usable(class, row, level, opts.spec) then
+            local ok, effort, epicW = false, nil, false
+            for i = Gear.FIRST_SOURCE, #row do
+                local rec = d.S[row[i]]
+                if Gear.SourceOk(rec, opts, row) then
+                    ok = true
+                    if not ef then break end
+                    local x = sourceEffort(rec, ef)
+                    if x and (not effort or x < effort) then effort = x end
+                end
+            end
+            if not ok and world and (row[5] or 0) >= 4 then
+                for i = Gear.FIRST_SOURCE, #row do
+                    if Gear.WorldEpicOk(d.S[row[i]], opts, row) then epicW = true break end
+                end
+            end
+            -- the play style (F-124): bought from other players, the reputation of the item
+            local st = opts.style
+            if st and ns.PlayStyle then
+                if not ok and not epicW and ns.PlayStyle.BuyOk(row, st, opts.sources) then ok = true end
+                if (ok or epicW) and not ns.PlayStyle.ItemOk(id, st) then ok, epicW = false, false end
+            end
+            if (ok or epicW) and (row[8] or 0) > 0 and not Gear.HasClassBit(row[8], class) then ok, epicW = false, false end
+            -- engineering goggles and the like only with their switch, or with the profession
+            -- itself when the own skill lines are known (opts.skills by skill line id)
+            if (ok or epicW) and not opts.sources.B then
+                local line, rank = Gear.WearProf(row)
+                local have = line and opts.skills and opts.skills[line]
+                if line and not (have and have >= rank) then ok, epicW = false, false end
+            end
+            if ok then
+                res.total = res.total + 1
+                local s, failed = Gear.Stats(id)
+                if not s then
+                    if not failed then res.missing = res.missing + 1 end
+                elseif not (s.CLASSES and not s.CLASSES[class]) then
+                    curEffort = effort
+                    add(lists, res, id, s, GROUP[row[1]])
+                end
+            elseif epicW then
+                local s = Gear.Stats(id)
+                if s and not (s.CLASSES and not s.CLASSES[class]) then
+                    curEffort = nil
+                    add(world, world, id, s, GROUP[row[1]])
+                end
+            end
+        end
+    end
+
+    -- an armour piece or trinket that scores nothing for this spec is no recommendation
+    for _, slot in ipairs({ "HEAD", "NECK", "SHOULDER", "BACK", "CHEST", "WRIST", "HANDS", "WAIST", "LEGS", "FEET" }) do
+        local kept = {}
+        for _, e in ipairs(res[slot]) do if e[2] > 0 then kept[#kept + 1] = e end end
+        res[slot] = kept
+    end
+    for _, slot in ipairs({ "FINGER", "TRINKET" }) do
+        local kept = {}
+        for _, e in ipairs(lists[slot]) do if e[2] > 0 then kept[#kept + 1] = e end end
+        lists[slot] = kept
+    end
+
+    local function sort(list)
+        table.sort(list, function(a, b)
+            if a[2] ~= b[2] then return a[2] > b[2] end
+            return a[1] < b[1]
+        end)
+        return list
+    end
+    for _, sl in ipairs(Gear.SLOTS) do sort(res[sl.key]) end
+    for _, list in pairs(lists) do sort(list) end
+    if world then
+        -- an epic world drop that scores nothing is no suggestion; each marked world
+        for k, list in pairs(world) do
+            local kept = {}
+            for _, e in ipairs(list) do
+                if e[2] > 0 then
+                    e.world = true
+                    kept[#kept + 1] = e
+                end
+            end
+            world[k] = sort(kept)
+        end
+        res.world = world
+    end
+
+    -- the set plan works on the best-first lists, before effort reorders a tie
+    if opts.sets ~= false then setPlan(res, w, level, class) end
+    local tie = tonumber(opts.tie)
+    for _, sl in ipairs(Gear.SLOTS) do
+        local first = res[sl.key][1]
+        if not (first and first.set) then effortOrder(res[sl.key], tie) end
+    end
+    for _, list in pairs(lists) do effortOrder(list, tie) end
+
+    -- BiS picks: first in their rows (after the set plan and the effort order, which they override)
+    local picks = opts.picks ~= false and Gear.PicksFor(class, opts.spec, level, opts.plan, opts.exclude) or {}
+    -- with a play style a BiS pick counts only when its sources pass it (F-124; one of unknown source never)
+    if opts.style and ns.PlayStyle then
+        for k, p in pairs(picks) do
+            if not ns.PlayStyle.Passes(p.item, opts) then picks[k] = nil end
+        end
+    end
+    local function front(list, p, place, group)
+        for i = #list, 1, -1 do
+            if list[i][1] == p.item then table.remove(list, i) end
+        end
+        local s = Gear.Stats(p.item) or {}
+        local e = score(p.item, s, place, group)
+        e.pick = p
+        if group == "1H" or group == "OHW" then e.weapon = true end
+        table.insert(list, 1, e)
+    end
+    local PICK_LIST = { FINGER1 = lists.FINGER, TRINKET1 = lists.TRINKET }
+    local mainPick, offPick
+    for slotKey, p in pairs(picks) do
+        local row = Gear.Item(p.item)
+        local group = GROUP[row[1]]
+        if slotKey == "MAINHAND" then
+            mainPick = group
+            if group == "2H" then front(lists["2H"], p, "2H", group) else front(lists.MH, p, "MH", group) end
+        elseif slotKey == "OFFHAND" then
+            offPick = true
+            front(lists.OH, p, (group == "1H" or group == "OHW") and "OH" or nil, group)
+        elseif PICK_LIST[slotKey] then
+            front(PICK_LIST[slotKey], p, nil, group)
+        elseif slotKey ~= "FINGER2" and slotKey ~= "TRINKET2" and res[slotKey] then
+            front(res[slotKey], p, slotKey == "RANGED" and "RANGED" or nil, group)
+        end
+    end
+
+    -- two rings and two trinkets: the same list, the second row starts after the first pick
+    for _, pair in ipairs({ { "FINGER", "FINGER1", "FINGER2" }, { "TRINKET", "TRINKET1", "TRINKET2" } }) do
+        local list = lists[pair[1]]
+        res[pair[2]] = list
+        local second = {}
+        for i = 2, #list do second[#second + 1] = list[i] end
+        res[pair[3]] = second
+        local p = picks[pair[3]]
+        if p and not (list[1] and list[1][1] == p.item) then
+            front(second, p, nil, GROUP[Gear.Item(p.item)[1]])
+        end
+    end
+
+    -- weapons: a two-hander against the best main hand plus the best off hand; the plan says which
+    -- off hands count (DW: weapons, SHIELD: shields and held items) or forces the two-hander
+    local plan = opts.plan or "auto"
+    if plan == "DW" and not dual then plan = "auto" end
+    local function offList(want)
+        local out = {}
+        local bestMH = lists.MH[1]
+        for _, e in ipairs(lists.OH) do
+            if (not bestMH or e[1] ~= bestMH[1]) and (want == nil or (want == "DW") == (e.weapon == true)) then
+                out[#out + 1] = e
+            end
+        end
+        return out
+    end
+    local function sum(oh)
+        local bestMH = lists.MH[1]
+        if not bestMH and not oh[1] then return nil end
+        return (bestMH and bestMH[2] or 0) + (oh[1] and oh[1][2] or 0)
+    end
+    local best2H = lists["2H"][1]
+    local ohAll = offList(nil)
+    local oneHand = sum(ohAll)
+    res.twoHandScore, res.oneHandScore = best2H and best2H[2] or nil, oneHand
+    if dual then res.dwScore = sum(offList("DW")) end
+    res.shieldScore = sum(offList("SHIELD"))
+    local use2H
+    if plan == "2H" then use2H = best2H ~= nil
+    elseif plan == "DW" or plan == "SHIELD" then use2H = false
+    elseif mainPick == "2H" then use2H = true
+    elseif mainPick or offPick then use2H = false
+    else use2H = best2H ~= nil and best2H[2] >= (oneHand or 0) end
+    res.planWanted = plan
+    if use2H then
+        res.plan = "2H"
+        res.MAINHAND = lists["2H"]
+        res.OFFHAND = {}
+        res.altMainhand = lists.MH
+        -- the off hands beside a one-hander, for an own pick that turns the plan (Bis.lua)
+        res.altOffhand = ohAll
+    else
+        res.plan = "1H"
+        res.MAINHAND = lists.MH
+        res.OFFHAND = (plan == "DW" or plan == "SHIELD") and offList(plan) or ohAll
+        res.altMainhand = lists["2H"]
+    end
+    return res
+end
+
+-- The epic world drops of Gear.Best's result res for a row (res.world, opts.worldEpic), best first:
+-- the main hand by the weapon plan in use (plan "2H"/"1H", default res.plan), the off hand none beside
+-- a two-hander and only weapons (DW) or only shields and held items (SHIELD) with that plan; both rings
+-- (both trinkets) one list.
+function Gear.WorldList(res, slotKey, plan)
+    local w = res and res.world
+    if not w then return {} end
+    plan = plan or res.plan
+    if slotKey == "MAINHAND" then return plan == "2H" and w["2H"] or w.MH end
+    if slotKey == "OFFHAND" then
+        if plan == "2H" then return {} end
+        local want = res.planWanted
+        if want ~= "DW" and want ~= "SHIELD" then return w.OH end
+        local out = {}
+        for _, e in ipairs(w.OH) do
+            if (want == "DW") == (e.weapon == true) then out[#out + 1] = e end
+        end
+        return out
+    end
+    if slotKey == "FINGER1" or slotKey == "FINGER2" then return w.FINGER end
+    if slotKey == "TRINKET1" or slotKey == "TRINKET2" then return w.TRINKET end
+    return w[slotKey] or {}
+end
+
+-- A row's list (best first, perhaps ordered by effort) with the epic world drops put in where their
+-- lowered score (score x WORLD_EPIC_FACTOR) stands: ahead of an option only when that still beats it,
+-- never ahead of a BiS pick or an own pick. Their scores are not changed; a new list, list is not
+-- changed.
+function Gear.MergeWorld(list, worldList)
+    if not worldList or #worldList == 0 then return list end
+    local f = Gear.WORLD_EPIC_FACTOR
+    local out, j = {}, 1
+    for _, e in ipairs(list) do
+        local fixed = e.pick ~= nil or e.own
+        while not fixed and worldList[j] and worldList[j][2] * f > e[2] do
+            out[#out + 1] = worldList[j]
+            j = j + 1
+        end
+        out[#out + 1] = e
+    end
+    for k = j, #worldList do out[#out + 1] = worldList[k] end
+    return out
+end
+
+-- Score of an equipped item (or any link) the same way, for the upgrade mark.
+function Gear.ScoreLink(link, slotKey, opts)
+    if not link then return nil end
+    local s = Gear.ReadStats(link)
+    if not s then return nil end
+    local w = Gear.Weights(opts.class, opts.spec, opts.kind, opts.level)
+    if not w then return nil end
+    local loc = select(4, C_Item.GetItemInfoInstant(link))
+    local group = loc and GROUP[(loc:gsub("^INVTYPE_", ""))]
+    return Gear.Score(s, w, opts.level, Gear.WeaponPlace(slotKey, group), opts.class, opts.cap and opts.cap[slotKey])
+end
+
+---------------------------------------------------------------------------
+-- Source text
+---------------------------------------------------------------------------
+
+Gear.PROFESSIONS = {
+    blacksmithing = L["Schmiedekunst"], leatherworking = L["Lederverarbeitung"], tailoring = L["Schneiderei"],
+    engineering = L["Ingenieurskunst"], alchemy = L["Alchimie"], enchanting = L["Verzauberkunst"], cooking = L["Kochkunst"],
+    firstaid = L["Erste Hilfe"], jewelcrafting = L["Juwelierskunst"],
+}
+
+-- The raid's or dungeon's name as the client gives it (C_Map.GetAreaInfo of its area id, localised),
+-- else the source's own name.
+function Gear.PlaceName(rec)
+    local area = rec[1] == "X" and rec[5] or rec[1] == "D" and rec[6] or nil
+    if type(area) == "number" and area > 0 and C_Map and C_Map.GetAreaInfo then
+        local name = C_Map.GetAreaInfo(area)
+        if type(name) == "string" and name ~= "" then return name end
+    end
+    return rec[2]
+end
+
+function Gear.ZoneName(z)
+    if not z then return nil end
+    if z > 0 and C_Map and C_Map.GetMapInfo then
+        local info = C_Map.GetMapInfo(z)
+        if info and info.name and info.name ~= "" then return info.name end
+    end
+    local d = data()
+    local name = d and d.Z[z]
+    return name ~= "" and name or nil
+end
+
+local function questTitle(rec)
+    local qid = rec[7]
+    if qid and qid > 0 and C_QuestLog and C_QuestLog.GetTitleForQuestID then
+        local title = C_QuestLog.GetTitleForQuestID(qid)
+        if title and title ~= "" then return title end
+    end
+    return (qid and ns.ScannedQuestTitle and ns.ScannedQuestTitle(qid)) or rec[2]
+end
+
+local FACTION_TAG = { A = " |cff4a8fe0[A]|r", H = " |cffd04040[H]|r" }
+
+-- One line describing a source; short drops the zone.
+function Gear.SourceText(rec, short)
+    local k = rec[1]
+    if k == "Q" then
+        local where = rec[9] or (not short and Gear.ZoneName(rec[6])) or nil
+        local lvl = (rec[3] or 0) > 0 and (" (%d)"):format(rec[3]) or ""
+        return ("Quest: %s%s%s%s"):format(questTitle(rec), lvl, where and (", " .. where) or "", FACTION_TAG[rec[5]] or "")
+    elseif k == "X" then
+        return ("%s: %s%s"):format(Gear.PlaceName(rec) or "?", rec[3] or "?", (rec[7] or 0) > 0 and " (Token)" or "")
+    elseif k == "D" then
+        local chance = rec[4] and (" " .. rec[4]) or ""
+        local name = Gear.PlaceName(rec) or "?"
+        if rec[3] == "Trash" then return ("%s: Trash%s"):format(name, chance) end
+        return ("%s: %s%s"):format(name, rec[3] or "?", chance)
+    elseif k == "C" then
+        return ("%s (%d)"):format(Gear.PROFESSIONS[rec[2]] or tostring(rec[2]), rec[3] or 0)
+    elseif k == "V" or k == "P" then
+        local zone = not short and Gear.ZoneName(rec[3]) or nil
+        local label = k == "P" and L["PvP-Händler"] or L["Händler"]
+        return ("%s: %s%s%s"):format(label, rec[2], zone and (", " .. zone) or "", FACTION_TAG[rec[4]] or "")
+    elseif k == "R" then
+        local zone = not short and Gear.ZoneName(rec[4]) or nil
+        return L["Rar: %s%s%s"]:format(rec[2] or "?", (rec[3] or 0) > 0 and (" (%d)"):format(rec[3]) or "", zone and (", " .. zone) or "")
+    elseif k == "W" then
+        if rec[2] then
+            local zone = not short and Gear.ZoneName(rec[5]) or nil
+            return ("Drop: %s%s"):format(rec[2], zone and (", " .. zone) or "")
+        end
+        if (rec[3] or 0) > 0 then return L["Weltdrop (Gegner %d-%d)"]:format(rec[3], rec[4] or rec[3]) end
+        return L["Weltdrop"]
+    elseif k == "A" then
+        if rec[2] == "B" then return L["Auktionshaus (bindet beim Anlegen)"] end
+        return L["Im Auktionshaus gesehen"]
+    end
+    return tostring(k)
+end
+end)

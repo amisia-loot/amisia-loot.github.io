@@ -47,11 +47,12 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 CACHE = os.path.expanduser(os.environ.get('AMISIA_WEB_CACHE') or '~/addons/_cache/web')
-NOSRC = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'GearNoSource.lua')
+NOSRC = modules.data_file('GearNoSource.lua')
 USER_AGENT = 'Amisia-build-tool/1.0 (tools/web_sources.py; GPL-3.0 WoW addon data build)'
 PAUSE = 3.0      # seconds between two requests to one site
 TIMEOUT = 30     # seconds for one answer

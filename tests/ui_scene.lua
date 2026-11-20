@@ -39,8 +39,6 @@ function S.setup()
                   { link = LINK2, name = "Warglaive of Azzinoth", src = "Creature-0-1-1-1-22917-1" } }
     STUB.target, STUB.targetGUID = "Illidan Stormrage", "Creature-0-1-1-1-22917-1"
     STUB.fire("LOOT_OPENED")
-    -- the rest is the raid module's world (a run "without raid" has none, F-202)
-    if not NS.HasModule("raid") then return end
     -- a finished roll round and two awards
     NS.StartRoll(LINK, 5)
     STUB.fire("CHAT_MSG_SYSTEM", (RANDOM_ROLL_RESULT):format("Fraktur", 87, 1, 100))
@@ -440,8 +438,10 @@ function S.mapWorld()
         STUB.maps[id] = { name = z[1], parent = z[2] or 1415, mapType = 3,
             world = w and { w[1], w[2], w[3], w[4], w[5] } or nil }
     end
+    -- the map is the module Dungeons & Raids', the BiS state the module Ausrüstung's (F-228)
+    if not NS.Map then return end
     NS.Map._reset()
-    NS.BisBump()
+    if NS.BisBump then NS.BisBump() end
     NS.MapSetPoint({ map = 1436, x = 0.565, y = 0.476 }, "Questgeber Gryan Stoutmantle", "Q:65")
 end
 
@@ -642,7 +642,8 @@ end
 
 -- Further states of pages, shot after the pages themselves (in every view the page shows in):
 -- { page, name, open = fn() } opens the page in that state through its public entry point; module =
--- "raid" or "gear" marks a state of a core page that needs that module (tests/module_scene.lua, F-202).
+-- "gear", "dungeons" or "talents" marks a state of a core page that needs that module
+-- (tests/module_scene.lua, F-202, F-228).
 S.STATES = {
     { page = "gear", name = "gear-here", open = function() NS.ShowGear("here") end },
     { page = "gear", name = "gear-wish", open = function() NS.ShowGear("wish") end },
@@ -775,9 +776,9 @@ S.STATES = {
     { page = "bank", name = "bank-log", open = function() NS.ShowBank("log") end },
     { page = "bank", name = "bank-text", open = function() NS.ShowBank("text") end },
     { page = "points", name = "points-paste", open = function() NS.ShowPoints("paste") end },
-    { page = "settings", name = "settings-lootrules", module = "raid", open = function() NS.ShowSettingsSection("lootrules") end },
+    { page = "settings", name = "settings-lootrules", open = function() NS.ShowSettingsSection("lootrules") end },
     -- the head button "Einstellungen" of the page Rolls: its sections, "Zurück zu Rolls" (D-49)
-    { page = "settings", name = "settings-rolls", module = "raid", open = function() NS.ShowSettingsFor("rolls") end },
+    { page = "settings", name = "settings-rolls", open = function() NS.ShowSettingsFor("rolls") end },
     { page = "settings", name = "settings-search", open = function() NS.ShowSettings("ton") end },
     { page = "points", name = "points-epgp", open = function() S.epgp(); NS.ShowPoints("list") end },
     { page = "awards", name = "awards-handover", open = function() S.handover(); NS.ShowHandover() end },
@@ -866,7 +867,7 @@ S.STATES = {
     { page = "raidcheck", name = "raidcheck-ids", open = function() S.raidCheck(); NS.ShowRaidCheck("ids") end },
     { page = "lineup", name = "lineup-raidids", open = function() S.raidCheck(); NS.ShowLineup("match", NS.LineupTonight()) end },
     -- the card "Raid-Anmeldung" with the own sign-up for the first date
-    { page = "overview", name = "overview-signup", module = "raid", open = function()
+    { page = "overview", name = "overview-signup", open = function()
         S.calendar()
         local t = NS.SignupTerms()
         if t and t[1] and not NS.SignupOf()[t[1].night] then NS.SignupSet(t[1], "V", "H", "komme 20:15") end
@@ -1261,13 +1262,11 @@ S.WINDOWS = {
     { key = "dungeonbar-wings", view = "raider", open = function() return S.dungeonBarWings() end },
 }
 
--- The module of each side window (F-202, D-130): by the start of its key; the others are the core's.
--- A run without the module (tests/test_without_*.lua) leaves its windows out.
+-- The module of each side window (F-202, D-130; F-228, D-158): by the start of its key; the others are
+-- the core's. A run without the module (tests/test_without_*.lua) leaves its windows out.
 local WINDOW_MODULE = {
-    rollframe = "raid", awarddialog = "raid", priodialog = "raid", softresframe = "raid", lootrules = "raid",
-    rollwindow = "raid", tradehelper = "raid", setup = "raid", signup = "raid", raidcalendar = "raid",
-    gearframe = "gear", talentframe = "gear", runtimer = "gear", routebar = "gear", questitems = "gear",
-    queststart = "gear", targetwin = "gear", layer = "gear", dungeonbar = "gear",
+    gearframe = "gear", talentframe = "talents", runtimer = "dungeons", routebar = "dungeons",
+    questitems = "dungeons", queststart = "dungeons", targetwin = "dungeons", dungeonbar = "dungeons",
 }
 for _, w in ipairs(S.WINDOWS) do
     w.module = WINDOW_MODULE[w.key:match("^[^-]+")] or "core"

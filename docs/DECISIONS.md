@@ -307,7 +307,7 @@ beim Laden. Releases nur über `python3 tools/build.py release X.Y.Z`.
 **Grund:** Zwei Stellen liefen auseinander.
 **Folge:** Keine Versions-Literale im Lua.
 **Nachtrag 2026-11-14 (F-202, D-130):** Die Quelle bleibt `## Version:` in `Amisia/Amisia.toc`. Die Module
-(`Amisia_Raid/Amisia_Raid.toc`, `Amisia_Gear/Amisia_Gear.toc`) tragen dieselbe Version als Kopie: `build.py tocs` und
+(Amisia_Raid.toc bis F-228, `Amisia_Gear/Amisia_Gear.toc`, seit F-228 auch `Amisia_Dungeons/Amisia_Dungeons.toc`, `Amisia_Talents/Amisia_Talents.toc`) tragen dieselbe Version als Kopie: `build.py tocs` und
 `release` schreiben sie hinein, `check` (TOC gegen den Ordner) schlägt fehl, solange eine abweicht.
 
 **Durchgesetzt durch:** `tools/tests/test_contracts.py::test_the_version_stands_only_in_the_toc`,
@@ -3221,7 +3221,7 @@ Spielstand mit den Drop-Daten liegt ohnehin auf dem N100, das Kopieren und Einf�
 (CurseForge): ein Satz "deine Kills kommen von selbst" im Spiel stimmte nur für den Seitenbesitzer.
 **Folge:** Live geht es mit dem Push eines Datenbaus, nicht mit einem Addon-Release. Weil `tools/build_bis.py` dasselbe
 Archiv als Grundbestand der Dropraten liest (`ns.BIS.O`), ändert ein Datenbau mit neuen Kills auch
-`Amisia_Gear/Data/BisData.lua`. `tools/build_scan.py` (voller Bau, `obsBosses` in `data/forever.js`) bleibt; beide lesen
+`Amisia/Data/BisData.lua`. `tools/build_scan.py` (voller Bau, `obsBosses` in `data/forever.js`) bleibt; beide lesen
 dasselbe Archiv. Annahmen (nicht gefragt): kein zweites Archiv; einzelne Kills statt Summen; leere Datei statt keiner.
 **Durchgesetzt durch:** `tools/tests/test_build_site_drops.py` (Inhalt ohne Namen und Herkunft, gleiche Bytes,
 Archiv behält Kills, ohne SavedVariables, kaputte Datei, BUILD_ID, Datei passt zum Archiv),
@@ -3626,7 +3626,7 @@ Nachtrag); die Pfade `Interface\AddOns\Amisia\` zeigen alle auf `Media/` im Kern
 
 **Nachtrag 2026-11-14 (Schritt 2):** Die drei Teile sind jetzt drei Ordner und drei Addons: `Amisia/` (Kern),
 `Amisia_Raid/` ("Amisia: Raid") und `Amisia_Gear/` ("Amisia: Ausrüstung & Dungeons", englisch "Amisia: Gear &
-Dungeons"), jede Datei mit ihrem Pfad im Ordner (`Amisia_Raid/Raid/Awards.lua`, `Amisia_Gear/Data/GearData.lua`);
+Dungeons"), jede Datei mit ihrem Pfad im Ordner (damals Amisia_Raid/Raid/Awards.lua, Amisia_Gear/Data/GearData.lua; seit F-228 anders, D-158);
 ein Pfad steht nur in einem Ordner. Zu welchem Teil eine Datei gehört, sagt jetzt der Ordner, der sie hält
 (`tools/modules.py` liest die drei TOCs). Die Module haben `## Dependencies: Amisia`, das Ausrüstungs-Modul dazu
 `## OptionalDeps: Amisia_Raid` (der Client lädt es nach dem Raid-Modul). Ein Namensraum: Der Kern bietet seinen `ns`
@@ -3663,9 +3663,9 @@ unten rechts, Würfel bzw. Schild wie die Reiter). Am PC legt `tools/install_jun
 Ordner an (`Amisia_Gear` nur in `_forever_`) und entfernt dabei nur Verknüpfungen, nie echte Ordner.
 
 **Durchgesetzt durch:** `tools/tests/test_module_deps.py` (Mitgliedschaft, keine ungeprüfte Verwendung, nichts
-Späteres beim Laden, Texte im richtigen Locale-File), `tests/test_without_raid.lua` und `tests/test_without_gear.lua`
+Späteres beim Laden, Texte im richtigen Locale-File), tests/test_without_raid.lua (entfallen mit F-228) und `tests/test_without_gear.lua`
 (jede Seite und jedes Fenster ohne das Modul, `tests/run.py` mit "--[[without raid]]"), `tests/test_registry.lua`
-(unbekannte Einstellungen bleiben), `tests/test_module_load.lua` (geteilter Namensraum, Reihenfolge, Warten, PLAYER_LOGIN, spät geladenes Modul), `tools/tests/test_load_order.py::test_a_module_shares_the_core_namespace`, `build.py check` (jede TOC gegen ihren Ordner); Schritt 3: `tests/test_modules.lua`, `tests/test_modules_tbc.lua`, `tests/test_modules_without_raid.lua` (Abschnitt, Befehl, Hinweis), `tests/test_without_raid_comm.lua` (Feld `m`, "ohne Raid", Raid-Nachrichten ohne Raid-Modul), `tests/test_version.lua`, `tools/tests/test_install_junctions.py`.
+(unbekannte Einstellungen bleiben), `tests/test_module_load.lua` (geteilter Namensraum, Reihenfolge, Warten, PLAYER_LOGIN, spät geladenes Modul), `tools/tests/test_load_order.py::test_a_module_shares_the_core_namespace`, `build.py check` (jede TOC gegen ihren Ordner); Schritt 3: `tests/test_modules.lua`, `tests/test_modules_tbc.lua`, tests/test_modules_without_raid.lua (entfallen mit F-228) (Abschnitt, Befehl, Hinweis), tests/test_without_raid_comm.lua (entfallen mit F-228) (Feld `m`, "ohne Raid", Raid-Nachrichten ohne Raid-Modul), `tests/test_version.lua`, `tools/tests/test_install_junctions.py`.
 
 ## D-131 Bosse und Zeit im Dungeon anderen Addons überlassen
 
@@ -3798,7 +3798,7 @@ Charakter selbst meldet, zählt sein Wort; die Website-Liste steht über beidem.
 **Durchgesetzt durch:** `tests/test_guild_chars.lua` (AC mit dem Hallo, kein zweites nach `/reload`, Felder,
 schlechtes Feld, Absender außerhalb der Gilde, Namen außerhalb des Rosters, eigenes Wort gewinnt, Abstand 300 s),
 `tests/test_guild_chars_page.lua` (Notizen, Rangfolge, `ns.MainOf` unverändert, Bytegrenze, Einrückung, Itemlevel,
-Filter, Sortierung, Tooltip, Laden beider Schlüssel, Knopf am Gildenfenster), `tests/test_guild_button_noraid.lua`,
+Filter, Sortierung, Tooltip, Laden beider Schlüssel, Knopf am Gildenfenster), tests/test_guild_button_noraid.lua (entfallen mit F-228),
 `tests/test_unit_info.lua` (Itemlevel eines Mitglieds gemerkt), `tools/tests/test_contracts.py` (Nachricht, Abstand,
 Schlüssel).
 
@@ -4254,7 +4254,7 @@ JSON-Leser), `tools/tests/test_contracts.py` (Dateien).
 **Datum:** 2026-11-17
 **Entscheidung:** Der Planer der Seite "Aufstellung" zeigt, welche Buffs, Schwächungen auf dem Boss und Hilfen die
 eingeteilten Klassen mitbringen können (F-224, Spec `docs/specs/2026-11-17-raid-buffs-im-planer.md`, Rechnen in
-`Amisia_Raid/Raid/LineupBuffs.lua`, Daten `Amisia_Gear/Data/RaidBuffData.lua` von `tools/build_raidbuffs.py`).
+`Amisia/Raid/LineupBuffs.lua`, Daten `Amisia/Data/RaidBuffData.lua` von `tools/build_raidbuffs.py`).
 - **Wer zählt:** wer in einer Gruppe steht (nicht abgemeldet, nicht Ersatz, nicht überzählig); steht niemand in einer
   Gruppe, alle der Nacht außer Abgemeldeten und Ersatz, und die Zeile sagt "(alle Anmeldungen)". Ein Eintrag ohne
   Klasse zählt nichts ("3 ohne Klasse").
@@ -4413,7 +4413,7 @@ Nur Committetes von `main` geht hinaus, nie eine Datei, die gerade bearbeitet wi
 
 **Datum:** 2026-11-19
 **Entscheidung:** Wer für ein Schlachtfeld ansteht, sagt es seiner Gilde mit der Nachricht `QW` (F-227,
-`Amisia_Raid/Raid/GuildQueue.lua`, Spec `docs/specs/2026-11-19-gilden-warteschlange.md`). Teilen ist von Anfang an an
+`Amisia/Raid/GuildQueue.lua`, Spec `docs/specs/2026-11-19-gilden-warteschlange.md`). Teilen ist von Anfang an an
 (`bgqueue.share`) und abschaltbar; aus geht einmal eine leere `QW`, danach nichts. Das Schlachtfeld geht als seine
 Nummer (`battlegroundID`, die der Client selbst zu seinem Namen nennt: `C_PvP.GetBattlegroundInfo` auf Forever, die
 fünfte Rückgabe von `GetBattlegroundInfo` auf TBC und Era), nie als Name; ein Name ohne Nummer wird übergangen, es
@@ -4574,3 +4574,52 @@ von `Data/GearData.lua`), `tools/tests/test_contracts.py::test_every_generated_f
 `tools/tests/test_build_gear.py::test_web_sources_only_fill_what_no_other_source_names_in_their_order`,
 `tools/tests/test_build_gear.py::test_web_entries_become_records_of_our_kinds`,
 `tools/tests/test_build_gear.py::test_web_sources_never_give_a_holiday_item_a_source`. Wowhead bleibt verboten.
+
+## D-158 Ein Modul je Reiter: Ausrüstung, Dungeons & Raids, Talente; Raid, Berufe, Gilde im Kern
+
+**Datum:** 2026-11-20
+**Entscheidung:** Ändert D-130 (F-228, Spec `docs/specs/2026-11-20-module-reiter.md`). Amisia besteht aus vier Teilen,
+jeder ein Ordner mit seiner TOC, in dieser Lade-Reihenfolge (`tools/modules.py`, `PARTS`):
+- **Kern** `Amisia/` (alle drei Clients): alles von D-130 und dazu der ganze Raid-Teil (der Ordner `Amisia_Raid`
+  entfällt, seine Dateien behalten ihren Pfad); nur auf Forever, mit `[AllowLoadGameType camelot]` in der Kern-TOC
+  (D-57): Berufe (`Gear/Professions.lua`, `ProfRoute`, `ProfTrainers`, `Crafters`, `MageScrolls`, ihre Seiten), die
+  Forever-Teile der Gilde (`Gear/Layer*.lua`, `Core/Duels.lua`, `UI/DuelInfo.lua`, die Seiten Duelle und Werkzeuge,
+  `Core/SelfTestLayer.lua`), das Sammeln (`Collect/*`), die Item-Bibliothek `Gear/Gear.lua` (Items, Quellen, Werte,
+  Gewichte) mit `ns.SkillLines`, die Anzeige der Item-Zeilen `UI/ItemKit.lua` (`ns.ItemKit`, `ns.ItemOpts`) und
+  die Daten, die mehrere Teile lesen (`tools/modules.py`, `DATA_HOME`): `GearData`, `GearWeights`, `BisData` (`ns.BIS`
+  hält auch Dungeon-Bosse `DG`, Encounter `EN` und den Grundstock der Drops `O`), `DungeonData`, `DungeonQuestData`,
+  `ProfessionData`, `MageScrollData`, `ScanDone`, `ScanLists`, `ScanNames`, `RaidCheckData`, `RaidBuffData`.
+- **Ausrüstung** `Amisia_Gear/` ("Amisia: Ausrüstung", englisch "Amisia: Gear", nur Forever): BiS (`Gear/Bis.lua`),
+  Spielstil, Modell, Vergleich, Katalog, Verzauberungen, Wünsche, Items ohne Quelle, die Seiten Ausrüstung und
+  Ausrüstungsplaner, Puppe und Slotkarte; Daten `GearNoSource`, `EnchantData`.
+- **Dungeons & Raids** `Amisia_Dungeons/` (nur Forever, `## OptionalDeps: Amisia_Gear`): Dungeons, Raids, Quests,
+  Karte, Routen, Läufe, Bestzeiten, Speedrun-Timer, Dungeon-Leiste, Dungeon-Notiz, Gruppen-Queststatus,
+  Questgegenstände; Daten `QuestData`, `QuestItemData`, `MapData`, `DungeonArt`.
+- **Talente** `Amisia_Talents/` (nur Forever, `## OptionalDeps: Amisia_Gear, Amisia_Dungeons`): Talente,
+  Talentrechner, Build-Codes; Daten `TalentData`.
+Jedes Modul meldet sich in seiner ersten Datei (`Gear/Module.lua`, `Dungeons/Module.lua`, `Talents/Module.lua`,
+`modules.FIRST_FILE`); D-130s Richtung gilt weiter: ein Modul ruft den Kern frei, der Kern ein Modul und die Module
+einander nur geprüft. Dungeons & Raids läuft ohne Ausrüstung (Nutzer: "Läuft auch allein"): `ns.ItemOpts` gibt dann
+Klasse, Stufe und Fraktion mit allen Quellen, `ns.BisGain`/`BisIsUpgrade`/`BisOwned`/Wünsche/Spielstil-Wähler fehlen,
+also keine Upgrades, kein Wert je Lauf, kein Stern; Bosse, Beute, Quests, Karte und Läufe bleiben. Was nur mit
+Ausrüstung Sinn hat, fragt `ns.HasModule("gear")`, nicht `Gear.Available()` (das ist jetzt Kern): die Antwort auf
+"Wer braucht das?" (`Raid/Need.lua`) und die Upgrade-Frage im Würfelfenster (`Raid/RollFrame.lua`); der
+Dungeon-Wähler der Gilden-Aufrufe fragt `ns.HasModule("dungeons")`. Die englischen
+Texte stehen im Teil, der sie benutzt (`Locales/enUS_forever.lua` im Kern für Kern und mehrere Teile,
+`enUS_gear.lua`, `enUS_dungeons.lua`, `enUS_talents.lua`), denn die Inhalte eines Moduls laufen nach denen des Kerns.
+Der Versionsruf (Feld `m`) nennt `r` immer (der Raid-Teil ist da) und je Modul `g`, `d`, `t`; vor F-228 hieß `g`
+alle drei. Ein liegengebliebener Ordner `Amisia_Raid` (Update von Hand) lädt seine Dateien, ihre Inhalte laufen nie
+(`ns.LoadPart` verwirft den Teil "raid"), und der Kern bittet einmal pro Login, ihn zu löschen
+(`ns.OLD_MODULES_LOADED`); `tools/install_junctions.ps1` entfernt seine Verknüpfung.
+**Grund:** Nutzer 2026-11-20: "können wir amisia ausrüstungs tab 1 modular dungeonsund raids 1 modular", "talente
+auch", "berufe Raid und Gilde Tab soll in Amisia Main immer sein", zur Raid-Seite "das soll in amisia main sein";
+Spec: "Passt, bauen". Die Item-Bibliothek und die Anzeige der Item-Zeilen in den Kern statt rund 120 Prüfungen in
+Dungeons & Raids: beide lesen nur die Item-Datenbank, die der Kern für Sammeln und Suche ohnehin hat.
+**Folge:** Ein neuer Aufruf zwischen Ausrüstung und Dungeons & Raids braucht eine Prüfung (`tools/modules.py`); eine
+neue Datendatei einen Eintrag in `DATA_HOME`, sonst weiß kein Bauer, wohin; am PC einmal
+`tools/install_junctions.ps1` als Administrator, dann WoW neu starten.
+**Durchgesetzt durch:** `tools/tests/test_module_deps.py` (Teile, erste Dateien, Richtung, Spätere beim Laden),
+`tools/tests/test_load_order.py`, `tools/tests/test_contracts.py::test_the_toc_loads_the_forever_parts_on_forever_only`,
+`tests/test_without_gear.lua`, `tests/test_without_dungeons.lua`, `tests/test_without_talents.lua` (jede Seite ohne
+das Modul), `tests/test_module_load.lua` (vier Teile, Reihenfolge, alter Raid-Ordner), `tests/test_modules.lua`,
+`tests/test_version.lua` (`rgdt`), `tools/tests/test_install_junctions.py`.

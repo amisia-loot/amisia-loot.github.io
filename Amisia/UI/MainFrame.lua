@@ -229,12 +229,9 @@ local function errorPage(parent, err)
 end
 
 local function updateHeader()
-    -- the raid recording's state, with the raid module only (F-202)
-    local raid = ns.HasModule("raid")
-    local act = raid and ns.Active()
-    if not raid then
-        statusText:SetText("")
-    elseif act then
+    -- the raid recording's state
+    local act = ns.Active()
+    if act then
         local late = ns.LateCount(act)
         statusText:SetText(("%s|cff4fbf7a%s|r · %s%s"):format(DOT, act.zone or "?", L["%d Raider"]:format(ns.MemberCount(act)),
             late > 0 and (" · |cffe0a344" .. L["%d zu spät"]:format(late) .. "|r") or ""))
@@ -279,15 +276,13 @@ end
 -- the head. Each entry says what a click does; its tip says more.
 local function headMenu()
     local menu = {}
-    -- the raid recording's switch, with the raid module only (F-202)
-    if ns.HasModule("raid") then
-        menu[1] = { ns.IsEnabled() and L["Aufnahme pausieren"] or L["Aufnahme fortsetzen"], function()
-            ns.SetEnabled(not ns.IsEnabled())
-            ns.Refresh()
-        end, tip = ns.IsEnabled()
-            and L["Pausiert die Raid-Aufnahme: Teilnehmer, Bosse und Beute werden nicht mehr mitgeschrieben. Die Pause bleibt auch nach einem /reload, bis du sie hier fortsetzt (oder im Schnellmenü der Minimap, /amisia pause)."]
-            or L["Die Raid-Aufnahme ist pausiert. \"Aufnahme fortsetzen\" schaltet sie wieder an; sie startet dann von selbst in einer Raidinstanz mit Raidgruppe."] }
-    end
+    -- the raid recording's switch
+    menu[1] = { ns.IsEnabled() and L["Aufnahme pausieren"] or L["Aufnahme fortsetzen"], function()
+        ns.SetEnabled(not ns.IsEnabled())
+        ns.Refresh()
+    end, tip = ns.IsEnabled()
+        and L["Pausiert die Raid-Aufnahme: Teilnehmer, Bosse und Beute werden nicht mehr mitgeschrieben. Die Pause bleibt auch nach einem /reload, bis du sie hier fortsetzt (oder im Schnellmenü der Minimap, /amisia pause)."]
+        or L["Die Raid-Aufnahme ist pausiert. \"Aufnahme fortsetzen\" schaltet sie wieder an; sie startet dann von selbst in einer Raidinstanz mit Raidgruppe."] }
     -- the switch only for whoever may have the officer view (D-87)
     if ns.MayOfficerView() then
         menu[#menu + 1] =
@@ -1330,11 +1325,9 @@ local function build()
     dragMoves(bar)
     local function statusTip(self)
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
-        if ns.HasModule("raid") then
-            GameTooltip:AddLine(L["Raid-Aufnahme"], 1, 0.82, 0)
-            GameTooltip:AddLine(ns.IsEnabled() and L["Aufnahme an: startet von selbst in einer Raidinstanz mit Raidgruppe."]
-                or L["Aufnahme pausiert."], 0.85, 0.85, 0.85, true)
-        end
+        GameTooltip:AddLine(L["Raid-Aufnahme"], 1, 0.82, 0)
+        GameTooltip:AddLine(ns.IsEnabled() and L["Aufnahme an: startet von selbst in einer Raidinstanz mit Raidgruppe."]
+            or L["Aufnahme pausiert."], 0.85, 0.85, 0.85, true)
         GameTooltip:AddLine(ns.IsOfficerView() and L["Ansicht: Offiziere"] or L["Ansicht: Raider"], 0.85, 0.85, 0.85)
         GameTooltip:AddLine(L["Klick: pausieren, fortsetzen oder die Ansicht wechseln."], 0.6, 0.6, 0.6, true)
         GameTooltip:Show()

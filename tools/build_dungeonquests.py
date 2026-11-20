@@ -51,9 +51,10 @@ sys.path.insert(0, HERE)
 import att_data  # noqa: E402  (the AllTheThings reader)
 import build_gear  # noqa: E402  (dungeon name keys, Lua strings)
 import build_scan  # noqa: E402  (the SavedVariables sandbox, the collector's field checks)
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
 FACTS = os.path.join(HERE, 'forever_dungeons.json')
-OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'DungeonQuestData.lua')
+OUT = modules.data_file('DungeonQuestData.lua')
 OBS_ARCHIVE = os.path.join(HERE, 'quest_obs.json')
 HINTS = os.path.join(HERE, 'quest_hints.json')
 ATT_CACHE = att_data.ATT_CACHE

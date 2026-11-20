@@ -33,8 +33,9 @@ sys.path.insert(0, HERE)
 import att_data  # noqa: E402
 import build_bis  # noqa: E402
 import lua_data  # noqa: E402
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
-OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'EnchantData.lua')
+OUT = modules.data_file('EnchantData.lua')
 WAGO = os.path.expanduser('~/addons/_wago')
 
 REQUIRED = ['SpellEffect', 'SpellItemEnchantment', 'SpellEquippedItems', 'SkillLineAbility', 'ItemEffect',

@@ -1,5 +1,5 @@
 -- luacheck configuration of the Amisia addon (WoW Forever, Lua 5.1).
--- Run: luacheck Amisia Amisia_Raid Amisia_Gear   (python tools/build.py check runs it too; the core and its modules)
+-- Run: luacheck Amisia Amisia_Gear Amisia_Dungeons Amisia_Talents   (python tools/build.py check runs it too; the core and its modules)
 std = "lua51"
 max_line_length = false          -- long lines are the house style; not reflowed
 codes = true

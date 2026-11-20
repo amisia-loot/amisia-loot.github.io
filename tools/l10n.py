@@ -18,11 +18,12 @@ used.
 import os
 import re
 import sys
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ADDON = os.path.join(ROOT, 'Amisia')
 # the core and its modules (F-202, D-130): each folder has its own Locales/enUS_<area>.lua
-ADDONS = tuple(os.path.join(ROOT, d) for d in ('Amisia', 'Amisia_Raid', 'Amisia_Gear'))
+ADDONS = tuple(os.path.join(ROOT, modules.FOLDERS[m]) for m in modules.PARTS if os.path.isdir(os.path.join(ROOT, modules.FOLDERS[m])))
 LOCALES = os.path.join(ADDON, 'Locales')
 ENUS = os.path.join(LOCALES, 'enUS.lua')
 SKIP_DIRS = ('Data', 'Locales')
@@ -222,7 +223,7 @@ def file_entries(path):
 def data_keys():
     """German texts of the generated files the code shows through L[variable] (they count as used)."""
     keys = set()
-    gw = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'GearWeights.lua')
+    gw = modules.data_file('GearWeights.lua')
     if os.path.exists(gw):
         src = read(gw)
         for m in re.finditer(r'\b(name|why)\s*=\s*"((?:[^"\\]|\\.)*)"', src):

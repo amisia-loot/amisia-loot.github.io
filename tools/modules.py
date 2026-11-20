@@ -5,20 +5,63 @@ static check that the core never needs a module and the modules need each other 
     python3 tools/modules.py files      the files of each module in TOC order
     python3 tools/modules.py symbols    the ns symbols each module defines
 
-Three parts, each an addon folder of its own with its TOC: "core" (Amisia/), "raid" (Amisia_Raid/) and
-"gear" (Amisia_Gear/, Ausrüstung & Dungeons). A file belongs to the part whose folder holds it. A module may use the core freely; the core may use no module; raid and gear may use each
-other only guarded. The rules of the check are in check() below; tools/tests/test_module_deps.py runs it.
+The parts, each an addon folder of its own with its TOC (F-202, D-130; F-228, D-158): "core" (Amisia/,
+with the raid part, professions, the guild's Forever pages and the collecting), "gear" (Amisia_Gear/,
+Ausrüstung), "dungeons" (Amisia_Dungeons/, Dungeons & Raids) and "talents" (Amisia_Talents/, Talente). A
+file belongs to the part whose folder holds it. A module may use the core freely; the core may use no
+module; the modules may use each other only guarded. The rules of the check are in check() below;
+tools/tests/test_module_deps.py runs it.
 """
 import os
 import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODULES = ('core', 'raid', 'gear')
-# the order in which the client loads the parts and their bodies run (core, then raid, then gear)
-ORDER = {'core': 0, 'raid': 1, 'gear': 2}
+PARTS = ('core', 'gear', 'dungeons', 'talents')
+# the order in which the client loads the parts and their bodies run (the core, then the modules)
+ORDER = {m: i for i, m in enumerate(PARTS)}
 # the addon folder of each part, with its TOC <folder>.toc at its root
-FOLDERS = {'core': 'Amisia', 'raid': 'Amisia_Raid', 'gear': 'Amisia_Gear'}
+FOLDERS = {'core': 'Amisia', 'gear': 'Amisia_Gear', 'dungeons': 'Amisia_Dungeons', 'talents': 'Amisia_Talents'}
+# the first file of each part's TOC: the core's makes the namespace (_G.AmisiaCore), a module's points
+# its own at it (Gear/Module.lua etc., F-202, D-130)
+FIRST_FILE = {'core': 'Locales/Locale.lua', 'gear': 'Gear/Module.lua', 'dungeons': 'Dungeons/Module.lua',
+              'talents': 'Talents/Module.lua'}
+# where each generated Data/* file stands (tools/build_*.py write there, F-228, D-158): data more than one
+# part reads is the core's (Forever only, behind its camelot mark)
+DATA_HOME = {
+    'GearData.lua': 'core', 'DungeonData.lua': 'core', 'ProfessionData.lua': 'core', 'MageScrollData.lua': 'core',
+    'ScanDone.lua': 'core', 'ScanLists.lua': 'core', 'ScanNames.lua': 'core', 'RaidCheckData.lua': 'core',
+    'RaidBuffData.lua': 'core', 'GearWeights.lua': 'core',
+    'BisData.lua': 'core', 'DungeonQuestData.lua': 'core',   # dungeon facts, drop stock, quests: core and modules read them
+    'GearNoSource.lua': 'gear', 'EnchantData.lua': 'gear',
+    'QuestData.lua': 'dungeons', 'QuestItemData.lua': 'dungeons',
+    'MapData.lua': 'dungeons', 'DungeonArt.lua': 'dungeons',
+    'TalentData.lua': 'talents',
+}
+
+
+def data_file(name):
+    """The absolute path of a generated data file ("GearData.lua" -> .../Amisia/Data/GearData.lua)."""
+    return os.path.join(ROOT, FOLDERS[DATA_HOME[name]], 'Data', name)
+
+
+def toc_path(module, flavor=''):
+    """The absolute path of a part's TOC ("gear" -> .../Amisia_Gear/Amisia_Gear.toc)."""
+    return os.path.join(folder(module), toc_name(module, flavor))
+
+
+def data_toc(name, flavor=''):
+    """The TOC that loads a generated data file (its part's)."""
+    return toc_path(DATA_HOME[name], flavor)
+
+
+def data_files():
+    """The absolute paths of every generated data file."""
+    return [data_file(n) for n in sorted(DATA_HOME)]
+
+
+# the parts there are: those whose folder holds its TOC
+MODULES = tuple(m for m in PARTS if os.path.isfile(os.path.join(ROOT, FOLDERS[m], FOLDERS[m] + '.toc')))
 # the core's folder
 ADDON = os.path.join(ROOT, FOLDERS['core'])
 
@@ -29,7 +72,7 @@ def folder(module):
 
 
 def toc_name(module, flavor=''):
-    """The file name of a part's TOC: "Amisia_Raid.toc", with flavor "_TBC" "Amisia_Raid_TBC.toc"."""
+    """The file name of a part's TOC: "Amisia_Gear.toc", with flavor "_TBC" "Amisia_Gear_TBC.toc"."""
     return FOLDERS[module] + flavor + '.toc'
 
 
@@ -52,8 +95,8 @@ def toc_entries(modules=MODULES, flavor=''):
 
 
 def module_of(path):
-    """The part a file belongs to: "core", "raid" or "gear", from the folder that holds it. path is
-    relative to its addon folder ("Raid/Awards.lua") or to the repository ("Amisia_Raid/Raid/Awards.lua");
+    """The part a file belongs to ("core", "gear", ...), from the folder that holds it. path is
+    relative to its addon folder ("Gear/Bis.lua") or to the repository ("Amisia_Gear/Gear/Bis.lua");
     a file no folder holds is the core's."""
     path = path.replace(os.sep, '/')
     head = path.split('/', 1)[0]
@@ -72,7 +115,7 @@ def path_of(path):
 
 
 def files_by_module():
-    """{module: [paths in TOC order]} of the .lua files of the three TOCs."""
+    """{module: [paths in TOC order]} of the .lua files of the parts' TOCs."""
     out = {m: [] for m in MODULES}
     for name, _, module in toc_entries():
         if name.endswith('.lua'):
@@ -325,8 +368,8 @@ class Frame:
 
 def _ref_at(toks, i, aliases, own):
     """A reference starting at toks[i]: (symbol, index after it) or None. symbol is an ns path tuple
-    with an owner (("X", "Y") when Y has its own owner, else ("X",)), or a module guard "mod:raid"
-    for ns.HasModule("raid")."""
+    with an owner (("X", "Y") when Y has its own owner, else ("X",)), or a module guard "mod:gear"
+    for ns.HasModule("gear")."""
     t = toks[i]
     if not _starts_name(toks, i):
         return None
@@ -524,14 +567,14 @@ def check(files=None):
 
     Symbols: ns.X belongs to the part of the first file (TOC order) that assigns it ("ns.X =",
     "function ns.X(", ns.LazyData("X", ...)); ns.X.Y gets its own part when another part than X's adds
-    Y to X ("function ns.W.Foo(" in a raid file). A use is a reference that is called, indexed or given
+    Y to X ("function ns.W.Foo(" in a gear file). A use is a reference that is called, indexed or given
     fields: ns.X(), ns.X.f(), ns.X[k], and the same through a local alias (local G = ns.Gear); a bare
     read (if ns.X then, ns.X and ..., local A = ns.X) uses nothing.
 
     Rule 1, direction: a use of a symbol of another part is allowed when that part is the core. Else
-    (core -> raid, core -> gear, raid <-> gear) it must be guarded, and so must a use of a symbol no
+    (core -> a module, one module -> another) it must be guarded, and so must a use of a symbol no
     file assigns. Guarded, a simple rule on the tokens (no data flow), with R the symbol itself, an
-    alias of it, or ns.HasModule("raid"/"gear") (or an alias of that) for every symbol of that part:
+    alias of it, or ns.HasModule("gear"/"dungeons"/"talents") (or an alias of that) for every symbol of that part:
       - inside "if C then ... end" where C is "R" or a chain "R and S and ..." with R as one operand
         ("R ~= nil" and 'type(R) == "table"' count as R); in an elseif or else branch also each R of an
         earlier condition "not R [or ...]";
@@ -544,7 +587,7 @@ def check(files=None):
     settings and slash commands go through the registry, events through ns.Fire/ns.Listen and
     ns.OnEvent: they name no symbol of the other part and need no guard.
 
-    Rule 2, load order: the parts are addons of their own; their bodies run core, then raid, then gear
+    Rule 2, load order: the parts are addons of their own; their bodies run core, then gear, dungeons, talents
     (Locales/Locale.lua, D-128). A reference, guarded or not, that runs while a file's body runs (in ns.Load's
     function, not in a function of its own) may not name a symbol of a part that runs later: it would
     always be nil there ("local Layer = ns.Layer" in a core file). Look it up inside the function.

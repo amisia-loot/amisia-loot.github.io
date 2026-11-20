@@ -1,7 +1,7 @@
 ## Interface: 11509
 ## Title: Amisia
-## Notes: Raid loot, rolls and gear for your guild. This is Amisia's core: window, settings, overview and guild sync. The raid tools come with Amisia: Raid, the gear, dungeon and map pages with Amisia: Gear & Dungeons (WoW Forever only); all three folders belong together.
-## Notes-deDE: Raid-Loot, Rolls und Ausrüstung für deine Gilde. Das ist der Kern von Amisia: Fenster, Einstellungen, Übersicht und Gildenabgleich. Die Raid-Werkzeuge bringt Amisia: Raid, Ausrüstung, Dungeons und Karte bringt Amisia: Ausrüstung & Dungeons (nur WoW Forever); alle drei Ordner gehören zusammen.
+## Notes: Raid loot, rolls and gear for your guild. This is Amisia's core: window, settings, overview, guild sync, the raid tools and, on WoW Forever, professions and the guild's layer, duels and tools. The tabs Gear, Dungeons & Raids and Talents come as modules of their own (WoW Forever only); all folders belong together.
+## Notes-deDE: Raid-Loot, Rolls und Ausrüstung für deine Gilde. Das ist der Kern von Amisia: Fenster, Einstellungen, Übersicht, Gildenabgleich, die Raid-Werkzeuge und auf WoW Forever Berufe sowie Layer, Duelle und Werkzeuge der Gilde. Die Reiter Ausrüstung, Dungeons & Raids und Talente sind eigene Module (nur WoW Forever); alle Ordner gehören zusammen.
 ## Author: mrvulo
 ## Version: 2.103.1
 ## Category: VuloUI
@@ -17,6 +17,10 @@
 Locales\Locale.lua
 Locales\enUS_core.lua
 Locales\enUS_selftest.lua
+Locales\enUS_raid.lua
+Locales\enUS_raid2.lua
+Locales\enUS_raidcheck.lua
+Locales\enUS_forever.lua
 Core\Registry.lua
 Core\Perf.lua
 Core\LazyData.lua
@@ -46,4 +50,74 @@ UI\LootToast.lua
 Core\Minimap.lua
 Core\SelfTest.lua
 Core\SelfTestData.lua
+Raid\Record.lua
+Raid\Mats.lua
+Raid\Awards.lua
+Raid\Rolls.lua
+Raid\RollFrame.lua
+Raid\AwardDialog.lua
+Raid\SoftRes.lua
+Raid\SoftResShare.lua
+Raid\RaidNote.lua
+Raid\LootAnnounce.lua
+Raid\RaidLog.lua
+Raid\Bench.lua
+Raid\GroupRolls.lua
+Raid\Sync.lua
+Raid\LootPrio.lua
+Raid\Points.lua
+Raid\PointsRounds.lua
+Raid\PointsSync.lua
+Raid\RaidText.lua
+Raid\Stats.lua
+Raid\AwardHistory.lua
+Raid\BankNeeds.lua
+Raid\BankLog.lua
+Raid\Need.lua
+Raid\LootRules.lua
+Raid\RollWindow.lua
+Raid\RaidNoteWindow.lua
+Raid\RollWatch.lua
+Raid\Calendar.lua
+Raid\CalendarWrite.lua
+Raid\CalendarCreate.lua
+Raid\CalendarEdit.lua
+Raid\CalendarBot.lua
+Raid\Lineup.lua
+Raid\LineupInvite.lua
+Raid\LineupSort.lua
+Raid\LineupRoles.lua
+Raid\LineupBuffs.lua
+Raid\GroupAccept.lua
+Raid\OnlineInvite.lua
+Raid\GuildCalls.lua
+Raid\GuildQueue.lua
+Raid\PullTimer.lua
+Raid\Signup.lua
+Raid\RaidCalendar.lua
+Raid\RaidCheckRead.lua
+Raid\RaidCheck.lua
+Raid\RaidIDs.lua
+UI\Pages\Raids.lua
+UI\Pages\Lineup.lua
+UI\Pages\RaidCheck.lua
+UI\Pages\RaidLogRolls.lua
+UI\Pages\RaidLog.lua
+UI\Pages\Rolls.lua
+UI\Pages\RaidNote.lua
+UI\Pages\Awards.lua
+UI\Pages\Stats.lua
+UI\Pages\Points.lua
+UI\Pages\SoftRes.lua
+UI\SoftResImport.lua
+UI\Pages\Bank.lua
+UI\Pages\Members.lua
+UI\Pages\Calls.lua
+UI\Setup.lua
+UI\Signup.lua
+UI\RaidCalendar.lua
+UI\Pages\Calendar.lua
+Core\SelfTestCalendar.lua
+Core\SelfTestCalendarWrite.lua
+Core\SelfTestGroup.lua
 Core\PerfReport.lua

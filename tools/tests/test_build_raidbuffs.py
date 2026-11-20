@@ -15,8 +15,9 @@ ADDON = os.path.join(ROOT, 'Amisia_Gear')   # the gear module holds the data (F-
 sys.path.insert(0, TOOLS)
 import build_raidbuffs  # noqa: E402
 import lua_data  # noqa: E402
+import modules  # noqa: E402
 
-OUT = os.path.join(ADDON, 'Data', 'RaidBuffData.lua')
+OUT = modules.data_file('RaidBuffData.lua')
 B = '1.60.1.99999'
 
 # skill lines: 6 mage, 7 druid, 8 hunter, 9 warlock pet (several classes), 10 shaman, 11 priest
@@ -154,12 +155,9 @@ def test_the_list_is_well_formed():
 
 
 def test_shipped_data_file_in_toc_and_valid():
-    with open(os.path.join(ADDON, 'Amisia_Gear.toc'), encoding='utf-8') as fh:
-        toc = fh.read()
-    assert 'Data\\RaidBuffData.lua' in toc
-    # the raid module reads it only through ns.Data, when it is there (the gear module loads after it, F-202)
-    with open(os.path.join(ROOT, 'Amisia_Raid', 'Amisia_Raid.toc'), encoding='utf-8') as fh:
-        assert 'Raid\\LineupBuffs.lua' in fh.read()
+    # the data stands in the TOC of its part (F-228: the core's, where the raid part reads it through ns.Data)
+    assert 'Data/RaidBuffData.lua' in [n for n, _, _ in modules.toc_entries()]
+    assert modules.module_of('Raid/LineupBuffs.lua') == 'core'
     with open(OUT, encoding='utf-8') as fh:
         src = fh.read()
     lupa = pytest.importorskip('lupa.lua51')

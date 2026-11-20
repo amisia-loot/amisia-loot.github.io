@@ -7,9 +7,11 @@
 - Features and their status: `docs/FEATURES.md`; larger features get a spec in `docs/specs` first (README
   there). After a release relay the test list; record results with `build.py tested F-xxx`; game errors:
   `build.py errors`.
-- Folders: the WoW Forever addon in three addons (F-202, D-130), each with its TOC at its root and copied by
-  the release: `Amisia/` the core, `Amisia_Raid/` the raid module, `Amisia_Gear/` the gear module
-  ("Ausrüstung & Dungeons", Forever only, with all generated `Data/*`); a file's folder says its part;
+- Folders: the WoW Forever addon in four addons (F-202, D-130; F-228, D-158), each with its TOC at its root and
+  copied by the release: `Amisia/` the core (with Raid, Berufe, Gilde, the collecting, the item library and the
+  data several parts read), and one module per tab, Forever only: `Amisia_Gear/` Ausrüstung, `Amisia_Dungeons/`
+  Dungeons & Raids, `Amisia_Talents/` Talente; a file's folder says its part, `tools/modules.py` `DATA_HOME` where
+  each generated `Data/*` stands;
   `Amisia-Website/` the site (`index.html`, `data/*.js`, `Amisia.zip`, `supabase/` not deployed; GitHub
   Pages via `.github/workflows/pages.yml`, the only live copy; the claude.ai twin is unmaintained);
   `tests/` the addon's Lua tests; `tools/` builders and tool tests; `docs/` the documents.

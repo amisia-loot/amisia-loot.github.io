@@ -1,13 +1,15 @@
--- Amisia with one module left out (F-202, D-130): tests/test_without_raid.lua and test_without_gear.lua
--- run it in a runtime without that module's files (tests/run.py, "--[[without raid]]"). It builds the
+-- Amisia with one module left out (F-202, D-130; F-228, D-158): tests/test_without_gear.lua (and the
+-- other test_without_*.lua) run it in a runtime without that module's files (tests/run.py,
+-- "--[[without gear]]"). It builds the
 -- scene of the snapshots (tests/ui_scene.lua), then in every view opens every visible page, every state of
 -- a page there and every side window of the modules that are there, and runs what a player reaches
 -- without the main window (help, minimap menu, search, events, timers). A Lua error fails the test.
--- Load with dofile(ADDON_DIR .. "/../tests/module_scene.lua")(missing), missing "raid" or "gear".
+-- Load with dofile(ADDON_DIR .. "/../tests/module_scene.lua")(missing), missing a module's key ("gear").
 return function(missing)
-    local other = missing == "raid" and "gear" or "raid"
     assert(not NS.HasModule(missing), "the module is left out: " .. missing)
-    assert(NS.HasModule(other), "the other module is there: " .. other)
+    for _, m in ipairs(NS.MODULE_ADDONS) do
+        if m.key ~= missing then assert(NS.HasModule(m.key), "the other modules are there: " .. m.key) end
+    end
     local S = dofile(ADDON_DIR .. "/../tests/ui_scene.lua")
     S.setup()
     local opened = {}
@@ -36,11 +38,19 @@ return function(missing)
             end
         end
     end
-    -- the pages of the module that is not there are not registered; the core's and the other's are
-    local mine = { raid = { "raids", "rolls", "awards", "softres", "lineup", "bank" },
-                   gear = { "gear", "planner", "dungeons", "professions", "talents", "map" } }
-    for _, key in ipairs(mine[missing]) do assert(NS.Panel(key) == nil, "a page of the missing module: " .. key) end
-    for _, key in ipairs(mine[other]) do assert(NS.Panel(key) ~= nil, "a page of the other module is missing: " .. key) end
+    -- the pages of the module that is not there are not registered; the core's and the others' are
+    local mine = { core = { "raids", "rolls", "awards", "softres", "lineup", "bank", "professions", "tools", "duels" },
+                   gear = { "gear", "planner" }, dungeons = { "dungeons", "raidjournal", "quests", "map" },
+                   talents = { "talents" } }
+    for part, keys in pairs(mine) do
+        for _, key in ipairs(keys) do
+            if part == missing then
+                assert(NS.Panel(key) == nil, "a page of the missing module: " .. key)
+            else
+                assert(NS.Panel(key) ~= nil, "a page of " .. part .. " is missing: " .. key)
+            end
+        end
+    end
     assert(opened.overview and opened.settings and opened.about, "the core's pages open")
     -- what a player reaches without the main window
     NS.ShowHelp()

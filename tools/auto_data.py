@@ -91,7 +91,9 @@ SV_GAP = 6 * 3600               # seconds between two runs of trigger C: one eve
 SV_KEEP = 5                     # auto/sv-* branches kept; older ones are deleted
 SV_BRANCH = 'auto/sv-'
 SV_HEAD = 'Spielstand vom '     # first line of the block in amisia-data.txt
-SV_PATHS = ('Amisia_Gear/Data', 'tools', 'Amisia-Website')   # what a data build may change
+TALENT_DATA = 'Amisia_Talents/Data/TalentData.lua'   # its build line names the client build (F-228: the module Talente's)
+SV_PATHS = ('Amisia/Data', 'Amisia_Gear/Data', 'Amisia_Dungeons/Data', 'Amisia_Talents/Data', 'tools',
+            'Amisia-Website')   # what a data build may change (F-228: every part's Data/)
 # what "new" counts: (archive, key, label); key "a/*" sums the dicts under a (one per locale)
 SV_COUNTS = (
     ('tools/scan_archive.json', 'items', 'Items'),
@@ -607,7 +609,7 @@ def take_over_sv(args, sv, on_main, now=None):
         news, files = archive_news(args.base, args.worktree), changed_files(args.worktree)
         if not news and not files:
             return 'nothing new', [f'{head}: nichts Neues gegenüber {args.base}.'], None, None
-        tables = data_build(read(os.path.join(args.worktree, 'Amisia_Gear', 'Data', 'TalentData.lua')))
+        tables = data_build(read(os.path.join(args.worktree, TALENT_DATA)))
         rc, out = run([py, 'tools/build.py', 'check'], args.worktree)
         git('add', '-A', *present(args.worktree, SV_PATHS), cwd=args.worktree)
         msg = (f'Spielstand vom {stamp(os.path.getmtime(sv))} übernommen (automatisch gebaut, Prüfung '
@@ -726,7 +728,7 @@ def main(argv=None):
     if not args.dry_run:
         for name in publish_pc_scripts(args.base):
             print(f'PC script {name} updated in {PC_SCRIPTS}')
-    on_main = data_build(git('show', f'{args.base}:Amisia_Gear/Data/TalentData.lua', check=False))
+    on_main = data_build(git('show', f'{args.base}:{TALENT_DATA}', check=False))
     state = load_state(os.path.join(args.state_dir, 'amisia-data.json'))
     settle_stale(args, on_main, state)
     builds = complete_builds(args.wago)

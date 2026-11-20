@@ -1,0 +1,2739 @@
+-- Amisia dungeon planner: what every dungeon and raid is worth to the own character right now - the
+-- number and size of the upgrades among its bosses' drops, the expected gain of one run (gain times
+-- drop chance, summed over bosses and items, without rivals in the group), the open dungeon quests
+-- with their best reward, the level fit - and from that the next dungeon to run, with its reason;
+-- the waypoint to an entrance. Only item stats the client shows in every tooltip and the loot
+-- windows the guild counted go in, nothing from combat.
+--
+-- The inputs sit behind small functions on ns.Dungeons, so the build's data can take over without
+-- touching the rest: Facts (ns.BIS.DG once tools/build_bis.py writes it, else the hand facts of
+-- DungeonData.lua), Opts (the own character), Gain (ns.BisGain), Rate (ns.DropRate with the
+-- source's chance).
+--
+-- On top of the values: the ranking by value, the chain (the best dungeon's upgrades equipped
+-- virtually, then ranked again) and the quest list of a dungeon from DungeonQuestData.lua (built by
+-- tools/build_dungeonquests.py) joined with the item data's quests: pre-quests, where a quest starts
+-- (the quest giver's waypoint), level, done or in the log, rewards with the upgrade mark.
+local ADDON, ns = ...
+ns.Load(function()
+local L = ns.L
+local Gear = ns.Gear
+
+local D = {}
+ns.Dungeons = D
+
+local SOON = 2            -- levels below a range that still count as "bald"
+local RUNS = 2            -- runs of the usual plan: value = quests + RUNS x gain per run
+-- The expected chance of an item whose source names none: one of the boss's known items of its
+-- quality, but never more than one of a typical loot table's. A dungeon boss's table holds about six
+-- rare items of which one drops per kill (1/6), somewhat more uncommon ones and a dozen or more epics
+-- where it has any; the item data and the guild's records often know only one or two of them, and
+-- "the only known item" is no 100 % chance. Never above PRIOR_MAX; the rate reads "Chance unbekannt".
+local PRIOR_TABLE = { [2] = 8, [3] = 6, [4] = 12 }
+local PRIOR_DEFAULT = 6
+local PRIOR_MAX = 0.5
+-- An NPC known only from the guild's records (neither the facts, the item data nor the base stock
+-- name it as a boss) is listed but counts for the value and the recommendation from this many kills:
+-- one trash corpse with a world drop is no boss.
+local MIN_KILLS = 3
+local NO_DATA = L["Keine Dungeon-Daten."]
+local NO_HIT = L["Für dein Level hat kein Dungeon noch Upgrades für dich."]
+local NO_ENTRANCE = L["Für diesen Dungeon kennt Amisia keinen Eingang."]
+local NO_MAP = L["Keine Kartendaten für diesen Client."]
+local NO_QUESTS = L["Questdaten fehlen noch."]
+local NO_START = L["Für diese Quest kennt Amisia keinen Startort."]
+local ITEM_START = L["Diese Quest startet durch ein Item."]
+local CHAIN_END = L["Danach hat kein Dungeon mehr Upgrades für dich."]
+local CHAIN_STEPS = 5
+local MAX_CHAIN = 30      -- pre-quest levels walked at most
+D.NO_DATA = NO_DATA
+
+local FIT_TEXT = { fit = L["passt"], soon = L["bald"], easy = L["leicht"], high = L["zu hoch"] }
+local FIT_ORDER = { fit = 1, soon = 2 }
+
+local function lower(s) return type(s) == "string" and s:lower() or nil end
+
+-- A name for matching: lower case without spaces, dots, dashes and apostrophes ("Edwin van Cleef" =
+-- "Edwin VanCleef").
+local function nameKey(s)
+    if type(s) ~= "string" then return nil end
+    local k = s:lower():gsub("[%s%.%-'`]", "")
+    return k ~= "" and k or nil
+end
+
+-- The entry of key dkey in a list of facts, or nil.
+local function factIn(list, dkey)
+    if type(list) ~= "table" then return nil end
+    for _, e in ipairs(list) do
+        if type(e) == "table" and e.key == dkey then return e end
+    end
+    return nil
+end
+
+-- The NPC id of boss name in dungeon dkey (F-170, D-100): the one the facts give its name in the game's
+-- order (DungeonData.lua: npcs, one per name of order), else the build's NPC of that name (BisData.lua:
+-- bossNames), else the id in the name the item data gives an NPC nobody named ("NPC 4442"); nil
+-- without one. Names compare by nameKey.
+function D.BossNpc(dkey, name)
+    local k = nameKey(name)
+    if not k then return nil end
+    local F = ns.DUNGEON_FACTS
+    local f = factIn(type(F) == "table" and F.list, dkey)
+    if f and type(f.order) == "table" and type(f.npcs) == "table" then
+        for i, n in ipairs(f.order) do
+            if nameKey(n) == k then
+                local npc = f.npcs[i]
+                if type(npc) == "number" and npc > 0 then return npc end
+                break
+            end
+        end
+    end
+    local B = ns.BIS
+    local e = factIn(type(B) == "table" and B.DG, dkey)
+    if e and type(e.bossNames) == "table" then
+        local best
+        for npc, n in pairs(e.bossNames) do
+            if type(npc) == "number" and nameKey(n) == k and (not best or npc < best) then best = npc end
+        end
+        if best then return best end
+    end
+    local id = tonumber(name:match("^NPC (%d+)$"))
+    return id and id > 0 and id or nil
+end
+
+local report = ns.ReportError
+
+---------------------------------------------------------------------------
+-- Inputs (the switch points for the build's data)
+---------------------------------------------------------------------------
+
+-- The dungeon and raid facts: { { key, name, kind, min, max, size, inst, area, from, bosses,
+-- aliases }, ... }; bosses are names (hand facts) or NPC ids (the build). nil without any.
+function D.Facts()
+    local B = ns.BIS
+    if type(B) == "table" and type(B.DG) == "table" then return B.DG end
+    local F = ns.DUNGEON_FACTS
+    if type(F) == "table" and type(F.list) == "table" then return F.list end
+    return nil
+end
+
+-- What the module Ausrüstung knows about an item (F-228, D-158): without it nothing is owned, nothing is
+-- an upgrade, and the BiS state never changes.
+local function ownedOf(id) return ns.BisOwned and ns.BisOwned(id) or nil end
+local function isUp(gain, mine) return ns.BisIsUpgrade and ns.BisIsUpgrade(gain, mine) or false end
+local function bisStamp() return ns.BisStamp and ns.BisStamp() or 0 end
+
+-- The character the values are for.
+function D.Opts() return ns.ItemOpts() end
+
+-- gain, slotKey, mine of an item for the options; nil when it is no gear for them (always without the
+-- module Ausrüstung).
+function D.Gain(id, o)
+    if not ns.BisGain then return nil end
+    return ns.BisGain(id, o)
+end
+
+-- p, text, n, K for an item of a boss: with an NPC the guild's kills (base stock and records) with
+-- p0 as the expected chance, else p0 alone. A raid's chance comes from observations only. est: p0 is
+-- the planner's prior, not the source's chance - it goes into the value, the text says
+-- "Chance unbekannt" until the guild has kills.
+function D.Rate(boss, id, p0, raid, est)
+    if boss.npc and ns.DropRate then
+        local p, n, K = ns.DropRate(boss.npc, id, p0)
+        if raid and (K or 0) == 0 then return nil, L["Chance unbekannt"], 0, 0 end
+        if p and est and (K or 0) == 0 then return p, L["Chance unbekannt"], n, K end
+        if p then return p, ns.DropRateText(boss.npc, id, p0), n, K end
+        return nil, L["Chance unbekannt"], 0, 0
+    end
+    if raid or not p0 then return nil, L["Chance unbekannt"], 0, 0 end
+    if est then return p0, L["Chance unbekannt"], 0, 0 end
+    return p0, L["Chance %d %%"]:format(math.floor(p0 * 100 + 0.5)), 0, 0
+end
+
+---------------------------------------------------------------------------
+-- Small helpers
+---------------------------------------------------------------------------
+
+local function itemInfo(id)
+    local f = C_Item and C_Item.GetItemInfo
+    if type(f) ~= "function" then return nil end
+    local ok, name, _, q, _, req = pcall(f, id)
+    if not ok then return nil end
+    return ns.Plain(name), tonumber(ns.Plain(q)), tonumber(ns.Plain(req))
+end
+
+local function quality(id)
+    local row = Gear.Item(id)
+    if row and (row[5] or 0) > 0 then return row[5] end
+    local _, q = itemInfo(id)
+    return q
+end
+
+local function reqLevel(id)
+    local row = Gear.Item(id)
+    if row then return row[4] or 0 end
+    local _, _, req = itemInfo(id)
+    return req or 0
+end
+
+-- The source's drop chance as 0-1: "13.9%", "13,9 %" or a number.
+local function chanceOf(rec)
+    local v = rec and rec[1] == "D" and rec[4]
+    if type(v) == "number" then return v > 1 and v / 100 or v end
+    if type(v) == "string" then
+        local n = tonumber((v:gsub(",", ".")):match("%d+%.?%d*"))
+        if n then return n / 100 end
+    end
+    return nil
+end
+
+local function questDone(qid)
+    local Q = _G.C_QuestLog
+    local f = type(Q) == "table" and Q.IsQuestFlaggedCompleted
+    if type(f) ~= "function" or type(qid) ~= "number" or qid <= 0 then return false end
+    local ok, done = pcall(f, qid)
+    return ok and ns.Plain(done) == true
+end
+
+-- Whether a quest of the quest data is no longer possible: one of the quests that exclude it (its
+-- 13th field) is done.
+local function questGone(r)
+    if type(r) ~= "table" or type(r[13]) ~= "table" then return false end
+    for _, a in ipairs(r[13]) do
+        if questDone(a) then return true end
+    end
+    return false
+end
+
+local function questActive(qid)
+    local Q = _G.C_QuestLog
+    local f = type(Q) == "table" and Q.IsOnQuest
+    if type(f) ~= "function" or type(qid) ~= "number" or qid <= 0 then return false end
+    local ok, on = pcall(f, qid)
+    return ok and ns.Plain(on) == true
+end
+
+-- Whether a quest in the log has all its objectives (ready to hand in): C_QuestLog.IsComplete, else
+-- the quest log's isComplete (1; -1 is failed).
+local function questReady(qid)
+    if not questActive(qid) then return false end
+    local Q = _G.C_QuestLog
+    local f = type(Q) == "table" and Q.IsComplete
+    if type(f) == "function" then
+        local ok, c = pcall(f, qid)
+        if ok then return ns.Plain(c) == true end
+    end
+    local indexOf, titleAt = _G.GetQuestLogIndexByID, _G.GetQuestLogTitle
+    if type(indexOf) ~= "function" or type(titleAt) ~= "function" then return false end
+    local ok, i = pcall(indexOf, qid)
+    i = ok and tonumber(ns.Plain(i)) or nil
+    if not i or i <= 0 then return false end
+    local ok2, _, _, _, _, _, complete = pcall(titleAt, i)
+    return ok2 and tonumber(ns.Plain(complete)) == 1
+end
+
+-- The client's title of a quest (German where it has the quest loaded), else the data's name.
+local function titleOf(qid, name)
+    local Q = _G.C_QuestLog
+    local f = type(Q) == "table" and Q.GetTitleForQuestID
+    if type(f) == "function" and type(qid) == "number" and qid > 0 then
+        local ok, title = pcall(f, qid)
+        title = ok and ns.Plain(title) or nil
+        if type(title) == "string" and title ~= "" then return title end
+    end
+    -- the title the quest scan found in the client's language (D-104), else the data's
+    return (ns.ScannedQuestTitle and type(qid) == "number" and ns.ScannedQuestTitle(qid)) or name or "?"
+end
+
+local function questTitle(rec) return titleOf(rec[7], rec[2]) end
+
+-- The generated quest data (DungeonQuestData.lua), or nil.
+local function questData()
+    local d = ns.DUNGEON_QUESTS
+    if type(d) == "table" and type(d.D) == "table" and type(d.Q) == "table" then return d end
+    return nil
+end
+
+-- The client's name of an area id (in its language), or nil.
+local function areaName(area)
+    if type(area) ~= "number" or area <= 0 or not (C_Map and C_Map.GetAreaInfo) then return nil end
+    local ok, name = pcall(C_Map.GetAreaInfo, area)
+    name = ok and ns.Plain(name) or nil
+    return type(name) == "string" and name ~= "" and name or nil
+end
+
+-- The wings of an instance whose wings are dungeons of their own (F-174, D-106): the data's English
+-- name -> the shown one.
+local WING = { Graveyard = L["Friedhof"], Library = L["Bibliothek"], Armory = L["Waffenkammer"], Cathedral = L["Kathedrale"] }
+
+-- The name a dungeon shows: the client's (by area id) where known; a wing "<part>: <wing>" with the
+-- client's name of the part (its area) and the wing's name in the client's language; else the fact's.
+function D.Name(e)
+    local name = areaName(e.area)
+    if name then return name end
+    if type(e.wing) == "string" then
+        local part = areaName(e.part_area) or (type(e.part) == "string" and e.part) or nil
+        if part then return part .. ": " .. (WING[e.wing] or e.wing) end
+    end
+    return e.name or e.key
+end
+
+-- "13-18", "60", "~22" (estimated from the items).
+function D.RangeText(e)
+    if not e.min then return "" end
+    local t = e.min == e.max and tostring(e.min) or (e.min .. "-" .. e.max)
+    return e.est and ("~" .. t) or t
+end
+
+-- "passt", "bald", "leicht", "zu hoch", "ab 09.12." for a raid not yet open.
+function D.FitText(e)
+    if e.fit == "later" then
+        local y, m, d = tostring(e.from or ""):match("^(%d+)%-(%d+)%-(%d+)$")
+        return y and L["ab %s"]:format(ns.FmtDay(time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 }))) or L["später"]
+    end
+    return FIT_TEXT[e.fit] or ""
+end
+
+-- The fit of a level to a range: "fit" inside, "soon" up to two levels below, "easy" above,
+-- "high" further below.
+function D.Fit(level, min, max)
+    if level > max then return "easy" end
+    if level >= min then return "fit" end
+    if min - level <= SOON then return "soon" end
+    return "high"
+end
+
+---------------------------------------------------------------------------
+-- The index: dungeon -> bosses -> items, dungeon -> quests -> items (built once per data set)
+---------------------------------------------------------------------------
+
+local index, indexGear, indexFacts, indexQuests
+
+local function addBoss(x, name, npc)
+    name = name or "?"
+    local l = lower(name)
+    local b = x.byL[l]
+    if not b then
+        b = { name = name, lname = l, items = {}, ids = {} }
+        x.byL[l] = b
+        x.order[#x.order + 1] = b
+    end
+    if npc and not b.npc then b.npc = npc end
+    return b
+end
+
+-- Adds key to the list at t[k] once.
+local function addKey(t, k, key)
+    local list = t[k]
+    if not list then list = {}; t[k] = list end
+    for _, v in ipairs(list) do
+        if v == key then return end
+    end
+    list[#list + 1] = key
+end
+
+-- idx.byName: dungeon name or alias (lower case) -> key; idx.parts: the client's name of an instance
+-- that hosts several dungeons (the facts' "part", lower case) -> their keys; idx.instKeys: instance
+-- id -> the keys the facts give it (more than one where an instance hosts several dungeons).
+local function buildIndex(facts)
+    local idx = { byKey = {}, byName = {}, itemTo = {}, parts = {}, instKeys = {} }
+    local instKeys = idx.instKeys
+    for _, e in ipairs(facts) do
+        if type(e) == "table" and type(e.key) == "string" then
+            local x = { byL = {}, order = {}, quests = {}, questBy = {}, fact = e }
+            idx.byKey[e.key] = x
+            if e.name then idx.byName[lower(e.name)] = e.key end
+            for _, a in ipairs(type(e.aliases) == "table" and e.aliases or {}) do
+                local l = lower(a)
+                if l and not idx.byName[l] then idx.byName[l] = e.key end
+            end
+            if type(e.part) == "string" then addKey(idx.parts, lower(e.part), e.key) end
+            if type(e.inst) == "number" then addKey(instKeys, e.inst, e.key) end
+            -- the build's facts name their bosses by NPC id with the English name beside it
+            -- (bossNames): the boss of the item data with that name gets the NPC id
+            local names = type(e.bossNames) == "table" and e.bossNames or {}
+            for _, b in ipairs(type(e.bosses) == "table" and e.bosses or {}) do
+                if type(b) == "string" then
+                    addBoss(x, b, D.BossNpc(e.key, b))
+                elseif type(b) == "number" and type(names[b]) == "string" then
+                    addBoss(x, names[b], b)
+                end
+            end
+        end
+    end
+    local d = ns.Data("GEAR")
+    if not d then return idx end
+    local srcTo, srcQid, qidItems = {}, {}, {}
+    for n, rec in ipairs(d.S) do
+        if rec[1] == "D" then
+            local key = idx.byName[lower(rec[2])]
+            local place = Gear.PlaceOf(rec)
+            local inst = place and tonumber(place:match("^I:(%d+)$"))
+            -- the instance decides only where it hosts one dungeon; else the source's own name
+            if inst and instKeys[inst] and #instKeys[inst] == 1 then key = instKeys[inst][1] end
+            if key then srcTo[n] = { key = key, boss = addBoss(idx.byKey[key], rec[3], D.BossNpc(key, rec[3])), rec = rec } end
+        elseif rec[1] == "Q" then
+            local qid = type(rec[7]) == "number" and rec[7] > 0 and rec[7] or nil
+            if qid then srcQid[n] = qid end
+            local key = type(rec[9]) == "string" and idx.byName[lower(rec[9])]
+            if key then
+                local x = idx.byKey[key]
+                local q = qid and x.questBy[qid]
+                if not q then
+                    q = { rec = rec, items = {} }
+                    x.quests[#x.quests + 1] = q
+                    if qid then x.questBy[qid] = q end
+                end
+                srcTo[n] = { key = key, quest = q }
+            end
+        end
+    end
+    for id, row in pairs(d.I) do
+        for i = Gear.FIRST_SOURCE, #row do
+            local s = srcTo[row[i]]
+            if s and s.boss then
+                local b = s.boss
+                if not b.items[id] then
+                    b.items[id] = s.rec
+                    b.ids[#b.ids + 1] = id
+                end
+                local x = idx.byKey[s.key]
+                local lv = row[4] or 0
+                if lv > 0 then
+                    x.lo = math.min(x.lo or lv, lv)
+                    x.hi = math.max(x.hi or lv, lv)
+                end
+                local to = idx.itemTo[id]
+                if not to then to = {}; idx.itemTo[id] = to end
+                to[s.key] = true
+            elseif s and s.quest then
+                local items = s.quest.items
+                if items[#items] ~= id then items[#items + 1] = id end
+            end
+            local qid = srcQid[row[i]]
+            if qid then
+                local set = qidItems[qid]
+                if not set then set = {}; qidItems[qid] = set end
+                set[id] = true
+            end
+        end
+    end
+    -- the quest data's dungeon quests join those of the item data (one per quest id); a quest of
+    -- the quest data only gets a record in the item data's shape, so the filters treat it the same
+    local dq = questData()
+    if dq then
+        for key, ids in pairs(dq.D) do
+            local x = idx.byKey[key]
+            if x and type(ids) == "table" then
+                for _, qid in ipairs(ids) do
+                    local r = dq.Q[qid]
+                    if type(r) == "table" then
+                        local q = x.questBy[qid]
+                        if not q then
+                            local fac = (r[4] == "A" or r[4] == "H") and r[4] or nil
+                            q = { rec = { "Q", r[1] or "?", r[3] or 0, r[2] or 0, fac, nil, qid, r[5] or 0, x.fact.name }, items = {} }
+                            x.quests[#x.quests + 1] = q
+                            x.questBy[qid] = q
+                        end
+                        q.dq = r
+                        -- the quest data's own gear rewards (new quests the item data lacks)
+                        for _, id in ipairs(type(r[12]) == "table" and r[12] or {}) do
+                            if type(id) == "number" then
+                                local set = qidItems[qid]
+                                if not set then set = {}; qidItems[qid] = set end
+                                set[id] = true
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    -- a quest with an id has every gear reward of that id, whichever record names it
+    for _, x in pairs(idx.byKey) do
+        for _, b in ipairs(x.order) do table.sort(b.ids) end
+        for _, q in ipairs(x.quests) do
+            local qid = q.rec[7]
+            if type(qid) == "number" and qidItems[qid] then
+                local have = {}
+                for _, id in ipairs(q.items) do have[id] = true end
+                for id in pairs(qidItems[qid]) do
+                    if not have[id] then q.items[#q.items + 1] = id end
+                end
+            end
+            table.sort(q.items)
+        end
+    end
+    return idx
+end
+
+local function getIndex(facts)
+    if not index or indexGear ~= ns.Data("GEAR") or indexFacts ~= facts or indexQuests ~= ns.DUNGEON_QUESTS then
+        index, indexGear, indexFacts, indexQuests = buildIndex(facts), ns.Data("GEAR"), facts, ns.DUNGEON_QUESTS
+    end
+    return index
+end
+
+-- How many items the item data knows of boss name in dungeon dkey (its dungeon sources; F-170): 0
+-- for a boss without any (or an unknown dungeon). Names compare as the index does (lower case), then
+-- by nameKey.
+function D.KnownLoot(dkey, name)
+    local facts = D.Facts()
+    if not facts or not ns.Data("GEAR") or type(name) ~= "string" then return 0 end
+    local x = getIndex(facts).byKey[dkey]
+    if not x then return 0 end
+    local b = x.byL[lower(name)]
+    if not b then
+        local k = nameKey(name)
+        for _, o in ipairs(x.order) do
+            if nameKey(o.name) == k then b = o; break end
+        end
+    end
+    return b and #b.ids or 0
+end
+
+-- The dungeon or raid key of a D or X source record of the gear data (F-157): the one key its
+-- instance hosts, else the key of its name; nil when the facts know neither.
+function D.SourceKey(rec)
+    if type(rec) ~= "table" or (rec[1] ~= "D" and rec[1] ~= "X") then return nil end
+    local facts = D.Facts()
+    if not facts then return nil end
+    local idx = getIndex(facts)
+    local place = Gear.PlaceOf(rec)
+    local inst = place and tonumber(place:match("^I:(%d+)$"))
+    local keys = inst and idx.instKeys[inst]
+    if keys and #keys == 1 then return keys[1] end
+    return idx.byName[lower(rec[2])] or idx.byName[lower(Gear.PlaceName(rec))]
+end
+
+---------------------------------------------------------------------------
+-- Observations: which boss of which dungeon an NPC of the guild's records is
+---------------------------------------------------------------------------
+
+local dropsGen, questGen, namesGen = 0, 0, 0
+ns.Listen("DROPS_CHANGED", function() dropsGen = dropsGen + 1 end)
+
+local obs, obsGen, obsIndex, obsBase, obsNameless
+
+-- Names arrive from other clients without a change of the records (and without DROPS_CHANGED), and
+-- a name is only ever added where none was: the observations note the NPCs and instances they found
+-- nameless, and a name among them since then makes them stale (namesGen goes up, which the result
+-- caches key on). Cheap: only the nameless ones are looked at.
+local function checkNames()
+    if not obs or not obsNameless then return end
+    local dd = ns.DropsDB and ns.DropsDB() or nil
+    if not dd then return end
+    for npc in pairs(obsNameless.npc) do
+        if dd.npc[npc] ~= nil then
+            obs, namesGen = nil, namesGen + 1
+            return
+        end
+    end
+    for inst in pairs(obsNameless.inst) do
+        if dd.inst[inst] ~= nil then
+            obs, namesGen = nil, namesGen + 1
+            return
+        end
+    end
+end
+
+-- The key with the most votes (the smaller key on a tie).
+local function winner(votes)
+    local best, most
+    for k, n in pairs(votes) do
+        if not most or n > most or (n == most and k < best) then best, most = k, n end
+    end
+    return best
+end
+
+-- The one key with the most votes; nil on a tie at the top or without votes.
+local function sole(votes)
+    local best, most, tie
+    for k, n in pairs(votes) do
+        if not most or n > most then
+            best, most, tie = k, n, false
+        elseif n == most then
+            tie = true
+        end
+    end
+    if tie or not most or most <= 0 then return nil end
+    return best
+end
+
+-- The dungeon among cands (the keys of one instance that hosts several) an NPC belongs to: the one
+-- whose bosses carry its name, else the one whose items it dropped most; nil when that is not clear
+-- - such an NPC stays unassigned rather than going to the first half.
+local function pickPart(cands, name, items, idx)
+    local l = lower(name)
+    local hit, hits = nil, 0
+    if l then
+        for _, k in ipairs(cands) do
+            local x = idx.byKey[k]
+            if x and x.byL[l] then hit, hits = k, hits + 1 end
+        end
+    end
+    if hits == 1 then return hit end
+    local inCands, v = {}, {}
+    for _, k in ipairs(cands) do inCands[k] = true end
+    for id in pairs(items) do
+        for k in pairs(idx.itemTo[id] or {}) do
+            if inCands[k] then v[k] = (v[k] or 0) + 1 end
+        end
+    end
+    return sole(v)
+end
+
+-- dungeon key -> list of { npc, name, items = set, lname of the boss it is (or nil: a boss of its
+-- own), kills (records), known (a boss of the facts or the base stock) }: the NPCs of the build's
+-- facts, of the base stock (ns.BIS.O) and of the records. An NPC belongs to the dungeon the facts give
+-- it, else to the instance most of its records are from, else to the dungeon whose items it dropped.
+-- The dungeons of an instance: the facts' (several where one instance hosts several, as the two
+-- halves of Blackrock Spire), else those whose client name is the instance's "part", else the one
+-- whose name it is, else the one whose records hold the dungeon's items. In an instance of several
+-- dungeons an NPC goes to the one whose data lists it (pickPart), else nowhere.
+local function observations(facts, idx)
+    local B = ns.BIS
+    local base = type(B) == "table" and type(B.O) == "table" and B.O or nil
+    if obs and obsGen == dropsGen and obsIndex == idx and obsBase == base then return obs end
+    local dd = ns.DropsDB and ns.DropsDB() or nil
+    local records = dd and dd.k or {}
+    local nameless = { npc = {}, inst = {} }
+    local npcs = {}
+    local function npcOf(npc)
+        local o = npcs[npc]
+        if not o then o = { npc = npc, items = {}, insts = {}, kills = 0 }; npcs[npc] = o end
+        return o
+    end
+    local npcKey = {}
+    for _, e in ipairs(facts) do
+        for _, b in ipairs(type(e.bosses) == "table" and e.bosses or {}) do
+            if type(b) == "number" then npcKey[b] = e.key; npcOf(b) end
+        end
+    end
+    for npc, e in pairs(base or {}) do
+        if type(npc) == "number" and type(e) == "table" and type(e.it) == "table" then
+            local o = npcOf(npc)
+            o.known = true
+            for id in pairs(e.it) do o.items[id] = true end
+        end
+    end
+    local instKeys, votes = {}, {}
+    for inst, list in pairs(idx.instKeys) do instKeys[inst] = list end
+    for _, r in pairs(records) do
+        -- a fallback record counts for the boss of its encounter (ns.BIS.EN) where the client names one
+        local bossNpc = ns.DropsBossOf and ns.DropsBossOf(r) or r.npc
+        if bossNpc > 0 then
+            local o = npcOf(bossNpc)
+            for id in pairs(r.it) do o.items[id] = true end
+            o.insts[r.inst] = (o.insts[r.inst] or 0) + 1
+            o.kills = o.kills + 1
+        end
+        if not instKeys[r.inst] then
+            local z = dd.inst[r.inst]
+            local zl = z and lower(z[2])
+            if zl and idx.parts[zl] then
+                instKeys[r.inst] = idx.parts[zl]
+            elseif zl and idx.byName[zl] then
+                instKeys[r.inst] = { idx.byName[zl] }
+            else
+                if not z then nameless.inst[r.inst] = true end
+                local v = votes[r.inst]
+                if not v then v = {}; votes[r.inst] = v end
+                for id in pairs(r.it) do
+                    for key in pairs(idx.itemTo[id] or {}) do v[key] = (v[key] or 0) + 1 end
+                end
+            end
+        end
+    end
+    for inst, v in pairs(votes) do
+        local w = not instKeys[inst] and winner(v)
+        if w then instKeys[inst] = { w } end
+    end
+    local out = {}
+    for npc, o in pairs(npcs) do
+        local name = dd and dd.npc[npc]
+        if dd and name == nil then nameless.npc[npc] = true end
+        local key, cands = npcKey[npc], nil
+        if not key then
+            local inst = winner(o.insts)
+            cands = inst and instKeys[inst]
+            if cands and #cands == 1 then
+                key = cands[1]
+            elseif cands then
+                key = pickPart(cands, name, o.items, idx)
+            end
+        end
+        if not key and not cands then
+            local v = {}
+            for id in pairs(o.items) do
+                for k in pairs(idx.itemTo[id] or {}) do v[k] = (v[k] or 0) + 1 end
+            end
+            key = winner(v)
+        end
+        local x = key and idx.byKey[key]
+        if x then
+            -- the boss of the item data: the same NPC, the same name, else the most shared items
+            local lname
+            for _, b in ipairs(x.order) do
+                if b.npc == npc then lname = b.lname break end
+            end
+            if not lname and name and x.byL[lower(name)] then lname = lower(name) end
+            if not lname then
+                local most = 0
+                for _, b in ipairs(x.order) do
+                    local n = 0
+                    for id in pairs(o.items) do if b.items[id] then n = n + 1 end end
+                    if n > most then lname, most = b.lname, n end
+                end
+            end
+            local list = out[key]
+            if not list then list = {}; out[key] = list end
+            list[#list + 1] = { npc = npc, name = name or ("Boss " .. npc), items = o.items, lname = lname, kills = o.kills,
+                known = npcKey[npc] ~= nil or o.known or false }
+        end
+    end
+    for _, list in pairs(out) do
+        table.sort(list, function(a, b) return a.npc < b.npc end)
+    end
+    obs, obsGen, obsIndex, obsBase, obsNameless = out, dropsGen, idx, base, nameless
+    return out
+end
+
+---------------------------------------------------------------------------
+-- The value of one dungeon
+---------------------------------------------------------------------------
+
+-- The bosses of a dungeon: the item data's (with their source records), the observed NPCs joined
+-- to them or standing on their own, each with the items seen only by the guild. One standing on its
+-- own that no facts or base stock name as a boss is tentative below MIN_KILLS kills: listed, not
+-- counted.
+local function bossesOf(key, x, seen)
+    local out, byL = {}, {}
+    for _, b in ipairs(x.order) do
+        local nb = { name = b.name, lname = b.lname, npc = b.npc, src = b, extra = {} }
+        out[#out + 1] = nb
+        byL[b.lname] = nb
+    end
+    for _, link in ipairs(seen[key] or {}) do
+        local nb = link.lname and byL[link.lname]
+        if not nb then
+            nb = { name = link.name, lname = lower(link.name), src = { items = {}, ids = {} }, extra = {}, kills = link.kills,
+                tentative = not link.known and (link.kills or 0) < MIN_KILLS }
+            out[#out + 1] = nb
+        end
+        nb.npc = nb.npc or link.npc
+        for id in pairs(link.items) do
+            if not nb.src.items[id] then nb.extra[id] = true end
+        end
+    end
+    return out
+end
+
+local ALL_SOURCES = { X = true, D = true, Q = true }
+
+-- Fills an entry's value: bosses with their upgrades and wishes, quests, upgrades, perRun, once,
+-- value. limit is the highest required level that counts.
+local function compute(entry, e, x, seen, o, gains, limit)
+    local raid = e.kind == "raid"
+    local c = ns.BisChar and ns.BisChar()
+    local ex = o.exclude or {}
+    local exItem, exBoss, exPlace = ex.item or {}, ex.boss or {}, ex.place or {}
+    local placeOff = exPlace["N:" .. tostring(e.name)] or (e.inst and exPlace["I:" .. e.inst]) or false
+    local po = Gear.Copy(o)
+    po.sources = ALL_SOURCES
+    -- the dungeon pages plan without the play style (F-124)
+    po.style = nil
+    -- the own picks (D-55) are targets: they count as upgrades until worn
+    local ownSet = ns.BisOwnPickSet and ns.BisOwnPickSet(o) or {}
+
+    local function gainOf(id)
+        local g = gains[id]
+        if g == nil then
+            local gain, slotKey, mine = D.Gain(id, o)
+            g = type(gain) == "number" and { gain, slotKey, mine } or false
+            gains[id] = g
+        end
+        return g or nil
+    end
+
+    local upgrades, perRun, once, questUps = 0, 0, 0, 0
+    local counted = {}
+    local bosses = {}
+    for _, b in ipairs(bossesOf(e.key, x, seen)) do
+        if not exBoss[b.name] then
+            local all = {}
+            for _, id in ipairs(b.src.ids) do all[#all + 1] = { id, b.src.items[id] } end
+            local extra = {}
+            for id in pairs(b.extra) do extra[#extra + 1] = id end
+            table.sort(extra)
+            for _, id in ipairs(extra) do all[#all + 1] = { id } end
+            -- every known item of the boss counts for the share of its quality
+            local byQ = {}
+            for _, a in ipairs(all) do
+                local q = quality(a[1]) or 0
+                byQ[q] = (byQ[q] or 0) + 1
+            end
+            local ob = { name = b.name, npc = b.npc, items = {}, perRun = 0, kills = b.kills, tentative = b.tentative or nil }
+            for _, a in ipairs(all) do
+                local id, rec = a[1], a[2]
+                local ok = not exItem[id] and reqLevel(id) <= limit
+                if ok and rec then ok = Gear.SourceOk(rec, po, Gear.Item(id)) elseif ok then ok = not placeOff end
+                local g = ok and gainOf(id)
+                if g then
+                    local gain, slotKey, mine = g[1], g[2], g[3]
+                    local owned = ownedOf(id)
+                    local wished = c and c.wish[id] ~= nil or false
+                    -- an owned upgrade is listed (with its mark) but not counted
+                    local better = isUp(gain, mine) or ownSet[id] == true
+                    local up = better and not owned or false
+                    if better or wished then
+                        local p0, est = chanceOf(rec), false
+                        if not p0 then
+                            local q = quality(id) or 0
+                            p0 = math.min(PRIOR_MAX, 1 / math.max(byQ[q] or 1, PRIOR_TABLE[q] or PRIOR_DEFAULT))
+                            est = true
+                        end
+                        local p, rate, n, K = D.Rate(ob, id, p0, raid, est)
+                        ob.items[#ob.items + 1] = { id = id, gain = gain, slotKey = slotKey, mine = mine, p = p, rate = rate, n = n, K = K,
+                            owned = owned, wished = wished, upgrade = up, rec = rec }
+                        if up and not ob.tentative then
+                            ob.perRun = ob.perRun + math.max(gain, 0) * (p or 0)
+                            if not counted[id] then counted[id] = true; upgrades = upgrades + 1 end
+                        end
+                    end
+                end
+            end
+            if #ob.items > 0 then
+                table.sort(ob.items, function(p, q)
+                    if p.upgrade ~= q.upgrade then return p.upgrade end
+                    if p.gain ~= q.gain then return p.gain > q.gain end
+                    return p.id < q.id
+                end)
+                perRun = perRun + ob.perRun
+                bosses[#bosses + 1] = ob
+            end
+        end
+    end
+
+    local quests = {}
+    for _, q in ipairs(x.quests) do
+        local rec = q.rec
+        if Gear.SourceOk(rec, po) then
+            local best
+            local ups = {}
+            for _, id in ipairs(q.items) do
+                if not exItem[id] and reqLevel(id) <= limit then
+                    local g = gainOf(id)
+                    if g and not ownedOf(id) and (isUp(g[1], g[3]) or ownSet[id]) then
+                        ups[#ups + 1] = { id = id, gain = g[1], slotKey = g[2], mine = g[3] }
+                        if not best or g[1] > best.gain then best = { id = id, gain = g[1], slotKey = g[2] } end
+                    end
+                end
+            end
+            -- a quest no longer possible (another way done) counts as done here
+            local done = questDone(rec[7]) or questGone(q.dq)
+            quests[#quests + 1] = { qid = rec[7], title = questTitle(rec), level = rec[4], best = best, done = done, rec = rec, ups = ups }
+            if best and not done then
+                once = once + math.max(best.gain, 0)
+                questUps = questUps + 1
+            end
+        end
+    end
+    table.sort(quests, function(a, b)
+        if a.done ~= b.done then return not a.done end
+        local ga, gb = a.best and a.best.gain or -1, b.best and b.best.gain or -1
+        if ga ~= gb then return ga > gb end
+        if a.title ~= b.title then return a.title < b.title end
+        return (a.qid or 0) < (b.qid or 0)
+    end)
+
+    entry.bosses, entry.quests = bosses, quests
+    entry.upgrades, entry.perRun, entry.once, entry.questUps = upgrades, perRun, once, questUps
+    entry.value = once + RUNS * perRun
+    entry.computed = true
+end
+
+---------------------------------------------------------------------------
+-- The list, the next dungeon, one dungeon
+---------------------------------------------------------------------------
+
+local function today()
+    return ns.DropsToday and ns.DropsToday() or nil
+end
+
+-- The entry of a fact without values: nil when it has no level range (neither a fact nor items),
+-- unless anyRange (then min and max stay nil and the fit is "unknown").
+local function baseEntry(e, x, o, anyRange)
+    local raid = e.kind == "raid"
+    local min, max, est = e.min, e.max, false
+    if raid then
+        local cap = Gear.Cap()
+        min, max = min or cap, max or cap
+    elseif not (min and max) then
+        -- lvl: the level the client tunes the dungeon to, the low end of its range; the high end
+        -- then comes from the items
+        local lvl = type(e.lvl) == "number" and e.lvl > 0 and e.lvl or nil
+        if lvl then
+            min, max, est = lvl, math.max(lvl, x and x.hi or lvl), true
+        elseif x and x.lo then
+            min, max, est = x.lo, x.hi, true
+        elseif anyRange then
+            min, max = nil, nil
+        else
+            return nil
+        end
+    end
+    local entry = { key = e.key, name = D.Name(e), kind = raid and "raid" or "party", size = e.size, min = min, max = max,
+        est = est, from = e.from, inst = e.inst, fact = e, bosses = {}, quests = {} }
+    entry.fit = min and D.Fit(o.level, min, max) or "unknown"
+    if raid and type(e.from) == "string" and ns.DropsDay then
+        local open, now = ns.DropsDay(e.from), today()
+        if open and now and now < open then entry.fit = "later" end
+    end
+    return entry
+end
+
+local function stateKey(o, facts)
+    checkNames()
+    return table.concat({ tostring(ns.Data("GEAR")), tostring(facts), tostring(ns.DUNGEON_QUESTS), bisStamp(), dropsGen, questGen, namesGen,
+        tostring(o.class), tostring(o.spec),
+        tostring(o.kind), tostring(o.level), tostring(o.faction) }, "|")
+end
+
+local listKey, listRes, nextKey, nextRes, nextWhy
+local infoKey, infoRes = nil, {}
+
+-- Every dungeon with a level range, by level (the raids have their own list, ns.RaidList):
+-- { key, name, kind, size, min, max, est, from, fit, value, once, perRun, upgrades, questUps,
+--   bosses = { { npc, name, perRun, items = { { id, gain, slotKey, p, rate, n, K, owned, wished,
+--   upgrade, rec } } } }, quests = { { qid, title, level, best = { id, gain, slotKey }, done } },
+--   computed }. Dungeons further than two levels away keep their values nil (ns.DungeonInfo gives
+-- them). Kept until anything it depends on changes; callers must not change it.
+function ns.DungeonList()
+    local facts = D.Facts()
+    if not facts or not Gear.Available() then return {} end
+    local o = D.Opts()
+    if not o or not o.class then return {} end
+    local key = stateKey(o, facts)
+    if key == listKey then return listRes end
+    local idx = getIndex(facts)
+    local seen = observations(facts, idx)
+    local gains = {}
+    local list = {}
+    for _, e in ipairs(facts) do
+        if type(e) == "table" and type(e.key) == "string" and e.kind ~= "raid" then
+            local x = idx.byKey[e.key]
+            local entry = baseEntry(e, x, o)
+            if entry then
+                if entry.fit ~= "high" then compute(entry, e, x, seen, o, gains, o.level + SOON) end
+                list[#list + 1] = entry
+            end
+        end
+    end
+    table.sort(list, function(a, b)
+        if a.min ~= b.min then return a.min < b.min end
+        if a.max ~= b.max then return a.max < b.max end
+        return a.name < b.name
+    end)
+    listKey, listRes = key, list
+    return list
+end
+
+-- The reason of a recommendation without the name: "4 Upgrades, 2 Quests mit Upgrades,
+-- Schwerpunkt <boss>".
+local function whyOf(e)
+    local parts = {}
+    if e.upgrades > 0 then parts[#parts + 1] = e.upgrades == 1 and "1 Upgrade" or (e.upgrades .. " Upgrades") end
+    if e.questUps > 0 then
+        parts[#parts + 1] = e.questUps == 1 and L["1 Quest mit Upgrade"] or L["%d Quests mit Upgrades"]:format(e.questUps)
+    end
+    -- the focus is a boss: the item data's trash group of a dungeon is none
+    local focus
+    for _, b in ipairs(e.bosses) do
+        if b.perRun > 0 and b.name ~= "Trash" and (not focus or b.perRun > focus.perRun) then focus = b end
+    end
+    if focus then parts[#parts + 1] = L["Schwerpunkt %s"]:format(focus.name) end
+    return table.concat(parts, ", ")
+end
+
+-- The next dungeon: the highest value among the fitting ones and those two levels ahead; entry and
+-- reason ("Hall of Thanes: 4 Upgrades, 2 Quests mit Upgrades, Schwerpunkt <boss>"), or nil and
+-- why not. The entry carries the reason without its name as entry.why.
+function ns.DungeonNext()
+    if not D.Facts() then return nil, NO_DATA end
+    local list = ns.DungeonList()
+    if list == nextKey then return nextRes, nextWhy end
+    local best
+    for _, e in ipairs(list) do
+        if FIT_ORDER[e.fit] and e.computed and e.value > 0 and (e.upgrades > 0 or e.questUps > 0) then
+            if not best or e.value > best.value or (e.value == best.value and e.min < best.min) then best = e end
+        end
+    end
+    if best then
+        best.why = whyOf(best)
+        nextRes, nextWhy = best, best.name .. ": " .. best.why
+    else
+        nextRes, nextWhy = nil, NO_HIT
+    end
+    nextKey = list
+    return nextRes, nextWhy
+end
+
+-- One dungeon or raid by key, with its values even out of reach (items up to its upper end); one
+-- without a level range has min and max nil and the fit "unknown". nil for an unknown key.
+function ns.DungeonInfo(dkey)
+    local facts = D.Facts()
+    if not facts or not Gear.Available() then return nil end
+    for _, e in ipairs(ns.DungeonList()) do
+        if e.key == dkey and e.computed then return e end
+    end
+    local o = D.Opts()
+    if not o or not o.class then return nil end
+    local key = stateKey(o, facts)
+    if key ~= infoKey then infoKey, infoRes = key, {} end
+    if infoRes[dkey] ~= nil then return infoRes[dkey] or nil end
+    local idx = getIndex(facts)
+    local found
+    for _, e in ipairs(facts) do
+        if type(e) == "table" and e.key == dkey then
+            local x = idx.byKey[e.key]
+            found = baseEntry(e, x, o, true)
+            compute(found, e, x, observations(facts, idx), o, {}, math.max(o.level + SOON, found.max or 0))
+            break
+        end
+    end
+    infoRes[dkey] = found or false
+    return found
+end
+
+-- Whether a fact key is a raid.
+function D.IsRaid(dkey)
+    for _, e in ipairs(D.Facts() or {}) do
+        if type(e) == "table" and e.key == dkey then return e.kind == "raid" end
+    end
+    return false
+end
+
+-- Every raid at any level, in the facts' order, each with its values (ns.DungeonInfo): below the
+-- level cap its fit is "soon" or "high", before its opening day "later".
+function ns.RaidList()
+    local out = {}
+    for _, e in ipairs(D.Facts() or {}) do
+        if type(e) == "table" and e.kind == "raid" and type(e.key) == "string" then
+            local info = ns.DungeonInfo(e.key)
+            if info then out[#out + 1] = info end
+        end
+    end
+    return out
+end
+
+-- The raid worth running now: open, at the level cap, with upgrades, the highest value. entry and
+-- reason ("Onyxia's Lair: 3 Upgrades, Schwerpunkt Onyxia"), or nil and why not.
+function ns.RaidNext()
+    if not D.Facts() then return nil, NO_DATA end
+    local list = ns.RaidList()
+    if #list == 0 then return nil, L["Keine Raid-Daten."] end
+    local best, later, low
+    for _, e in ipairs(list) do
+        if e.fit == "later" then
+            later = later or e
+        elseif e.fit ~= "fit" then
+            low = low or e
+        elseif e.computed and e.value > 0 and e.upgrades > 0 and (not best or e.value > best.value) then
+            best = e
+        end
+    end
+    if best then
+        best.why = whyOf(best)
+        return best, best.name .. ": " .. best.why
+    end
+    if later then return nil, L["Raids öffnen %s."]:format(D.FitText(later)) end
+    if low then return nil, L["Raids ab Stufe %d."]:format(low.min or Gear.Cap()) end
+    return nil, L["Kein Raid hat noch Upgrades für dich."]
+end
+
+---------------------------------------------------------------------------
+-- The ranking and the chain
+---------------------------------------------------------------------------
+
+-- The dungeons worth running now (fitting or two levels ahead, computed, with a value), best
+-- first; on equal value the lower one. Its first is ns.DungeonNext's entry.
+function ns.DungeonRanking()
+    local out = {}
+    for _, e in ipairs(ns.DungeonList()) do
+        if FIT_ORDER[e.fit] and e.computed and e.value > 0 and (e.upgrades > 0 or e.questUps > 0) then out[#out + 1] = e end
+    end
+    table.sort(out, function(a, b)
+        if a.value ~= b.value then return a.value > b.value end
+        if a.min ~= b.min then return a.min < b.min end
+        return a.name < b.name
+    end)
+    return out
+end
+
+-- Virtual gear: the worn scores per slot (Bis.lua's) as a table to equip on, two = a two-hander.
+function D.Virtual(o)
+    local w = ns.BisWornScores and ns.BisWornScores(o) or { slot = {} }
+    local v = { two = w.two and true or false }
+    for k, s in pairs(w.slot) do v[k] = s end
+    return v
+end
+
+local function vMine(v, slotKey, group)
+    if slotKey == "FINGER1" or slotKey == "FINGER2" then return math.min(v.FINGER1 or 0, v.FINGER2 or 0) end
+    if slotKey == "TRINKET1" or slotKey == "TRINKET2" then return math.min(v.TRINKET1 or 0, v.TRINKET2 or 0) end
+    if slotKey == "MAINHAND" then
+        if group == "2H" then return (v.MAINHAND or 0) + (v.OFFHAND or 0) end
+        if v.two then return nil end
+        return v.MAINHAND or 0
+    end
+    if slotKey == "OFFHAND" then
+        if v.two then return nil end
+        return v.OFFHAND or 0
+    end
+    return v[slotKey] or 0
+end
+
+-- The gain of an item scoring score against the virtual gear, as Bis.lua's gainFor counts it: rings
+-- and trinkets against the weaker one, a two-hander against both hands; nil for a weapon switch.
+-- The second value is what it is held against.
+function D.VGain(v, slotKey, group, score)
+    local m = vMine(v, slotKey, group)
+    if not m then return nil end
+    return score - m, m
+end
+
+-- Puts an item scoring score on the virtual gear (rings and trinkets replace the weaker one).
+function D.VEquip(v, slotKey, group, score)
+    local function pair(a, b)
+        if (v[a] or 0) <= (v[b] or 0) then v[a] = score else v[b] = score end
+    end
+    if slotKey == "FINGER1" or slotKey == "FINGER2" then
+        pair("FINGER1", "FINGER2")
+    elseif slotKey == "TRINKET1" or slotKey == "TRINKET2" then
+        pair("TRINKET1", "TRINKET2")
+    elseif slotKey == "MAINHAND" and group == "2H" then
+        v.MAINHAND, v.OFFHAND, v.two = score, 0, true
+    else
+        v[slotKey] = score
+    end
+end
+
+-- The value of a dungeon against the virtual gear, its upgrade count and what one would equip
+-- after it: every open quest's best upgrade and every boss's biggest one. Without anything
+-- equipped virtually this is the planner's own value.
+local function chainValue(e, v)
+    local perRun, once, ups, picks, counted = 0, 0, 0, {}, {}
+    local function cand(id, slotKey, gain, mine)
+        local group = ns.BisGroup and ns.BisGroup(id)
+        local score = gain + (mine or 0)
+        local g, m = D.VGain(v, slotKey, group, score)
+        if g and isUp(g, m) then return { id = id, slotKey = slotKey, group = group, score = score, gain = g } end
+        return nil
+    end
+    for _, b in ipairs(e.bosses) do
+        if not b.tentative then
+            local top
+            for _, it in ipairs(b.items) do
+                if it.upgrade then
+                    local c = cand(it.id, it.slotKey, it.gain, it.mine)
+                    if c then
+                        perRun = perRun + c.gain * (it.p or 0)
+                        if not counted[it.id] then counted[it.id] = true; ups = ups + 1 end
+                        if not top or c.gain > top.gain then top = c end
+                    end
+                end
+            end
+            if top then picks[#picks + 1] = top end
+        end
+    end
+    for _, q in ipairs(e.quests) do
+        if not q.done then
+            local best
+            for _, u in ipairs(q.ups or {}) do
+                local c = cand(u.id, u.slotKey, u.gain, u.mine)
+                if c and (not best or c.gain > best.gain) then best = c end
+            end
+            if best then
+                once = once + best.gain
+                ups = ups + 1
+                picks[#picks + 1] = best
+            end
+        end
+    end
+    return once + RUNS * perRun, ups, picks
+end
+
+local chainList, chainRes = nil, {}
+
+-- The chain: the best dungeon, its upgrades equipped virtually, then the best of the rest against
+-- that, up to steps (5) dungeons: { { entry, value, upgrades, items = { ids equipped } } }, and the
+-- reason it ends (nil when it reached steps). Step one is ns.DungeonNext's entry. Kept while the
+-- list is; callers must not change it.
+function ns.DungeonChain(steps)
+    steps = steps or CHAIN_STEPS
+    if not D.Facts() then return {}, NO_DATA end
+    local list = ns.DungeonList()
+    if list ~= chainList then chainList, chainRes = list, {} end
+    local kept = chainRes[steps]
+    if kept then return kept[1], kept[2] end
+    local o = D.Opts()
+    local out = {}
+    if o and o.class then
+        local v = D.Virtual(o)
+        local used = {}
+        for _ = 1, steps do
+            local best, bestValue, bestUps, bestPicks
+            for _, e in ipairs(list) do
+                if not used[e] and FIT_ORDER[e.fit] and e.computed then
+                    local value, ups, picks = chainValue(e, v)
+                    if value > 0 and ups > 0 and (not best or value > bestValue or (value == bestValue and e.min < best.min)) then
+                        best, bestValue, bestUps, bestPicks = e, value, ups, picks
+                    end
+                end
+            end
+            if not best then break end
+            used[best] = true
+            table.sort(bestPicks, function(a, b)
+                if a.gain ~= b.gain then return a.gain > b.gain end
+                return a.id < b.id
+            end)
+            local items = {}
+            for _, p in ipairs(bestPicks) do
+                local g, m = D.VGain(v, p.slotKey, p.group, p.score)
+                if g and isUp(g, m) then
+                    D.VEquip(v, p.slotKey, p.group, p.score)
+                    items[#items + 1] = p.id
+                end
+            end
+            out[#out + 1] = { entry = best, value = bestValue, upgrades = bestUps, items = items }
+        end
+    end
+    local why
+    if #out == 0 then why = NO_HIT elseif #out < steps then why = CHAIN_END end
+    chainRes[steps] = { out, why }
+    return out, why
+end
+
+-- "Kette: 1. Hall of Thanes · 2. The Deadmines", or why there is none.
+function D.ChainText(chain, why)
+    if #chain == 0 then return why or NO_HIT end
+    local parts = {}
+    for i, s in ipairs(chain) do parts[#parts + 1] = ("%d. %s"):format(i, s.entry.name) end
+    return L["Kette: %s"]:format(table.concat(parts, " · "))
+end
+
+---------------------------------------------------------------------------
+-- The entrance
+---------------------------------------------------------------------------
+
+local function factOf(key)
+    for _, e in ipairs(D.Facts() or {}) do
+        if type(e) == "table" and e.key == key then return e end
+    end
+    return nil
+end
+
+-- The nearest entrance of a dungeon as the map data knows it: point, map key; nil without one.
+function ns.DungeonEntrance(key)
+    local e = factOf(key)
+    if not e or not ns.HasData("MAP") or not ns.MapPoints then return nil end
+    local keys = {}
+    if type(e.inst) == "number" then keys[#keys + 1] = "I:" .. e.inst end
+    if e.name then keys[#keys + 1] = "N:" .. e.name end
+    for _, a in ipairs(type(e.aliases) == "table" and e.aliases or {}) do keys[#keys + 1] = "N:" .. a end
+    for _, k in ipairs(keys) do
+        local points = ns.MapPoints(k)
+        if #points > 0 then return ns.MapNearest(points), k end
+    end
+    return nil
+end
+
+-- Sets the map target (and the client's waypoint) to a dungeon's entrance; true, or nil and why.
+function ns.DungeonWaypoint(key)
+    if not ns.HasData("MAP") then return nil, NO_MAP end
+    local e = factOf(key)
+    if not e then return nil, NO_DATA end
+    local point, mapKey = ns.DungeonEntrance(key)
+    if not point then return nil, NO_ENTRANCE end
+    return ns.MapSetPoint(point, L["%s (Eingang)"]:format(D.Name(e)), mapKey)
+end
+
+---------------------------------------------------------------------------
+-- The quest list of a dungeon
+---------------------------------------------------------------------------
+
+-- The text for a status of ns.DungeonQuests; nil when the data is there.
+function D.QuestStatusText(status)
+    if status == "ok" then return nil end
+    return NO_QUESTS
+end
+
+-- Whether a quest of the quest data is open to the options' faction and class.
+local function questFits(r, o)
+    if type(r) ~= "table" then return false end
+    if (r[4] == "A" or r[4] == "H") and o.faction and r[4] ~= o.faction then return false end
+    if (r[5] or 0) > 0 and o.class and not Gear.HasClassBit(r[5], o.class) then return false end
+    return true
+end
+
+-- The first quest that excludes a quest of the quest data and is done (its 13th field), or nil.
+local function goneBy(r)
+    if type(r) ~= "table" or type(r[13]) ~= "table" then return nil end
+    for _, a in ipairs(r[13]) do
+        if questDone(a) then return a end
+    end
+    return nil
+end
+
+local function textOr(v) return type(v) == "string" and v ~= "" and v or nil end
+local function numOr(v) return type(v) == "number" and v or 0 end
+
+-- One quest of the quest data as a node: { qid, title, minLevel, level, start, giver, points, done,
+-- active, gone (no longer possible: a quest that excludes it is done), goneBy (that quest's id),
+-- faction, classes, races, skill, breadcrumb, items (start items { { item id, NPC name, uiMapID,
+-- dungeon key } }), object (start object), ender, enderPoints (the turn-in NPC and its points),
+-- objective, dungeon, scanXP (the XP the quest scan saw), scanned (placed by the quest scan's text
+-- alone, D-109) }; the item data's map points and giver stand in where the quest data has none.
+-- Fields an older data file lacks stay nil (or 0).
+-- The spots of field 22 (hand-kept hints, D-65) in Amisia's language: { text, ... } or nil.
+local function spotsOf(v)
+    if type(v) ~= "table" then return nil end
+    local out = {}
+    for _, pair in ipairs(v) do
+        local t = type(pair) == "table" and textOr(pair[ns.GERMAN and 1 or 2]) or nil
+        if t then out[#out + 1] = t end
+    end
+    return #out > 0 and out or nil
+end
+
+local function questNode(qid, r, rec)
+    local key = "Q:" .. tostring(qid)
+    local map = ns.Data("MAP")
+    local mapGiver = map and map.G and map.G[key] or nil
+    local mapPoints = map and map.P and map.P[key] or nil
+    local n = { qid = qid, done = questDone(qid), active = questActive(qid) }
+    n.goneBy = not n.done and not n.active and goneBy(r) or nil
+    n.gone = n.goneBy ~= nil
+    if r then
+        n.title = titleOf(qid, r[1])
+        n.minLevel, n.level, n.start, n.giver, n.points = r[2] or 0, r[3] or 0, r[6] or "", r[7] or mapGiver, r[8] or mapPoints
+        n.faction, n.classes, n.dungeon = textOr(r[4]), numOr(r[5]), textOr(r[11])
+        n.breadcrumb = r[14] == true or nil
+        n.items = type(r[15]) == "table" and #r[15] > 0 and r[15] or nil
+        n.object, n.races, n.skill = textOr(r[16]), numOr(r[17]), numOr(r[18])
+        n.ender, n.enderPoints, n.objective = textOr(r[19]), textOr(r[20]), textOr(r[21])
+        n.spots = spotsOf(r[22])
+        -- the XP the quest scan saw (its character's level unknown) and whether only the scan's text
+        -- placed the quest in its dungeon (D-109: no source knows its giver or place)
+        n.scanXP = type(r[23]) == "number" and r[23] > 0 and r[23] or nil
+        n.scanned = r[24] == true or nil
+    else
+        n.title = titleOf(qid, rec and rec[2])
+        n.minLevel, n.level = rec and rec[4] or 0, rec and rec[3] or 0
+        n.giver, n.points = mapGiver, mapPoints
+        n.start = mapPoints and "O" or ""
+        n.faction, n.classes, n.races, n.skill = textOr(rec and rec[5]), 0, 0, 0
+    end
+    -- what this client saw itself goes first (Collector.lua): the giver and where it stood, the NPC
+    -- that took the quest back and where, the objective text of the offer. Only own observations: a
+    -- giver heard from the guild could come from one member alone (the collector does not keep who
+    -- sent a heard field), and a waypoint or pin must not rest on that.
+    if ns.CollectQuestOwnStart then
+        local giver, point = ns.CollectQuestOwnStart(qid)
+        n.giver = giver or n.giver
+        if point then
+            n.points = point
+            if n.start == "" then n.start = "O" end
+        end
+    end
+    if ns.CollectQuestOwnEnd then
+        local ender, point = ns.CollectQuestOwnEnd(qid)
+        if point then n.enderPoints, n.ender = point, ender or nil
+        elseif ender then n.ender = ender end
+    end
+    n.objective = ns.CollectQuestObjective and ns.CollectQuestObjective(qid) or n.objective
+    -- the scan's mark says the giver is unknown: gone once this client saw the giver itself
+    if n.scanned and (n.giver or n.points) then n.scanned = nil end
+    return n
+end
+
+local function isBreadcrumb(r) return type(r) == "table" and r[14] == true end
+
+-- The breadcrumbs that lead to each quest: a breadcrumb row (14th field true) names in its 13th field
+-- the quests it leads to (once one of them is done it is gone). Built once per quest data table.
+local crumbData, crumbIndex
+local function crumbsOf(dq, qid)
+    if crumbData ~= dq then
+        crumbData, crumbIndex = dq, {}
+        for id, r in pairs(dq.Q) do
+            if isBreadcrumb(r) and type(r[13]) == "table" then
+                for _, to in ipairs(r[13]) do
+                    local list = crumbIndex[to]
+                    if not list then
+                        list = {}
+                        crumbIndex[to] = list
+                    end
+                    list[#list + 1] = id
+                end
+            end
+        end
+        for _, list in pairs(crumbIndex) do table.sort(list) end
+    end
+    return crumbIndex[qid]
+end
+
+-- Of a "one of" list the done quest, else the first one still possible, else the first.
+local function pickOne(dq, list)
+    local pick
+    for _, p in ipairs(list) do
+        if questDone(p) then return p end
+        if not pick or (questGone(dq.Q[pick]) and not questGone(dq.Q[p])) then pick = p end
+    end
+    return pick
+end
+
+-- The pre-quests of a quest from the root, each once: all of the "all" list, and of a "one of"
+-- list (any one of them will do) the done one, else the first one still possible (marked one = true
+-- when there was a choice; others = the other ids of the list that fit). A breadcrumb (a quest that
+-- only leads to the next one, the 14th field) is optional (breadcrumb = true, optional = true), and
+-- so is every quest only it needs (optional = true); in a "one of" list with other quests the
+-- breadcrumbs stand beside the pick as optional ones. The breadcrumbs that lead to a quest (crumbsOf)
+-- stand right before it, as optional steps, while they are still possible. needs: the nodes a node
+-- waits for (its required pre-quests). Quests of the other faction or class fall away. A loop in the
+-- data ends.
+local function chainOf(dq, qid, o)
+    local out, seen, nodes = {}, { [qid] = true }, {}
+    local function walk(id, depth, optional)
+        local r = dq.Q[id]
+        local needs = {}
+        if type(r) ~= "table" or depth > MAX_CHAIN then return needs end
+        local function take(p, how)
+            if seen[p] then
+                if nodes[p] and not how.breadcrumb and not optional then needs[#needs + 1] = nodes[p] end
+                return
+            end
+            seen[p] = true
+            local opt = optional or how.breadcrumb or false
+            local own = walk(p, depth + 1, opt)
+            local n = questNode(p, dq.Q[p])
+            n.one, n.others = how.one or nil, how.others
+            n.breadcrumb = how.breadcrumb or n.breadcrumb
+            n.optional = opt or nil
+            n.needs = own
+            nodes[p] = n
+            out[#out + 1] = n
+            if not how.breadcrumb and not optional then needs[#needs + 1] = n end
+        end
+        for _, p in ipairs(type(r[9]) == "table" and r[9] or {}) do
+            if questFits(dq.Q[p], o) then take(p, { breadcrumb = isBreadcrumb(dq.Q[p]) or nil }) end
+        end
+        local list = type(r[10]) == "table" and r[10] or {}
+        local real, crumbs = {}, {}
+        for _, p in ipairs(list) do
+            if questFits(dq.Q[p], o) then
+                if isBreadcrumb(dq.Q[p]) then crumbs[#crumbs + 1] = p else real[#real + 1] = p end
+            end
+        end
+        local group = #real > 0 and real or crumbs
+        local pick = pickOne(dq, group)
+        if pick then
+            local others = {}
+            for _, p in ipairs(group) do
+                if p ~= pick then others[#others + 1] = p end
+            end
+            take(pick, { one = #group > 1 or #list > 1, others = #others > 0 and others or nil, breadcrumb = group == crumbs or nil })
+        end
+        if group == real then
+            for _, p in ipairs(crumbs) do take(p, { breadcrumb = true }) end
+        end
+        -- the breadcrumbs that lead to this quest, while they still lead somewhere (not once it is in the log)
+        for _, p in ipairs(crumbsOf(dq, id) or {}) do
+            local cr = dq.Q[p]
+            if questFits(cr, o) and (questDone(p) or not (questGone(cr) or questActive(id))) then take(p, { breadcrumb = true }) end
+        end
+        return needs
+    end
+    local needs = walk(qid, 1, false)
+    return out, needs
+end
+
+local questKey, questRes = nil, {}
+
+-- The quests of a dungeon for the options (default the own character): list, status. status "ok"
+-- (the quest data knows the dungeon), "missing" (it does not: Forever's new dungeons; only the item
+-- data's quests are listed) or "nodata" (no quest data at all). Each quest: { qid, title, minLevel,
+-- level, start ("I", "O", "X", ""), giver, points, done, active, gone (no longer possible), chain =
+-- { pre-quest nodes, root first }, rewards = { { id, gain, slotKey, upgrade, owned } } (upgrades
+-- first), best }. Open ones first, by level; done and no longer possible ones last. Kept until anything it depends on changes; callers must not change it.
+function ns.DungeonQuests(dkey)
+    local facts = D.Facts()
+    local dq = questData()
+    local status = not dq and "nodata" or (type(dq.D[dkey]) == "table" and "ok" or "missing")
+    if not facts or not Gear.Available() then return {}, status end
+    local o = D.Opts()
+    if not o or not o.class then return {}, status end
+    local key = stateKey(o, facts)
+    if key ~= questKey then questKey, questRes = key, {} end
+    local kept = questRes[dkey]
+    if kept then return kept, status end
+    local x = getIndex(facts).byKey[dkey]
+    local out = {}
+    local po = Gear.Copy(o)
+    po.sources = ALL_SOURCES
+    po.exclude = nil
+    po.style = nil
+    for _, q in ipairs(x and x.quests or {}) do
+        local rec = q.rec
+        local qid = type(rec[7]) == "number" and rec[7] > 0 and rec[7] or nil
+        if Gear.SourceOk(rec, po) and (not q.dq or questFits(q.dq, o)) then
+            local n = qid and questNode(qid, q.dq, rec) or { title = rec[2] or "?", minLevel = rec[4] or 0, level = rec[3] or 0,
+                start = "", done = false, active = false }
+            if qid and dq and q.dq then n.chain, n.needs = chainOf(dq, qid, o) else n.chain = {} end
+            n.rewards = {}
+            for _, id in ipairs(q.items) do
+                local gain, slotKey, mine = D.Gain(id, o)
+                if type(gain) == "number" then
+                    local owned = ownedOf(id)
+                    local up = isUp(gain, mine) and not owned or false
+                    n.rewards[#n.rewards + 1] = { id = id, gain = gain, slotKey = slotKey, upgrade = up, owned = owned }
+                    if up and (not n.best or gain > n.best.gain) then n.best = n.rewards[#n.rewards] end
+                end
+            end
+            table.sort(n.rewards, function(a, b)
+                if a.upgrade ~= b.upgrade then return a.upgrade end
+                if a.gain ~= b.gain then return a.gain > b.gain end
+                return a.id < b.id
+            end)
+            out[#out + 1] = n
+        end
+    end
+    table.sort(out, function(a, b)
+        local ea, eb = a.done or a.gone or false, b.done or b.gone or false
+        if ea ~= eb then return not ea end
+        if a.minLevel ~= b.minLevel then return a.minLevel < b.minLevel end
+        if a.level ~= b.level then return a.level < b.level end
+        if a.title ~= b.title then return a.title < b.title end
+        return (a.qid or 0) < (b.qid or 0)
+    end)
+    questRes[dkey] = out
+    return out, status
+end
+
+-- "20 (ab 15)" or "20".
+function D.QuestLevelText(n)
+    if (n.level or 0) <= 0 then return n.minLevel and n.minLevel > 0 and L["ab %d"]:format(n.minLevel) or "" end
+    if (n.minLevel or 0) > 0 and n.minLevel ~= n.level then return L["%d (ab %d)"]:format(n.level, n.minLevel) end
+    return tostring(n.level)
+end
+
+-- Where a quest starts, as text: "im Dungeon", "durch ein Item", "<giver>, <zone> 56, 48" or "".
+function D.QuestStartText(n)
+    if n.start == "I" then return L["im Dungeon"] end
+    if n.start == "X" then return L["durch ein Item"] end
+    local Map = ns.Map
+    local points = Map and Map.ParsePoints and Map.ParsePoints(n.points) or {}
+    if #points > 0 then
+        local p = ns.MapNearest(points)
+        return ("%s, %s %s"):format(n.giver or "?", Gear.ZoneName(p.map) or ("Zone " .. p.map), Map.Coords(p))
+    end
+    return n.giver and L["%s (Ort unbekannt)"]:format(n.giver) or ""
+end
+
+-- The state of a quest node for its mark: "done", "gone" (no longer possible), "ready" (in the log,
+-- every objective done), "active" (in the log), "locked" (the own level is below its minimum or a
+-- pre-quest is open) or "open" (can be taken).
+function D.QuestState(n)
+    if type(n) ~= "table" then return "open" end
+    if n.done then return "done" end
+    if n.gone then return "gone" end
+    if n.active then return questReady(n.qid) and "ready" or "active" end
+    local my = tonumber(ns.Plain(UnitLevel("player"))) or 1
+    if (n.minLevel or 0) > my then return "locked" end
+    -- a pre-quest it needs is open (an optional one, a breadcrumb, does not hold it back)
+    for _, c in ipairs(n.needs or n.chain or {}) do
+        if not c.done and not c.optional then return "locked" end
+    end
+    return "open"
+end
+
+-- The own state of a quest of the quest data by its id alone, for what the group learns (F-178,
+-- Gear/GroupQuests.lua): "done", "ready", "active", "na" (the data says this character can never take
+-- it: faction, class, race; or a quest that excludes it is done), "locked" (the own level below its
+-- minimum, a pre-quest of field 9 open, none of field 10 done) or "open". o: ns.QuestOpts() (faction,
+-- class, race, level). A quest the data lacks reads by the client's flags alone.
+local function hasRaceBit(mask, race) return math.floor(mask / 2 ^ (race - 1)) % 2 == 1 end
+function D.OwnQuestState(qid, o)
+    if questDone(qid) then return "done" end
+    if questActive(qid) then return questReady(qid) and "ready" or "active" end
+    local dq = questData()
+    local r = dq and dq.Q[qid]
+    if type(r) ~= "table" then return "open" end
+    o = o or (ns.QuestOpts and ns.QuestOpts()) or {}
+    if not questFits(r, o) or goneBy(r) then return "na" end
+    if type(r[17]) == "number" and r[17] > 0 and type(o.race) == "number" and not hasRaceBit(r[17], o.race) then return "na" end
+    local my = o.level or tonumber(ns.Plain(UnitLevel("player"))) or 1
+    if (r[2] or 0) > my then return "locked" end
+    for _, p in ipairs(type(r[9]) == "table" and r[9] or {}) do
+        if not questDone(p) then return "locked" end
+    end
+    if type(r[10]) == "table" and #r[10] > 0 then
+        local any = false
+        for _, p in ipairs(r[10]) do
+            if questDone(p) then any = true break end
+        end
+        if not any then return "locked" end
+    end
+    return "open"
+end
+
+-- The client's marks for a quest state, as text: the yellow "!" of a quest to take (grey: not yet),
+-- the "?" of one in the log (yellow: ready to hand in, grey: under way), the ready check's tick for a
+-- done one and its cross for one no longer possible.
+local AVAILABLE, ACTIVE = "Interface\\GossipFrame\\AvailableQuestIcon", "Interface\\GossipFrame\\ActiveQuestIcon"
+local STATE_ICON = {
+    open = "|T" .. AVAILABLE .. ":14:14|t",
+    locked = "|T" .. AVAILABLE .. ":14:14:0:0:16:16:0:16:0:16:110:110:110|t",
+    ready = "|T" .. ACTIVE .. ":14:14|t",
+    active = "|T" .. ACTIVE .. ":14:14:0:0:16:16:0:16:0:16:110:110:110|t",
+    done = "|TInterface\\RaidFrame\\ReadyCheck-Ready:13:13|t",
+    gone = "|TInterface\\RaidFrame\\ReadyCheck-NotReady:13:13|t",
+}
+function D.QuestStateIcon(state) return STATE_ICON[state] or "" end
+
+-- The same marks as a texture and its shade (1, or the grey of "not yet" and "under way"): the
+-- quest path's step cards draw them large.
+local STATE_ART = {
+    open = { AVAILABLE, 1 }, locked = { AVAILABLE, 0.43 }, ready = { ACTIVE, 1 }, active = { ACTIVE, 0.43 },
+    done = { "Interface\\RaidFrame\\ReadyCheck-Ready", 1 }, gone = { "Interface\\RaidFrame\\ReadyCheck-NotReady", 1 },
+}
+function D.QuestStateArt(state)
+    local a = STATE_ART[state] or STATE_ART.open
+    return a[1], a[2]
+end
+
+---------------------------------------------------------------------------
+-- The quest path of a dungeon quest (F-135): its steps from the first pre-quest to the quest
+---------------------------------------------------------------------------
+local MAX_STEPS = 15
+
+-- "Westfall 56, 48" of the nearest of points, and that point.
+local function placeText(points)
+    local p = ns.MapNearest(points)
+    return ("%s %s"):format(Gear.ZoneName(p.map) or ("Zone " .. p.map), ns.Map.Coords(p)), p
+end
+
+-- "bei <name>, Westfall 56, 48" (without a name "in Westfall 56, 48"), and the point.
+local function nearestText(name, points)
+    local where, p = placeText(points)
+    return name and L["bei %s, %s"]:format(name, where) or L["in %s"]:format(where), p
+end
+
+-- The dungeon a node starts in: its own dungeon key, else the path's.
+local function nodeDungeon(n, dkey) return n.dungeon or dkey end
+
+local function dungeonName(key)
+    local e = key and factOf(key)
+    return e and D.Name(e) or key
+end
+
+-- How a quest is taken: { kind = "npc" | "item" | "object" | "inside" | "unknown", text, point (the
+-- place a waypoint may go to, or nil), label (the map target's name), items = { { id, name, from } } }.
+-- inside: the giver stands in the dungeon (the waypoint goes to its entrance, else to the giver's own
+-- point inside); item: a start item, where it drops (in a dungeon: its entrance).
+function D.QuestAccept(n, dkey)
+    local Map = ns.Map
+    local points = Map and Map.ParsePoints and Map.ParsePoints(n.points) or {}
+    local out = {}
+    if n.items or n.start == "X" then
+        out.kind, out.items = "item", {}
+        local parts = {}
+        for _, it in ipairs(n.items or {}) do
+            local id, npc, zone, dun = tonumber(it[1]), textOr(it[2]), tonumber(it[3]), textOr(it[4])
+            local name = id and ns.ItemName and ns.ItemName(id) or (id and L["Gegenstand %d"]:format(id)) or "?"
+            local from
+            if dun then from = dungeonName(dun)
+            elseif zone then from = Gear.ZoneName(zone) or ("Zone " .. zone) end
+            local line
+            if npc and from then line = L["Gegenstand %s aufheben oder benutzen, fällt von %s in %s"]:format(name, npc, from)
+            elseif npc then line = L["Gegenstand %s aufheben oder benutzen, fällt von %s"]:format(name, npc)
+            elseif from then line = L["Gegenstand %s aufheben oder benutzen, zu finden in %s"]:format(name, from)
+            else line = L["Gegenstand %s aufheben oder benutzen"]:format(name) end
+            parts[#parts + 1] = line
+            out.items[#out.items + 1] = { id = id, name = name, from = from, npc = npc }
+            if dun and not out.point then
+                local point = ns.DungeonEntrance(dun)
+                if point then out.point, out.label = point, L["%s (Eingang)"]:format(dungeonName(dun)) end
+            end
+        end
+        out.text = #parts > 0 and table.concat(parts, "; ") or L["durch einen Gegenstand"]
+        return out
+    end
+    if n.start == "I" then
+        out.kind = "inside"
+        local key = nodeDungeon(n, dkey)
+        out.text = n.giver and L["im Dungeon, bei %s"]:format(n.giver) or L["im Dungeon"]
+        local point = key and ns.DungeonEntrance(key)
+        if point then
+            out.point, out.label = point, L["%s (Eingang)"]:format(dungeonName(key))
+        elseif #points > 0 then
+            out.point = ns.MapNearest(points)
+            out.label = L["Questgeber %s (im Dungeon)"]:format(n.giver or n.title or "?")
+        end
+        return out
+    end
+    if n.object then
+        out.kind = "object"
+        if #points > 0 then
+            local where
+            where, out.point = placeText(points)
+            out.text = L["an einem Objekt: %s, %s"]:format(n.object, where)
+        else
+            out.text = L["an einem Objekt: %s"]:format(n.object)
+        end
+        out.label = n.object
+        return out
+    end
+    if #points > 0 then
+        out.kind = "npc"
+        out.text, out.point = nearestText(n.giver, points)
+        out.label = L["Questgeber %s"]:format(n.giver or n.title or "?")
+        return out
+    end
+    out.kind = "unknown"
+    out.text = n.giver and L["bei %s; Ort unbekannt, Amisia lernt ihn, sobald du die Quest siehst"]:format(n.giver)
+        or L["Ort unbekannt; Amisia lernt ihn, sobald du die Quest siehst"]
+    return out
+end
+
+-- Where a quest is handed in: { text, point, label, known } ("noch unbekannt" when Amisia knows
+-- neither the NPC nor the place).
+function D.QuestTurnIn(n)
+    local Map = ns.Map
+    local points = Map and Map.ParsePoints and Map.ParsePoints(n.enderPoints) or {}
+    local out = { known = true }
+    if #points > 0 then
+        out.text, out.point = nearestText(n.ender, points)
+        out.label = L["Abgabe %s"]:format(n.ender or n.title or "?")
+    elseif n.ender then
+        out.text = L["bei %s (Ort unbekannt)"]:format(n.ender)
+    else
+        out.text, out.known = L["noch unbekannt"], false
+    end
+    return out
+end
+
+local CLASS_ORDER = { "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "SHAMAN", "MAGE", "WARLOCK", "DRUID" }
+
+-- What a quest asks of the player, as one line: "ab Stufe 14 · empfohlen 18 · nur Allianz · nur
+-- Krieger · nur Zwerg · Beruf Alchimie"; nil when nothing.
+function D.QuestNeeds(n)
+    local parts = {}
+    if (n.minLevel or 0) > 0 then parts[#parts + 1] = L["ab Stufe %d"]:format(n.minLevel) end
+    if (n.level or 0) > 0 and n.level ~= n.minLevel then parts[#parts + 1] = L["empfohlen %d"]:format(n.level) end
+    if n.faction == "A" then parts[#parts + 1] = L["nur Allianz"] elseif n.faction == "H" then parts[#parts + 1] = L["nur Horde"] end
+    if (n.classes or 0) > 0 then
+        local names = {}
+        for _, c in ipairs(CLASS_ORDER) do
+            if Gear.HasClassBit(n.classes, c) then names[#names + 1] = Gear.CLASS_NAMES[c] or c end
+        end
+        if #names > 0 then parts[#parts + 1] = L["nur %s"]:format(table.concat(names, "/")) end
+    end
+    local Q = ns.Quests
+    if (n.races or 0) > 0 and Q and Q.RaceText then
+        local races = Q.RaceText(n.races)
+        if races ~= "" then parts[#parts + 1] = L["nur %s"]:format(races) end
+    end
+    if (n.skill or 0) > 0 then
+        local name = Q and Q.SkillName and Q.SkillName(n.skill)
+        parts[#parts + 1] = L["Beruf %s"]:format(name or tostring(n.skill))
+    end
+    return #parts > 0 and table.concat(parts, " · ") or nil
+end
+
+-- The quest path of a dungeon quest q of ns.DungeonQuests (dkey: its dungeon): { quest = q, steps,
+-- done, total, next, cut }. steps from the root to q (15 at most, the last ones; cut: how many earlier
+-- ones were left out), each { node, no (1..), reqNo (its number among the required ones, nil for an
+-- optional one), state, optional, breadcrumb, one (one of several will do: others = their titles,
+-- oneDone = the chosen one is done, so the others are no longer needed), gone (goneBy: the title of
+-- the quest whose completion closed it), accept (D.QuestAccept), turnIn (D.QuestTurnIn), needs
+-- (D.QuestNeeds), objective, spots (where in the dungeon the start item can lie, hand-kept hints, D-65), scanned
+-- (placed by the quest scan's text alone, D-109) }. done/total: the required steps done and in all (breadcrumbs and what
+-- only they need do not count; a "one of" group counts once). next: the first required step neither
+-- done nor gone.
+function D.QuestPath(q, dkey)
+    local path = { quest = q, steps = {}, done = 0, total = 0, cut = 0 }
+    if type(q) ~= "table" then return path end
+    local list = {}
+    for _, n in ipairs(q.chain or {}) do list[#list + 1] = n end
+    list[#list + 1] = q
+    if #list > MAX_STEPS then
+        path.cut = #list - MAX_STEPS
+        local keep = {}
+        for i = path.cut + 1, #list do keep[#keep + 1] = list[i] end
+        list = keep
+    end
+    for i, n in ipairs(list) do
+        local s = { node = n, no = i, state = D.QuestState(n), optional = n.optional or nil, breadcrumb = n.breadcrumb or nil }
+        if not s.optional then
+            path.total = path.total + 1
+            s.reqNo = path.total
+            if n.done then path.done = path.done + 1 end
+        end
+        if n.one and n.others then
+            local titles = {}
+            local dq = questData()
+            for _, p in ipairs(n.others) do titles[#titles + 1] = titleOf(p, dq and dq.Q[p] and dq.Q[p][1]) end
+            s.one, s.others, s.oneDone = true, titles, n.done or nil
+        end
+        if n.gone then
+            local dq = questData()
+            s.gone = true
+            s.goneBy = n.goneBy and titleOf(n.goneBy, dq and dq.Q[n.goneBy] and dq.Q[n.goneBy][1]) or nil
+        end
+        s.accept = D.QuestAccept(n, dkey)
+        s.turnIn = D.QuestTurnIn(n)
+        s.needs = D.QuestNeeds(n)
+        s.objective = n.objective
+        s.spots = n.spots
+        s.scanned = n.scanned
+        path.steps[#path.steps + 1] = s
+        if not path.next and not s.optional and not n.done and not n.gone then path.next = s end
+    end
+    return path
+end
+
+-- Where the next step leads: point, label (the target's name); nil when Amisia knows no place. A
+-- quest not yet taken: where it is taken; in the log and ready: where it is handed in; in the log and
+-- not ready: the dungeon's entrance for the dungeon quest, else where it is handed in.
+function D.QuestStepTarget(s)
+    if type(s) ~= "table" then return nil end
+    local n = s.node
+    if n.active then
+        if not questReady(n.qid) and n.dungeon then
+            local point = ns.DungeonEntrance(n.dungeon)
+            if point then return point, L["%s (Eingang)"]:format(dungeonName(n.dungeon)) end
+        end
+        return s.turnIn.point, s.turnIn.label
+    end
+    if s.accept.point then return s.accept.point, s.accept.label end
+    return nil
+end
+
+-- The next step as one line: "3. <Quest> bei <NPC>, <Zone> 56, 48", "3. <Quest> abgeben bei ...",
+-- "3. <Quest>: im Log, Ziel noch offen"; "Alle Schritte erledigt." without one.
+function D.QuestPathNextText(path)
+    local s = path and path.next
+    if not s then
+        if path and path.quest and path.quest.gone then return L["Nicht mehr möglich."] end
+        return L["Alle Schritte erledigt."]
+    end
+    local n = s.node
+    if n.active then
+        if questReady(n.qid) then return L["%d. %s abgeben %s"]:format(s.no, n.title, s.turnIn.known and s.turnIn.text or L["(Abgabe noch unbekannt)"]) end
+        return L["%d. %s: im Log, Ziel noch offen"]:format(s.no, n.title)
+    end
+    return ("%d. %s %s"):format(s.no, n.title, s.accept.text)
+end
+
+-- "2/4": the required steps done and in all; "" for a quest without pre-quests.
+function D.QuestPathShort(path)
+    if not path or path.total <= 1 then return "" end
+    return ("%d/%d"):format(path.done, path.total)
+end
+
+-- The quest path of the quest qid of a dungeon (ns.DungeonQuests), or nil.
+function ns.DungeonQuestPath(dkey, qid)
+    for _, q in ipairs((ns.DungeonQuests(dkey))) do
+        if q.qid == qid then return D.QuestPath(q, dkey) end
+    end
+    return nil
+end
+
+-- Where a quest leads now: a dungeon quest in the log that is not ready leads to its dungeon's
+-- entrance; else where it starts: the quest giver (the nearest of its points; what this client saw
+-- itself first), the dungeon's entrance for a giver inside (the giver's own point inside when no
+-- entrance is known). point, label, map key; or nil and why.
+local function questGoal(qid)
+    local dq = questData()
+    local r = dq and qid and dq.Q[qid] or nil
+    if r and r[11] and questActive(qid) and not questReady(qid) then
+        local point, mapKey = ns.DungeonEntrance(r[11])
+        if point then
+            local e = factOf(r[11])
+            return point, L["%s (Eingang)"]:format(e and D.Name(e) or "Dungeon"), mapKey
+        end
+    end
+    if r and (r[6] == "X" or (type(r[15]) == "table" and #r[15] > 0)) then
+        local a = D.QuestAccept(questNode(qid, r), r[11])
+        if a.point then return a.point, a.label, "Q:" .. qid end
+        return nil, ITEM_START
+    end
+    local Map = ns.Map
+    if not Map or not Map.ParsePoints then return nil, NO_MAP end
+    local seenGiver, seenPoint
+    -- own observations first (see questNode)
+    if ns.CollectQuestOwnStart and qid then seenGiver, seenPoint = ns.CollectQuestOwnStart(qid) end
+    local map = ns.Data("MAP")
+    local giver = seenGiver or (r and r[7]) or (map and map.G and qid and map.G["Q:" .. qid]) or (r and r[1]) or "?"
+    if r and r[6] == "I" then
+        local point = ns.DungeonEntrance(r[11])
+        if point then
+            local e = factOf(r[11])
+            return point, L["%s (Eingang)"]:format(e and D.Name(e) or "Dungeon"), "Q:" .. qid
+        end
+    end
+    local points = seenPoint and Map.ParsePoints(seenPoint) or {}
+    if #points == 0 then points = Map.ParsePoints(r and r[8]) end
+    if #points == 0 and qid then points = ns.MapPoints("Q:" .. qid) end
+    if #points == 0 then return nil, NO_START end
+    local label = (r and r[6] == "I") and L["Questgeber %s (im Dungeon)"]:format(giver) or L["Questgeber %s"]:format(giver)
+    return ns.MapNearest(points), label, "Q:" .. qid
+end
+
+-- Sets the map target to where a quest leads now (questGoal) and, with open, shows it on the world
+-- map; what "accept" or "turnin": to where the quest is taken or handed in (as its step of the quest
+-- path shows it; dkey: the path's dungeon, for a giver inside). The client's waypoint and world map
+-- only where Map.ClientSafe allows (D-62; ns.MapSetPoint and ns.MapShowOnWorldMap keep it). true, or
+-- nil and why.
+function ns.DungeonQuestWaypoint(qid, open, what, dkey)
+    qid = tonumber(qid)
+    local point, label, key
+    if what == "accept" or what == "turnin" then
+        local dq = questData()
+        local r = dq and qid and dq.Q[qid] or nil
+        local n = questNode(qid, r)
+        local info = what == "accept" and D.QuestAccept(n, dkey or (r and r[11])) or D.QuestTurnIn(n)
+        point, label, key = info.point, info.label, "Q:" .. tostring(qid)
+        if not point then return nil, what == "accept" and NO_START or L["Für diese Quest kennt Amisia keinen Abgabeort."] end
+    else
+        point, label, key = questGoal(qid)
+        if not point then return nil, label end
+    end
+    local ok, why = ns.MapSetPoint(point, label, key)
+    if ok and open and ns.MapShowOnWorldMap then ns.MapShowOnWorldMap(point) end
+    return ok, why
+end
+
+-- A quest of the quest data as a node (title, done, active, level, start; D.QuestState reads it), or
+-- nil for a quest the data lacks (the keys' steps on the journal's part Zugang, D-72).
+function D.QuestNode(qid)
+    local dq = questData()
+    local r = dq and type(qid) == "number" and dq.Q[qid] or nil
+    if not r then return nil end
+    return questNode(qid, r)
+end
+
+-- Sets the map target to the next step of a quest path (D.QuestStepTarget) and shows it on the world
+-- map (outside instances and combat, D-62). true, or nil and why.
+function ns.DungeonPathWaypoint(path)
+    if not path or not path.next then return nil, L["Alle Schritte erledigt."] end
+    local point, label = D.QuestStepTarget(path.next)
+    if not point then return nil, L["Für den nächsten Schritt kennt Amisia keinen Ort."] end
+    local ok, why = ns.MapSetPoint(point, label, "Q:" .. tostring(path.next.node.qid))
+    if ok and ns.MapShowOnWorldMap then ns.MapShowOnWorldMap(point) end
+    return ok, why
+end
+
+---------------------------------------------------------------------------
+-- The next quest steps with a place, for the map page and the world map (map.pinsQuests)
+---------------------------------------------------------------------------
+
+local stepsKey, stepsRes, stepsWatch, stepsGen = nil, nil, nil, 0
+
+local function pointKey(p)
+    return ("%d:%d:%d"):format(p.map, math.floor(p.x * 1000 + 0.5), math.floor(p.y * 1000 + 0.5))
+end
+
+-- The places of the steps: per open dungeon quest of the dungeons that fit the own level (fit or
+-- soon, as the dungeon page marks them) its next step, when that step can be taken now (its giver)
+-- or is in the log and complete (where it is handed in); a step in the log and not complete, or not
+-- yet open to the own level, has none. One place per step and point: { key = "Q:<step quest>", step =
+-- true, qid, title (the step's quest), fors = { dungeon quest titles }, quests = { { dkey, qid } },
+-- turnIn, label, giver, point, points, items (the dungeon quests' upgrade rewards: { id, gain, slot
+-- }), dataName (the name shown comes from the data, not from this client) }. Watch: the steps in the
+-- log whose completion changes the list.
+local function buildSteps()
+    local out, byKey, watch = {}, {}, {}
+    for _, e in ipairs(ns.DungeonList()) do
+        if FIT_ORDER[e.fit] then
+            for _, q in ipairs((ns.DungeonQuests(e.key))) do
+                if q.qid and not q.done and not q.gone then
+                    local path = D.QuestPath(q, e.key)
+                    local s = path.next
+                    local n = s and s.node
+                    local state = n and D.QuestState(n)
+                    if n and n.active then watch[n.qid] = state == "ready" end
+                    local point, label, turnIn
+                    if state == "open" then
+                        point, label = s.accept.point, s.accept.label
+                    elseif state == "ready" then
+                        point, label, turnIn = s.turnIn.point, s.turnIn.label, true
+                    end
+                    if point then
+                        local k = n.qid .. "@" .. pointKey(point)
+                        local place = byKey[k]
+                        if not place then
+                            local giver, dataName
+                            if turnIn then
+                                giver = n.ender
+                                dataName = giver ~= nil and not (ns.CollectQuestOwnEnd and ns.CollectQuestOwnEnd(n.qid))
+                            elseif s.accept.kind == "npc" or s.accept.kind == "object" then
+                                giver = s.accept.kind == "object" and n.object or n.giver
+                                dataName = giver ~= nil and not (ns.CollectQuestOwnStart and ns.CollectQuestOwnStart(n.qid))
+                            end
+                            place = { key = "Q:" .. n.qid, step = true, qid = n.qid, title = n.title or "?", fors = {}, quests = {},
+                                turnIn = turnIn or nil, label = label or n.title or "?", giver = giver, point = point, points = { point },
+                                items = {}, has = {}, forHas = {}, dataName = dataName or false }
+                            byKey[k] = place
+                            out[#out + 1] = place
+                        end
+                        if q.qid ~= n.qid and not place.forHas[q.title] then
+                            place.forHas[q.title] = true
+                            place.fors[#place.fors + 1] = q.title
+                        end
+                        place.quests[#place.quests + 1] = { dkey = e.key, qid = q.qid }
+                        for _, r in ipairs(q.rewards or {}) do
+                            if r.upgrade and not place.has[r.id] then
+                                place.has[r.id] = true
+                                place.items[#place.items + 1] = { id = r.id, gain = r.gain, slot = r.slotKey }
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return out, watch
+end
+
+-- The quest steps with a place (see buildSteps), kept until the dungeon list (level, quests, data,
+-- targets) changes or a watched step in the log becomes complete or stops being so.
+function ns.DungeonQuestSteps()
+    if not D.Facts() or not questData() or not Gear.Available() then return {} end
+    local list = ns.DungeonList()
+    local fresh = stepsRes ~= nil and stepsKey == list
+    if fresh then
+        for qid, ready in pairs(stepsWatch) do
+            if questReady(qid) ~= ready then
+                fresh = false
+                break
+            end
+        end
+    end
+    if not fresh then
+        stepsRes, stepsWatch = buildSteps()
+        stepsKey = list
+        stepsGen = stepsGen + 1
+    end
+    return stepsRes
+end
+
+-- A number that changes with the steps' list, for the caches of the map page and the pins.
+function ns.DungeonQuestStepsStamp()
+    ns.DungeonQuestSteps()
+    return stepsGen
+end
+
+---------------------------------------------------------------------------
+-- The journal parts: the header image, the boss model, quest XP, the quest givers on the map
+---------------------------------------------------------------------------
+
+-- The texts of this part, in one place for the translation.
+local TEXT = {
+    xpSum = L["Quest-EP offen: %s (draußen %s, im Dungeon %s)"],
+    xpSumOne = L["Quest-EP offen: %s (draußen %s, im Dungeon %s), 1 Quest ohne Wert"],
+    xpSumMany = L["Quest-EP offen: %s (draußen %s, im Dungeon %s), %d Quests ohne Wert"],
+    xpNone = L["Quest-EP: für %d offene Quests noch nicht gesehen"],
+    xpEst = "~%d",
+    xpOther = "%d (Lvl %d)",
+    noGivers = L["Für diesen Dungeon kennt Amisia keine Questgeber mit Ort."],
+    giver = L["Questgeber %s"],
+    giverInside = L["Questgeber %s (im Dungeon)"],
+    preFor = L["%s (Vorquest für %s)"],
+}
+
+-- The client's own loading screen of a dungeon (DungeonArt.lua): file data id, kind ("n" a 4:3
+-- picture in a square texture, "w" a wide one); the general screen of its kind without its own; nil
+-- without the art data.
+function D.Art(key)
+    local A = ns.DUNGEON_ART
+    if type(A) ~= "table" then return nil end
+    local a = type(A.D) == "table" and A.D[key] or nil
+    if type(a) ~= "table" then
+        local e = factOf(key)
+        a = (e and e.kind == "raid") and A.raid or A.party
+    end
+    if type(a) ~= "table" or type(a[1]) ~= "number" then return nil end
+    return a[1], a[2] == "w" and "w" or "n"
+end
+
+-- The picture's proportions as the client shows it and the band of the texture that holds the
+-- picture (a 4:3 screen has the client's frame above and below, a wide one empty bands).
+local ART_SHAPE = {
+    n = { aspect = 4 / 3, cy = 0.5, top = 0.2, bottom = 0.8 },
+    w = { aspect = 2992 / 1684, cy = 0.5, top = 0.16, bottom = 0.84 },
+}
+
+-- The texture coordinates (left, right, top, bottom) of the middle of a picture of kind for a
+-- banner w x h, its proportions kept: the full width and a band of the height, or, where the
+-- picture is not tall enough, the middle of the width.
+function D.ArtCoords(kind, w, h)
+    local s = ART_SHAPE[kind] or ART_SHAPE.n
+    local want = w / h
+    local du, dv = 1, s.aspect / want
+    local room = s.bottom - s.top
+    if dv > room then
+        dv = room
+        du = want * dv / s.aspect
+    end
+    local l = (1 - du) / 2
+    local t = math.max(s.top, math.min(s.cy - dv / 2, s.bottom - dv))
+    return l, l + du, t, math.min(t + dv, s.bottom)
+end
+
+-- The NPC id of the boss a model shows: the hovered boss (a boss row of the list), else the one
+-- with the biggest gain per run, else the first one with an NPC id; nil when none has one.
+function D.ModelNpc(e, hovered)
+    local function npcOf(b) return type(b) == "table" and type(b.npc) == "number" and b.npc > 0 and b.npc or nil end
+    if npcOf(hovered) then return hovered.npc end
+    if type(e) ~= "table" or type(e.bosses) ~= "table" then return nil end
+    local best
+    for _, b in ipairs(e.bosses) do
+        if npcOf(b) and (not best or (b.perRun or 0) > (best.perRun or 0)) then best = b end
+    end
+    return best and best.npc or nil
+end
+
+-- The quest level of a quest node: the quest data's, else what the collector saw; nil unknown.
+local function questLevelOf(n)
+    if (n.level or 0) > 0 then return n.level end
+    local r = ns.CollectQuest and n.qid and ns.CollectQuest(n.qid)
+    if r and (r.qlevel or 0) > 0 then return r.qlevel end
+    return nil
+end
+
+-- The XP of a quest of ns.DungeonQuests for the own level: value, how, seenLevel (QuestXP.For);
+-- else the XP the quest scan saw (how "scan": at the scanning character's level, so an estimate);
+-- nil when never seen.
+function D.QuestXP(n)
+    if type(n) ~= "table" or not n.qid then return nil end
+    if ns.QuestXP then
+        local v, how, seen = ns.QuestXP.For(n.qid, questLevelOf(n))
+        if v then return v, how, seen end
+    end
+    if n.scanXP then return n.scanXP, "scan" end
+    return nil
+end
+
+-- "1150", "~925" (estimated), "900 (Lvl 16)" (seen at another level), "" without a value.
+function D.XPText(value, how, seen)
+    if not value then return "" end
+    if how == "scaled" or how == "scan" then return TEXT.xpEst:format(value) end
+    if how == "other" and seen then return TEXT.xpOther:format(value, seen) end
+    return tostring(value)
+end
+
+-- The XP of the open quests of a quest list: { total, inside (start in the dungeon), outside,
+-- missing (open quests without a value), est (some value is an estimate) }.
+function D.XPSum(list)
+    local s = { total = 0, inside = 0, outside = 0, missing = 0, est = false }
+    for _, q in ipairs(list or {}) do
+        if not q.done and not q.gone then
+            local v, how = D.QuestXP(q)
+            if v then
+                s.total = s.total + v
+                if q.start == "I" then s.inside = s.inside + v else s.outside = s.outside + v end
+                if how == "scaled" or how == "other" or how == "scan" then s.est = true end
+            else
+                s.missing = s.missing + 1
+            end
+        end
+    end
+    return s
+end
+
+-- "Quest-EP offen: 2050 (draußen 1150, im Dungeon 900), 1 Quest ohne Wert"; "" without open quests.
+function D.XPSumText(s)
+    if not s or (s.total == 0 and s.missing == 0) then return "" end
+    if s.total == 0 then return TEXT.xpNone:format(s.missing) end
+    local function num(v) return s.est and TEXT.xpEst:format(v) or tostring(v) end
+    if s.missing == 0 then return TEXT.xpSum:format(num(s.total), num(s.outside), num(s.inside)) end
+    if s.missing == 1 then return TEXT.xpSumOne:format(num(s.total), num(s.outside), num(s.inside)) end
+    return TEXT.xpSumMany:format(num(s.total), num(s.outside), num(s.inside), s.missing)
+end
+
+---------------------------------------------------------------------------
+-- The run planner (F-139): the level window, a quest's worth, the bosses in the game's order and
+-- the plan of a run (what to fetch before, what happens at which boss, where to hand in after)
+---------------------------------------------------------------------------
+
+-- The levels a quest stays coloured below the own level (D-66): the client's GetQuestGreenRange for
+-- the own level where it answers, else the classic grey level of creatures, which the quest log
+-- shares (GetRelativeDifficultyColor): grey once the own level is at least 5 + floor(level / 10)
+-- above it (6-39), 1 + floor(level / 5) (40-59), 9 (60 and above); never up to level 5.
+local function greenRange(level, my)
+    if level == my and type(_G.GetQuestGreenRange) == "function" then
+        local r = tonumber(ns.Plain(_G.GetQuestGreenRange()))
+        if r then return r end
+    end
+    if level <= 5 then return level end
+    if level <= 39 then return 4 + math.floor(level / 10) end
+    if level <= 59 then return math.floor(level / 5) end
+    return 8
+end
+
+-- The first own level at which a quest of level qlevel is grey (more than its green range above it);
+-- nil for an unknown level.
+function D.GreyAt(qlevel)
+    if type(qlevel) ~= "number" or qlevel <= 0 then return nil end
+    local my = tonumber(ns.Plain(UnitLevel("player"))) or 1
+    for lv = qlevel + 1, qlevel + 40 do
+        if lv - qlevel > greenRange(lv, my) then return lv end
+    end
+    return nil
+end
+
+-- The level window of a quest: { min (it can be taken from), level (its level, nil unknown), grey
+-- (the own level it turns grey at, nil unknown), my (the own level) }.
+function D.LevelWindow(q)
+    local level = type(q) == "table" and questLevelOf(q) or nil
+    return { min = type(q) == "table" and q.minLevel or 0, level = level, grey = D.GreyAt(level),
+        my = tonumber(ns.Plain(UnitLevel("player"))) or 1 }
+end
+
+-- The own XP: current, needed for the next level, level, at the cap (no XP any more).
+local function ownXP()
+    local my = tonumber(ns.Plain(UnitLevel("player"))) or 1
+    local cur = tonumber(ns.Plain(UnitXP and UnitXP("player"))) or 0
+    local max = tonumber(ns.Plain(UnitXPMax and UnitXPMax("player"))) or 0
+    local cap = Gear.Cap and Gear.Cap() or 60
+    return cur, max, my, my >= cap or max <= 0
+end
+D.OwnXP = ownXP
+
+-- The worth of a quest (D-66): what it brings (the XP of its open required steps in percent of a
+-- level, 25 for an upgrade) over what it costs (1, plus 0.5 per zone outside the dungeon its open
+-- steps lead to; the steps themselves bring their own XP). { score, pct (nil: no XP known or at the
+-- cap), xp (the known XP of the open steps), gain (the best upgrade's), steps (open required ones),
+-- zones, verdict = "must" | "worth" | "skip" | "later" (the own level is below its minimum) |
+-- "unknown" (no XP known and no upgrade) }; nil for a done quest or one no longer possible.
+local WORTH = { UPGRADE = 25, ZONE = 0.5, MUST = 20, WORTH = 8 }
+D.WORTH = WORTH
+function D.QuestWorth(q, path)
+    if type(q) ~= "table" or q.done or q.gone then return nil end
+    local w = { steps = 0, zones = 0 }
+    local _, max, my, capped = ownXP()
+    local zones, xp, known = {}, 0, false
+    local steps = path and path.steps or {}
+    if #steps == 0 then steps = { { node = q } } end
+    for _, s in ipairs(steps) do
+        local n = s.node
+        if not s.optional and not n.done and not n.gone then
+            w.steps = w.steps + 1
+            local v = D.QuestXP(n)
+            if v then xp, known = xp + v, true end
+            local points = {}
+            if not n.active and s.accept and s.accept.kind ~= "inside" then points[#points + 1] = s.accept.point end
+            if s.turnIn then points[#points + 1] = s.turnIn.point end
+            for _, p in ipairs(points) do
+                if type(p) == "table" and p.map then zones[p.map] = true end
+            end
+        end
+    end
+    for _ in pairs(zones) do w.zones = w.zones + 1 end
+    if known then w.xp = xp end
+    if known and not capped then w.pct = xp / max * 100 end
+    w.gain = q.best and q.best.gain or nil
+    local value = (w.pct or 0) + (q.best and WORTH.UPGRADE or 0)
+    w.score = value / (1 + WORTH.ZONE * w.zones)
+    if (q.minLevel or 0) > my then
+        w.verdict = "later"
+    elseif not w.pct and not q.best and not capped then
+        w.verdict = "unknown"
+    elseif w.score >= WORTH.MUST then
+        w.verdict = "must"
+    elseif w.score >= WORTH.WORTH then
+        w.verdict = "worth"
+    else
+        w.verdict = "skip"
+    end
+    return w
+end
+
+-- The bosses' names in the game's order (DungeonData.lua, from the client's DungeonEncounter); nil
+-- without one.
+function D.BossOrder(dkey)
+    local F = ns.DUNGEON_FACTS
+    for _, e in ipairs(type(F) == "table" and type(F.list) == "table" and F.list or {}) do
+        if e.key == dkey then return type(e.order) == "table" and #e.order > 0 and e.order or nil end
+    end
+    return nil
+end
+
+-- The bosses of a dungeon entry (ns.DungeonInfo) in the game's order: { { name, npc, ups (upgrades
+-- for the own character), b (the entry's boss) } }. The entry's bosses (not tentative ones, seen too
+-- rarely to count, nor the "Trash" of the item data) sorted by the order (DungeonData.lua), the ones
+-- it lacks after them in their own order; without any the order's names alone. byKey: by nameKey.
+function D.BossTrack(dkey, entry)
+    local rank = {}
+    for i, name in ipairs(D.BossOrder(dkey) or {}) do
+        local k = nameKey(name)
+        if k and not rank[k] then rank[k] = i end
+    end
+    local out, byKey = {}, {}
+    for i, b in ipairs(entry and entry.bosses or {}) do
+        local k = nameKey(b.name)
+        if k and not b.tentative and b.name ~= "Trash" and not byKey[k] then
+            local t = { name = b.name, npc = b.npc or D.BossNpc(dkey, b.name), b = b, ups = 0, at = i }
+            for _, it in ipairs(b.items or {}) do
+                if it.upgrade then t.ups = t.ups + 1 end
+            end
+            byKey[k] = t
+            out[#out + 1] = t
+        end
+    end
+    if #out == 0 then
+        for _, name in ipairs(D.BossOrder(dkey) or {}) do
+            local k = nameKey(name)
+            if k and not byKey[k] then
+                local t = { name = name, npc = D.BossNpc(dkey, name), ups = 0, at = #out + 1 }
+                byKey[k] = t
+                out[#out + 1] = t
+            end
+        end
+    end
+    local big = #out + 1000
+    table.sort(out, function(x, y)
+        local rx, ry = rank[nameKey(x.name)] or big + x.at, rank[nameKey(y.name)] or big + y.at
+        if rx ~= ry then return rx < ry end
+        return x.at < y.at
+    end)
+    return out, byKey
+end
+
+-- The bosses of the part Übersicht (F-154, F-170): the given bosses (an entry's, those with loot for
+-- the character) and every other boss of the game's order (DungeonData.lua) without loot rows, all in
+-- the game's order. A given boss takes its place by its name or by its NPC (the client's "Infurnus" is
+-- the item data's "Magmatus"), the others after the order's in their own order; a boss of the other
+-- dungeon of the same instance (npcs false: the other half of Blackrock Spire) is added only when
+-- given. { { name, npc, b } }: b the given boss, or { name, npc, items = {}, perRun = 0, known (the items
+-- the item data knows of it, D.KnownLoot) } for an added one.
+function D.JournalBosses(dkey, bosses)
+    local F = ns.DUNGEON_FACTS
+    local f = factIn(type(F) == "table" and F.list, dkey)
+    local order = f and type(f.order) == "table" and f.order or {}
+    local npcs = f and type(f.npcs) == "table" and f.npcs or {}
+    local byKey, byNpc = {}, {}
+    for i, name in ipairs(order) do
+        local k = nameKey(name)
+        if k and not byKey[k] then byKey[k] = i end
+        local npc = npcs[i]
+        if type(npc) == "number" and npc > 0 and not byNpc[npc] then byNpc[npc] = i end
+    end
+    local out, taken, seen = {}, {}, {}
+    for i, b in ipairs(bosses or {}) do
+        local k = nameKey(b.name)
+        local npc = b.npc or D.BossNpc(dkey, b.name)
+        local r = k and byKey[k] or npc and byNpc[npc] or nil
+        if r and taken[r] then r = nil end
+        if r then taken[r] = true end
+        if k then seen[k] = true end
+        out[#out + 1] = { name = b.name, npc = npc, b = b, rank = r, at = i }
+    end
+    for i, name in ipairs(order) do
+        local k = nameKey(name)
+        if k and not taken[i] and not seen[k] and npcs[i] ~= false then
+            seen[k] = true
+            local npc = D.BossNpc(dkey, name)
+            out[#out + 1] = { name = name, npc = npc, rank = i, at = #out + 1,
+                b = { name = name, npc = npc, items = {}, perRun = 0, known = D.KnownLoot(dkey, name) } }
+        end
+    end
+    -- after the game's order: the bosses the client has no encounter of (Ruuzlu, Darkreaver), then the
+    -- rares (DungeonData's rares), then drops of an NPC without a name, the "Trash" last
+    local rare = {}
+    for _, r in ipairs(f and type(f.rares) == "table" and f.rares or {}) do
+        if type(r) == "table" then
+            if type(r[1]) == "number" then rare[r[1]] = true end
+            local k = nameKey(r[2])
+            if k then rare[k] = true end
+        end
+    end
+    local function tier(x)
+        if x.rank then return 0 end
+        if x.name == "Trash" then return 4 end
+        if (x.npc and rare[x.npc]) or rare[nameKey(x.name) or ""] then return 2 end
+        if type(x.name) == "string" and x.name:match("^NPC %d+$") then return 3 end
+        return 1
+    end
+    for _, x in ipairs(out) do x.tier = tier(x) end
+    table.sort(out, function(x, y)
+        if x.tier ~= y.tier then return x.tier < y.tier end
+        if x.rank and y.rank and x.rank ~= y.rank then return x.rank < y.rank end
+        return x.at < y.at
+    end)
+    return out
+end
+
+-- Whether objective text names a boss: its name as whole words (case and punctuation aside), or a long
+-- name (8 letters and more) without spaces ("Edwin van Cleef" = "Edwin VanCleef"); short names inside
+-- other words ("Plunder" in "plundered") do not count.
+local function words(s) return " " .. s:lower():gsub("[%p]", ""):gsub("%s+", " ") .. " " end
+local function namesBoss(objective, name)
+    if type(objective) ~= "string" or type(name) ~= "string" then return false end
+    local w = words(name):sub(2, -2)
+    if w ~= "" and words(objective):find(" " .. w .. " ", 1, true) then return true end
+    local k = nameKey(name)
+    return k ~= nil and #k >= 8 and (nameKey(objective) or ""):find(k, 1, true) ~= nil
+end
+D.NamesBoss = namesBoss
+
+-- The zone groups of stops, the own zone first, then the zones with the most stops, then by name;
+-- the stops numbered through (no) and listed in that order in route.
+local function groupStops(stops)
+    local own = C_Map and C_Map.GetBestMapForUnit and tonumber(ns.Plain(C_Map.GetBestMapForUnit("player"))) or nil
+    local groups, byMap = {}, {}
+    for _, st in ipairs(stops) do
+        local g = byMap[st.point.map]
+        if not g then
+            g = { map = st.point.map, zone = Gear.ZoneName(st.point.map) or ("Zone " .. st.point.map), stops = {} }
+            byMap[st.point.map] = g
+            groups[#groups + 1] = g
+        end
+        g.stops[#g.stops + 1] = st
+    end
+    table.sort(groups, function(a, b)
+        if (a.map == own) ~= (b.map == own) then return a.map == own end
+        if #a.stops ~= #b.stops then return #a.stops > #b.stops end
+        if a.zone ~= b.zone then return a.zone < b.zone end
+        return a.map < b.map
+    end)
+    local route = {}
+    for _, g in ipairs(groups) do
+        for _, st in ipairs(g.stops) do
+            route[#route + 1] = st
+            st.no = #route
+        end
+    end
+    return groups, route
+end
+
+-- Whether a quest node starts by an item that drops in dungeon dkey (fetched during the run).
+local function dropsHere(n, dkey)
+    for _, it in ipairs(n.items or {}) do
+        if it[4] == dkey then return true end
+    end
+    return false
+end
+
+-- Adds a title to a list once.
+local function addOnce(list, title)
+    for _, t in ipairs(list) do
+        if t == title then return end
+    end
+    list[#list + 1] = title
+end
+
+-- The plan of a run through dungeon dkey for its quest rows ({ q, path } as the page lists them) and
+-- its entry (ns.DungeonInfo): { open (open quests), xp (D.XPSum of the quests the own level reaches),
+-- ups (upgrades: those quests' and the bosses'), before = zone groups of the stops outside before the
+-- run ({ map, zone, stops = { { no, qid, what ("accept" | "turnin"), title, text, point, label } } };
+-- a step several quests share is one stop), route (the stops in order), later = { { title, level } }
+-- (the own level is too low), pending = { title } (a step in the log, its objective open, outside the
+-- dungeon), unknown = { title } (no place known), bosses (D.BossTrack, each with goals and starts:
+-- quest titles), other = { title } (an objective in the dungeon no boss names), after = zone groups
+-- of the turn-ins after the run }.
+function D.RunPlan(dkey, rows, entry)
+    local plan = { open = 0, ups = 0, later = {}, pending = {}, unknown = {}, other = {} }
+    local list, stops, afterStops, seen = {}, {}, {}, {}
+    local my = tonumber(ns.Plain(UnitLevel("player"))) or 1
+    local bosses, byKey = D.BossTrack(dkey, entry)
+    for _, t in ipairs(bosses) do
+        t.goals, t.starts = {}, {}
+        plan.ups = plan.ups + t.ups
+    end
+    plan.bosses = bosses
+    local function bossOf(name)
+        local k = nameKey(name)
+        return k and byKey[k] or nil
+    end
+    local function stop(into, n, what, info)
+        local key = what .. ":" .. tostring(n.qid or n.title)
+        if seen[key] then return end
+        seen[key] = true
+        into[#into + 1] = { qid = n.qid, what = what, title = n.title, text = info.text, point = info.point, label = info.label }
+    end
+    for _, row in ipairs(rows or {}) do
+        local q, path = row.q, row.path
+        if q and not q.done and not q.gone then
+            plan.open = plan.open + 1
+            local s = path and path.next
+            local n = s and s.node
+            local later = s and s.state == "locked" and (n.minLevel or 0) > my
+            if not later then
+                list[#list + 1] = q
+                if q.best then plan.ups = plan.ups + 1 end
+            end
+            if later then
+                plan.later[#plan.later + 1] = { title = q.title, level = n.minLevel, step = n ~= q and n.title or nil }
+            elseif s and n.active and questReady(n.qid) then
+                if s.turnIn.point then stop(stops, n, "turnin", s.turnIn) else addOnce(plan.unknown, n.title) end
+            elseif s and n.active and n ~= q then
+                addOnce(plan.pending, n.title)
+            elseif s and not n.active and s.accept.kind ~= "inside" and not dropsHere(n, dkey) then
+                if s.accept.point then stop(stops, n, "accept", s.accept) else addOnce(plan.unknown, n.title) end
+            end
+            -- in the dungeon: the bosses whose loot starts a quest of the path, the boss its objective names
+            -- (not for a quest the own level cannot reach yet, nor for one ready to hand in)
+            local inside = not later and not (q.active and questReady(q.qid))
+            if inside then
+                local placed = false
+                for _, node in ipairs(q.chain or {}) do
+                    if not node.done and not node.active and not node.gone then
+                        for _, it in ipairs(node.items or {}) do
+                            local t = (it[4] == nil or it[4] == dkey) and bossOf(it[2]) or nil
+                            if t then addOnce(t.starts, node.title) end
+                        end
+                    end
+                end
+                if not q.active then
+                    for _, it in ipairs(q.items or {}) do
+                        local t = (it[4] == nil or it[4] == dkey) and bossOf(it[2]) or nil
+                        if t then
+                            addOnce(t.starts, q.title)
+                            placed = true
+                        end
+                    end
+                end
+                if q.objective then
+                    for _, t in ipairs(bosses) do
+                        if namesBoss(q.objective, t.name) then
+                            addOnce(t.goals, q.title)
+                            placed = true
+                        end
+                    end
+                end
+                if not placed then addOnce(plan.other, q.title) end
+                -- after the run: where the dungeon quest is handed in
+                local ti = D.QuestTurnIn(q)
+                if ti.point then stop(afterStops, q, "after", ti) end
+            end
+        end
+    end
+    for _, st in ipairs(afterStops) do st.what = "turnin" end
+    plan.xp = D.XPSum(list)
+    plan.before, plan.route = groupStops(stops)
+    plan.after = groupStops(afterStops)
+    return plan
+end
+
+-- Sets the map target to a stop of a run plan and shows it on the world map (outside instances and
+-- combat, D-62). true, or nil and why.
+function ns.DungeonRouteWaypoint(stop)
+    if type(stop) ~= "table" or not stop.point then return nil, L["Für diesen Halt kennt Amisia keinen Ort."] end
+    local ok, why = ns.MapSetPoint(stop.point, stop.label or stop.title, "Q:" .. tostring(stop.qid))
+    if ok and ns.MapShowOnWorldMap then ns.MapShowOnWorldMap(stop.point) end
+    return ok, why
+end
+
+-- All quest givers of a dungeon on the world map (MapPins.lua draws them). The marked dungeon is
+-- kept in AmisiaDB.map.quests.
+local function mapDB()
+    if not AmisiaDB then return nil end
+    if type(AmisiaDB.map) ~= "table" and ns.MapMigrate then ns.MapMigrate(AmisiaDB) end
+    return type(AmisiaDB.map) == "table" and AmisiaDB.map or nil
+end
+
+-- The dungeon whose quest givers are marked, or nil.
+function ns.DungeonMarked()
+    local m = mapDB()
+    local key = m and m.quests
+    if type(key) ~= "string" or not factOf(key) then return nil end
+    return key
+end
+
+-- The givers to visit for a dungeon's open quests: per open quest not in the log the first open
+-- quest of its chain (the quest itself without one); a quest starting inside points to the
+-- entrance (to the giver's point inside where no entrance is known), one started by an item has
+-- no giver. One place per giver and point: { key, giver, label, points, quests = { titles }, inside }.
+local function givers(dkey)
+    local Map = ns.Map
+    if not Map or not Map.ParsePoints then return {} end
+    local out, byKey = {}, {}
+    for _, q in ipairs((ns.DungeonQuests(dkey))) do
+        if not q.done and not q.active and not q.gone and q.qid then
+            local node = q
+            for _, c in ipairs(q.chain or {}) do
+                if not c.done then node = c break end
+            end
+            local points, inside = {}, node.start == "I"
+            if not node.active and node.start ~= "X" then
+                if inside then
+                    local p = ns.DungeonEntrance(dkey)
+                    points = p and { p } or Map.ParsePoints(node.points)
+                else
+                    points = Map.ParsePoints(node.points)
+                end
+            end
+            if #points > 0 then
+                local giver = node.giver or "?"
+                local p1 = points[1]
+                local k = ("%s@%d:%d:%d"):format(giver, p1.map, math.floor(p1.x * 1000 + 0.5), math.floor(p1.y * 1000 + 0.5))
+                local place = byKey[k]
+                if not place then
+                    place = { key = "Q:" .. node.qid, giver = giver, label = (inside and TEXT.giverInside or TEXT.giver):format(giver),
+                        points = points, quests = {}, has = {}, inside = inside }
+                    byKey[k] = place
+                    out[#out + 1] = place
+                end
+                local title = node == q and q.title or TEXT.preFor:format(node.title, q.title)
+                if not place.has[title] then
+                    place.has[title] = true
+                    place.quests[#place.quests + 1] = title
+                end
+            end
+        end
+    end
+    return out
+end
+
+local marksKey, marksRes
+
+-- The places of the marked dungeon's givers (see givers), kept until the quests change.
+function ns.DungeonMarkPlaces()
+    local key = ns.DungeonMarked()
+    if not key then return {} end
+    local stamp = key .. ":" .. ns.DungeonMarkStamp()
+    if stamp ~= marksKey then marksKey, marksRes = stamp, givers(key) end
+    return marksRes
+end
+
+-- What the marks depend on, for the pins' cache.
+function ns.DungeonMarkStamp()
+    return ("%s:%d:%s:%s"):format(tostring(ns.DungeonMarked()), questGen, tostring(ns.DUNGEON_QUESTS), bisStamp())
+end
+
+-- Marks every quest giver of a dungeon on the world map: the number of places, or nil and why.
+function ns.DungeonMarkQuests(dkey)
+    local m = mapDB()
+    if not m or not factOf(dkey) then return nil, NO_DATA end
+    local list = givers(dkey)
+    if #list == 0 then return nil, TEXT.noGivers end
+    m.quests = dkey
+    ns.Fire("MAP_MARKS")
+    return #list
+end
+
+-- Takes the marks away.
+function ns.DungeonClearMarks()
+    local m = mapDB()
+    if m then m.quests = nil end
+    ns.Fire("MAP_MARKS")
+end
+
+---------------------------------------------------------------------------
+-- What changes a result, the command
+---------------------------------------------------------------------------
+
+local function questChanged() questGen = questGen + 1 end
+-- a quest seen by the collector (here or heard from the guild) can bring a giver and its place
+ns.Listen("COLLECT_CHANGED", function(kind)
+    if kind == nil or kind == "q" then questChanged() end
+end)
+ns.OnEvent("QUEST_TURNED_IN", questChanged)
+ns.OnEvent("QUEST_ACCEPTED", questChanged)
+ns.OnEvent("QUEST_REMOVED", questChanged)
+
+-- The dungeon a command names (key, name or the start of a name), else the page's chosen one, else
+-- the next one.
+local function commandDungeon(word)
+    local facts = D.Facts() or {}
+    word = word and word:lower() or ""
+    if word ~= "" then
+        for _, e in ipairs(facts) do
+            if type(e) == "table" and (e.key == word or lower(D.Name(e)) == word or lower(e.name) == word) then return e end
+        end
+        for _, e in ipairs(facts) do
+            if type(e) == "table" and ((lower(D.Name(e)) or ""):find(word, 1, true) or (lower(e.name) or ""):find(word, 1, true)) then
+                return e
+            end
+        end
+        return nil
+    end
+    local s = AmisiaDB and type(AmisiaDB.settings) == "table" and type(AmisiaDB.settings.bis) == "table" and AmisiaDB.settings.bis.dungeon
+    if s then
+        local e = factOf(s)
+        if e then return e end
+    end
+    local n = ns.DungeonNext()
+    return n and n.fact or nil
+end
+
+local function sayQuests(word)
+    local e = commandDungeon(word)
+    if not e then
+        ns.msg(word ~= "" and L["Keinen Dungeon \"%s\" gefunden."]:format(word) or NO_HIT)
+        return
+    end
+    local list, status = ns.DungeonQuests(e.key)
+    ns.msg(L["Quests in %s:"]:format(D.Name(e)))
+    local missing = D.QuestStatusText(status)
+    if missing then ns.msg(missing) end
+    if #list == 0 then
+        if not missing then ns.msg(L["Für diesen Dungeon kennt Amisia keine Quests."]) end
+        return
+    end
+    for _, q in ipairs(list) do
+        local mark = q.done and L["[erledigt] "] or q.active and L["[im Log] "] or q.gone and L["[nicht mehr möglich] "] or ""
+        local start = D.QuestStartText(q)
+        local path = D.QuestPath(q, e.key)
+        local way = D.QuestPathShort(path)
+        local line = ("%s%s · Level %s%s%s"):format(mark, q.title, D.QuestLevelText(q), way ~= "" and L[" · Weg %s"]:format(way) or "",
+            start ~= "" and L[" · Start: %s"]:format(start) or "")
+        if q.best then
+            line = line .. (" · Upgrade %s (%+d)"):format(ns.ItemName and ns.ItemName(q.best.id) or ("Item " .. q.best.id),
+                math.floor(q.best.gain + 0.5))
+        end
+        ns.msg(line)
+        -- the next step of its quest path (F-135), for a quest still to do
+        if path.next and not q.done and not q.gone then ns.msg(L["  Nächster Schritt: %s"]:format(D.QuestPathNextText(path))) end
+    end
+end
+
+ns.RegisterSlash("dungeon", { aliases = { "dungeons", "journal" }, args = L["[naechster|kette|quests <Dungeon>]"],
+    desc = L["Dungeon-Planer: welcher Dungeon sich für dich lohnt, die Kette, die Quests eines Dungeons"],
+    run = function(rest)
+        local word, arg = (rest or ""):match("^(%S*)%s*(.-)%s*$")
+        word = (word or ""):lower()
+        if word == "naechster" or word == "nächster" or word == "next" then   -- l10n-ok: command word
+            local ok, e, why = pcall(ns.DungeonNext)
+            if not ok then
+                report(e)
+                return
+            end
+            if e then ns.msg(L["Nächster Dungeon (%s): %s"]:format(D.RangeText(e), why)) else ns.msg(why) end
+            return
+        elseif word == "kette" or word == "chain" then
+            local ok, chain, why = pcall(ns.DungeonChain)
+            if not ok then
+                report(chain)
+                return
+            end
+            ns.msg(D.ChainText(chain, why))
+            return
+        elseif word == "quests" or word == "quest" then
+            local ok, err = pcall(sayQuests, arg or "")
+            if not ok then report(err) end
+            return
+        elseif word ~= "" then
+            ns.msg(L["Aufruf: /amisia dungeon [naechster|kette|quests <Dungeon>]"])
+            return
+        end
+        if not Gear.Available() then
+            ns.msg(L["Für diesen Client gibt es keine Ausrüstungsdaten."])
+            return
+        end
+        ns.ShowPage("dungeons")
+    end })
+end)

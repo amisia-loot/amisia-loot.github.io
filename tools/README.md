@@ -54,17 +54,17 @@ python3 tools/build.py perf [--sv FILE] [--rows N]
   `docs/ARCHITECTURE.md` (message kinds, blob arts, export lines, paste-in blocks, saved keys,
   settings sections, module map) and `docs/DECISIONS.md` against the code. One line per step; the exit code is 1 when one fails. A missing
   node/luaparse or luacheck is reported as `skip`.
-- `tocs` writes the core's `## Version` into `Amisia_Raid/Amisia_Raid.toc` and `Amisia_Gear/Amisia_Gear.toc`
-  (D-16, D-130) and, for each of the three folders, `<folder>_TBC.toc` (20506) and `<folder>_Vanilla.toc` (11509): the
+- `tocs` writes the core's `## Version` into the modules' TOCs (`Amisia_Gear.toc`, `Amisia_Dungeons.toc`,
+  `Amisia_Talents.toc`; D-16, D-130, D-158) and, for each of the four folders, `<folder>_TBC.toc` (20506) and `<folder>_Vanilla.toc` (11509): the
   folder's TOC without the lines tagged `[AllowLoadGameType camelot]`, because TBC Anniversary loads those anyway
-  (D-57), and without any file when the folder's `## Interface` does not name that client (`Amisia_Gear`, Forever
+  (D-57), and without any file when the folder's `## Interface` does not name that client (the modules, Forever
   only). The classic clients
   load their suffixed TOC instead of `Amisia.toc`. `check` (TOC against the folder) fails while they differ; edit only
   `Amisia.toc`, then run `tocs`. `release` writes them with the new version.
 - `release X.Y.Z` refuses a dirty tree (and untracked addon files), a version that is not newer and,
   unless `--no-push`, a branch other than main. It sets `## Version:` in the TOC (the only place the
   version stands; `Core/Core.lua` reads it with `C_AddOns.GetAddOnMetadata`), runs `check` and puts
-  everything back when it fails, builds `Amisia-Website/Amisia.zip` (tracked files under `Amisia/`, `Amisia_Raid/` and `Amisia_Gear/`, one top folder each, no
+  everything back when it fails, builds `Amisia-Website/Amisia.zip` (tracked files under `Amisia/`, `Amisia_Gear/`, `Amisia_Dungeons/` and `Amisia_Talents/`, one top folder each, no
   dotfiles), turns the English notes under `## Unreleased` in `CHANGELOG.md` into the version's
   section (D-60): heading `## [vX.Y.Z](<repo>/releases/tag/vX.Y.Z) (date)`, a line `[Full Changelog]`
   (compare with the last version) `[Previous Releases]`, then the notes; it stops before anything
@@ -94,10 +94,10 @@ python3 tools/build.py perf [--sv FILE] [--rows N]
   it builds and checks the data on branch `auto/data-<build>` in its own worktree and writes the outcome to
   `~/addons/_auto/amisia-data.txt`; it never pushes, merges or releases. `--dry-run`, `--force`, `--base`,
   `--look-now`, `--sv`, `--force-sv`.
-  On the PC `tools/install_junctions.ps1` (once, as administrator, after the first release with three folders;
-  F-202) replaces the old junction `...\Interface\AddOns\Amisia` -> `%USERPROFILE%\VuloSync\Amisia` with one junction
-  per folder: `Amisia` and `Amisia_Raid` in `_forever_`, `_anniversary_` and `_classic_era_`, `Amisia_Gear` in
-  `_forever_` only. It removes junctions only, never a real folder, changes nothing while a subfolder is missing,
+  On the PC `tools/install_junctions.ps1` (once, as administrator, after a release with a new set of folders;
+  F-202, F-228) makes one junction per folder: `Amisia` in `_forever_`, `_anniversary_` and `_classic_era_`, the
+  modules `Amisia_Gear`, `Amisia_Dungeons`, `Amisia_Talents` in `_forever_` only, and removes the junctions of
+  `Amisia_Raid` (the core's since F-228). It removes junctions only, never a real folder, changes nothing while a subfolder is missing,
   prints each step, and a second run says "ok" (`-DryRun` only prints; `tools/tests/test_install_junctions.py`).
   On the PC `tools/install_export_task.ps1` (once, as administrator) sets up the task that runs
   `export_db2.ps1` after logon and every two hours, from the Syncthing folder "Amisia PC-Skripte"
@@ -262,31 +262,36 @@ the comparison) and `tests/test_layout_helpers.lua`.
 
 ## Addon layout
 
-Three addon folders (F-202, D-130), each with its TOC `<folder>.toc` and the classic TOCs at its root:
+Four addon folders (F-202, D-130; F-228, D-158), each with its TOC `<folder>.toc` and the classic TOCs at its root:
 
 - `Amisia/`, the core: `Core/` (registry, lazy data, core, names, chat queue, comm, trust, version, minimap button,
-  selftest, performance), `Raid/Alts.lua`, `UI/` (theme, widgets, main window, search, loot toast) and the pages
-  overview, settings, about and feedback, `Locales/Locale.lua` with `enUS_core.lua` and `enUS_selftest.lua`, plus
-  `Media/` (every texture, also the modules') and `LICENSES/`.
-- `Amisia_Raid/`, the raid module "Amisia: Raid": `Raid/` (module, recording, materials, awards, rolls,
-  soft-reserves, loot lead, raid log, bench, sync, raid text, need, lineup, calendar, points, bank), the raid pages
-  and windows under `UI/`, the self-tests of calendar and group under `Core/`, `Locales/enUS_raid*.lua`.
-- `Amisia_Gear/`, the gear module "Amisia: Ausrüstung & Dungeons" (WoW Forever only): `Gear/` (module, gear
-  planner, BiS, dungeons, professions, quests, talents, guild wishes, comparison marks, map and map pins, layer),
-  `Collect/` (item scan, collector, drops and their guild exchange, quest XP), `Data/` (only generated files, from
-  the build scripts below), the gear pages and windows under `UI/`, `Core/Duels.lua`, `Core/SelfTestLayer.lua`,
-  `Locales/enUS_gear.lua` and `enUS_world.lua`.
+  selftest, performance), `Raid/` (the raid part: recording, materials, awards, rolls, soft-reserves, loot lead,
+  raid log, bench, sync, raid text, need, lineup, calendar, points, bank, alts), `UI/` (theme, widgets, main window,
+  search, loot toast, the raid pages and windows) and the pages overview, settings, about and feedback,
+  `Locales/Locale.lua` with `enUS_core.lua`, `enUS_selftest.lua`, `enUS_raid*.lua` and `enUS_forever.lua`, plus
+  `Media/` (every texture, also the modules') and `LICENSES/`; on Forever only (camelot lines): `Collect/` (item
+  scan, collector, drops and their guild exchange, quest XP), `Gear/Gear.lua` (the item library), professions, mage
+  scrolls, layer, duels, the page tools, `UI/ItemKit.lua` and the `Data/*` several parts read.
+- `Amisia_Gear/`, the module "Amisia: Ausrüstung" (WoW Forever only): `Gear/` (module, BiS, play style, model,
+  comparison, catalog, enchants, guild wishes, items without source), the gear and planner pages, doll and slot
+  card under `UI/`, its `Data/*`, `Locales/enUS_gear.lua`.
+- `Amisia_Dungeons/`, the module "Amisia: Dungeons & Raids" (WoW Forever only): `Dungeons/Module.lua`, `Gear/`
+  (dungeons, runs, run times and timer, quests, map and map pins, routes, dungeon bar and notes, group quests, quest
+  items), the pages dungeons, raids, quests and map, its `Data/*`, `Locales/enUS_dungeons.lua`.
+- `Amisia_Talents/`, the module "Amisia: Talente" (WoW Forever only): `Talents/Module.lua`, `Gear/Talents.lua`, the
+  talent page, `Data/TalentData.lua`, `Locales/enUS_talents.lua`.
 
-A path inside its folder is unique over the three ("Raid/Awards.lua" is one file). Each TOC loads its files in
+A path inside its folder is unique over the four ("Raid/Awards.lua" is one file). Each TOC loads its files in
 dependency order; `build.py check` fails when a file is missing from its TOC or stands in two folders. The client
-loads the core, then the raid module, then the gear module; the bodies run in that order once all are there (D-128).
+loads the core, then Ausrüstung, Dungeons & Raids, Talente; the bodies run in that order once all are there (D-128).
 
-### Modules (modules.py, F-202, D-130)
+### Modules (modules.py, F-202, D-130, D-158)
 
-Every addon file belongs to the core, the raid module or the gear module ("Ausrüstung & Dungeons"), by the
-folder that holds it; `tools/modules.py` reads the three TOCs (`files`, `module_of`, `path_of`) and holds the check
-that the core calls no module and the modules call each other only guarded (the rule in `modules.check()`), run by
-`tools/tests/test_module_deps.py`.
+Every addon file belongs to the core or one of the modules (Ausrüstung, Dungeons & Raids, Talente), by the folder
+that holds it; `tools/modules.py` reads the TOCs (`files`, `module_of`, `path_of`), names each part's first file
+(`FIRST_FILE`) and where each generated data file stands (`DATA_HOME`, `data_file`, `data_toc`; F-228), and holds
+the check that the core calls no module and the modules call each other only guarded (the rule in
+`modules.check()`), run by `tools/tests/test_module_deps.py`.
 
 ```
 python3 tools/modules.py            every forbidden reference, one line each (exit code 1 if any)
@@ -296,10 +301,10 @@ python3 tools/modules.py symbols    the ns symbols each part defines
 
 `tests/run.py` loads the core's files, fires `ADDON_LOADED` "Amisia", then each module's files (in a namespace of
 its own, which its `Module.lua` points at the core's) and its `ADDON_LOADED`, as the client does; the stub's
-`C_AddOns` answers for the modules (`STUB.addons`). A Lua test with a line `--[[without raid]]` or
-`--[[without gear]]` runs without that module's folder; `tests/test_without_raid.lua` and
-`tests/test_without_gear.lua` open every page and window that way (`tests/module_scene.lua`). A test reads or loads
-an addon file by its path inside its folder with `ADDON_FILE("Gear/Map.lua")`; `ADDON_TOCS` lists the three TOCs.
+`C_AddOns` answers for the modules (`STUB.addons`). A Lua test with a line `--[[without gear]]` (or
+`dungeons`, `talents`) runs without that module's folder; `tests/test_without_gear.lua`, `test_without_dungeons.lua`
+and `test_without_talents.lua` open every page and window that way (`tests/module_scene.lua`). A test reads or loads
+an addon file by its path inside its folder with `ADDON_FILE("Gear/Map.lua")`; `ADDON_TOCS` lists the parts' TOCs.
 
 ### Lazy data
 
@@ -428,7 +433,7 @@ memory at every login, so it is kept here for good and the addon lets go of what
   and suffixes join, nothing is dropped. With `ItemSparse` in `--wago` the ids the client knows are
   kept too (ranges). `updated` changes only with the content. Committed (2.5 MB, about 480 KB in git):
   after the addon trimmed its file, the archive is the only copy, so commit and push it.
-- Then it writes `Amisia_Gear/Data/ScanDone.lua` (lazy `SCAN_DONE`, also `marker` alone): a stamp,
+- Then it writes `Amisia/Data/ScanDone.lua` (lazy `SCAN_DONE`, also `marker` alone): a stamp,
   `I` per archived item `<step>.<hash of the line>`, `S` per item with notes `<step>.<hash>...`, `C` the
   client's ids as `<step>.<length>` up to `cmax`; numbers base 36, hash
   `h = (h * 31 + byte) % 1000000007` over the UTF-8 bytes (the same in `Collect/ScanTrim.lua`).
@@ -466,13 +471,13 @@ with it costs 20 KB over the addon alone.
 python3 tools/build_scan_lists.py [--wago DIR] [--sv FILE...] [--scan-archive FILE] [--data DIR]
 ```
 
-- `Amisia_Gear/Data/ScanLists.lua` (lazy `SCAN_LISTS`): `Q` every quest id of the client table `QuestV2` (ranges
+- `Amisia/Data/ScanLists.lua` (lazy `SCAN_LISTS`): `Q` every quest id of the client table `QuestV2` (ranges
   `<step>.<length>`), `NA` phase A of the NPC scan: every NPC id the data files name (DungeonData, BisData,
   QuestData givers, GearData rares, mobs and vendors, MapData `U:` points; `<step>,<step>`), `NB` phase B: the
   ids from `FOREVER_MIN` (200000) up in clusters no more than `GAP` (1000) apart, each padded by `PAD` (250).
   For 1.60.1.70888: 6626 quests, 2133 NPCs (quest givers 1423, map points 357, bosses 269/231, mobs 191, rares
   155, vendors 110), phase B 11 ranges with 34814 ids.
-- `Amisia_Gear/Data/ScanNames.lua` (lazy `SCAN_NAMES`): `L = {deDE = {Q = {[quest] = title}, N = {[npc] = name}}}`,
+- `Amisia/Data/ScanNames.lua` (lazy `SCAN_NAMES`): `L = {deDE = {Q = {[quest] = title}, N = {[npc] = name}}}`,
   every language but English (the data has those); the addon shows them where the data has only the English
   name (`ns.ScannedQuestTitle`, `ns.ScannedNpcName`: quest titles the client has not loaded, boss names on the
   page Dungeons, quest givers). Empty until the first scan.
@@ -688,7 +693,7 @@ trimmed pages of 2026-11-20 under `tools/tests/fixtures/web`; no network).
 
 ## build_gear.py
 
-Builds `Amisia_Gear/Data/GearData.lua` for the addon's gear window (`/amisia gear`, WoW Forever only):
+Builds `Amisia/Data/GearData.lua` for the addon's gear window (`/amisia gear`, WoW Forever only):
 every item a levelling character can wear and where it comes from; and `Amisia_Gear/Data/GearNoSource.lua`, the
 scanned gear of unknown source (D-107). The stat weights
 (`GearWeights.lua`) are Amisia's own and come from `build_bis.py`.
@@ -820,7 +825,7 @@ data: it has no licence.
 
 ## build_map.py
 
-Builds `Amisia_Gear/Data/MapData.lua` (WoW Forever) for the map: where each source of the gear data
+Builds `Amisia_Dungeons/Data/MapData.lua` (WoW Forever) for the map: where each source of the gear data
 stands, as up to four points `uiMapID:x:y` (x, y in hundredths of a percent) under a stable key per
 source (`Q:<quest id>`, `V:`/`R:`/`W:<NPC name>`, `U:<NPC id>`, `I:<instance id>`,
 `N:<dungeon name>`).
@@ -885,7 +890,7 @@ Runs on the N100 (no WoW install needed). Run it after every `build_gear.py`, th
 Requires `lupa`.
 ## build_dungeons.py
 
-Builds `Amisia_Gear/Data/DungeonData.lua` (`ns.DUNGEON_FACTS`, loaded through
+Builds `Amisia/Data/DungeonData.lua` (`ns.DUNGEON_FACTS`, loaded through
 the gear module, Forever only) from `tools/forever_dungeons.json`, the hand-kept facts of the dungeon
 planner: every dungeon and raid of WoW Forever with its level range, size, bosses known so far,
 opening date and instance id where known. Facts only, never a loot table or a drop chance; every
@@ -938,8 +943,8 @@ Runs anywhere, no network. `tools/tests/test_build_dungeons.py` checks that the 
 
 ## build_bis.py
 
-Builds `Amisia_Gear/Data/GearWeights.lua` (Amisia's own weights, `ns.GEAR_WEIGHTS`) and
-`Amisia_Gear/Data/BisData.lua` (`ns.BIS`, Forever only: the gear module). Runs on the N100, no WoW
+Builds `Amisia/Data/GearWeights.lua` (Amisia's own weights, `ns.GEAR_WEIGHTS`) and
+`Amisia/Data/BisData.lua` (`ns.BIS`, Forever only: the gear module). Runs on the N100, no WoW
 install, no network:
 
 ```
@@ -964,7 +969,7 @@ Inputs:
   runs from that file. Forever has no `ItemRandomProperties`, `ItemRandomSuffix` or `gt*` table, and
   its `Journal*` tables are empty (1.60.1.70235). `ContentTuning` is read through
   `build_dungeons.tuning_levels` (one reader for both builds).
-- `Amisia_Gear/Data/GearData.lua` (items, sources, scanned stats; read only), `tools/forever_dungeons.json`
+- `Amisia/Data/GearData.lua` (items, sources, scanned stats; read only), `tools/forever_dungeons.json`
   (with the client's level and instance id of `build_dungeons.client_facts`, from the CSVs of this
   build when they are there, else `tools/forever_dungeons_client.json`), AllTheThings' Forever data
   (`tools/att_data.py`, MIT) for the bosses' NPC ids per dungeon, `tools/drop_obs.json` for the drop
@@ -1061,7 +1066,7 @@ worn; while it is worn nothing else is an upgrade for that row). The setting `bi
 
 ## build_dungeonquests.py
 
-Builds `Amisia_Gear/Data/DungeonQuestData.lua` (`ns.DUNGEON_QUESTS`, loaded through
+Builds `Amisia/Data/DungeonQuestData.lua` (`ns.DUNGEON_QUESTS`, loaded through
 the gear module, Forever only) for the quest list and the quest path (F-135) of the dungeon planner:
 per dungeon of `tools/forever_dungeons.json` its quests, and per quest the level, faction, races,
 profession, where it starts (quest giver with up to four map points, inside the dungeon, by an item
@@ -1130,7 +1135,7 @@ no real data) and hand-made collector records.
 
 ## build_questitems.py
 
-Builds `Amisia_Gear/Data/QuestItemData.lua` (lazy `QUEST_ITEMS`, F-173, D-105) for the window "Questgegenstände
+Builds `Amisia_Dungeons/Data/QuestItemData.lua` (lazy `QUEST_ITEMS`, F-173, D-105) for the window "Questgegenstände
 aufräumen" and the quest item line of the item tooltip: per quest item the quests that use it.
 
 ```
@@ -1155,7 +1160,7 @@ the kinds, the class filter, the file, the shipped one with TOC and licence).
 
 ## build_professions.py
 
-Builds `Amisia_Gear/Data/ProfessionData.lua` (`ns.PROFESSIONS`, loaded through
+Builds `Amisia/Data/ProfessionData.lua` (`ns.PROFESSIONS`, loaded through
 the gear module, Forever only) for the professions page (`/amisia berufe`): every recipe of every
 profession with what it makes, its difficulty (`TrivialSkillLineRankLow` yellow,
 `TrivialSkillLineRankHigh` grey, green between), how it is learned (with the profession, trainer
@@ -1256,7 +1261,7 @@ a hand-made AllTheThings fixture (`tools/tests/fixtures/att_prof`) and hand-made
 
 ## build_talents.py
 
-Builds `Amisia_Gear/Data/TalentData.lua` (`ns.TALENTS`, Forever only: the gear module)
+Builds `Amisia_Talents/Data/TalentData.lua` (`ns.TALENTS`, Forever only: the gear module)
 for the talent calculator (`/amisia talente`): per class its trait tree, the three trees (node group,
 name, icon), the row locks (counting groups) and the talents with row, column, ranks, prerequisites,
 name and text (enUS, placeholders resolved; what changes per rank as `{1}` with the values per rank).
@@ -1288,7 +1293,7 @@ Runs on the N100. Tests: `tools/tests/test_build_talents.py` on hand-made fixtur
 
 ## build_magescrolls.py
 
-Builds `Amisia_Gear/Data/MageScrollData.lua` (`ns.MAGESCROLLS`, lazy) for the scrolls page
+Builds `Amisia/Data/MageScrollData.lua` (`ns.MAGESCROLLS`, lazy) for the scrolls page
 (`/amisia schriftrollen`, under Ausrüstung for mages): WoW Forever's mage scrolls and the
 Comprehension skill line ("Arkanes Verständnis"). From the client tables (`--wago`, default
 the newest copy of each table, `client_tables.py`; ItemSparse, Item, SkillLine, SkillLineAbility, Spell, SpellName, SpellMisc,
@@ -1305,14 +1310,14 @@ after the talents (skipped without the tables).
 
 ## build_raidbuffs.py
 
-Builds `Amisia_Gear/Data/RaidBuffData.lua` (`ns.RAIDBUFFS`, lazy) for the buffs of the lineup (F-224, D-149,
+Builds `Amisia/Data/RaidBuffData.lua` (`ns.RAIDBUFFS`, lazy) for the buffs of the lineup (F-224, D-149,
 `Raid/LineupBuffs.lua`): a short list of English spell names in the builder, one row per thing an officer
 thinks of (one "remove curse" row for the mage's and the druid's spell), each with its block (buff, boss,
 util), its scope (raid or group: kept in the list, SpellEffect cannot tell it reliably), the roles a talent
 buff needs (Leader of the Pack `TM`, Moonkin Aura `R`, Mana Tide `H`) and one fixed class (Blood Pact, the
 imp's spell in no class skill line). The class comes from the client tables (`--wago`, default the newest
 copy of each table, `client_tables.py`; SkillLineAbility -> SkillRaceClassInfo with a single class bit ->
-ChrClasses), "talent" from the talent trees of `Amisia_Gear/Data/TalentData.lua` (`--talents`; the name or
+ChrClasses), "talent" from the talent trees of `Amisia_Talents/Data/TalentData.lua` (`--talents`; the name or
 the talent that gives it, `via`: Moonkin Form), the spell id for the client's name and icon is the highest
 id of the first name in the class's skill line, its icon (SpellMisc) rides along. A name no class has is
 dropped and reported. `build.py data` runs it after the raid check (after the talents; skipped without
@@ -1322,7 +1327,7 @@ file current).
 
 ## build_raidcheck.py
 
-Builds `Amisia_Gear/Data/RaidCheckData.lua` (`ns.RAIDCHECK`, lazy) for the raid check (F-098,
+Builds `Amisia/Data/RaidCheckData.lua` (`ns.RAIDCHECK`, lazy) for the raid check (F-098,
 `Raid/RaidCheck.lua`): which buff is a flask, an elixir or food and which spells are the class
 buffs, from the client tables only (`--wago`, default the newest copy of each table, `client_tables.py`; Item, ItemEffect,
 ItemXItemEffect, SpellEffect, SpellMisc, SpellDuration, SpellName; optional SpellEquippedItems with
@@ -1358,9 +1363,9 @@ Makes the addon's icon `Amisia.tga` (128x128, genuine 32-bit TGA) from the pictu
 `tools/art/Amisia.png` (see-through ground; not shipped). It is the one icon of the addon everywhere
 it shows: window portraits, addon list and compartment, minimap button. The picture is scaled so every
 visible pixel sits inside the round portrait; the windows and the minimap button lay a black disc under
-it (`W.DISC`). The modules' icons in the addon list (F-202), `Amisia_Raid.tga` and `Amisia_Gear.tga`, are
-the same picture with a round badge at the bottom right (a dark disc, a gold ring and the line art of the tab:
-Lucide `dices`, `shield` from `tools/art/lucide`, drawn by `make_ui_icons.py`). `--preview DIR` also writes PNGs
+it (`W.DISC`). The modules' icons in the addon list (F-202, F-228), `Amisia_Gear.tga`, `Amisia_Dungeons.tga` and
+`Amisia_Talents.tga`, are the same picture with a round badge at the bottom right (a dark disc, a gold ring and the
+line art of the tab: Lucide `shield`, `swords`, `sparkles` from `tools/art/lucide`, drawn by `make_ui_icons.py`). `--preview DIR` also writes PNGs
 to look at (one on the black disc). A changed texture needs a full client restart before WoW shows it;
 `/reload` is not enough. Requires Pillow (and resvg-py for the badges).
 

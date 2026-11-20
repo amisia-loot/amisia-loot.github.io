@@ -5,7 +5,7 @@
 
 Writes two lazy data files of the addon:
 
-- `Amisia_Gear/Data/ScanLists.lua` (`ns.Data("SCAN_LISTS")`): what /amisia scan quests and /amisia scan
+- `Amisia/Data/ScanLists.lua` (`ns.Data("SCAN_LISTS")`): what /amisia scan quests and /amisia scan
   npcs ask for. Q: every quest id of the client table QuestV2 (as ranges "<step>.<length>", base 36,
   steps from the end of the previous range). NA: phase A of the NPC scan, every NPC id the shipped data
   names (the bosses of DungeonData.lua and BisData.lua, the quest givers of QuestData.lua, the rares,
@@ -13,7 +13,7 @@ Writes two lazy data files of the addon:
   steps from the previous id). NB: phase B, the id ranges where Forever's new NPCs live: the ids of
   that data from FOREVER_MIN up, in clusters no more than GAP apart, each padded by PAD ({from, to}).
   The data files are read as the addon reads them, so this build runs after the others.
-- `Amisia_Gear/Data/ScanNames.lua` (`ns.Data("SCAN_NAMES")`): the names the scans found, per language other
+- `Amisia/Data/ScanNames.lua` (`ns.Data("SCAN_NAMES")`): the names the scans found, per language other
   than English (the data's names are English already): L = {deDE = {Q = {[quest id] = title},
   N = {[NPC id] = name}}}. From tools/scan_archive.json and the SavedVariables (id_scans of
   build_scan_archive.py). The addon shows them where the data has only the English name (quest titles
@@ -33,9 +33,16 @@ sys.path.insert(0, HERE)
 import build_scan_archive  # noqa: E402  (the scan archive, b36)
 import lua_data  # noqa: E402  (the lazy form, reading data files)
 
-DATA = os.path.join(ROOT, 'Amisia_Gear', 'Data')
-LISTS = os.path.join(DATA, 'ScanLists.lua')
-NAMES = os.path.join(DATA, 'ScanNames.lua')
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
+
+DATA = None   # the data files where they stand (modules.data_file); a folder holds them all (the tests)
+LISTS = modules.data_file('ScanLists.lua')
+NAMES = modules.data_file('ScanNames.lua')
+
+
+def _file(data, name):
+    """A data file: in the folder data, or where it stands in the addon (data None)."""
+    return modules.data_file(name) if data is None else os.path.join(data, name)
 FOREVER_MIN = 200000    # NPC ids from here on are new in Forever (Classic's highest are far below)
 GAP = 1000              # ids closer than this belong to one range of phase B
 PAD = 250               # each range of phase B reaches this far beyond the ids we know
@@ -116,13 +123,13 @@ def data_npcs(data=DATA):
         if v:
             out.setdefault(v, set()).add(src)
 
-    ns = _load(os.path.join(data, 'DungeonData.lua'))
+    ns = _load(_file(data, 'DungeonData.lua'))
     if ns is not None and ns.DUNGEON_FACTS is not None:
         for e in _values(ns.DUNGEON_FACTS.list):
             for v in _values(e.npcs):
                 if v is not False:
                     add(v, 'dungeon boss')
-    ns = _load(os.path.join(data, 'BisData.lua'))
+    ns = _load(_file(data, 'BisData.lua'))
     B = ns.BIS if ns is not None else None
     if B is not None:
         for v in _values(B.EN):
@@ -130,11 +137,11 @@ def data_npcs(data=DATA):
         for e in _values(B.DG):
             for k in _keys(e.bossNames):
                 add(k, 'boss')
-    ns = _load(os.path.join(data, 'QuestData.lua'))
+    ns = _load(_file(data, 'QuestData.lua'))
     if ns is not None and ns.QUEST_DATA is not None:
         for k in _keys(ns.QUEST_DATA.N):
             add(k, 'quest giver')
-    ns = _load(os.path.join(data, 'GearData.lua'))
+    ns = _load(_file(data, 'GearData.lua'))
     if ns is not None and ns.GEAR is not None:
         for r in _values(ns.GEAR.S):
             kind = r[1]
@@ -147,7 +154,7 @@ def data_npcs(data=DATA):
             elif kind == 'D' and isinstance(r[3], str) and re.match(r'^NPC \d+$', r[3]):
                 # a drop of an NPC no data names ("NPC 5650" on the dungeon page): the scan learns its name
                 add(r[3][4:], 'unnamed drop')
-    ns = _load(os.path.join(data, 'MapData.lua'))
+    ns = _load(_file(data, 'MapData.lua'))
     if ns is not None and ns.MAP is not None:
         for k in _keys(ns.MAP.P):
             if isinstance(k, str) and k.startswith('U:'):
@@ -179,7 +186,7 @@ def gear_missing(data=DATA):
     """"<count>.<sum>" of the ids GearData.lua's M lists (gear its sources name and no scan has seen;
     the sum modulo 1000000007), or '' without any: part of the gear scan's stamp, so another list of
     them is asked again (Collect/ScanById.lua SB.GearStamp, D-120)."""
-    ns = _load(os.path.join(data, 'GearData.lua'))
+    ns = _load(_file(data, 'GearData.lua'))
     ids = sorted({i for i in (_int(v) for v in _values(ns.GEAR.M)) if i}) if ns is not None and ns.GEAR is not None else []
     return f'{len(ids)}.{sum(ids) % 1000000007}' if ids else ''
 

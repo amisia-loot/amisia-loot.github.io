@@ -15,16 +15,19 @@ def test_toc_files_skip_xml():
     assert files, 'the TOCs list files'
     assert not [f for _, f in files if f.lower().endswith('.xml')], files
     assert all(f.endswith('.lua') for _, f in files), files
-    # the core's files first, then the raid module's, then the gear module's (F-202)
+    # the core's files first, then each module's in load order (F-202, F-228)
     parts = [p for p, _ in files]
-    assert parts == sorted(parts, key=['core', 'raid', 'gear'].index)
-    assert [p for p, _ in run.toc_files('tbc')] and 'gear' not in {p for p, _ in run.toc_files('tbc')}
+    assert parts == sorted(parts, key=['core', 'gear', 'dungeons', 'talents'].index)
+    # on TBC the core alone, without its Forever lines
+    tbc = run.toc_files('tbc')
+    assert tbc and {p for p, _ in tbc} == {'core'}
+    assert 'Gear/Gear.lua' not in {f.replace(os.sep, '/') for _, f in tbc}
 
 
 def test_toc_loads_the_map_pins_without_a_template():
-    with open(os.path.join(ROOT, 'Amisia_Gear', 'Amisia_Gear.toc'), encoding='utf-8') as fh:
+    with open(os.path.join(ROOT, 'Amisia_Dungeons', 'Amisia_Dungeons.toc'), encoding='utf-8') as fh:
         # the load condition ([AllowLoadGameType camelot], D-57) stays out of the name
         lines = [re.sub(r'\s*\[[^\]]*\]', '', ln.strip()) for ln in fh if ln.strip() and not ln.startswith('#')]
     # the pins are Amisia's own buttons on its own layer of the world map: no XML template
     assert not [ln for ln in lines if ln.lower().endswith('.xml')], lines
-    assert lines.index('Gear\\GuildWishes.lua') < lines.index('Gear\\MapPins.lua') < lines.index('Gear\\MapPlaces.lua')
+    assert lines.index('Gear\\MapPins.lua') < lines.index('Gear\\MapPlaces.lua')

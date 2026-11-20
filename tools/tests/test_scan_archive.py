@@ -14,9 +14,10 @@ sys.path.insert(0, os.path.join(ROOT, 'tools'))
 sys.path.insert(0, os.path.join(ROOT, 'tests'))
 import build_scan_archive as sa  # noqa: E402
 import build_scan  # noqa: E402
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
 REAL_ARCHIVE = os.path.join(ROOT, 'tools', 'scan_archive.json')
-REAL_MARKER = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'ScanDone.lua')
+REAL_MARKER = modules.data_file('ScanDone.lua')
 
 
 def sv(items=None, sources=None, suffix=None, **rest):
@@ -162,9 +163,9 @@ def test_the_committed_marker_is_current():
 
 
 def test_the_marker_is_in_the_toc_after_the_other_data():
-    with open(os.path.join(ROOT, 'Amisia_Gear', 'Amisia_Gear.toc'), encoding='utf-8') as fh:
-        toc = [ln.strip() for ln in fh if ln.strip() and not ln.startswith('#')]
-    assert 'Data\\ScanDone.lua' in toc and 'Collect\\ScanTrim.lua' in toc
+    names = [n for n, _, _ in modules.toc_entries()]
+    assert 'Data/ScanDone.lua' in names and 'Collect/ScanTrim.lua' in names
+    assert modules.module_of('Data/ScanDone.lua') == modules.module_of('Collect/ScanTrim.lua') == 'core'
 
 
 # ---------------------------------------------------------------- the round trip with the real files

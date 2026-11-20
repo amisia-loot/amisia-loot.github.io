@@ -1,6 +1,6 @@
 # Spec: Ein Modul je Reiter (Ausrüstung, Dungeons & Raids, Talente), Rest im Kern
 
-Stand: 2026-11-20 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-20 · Status: freigegeben ·
 Feature: F-228
 
 ## Ziel
@@ -116,8 +116,15 @@ Nichts Neues. Der Versionsruf verrät nur, welche Module jemand nutzt.
 
 ## Entscheidungen
 
+Beim Bauen (2026-11-20) zusätzlich in den Kern, weil mehrere Teile sie lesen: `Data/DungeonData.lua` (Raid-IDs,
+Gilden-Aufrufe), `Data/BisData.lua` (Bosse, Encounter, Grundstock der Drops), `Data/DungeonQuestData.lua` (der
+Sammler), `Data/GearWeights.lua` und die Item-Bibliothek `Gear/Gear.lua` (Items, Quellen, Werte) sowie die
+Anzeige der Item-Zeilen `UI/ItemKit.lua`; so braucht Dungeons & Raids ohne Ausrüstung nur rund 25 Prüfungen statt
+120. Alles nur auf Forever (DECISIONS D-158).
+
 - 2026-11-20: Nutzer: "können wir amisia ausrüstungs tab 1 modular dungeonsund raids 1 modular", "talente
   auch", "berufe Raid und Gilde Tab soll in Amisia Main immer sein" -> drei Module, Rest im Kern.
 - 2026-11-20: "Läuft auch allein" -> Dungeons & Raids läuft ohne Ausrüstung, nur ohne Upgrades.
 - 2026-11-20: Raid: zuerst "Eigenes Addon lassen", dann zur Raid-Seite "das soll in amisia main sein" ->
   Raid zieht in den Kern, `Amisia_Raid` entfällt.
+- 2026-11-20: Fragen 1 bis 4 und Spec: "Passt, bauen" -> alle Vorschläge so.

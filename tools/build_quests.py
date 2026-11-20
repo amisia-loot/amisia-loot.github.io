@@ -32,8 +32,9 @@ sys.path.insert(0, HERE)
 import att_data  # noqa: E402  (the AllTheThings reader)
 import lua_data  # noqa: E402  (the lazy form of the data file)
 import build_gear  # noqa: E402  (Lua strings)
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
-OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'QuestData.lua')
+OUT = modules.data_file('QuestData.lua')
 ATT_CACHE = att_data.ATT_CACHE
 MAX_POINTS = 4
 GEAR_CLASSES = (2, 4)      # weapon, armour

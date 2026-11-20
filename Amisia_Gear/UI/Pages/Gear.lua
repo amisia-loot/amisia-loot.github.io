@@ -11,16 +11,16 @@ ns.Load(function()
 local L = ns.L
 local W, T = ns.W, ns.Theme
 local Gear = ns.Gear
-local GREY, GREEN = T.GREY, "|cff4fd06a"
-local CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:12:12|t"
-local STAR = "|TInterface\\TargetingFrame\\UI-RaidTargetingIcon_1:12:12|t"
-local QUALITY = T.QUALITY_HEX
+local GREY = T.GREY
+-- the item rows' helpers the dungeon pages share are the core's (UI/ItemKit.lua, F-228)
+local K = ns.ItemKit
+local CHECK = K.CHECK
 local ROW_H = 24
 local GOAL_ROWS, HERE_ROWS, WISH_ROWS, GUILD_ROWS = 11, 14, 12, 11
 local PRIO_TEXT = { [3] = L["hoch"], [2] = L["mittel"], [1] = L["niedrig"] }
 local PRIO_NEXT = { [3] = 2, [2] = 1, [1] = 3 }
 local PRIO_TIP = { [3] = L[" (hoch)"], [1] = L[" (niedrig)"] }
-local OWNED_TEXT = { worn = L["angelegt"], bag = L["in der Tasche, nicht angelegt"], bank = L["in der Bank, nicht angelegt"] }
+local OWNED_TEXT = K.OWNED_TEXT
 -- a saved "dungeons" (the planner's view before its own page) is no view any more: "goals" is shown
 local VIEWS = { goals = true, here = true, wish = true, guild = true, sim = true }
 -- the source chips: key, label, width
@@ -34,58 +34,13 @@ local guildResult        -- what the last import said
 local scrolledTo         -- the slot the targets list was last scrolled to
 local placeGone          -- the saved place of "Hier" was not in the data
 
-local itemInfo = ns.ItemInfo
-
 ---------------------------------------------------------------------------
 -- Helpers
 ---------------------------------------------------------------------------
 
--- The window state of the page in settings.bis (view, slot, place, sources).
-local function state()
-    local s = AmisiaDB.settings
-    s.bis = type(s.bis) == "table" and s.bis or {}
-    return s.bis
-end
-
--- What a refresh keeps until Bis.lua's state changes: source texts, explanations, the wishes.
-local memo = { stamp = -1 }
-local function cached()
-    local st = ns.BisStamp()
-    if memo.stamp ~= st then memo = { stamp = st, src = {}, explain = {} } end
-    return memo
-end
-
-local nameMissing = false   -- a shown row had no item name yet ("Item 12345")
-
-local function itemText(id)
-    local name, _, q = itemInfo(id)
-    local row = Gear.Item(id)
-    q = q or (row and (row[5] or 0) > 0 and row[5]) or 1
-    if not name then nameMissing = true end
-    return ("|c%s%s|r"):format(QUALITY[q] or QUALITY[1], name or Gear.ScanName(id) or (row and row.name) or ("Item " .. id))
-end
-
--- A worn item's name in the colour of its link.
-local function linkText(link)
-    local color = link:match("^|c(%x%x%x%x%x%x%x%x)")
-    local name = link:match("|h%[(.-)%]|h")
-    if name then return color and ("|c%s%s|r"):format(color, name) or name end
-    local id = ns.ItemID(link)
-    return id and itemText(id) or "?"
-end
-
-local function linkOf(id)
-    local _, link = itemInfo(id)
-    return link or ("item:" .. id)
-end
-
--- A gain as percent of what is worn; a tiny worn score (starter items) gives thousands, shown as ">999 %"
--- so the column does not cut it.
-local function pctText(gain, mine)
-    local pct = math.floor(gain / mine * 100 + 0.5)
-    if pct > 999 then return ">999 %" end
-    return ("%+d %%"):format(pct)
-end
+local state, cached, itemText, linkText, linkOf, pctText = K.state, K.cached, K.itemText, K.linkText, K.linkOf, K.pctText
+local marks, gainText, modifiedClick, itemTooltip, hideTip, say, col =
+    K.marks, K.gainText, K.modifiedClick, K.itemTooltip, K.hideTip, K.say, K.col
 
 local function firstSource(id, o)
     return Gear.Sources(id, o)[1] or Gear.Sources(id)[1]
@@ -104,10 +59,6 @@ local function sourceText(id, o, pick)
     end
     if t == "" and type(pick) == "table" and type(pick.src) == "string" then return pick.src end
     return t
-end
-
-local function marks(e)
-    return (e.owned and (CHECK .. " ") or "") .. (e.wished and (STAR .. " ") or "")
 end
 
 -- What the planner did with an option, as short grey notes: a BiS pick, the set it belongs to,
@@ -133,13 +84,6 @@ local function noteText(e)
     return " " .. GREY .. "(" .. table.concat(parts, ", ") .. ")|r"
 end
 
-local function gainText(e)
-    if e.worn or e.owned == "worn" then return CHECK end
-    if e.switch then return L["Wechsel"] end
-    if type(e.gain) ~= "number" then return "" end
-    return (e.upgrade and GREEN or GREY) .. ("%+d"):format(math.floor(e.gain + 0.5)) .. "|r"
-end
-
 local function upgradesText(n) return n == 1 and "1 Upgrade" or (n .. " Upgrades") end
 
 local function wishCount()
@@ -150,37 +94,6 @@ local function wishCount()
 end
 
 local insertLink = W.InsertLink
-
--- Shift or Ctrl on an item: the client's modified click (link into the chat, dressing room, as the
--- player's key bindings say); Ctrl the client does not take opens the dressing room itself.
-local function modifiedClick(id)
-    if not id then return false end
-    local ctrl = IsControlKeyDown and IsControlKeyDown() or false
-    if not ((IsShiftKeyDown and IsShiftKeyDown()) or ctrl) then return false end
-    local link = linkOf(id)
-    local handled = HandleModifiedItemClick and HandleModifiedItemClick(link)
-    if not handled and ctrl and type(DressUpLink) == "function" then pcall(DressUpLink, link) end
-    return true
-end
-
-local function itemTooltip(owner, id)
-    if not id then return end
-    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
-    local _, link = itemInfo(id)
-    if link then
-        GameTooltip:SetHyperlink(link)
-    elseif GameTooltip.SetItemByID then
-        GameTooltip:SetItemByID(id)
-        -- an item only the server describes and no longer does: what the scan saw (D-59)
-        if Gear.ScanTooltip(GameTooltip, id, owner, function() itemTooltip(owner, id) end) then return end
-    end
-    GameTooltip:Show()
-end
-local function hideTip() GameTooltip:Hide() end
-
-local function say(ok, why)
-    if not ok and why then ns.msg(why) end
-end
 
 ---------------------------------------------------------------------------
 -- Map: the button before a source and the menu entries, only for items with a place
@@ -204,17 +117,20 @@ end
 -- The source key of a record, when it has a place (else the nearest of all sources is taken).
 local function placeKey(rec)
     local key = rec and ns.MapKeyOf and ns.MapKeyOf(rec)
-    if key and #ns.MapPoints(key) > 0 then return key end
+    if key and ns.MapPoints and #ns.MapPoints(key) > 0 then return key end
     return nil
 end
 
+-- the map is the module Dungeons & Raids' (F-228): without it no item has a place, no button shows
 local function showOnMap(id, key)
+    if not ns.Map or not ns.MapShowOnWorldMap then return end
     local point = ns.Map.ItemNearest(id, key)
     if not point and key then point = ns.Map.ItemNearest(id) end
     if point then ns.MapShowOnWorldMap(point) end
 end
 
 local function setTarget(id, key)
+    if not ns.MapSetTarget then return end
     local ok, why = ns.MapSetTarget(id, key)
     if not ok and key then ok, why = ns.MapSetTarget(id) end
     say(ok, why)
@@ -230,7 +146,7 @@ local function mapTip(self)
     if not self.id then return end
     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
     GameTooltip:AddLine(L["Wegpunkt zur Quelle"], 1, 0.82, 0)
-    local where = ns.Map.Where(self.id, self.key)
+    local where = ns.Map and ns.Map.Where(self.id, self.key)
     if where then GameTooltip:AddLine(L["Fundort: %s"]:format(where), 0.85, 0.85, 0.85) end
     GameTooltip:AddLine(L["Klick: Ziel setzen. Shift-Klick: auf der Weltkarte zeigen."], 0.6, 0.6, 0.6)
     GameTooltip:Show()
@@ -278,13 +194,6 @@ local function inInstance()
 end
 
 local lift = W.LiftDialog
-
-local function col(parent, x, w, label, template)
-    local fs = W.Text(parent, template or T.FONT.head, w)
-    fs:SetPoint("LEFT", x, 0)
-    if label then fs:SetText(label) end
-    return fs
-end
 
 -- Every place key the data knows (raids, dungeons, zones), per data set.
 local knownFor, known
@@ -1315,9 +1224,8 @@ ns.GearPageKit = {
     -- row had no item name yet
     sourceText = sourceText, mapButton = mapButton, setMapButton = setMapButton, linkOf = linkOf, pctText = pctText,
     OWNED_TEXT = OWNED_TEXT,
-    nameMissing = function() return nameMissing end,
-    -- a refresh starts with no missing item name; GET_ITEM_INFO_RECEIVED fills its rows again
-    namesFresh = function() nameMissing = false end,
+    nameMissing = K.nameMissing,
+    namesFresh = K.namesFresh,
 }
 
 StaticPopupDialogs["AMISIA_BIS_CLEAR_EX"] = {
@@ -1386,7 +1294,7 @@ ns.RegisterPanel{ key = "gear", label = L["Ausrüstung"], sub = L["Das beste Ite
         return f
     end,
     refresh = function(f)
-        nameMissing = false
+        K.namesFresh()
         local o = ns.BisOpts()
         local res = ns.BisTargets()
         local v = shownView()
@@ -1426,21 +1334,12 @@ end)
 ns.Listen("ALTS", refreshShown)
 ns.BisOnOwned(refreshOwned)
 
--- Item names the client did not have at the last refresh: once item data arrives the shown rows
--- are filled again, once for a burst of answers, and the wishlist (sorted by name) and the guild
--- list are built again.
-local namesDue = false
-ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()
-    if not nameMissing or namesDue then return end
-    namesDue = true
-    C_Timer.After(0.3, function()
-        namesDue = false
-        local cur = ns.CurrentPage and ns.CurrentPage()
-        if not nameMissing or not (cur == "gear" or cur == "dungeons" or cur == "raidjournal" or cur == "overview") then return end
-        memo.wishes = nil
-        guildKey = nil
-        ns.Refresh()
-    end)
+-- Item names the client did not have at the last refresh: the core fills the shown rows again once
+-- item data arrives (UI/ItemKit.lua); the wishlist (sorted by name) and the guild list are built again.
+for _, page in ipairs({ "gear", "overview" }) do K.WatchNames(page) end
+ns.Listen("ITEM_NAMES", function()
+    cached().wishes = nil
+    guildKey = nil
 end)
 
 ---------------------------------------------------------------------------

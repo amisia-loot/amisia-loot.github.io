@@ -11,7 +11,7 @@ local L = ns.L
 
 local NOTE_AFTER = 8   -- seconds after the login: the chat is there and the login's lines have passed
 
-local MODULE_NAME = { raid = L["Raid##Modul"], gear = L["Ausrüstung & Dungeons"] }
+local MODULE_NAME = { gear = L["Ausrüstung##Modul"], dungeons = L["Dungeons & Raids##Modul"], talents = L["Talente##Modul"] }
 
 -- The client's function: C_AddOns on every client of Amisia, the old global as fallback.
 local function api(key)
@@ -28,11 +28,11 @@ local function moduleOf(key)
     return nil
 end
 
--- The shown name of a module ("Raid", "Ausrüstung & Dungeons").
+-- The shown name of a module ("Ausrüstung", "Dungeons & Raids", "Talente").
 function ns.ModuleName(key) return MODULE_NAME[key] or tostring(key) end
 
 -- What the client says about a module's addon: { key, addon, here (it can load on this client: the
--- gear module on WoW Forever only), installed, enabled (for this character, as the AddOn list shows
+-- modules on WoW Forever only), installed, enabled (for this character, as the AddOn list shows
 -- it), loaded (its files ran this session), version (its TOC's ## Version) }.
 function ns.ModuleInfo(key)
     local m = moduleOf(key)
@@ -113,8 +113,15 @@ function ns.ModuleProblems()
         end
     end
     if #missing > 0 then
-        table.insert(out, 1, L["Es fehlen Amisia-Module: %s. Amisia besteht aus den Ordnern Amisia, Amisia_Raid und Amisia_Gear; bitte alle aus demselben Download installieren (/amisia module)."]:format(
+        table.insert(out, 1, L["Es fehlen Amisia-Module: %s. Bitte alle Amisia-Ordner aus demselben Download installieren (/amisia module)."]:format(
             table.concat(missing, ", ")))
+    end
+    -- a folder of a module that is the core's now (F-228: Amisia_Raid): its files loaded, did nothing
+    local old = {}
+    for name in pairs(ns.OLD_MODULES_LOADED or {}) do old[#old + 1] = name end
+    table.sort(old)
+    for _, name in ipairs(old) do
+        out[#out + 1] = L["Der Ordner %s stammt von einer älteren Amisia-Version und wird nicht mehr gebraucht: bitte ihn im AddOns-Ordner löschen."]:format(name)
     end
     return out
 end
@@ -212,11 +219,14 @@ local function fillRow(key)
 end
 
 ns.RegisterSettings{ key = "modules", label = L["Module"], order = 86, group = "amisia", items = {
-    { key = "modules.raid", type = "custom", label = ns.ModuleName("raid"),
-      tip = L["Das Modul Amisia: Raid (Ordner Amisia_Raid): Aufnahme, Vergaben, Rolls, Soft-Reserves, Punkte, Aufstellung, Kalender, Raid-Check. Schaltet das Addon für diesen Charakter an oder aus; gilt nach dem Neuladen."],
-      build = buildRow("raid"), fill = fillRow("raid") },
     { key = "modules.gear", type = "custom", label = ns.ModuleName("gear"),
-      tip = L["Das Modul Amisia: Ausrüstung & Dungeons (Ordner Amisia_Gear, nur WoW Forever): Ausrüstung, Planer, Dungeons, Quests, Karte, Berufe, Talente. Schaltet das Addon für diesen Charakter an oder aus; gilt nach dem Neuladen."],
+      tip = L["Das Modul Amisia: Ausrüstung (Ordner Amisia_Gear, nur WoW Forever): Ausrüstungsplaner, Ausrüstung mit Sets und Ruf, Wertung, Verzauberungen, Ziele und Wünsche. Schaltet das Addon für diesen Charakter an oder aus; gilt nach dem Neuladen."],
       build = buildRow("gear"), fill = fillRow("gear") },
+    { key = "modules.dungeons", type = "custom", label = ns.ModuleName("dungeons"),
+      tip = L["Das Modul Amisia: Dungeons & Raids (Ordner Amisia_Dungeons, nur WoW Forever): Dungeons, Raids, Quests, Karte, Routen, Läufe und Speedrun-Timer. Ohne das Modul Ausrüstung ohne Upgrades. Schaltet das Addon für diesen Charakter an oder aus; gilt nach dem Neuladen."],
+      build = buildRow("dungeons"), fill = fillRow("dungeons") },
+    { key = "modules.talents", type = "custom", label = ns.ModuleName("talents"),
+      tip = L["Das Modul Amisia: Talente (Ordner Amisia_Talents, nur WoW Forever): Talente planen und vergleichen, Talentrechner, Build-Codes und Talent-Links. Schaltet das Addon für diesen Charakter an oder aus; gilt nach dem Neuladen."],
+      build = buildRow("talents"), fill = fillRow("talents") },
 }}
 end)

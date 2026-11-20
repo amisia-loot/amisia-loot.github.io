@@ -30,9 +30,10 @@ the addon, ADDON_LOADED). The test text itself runs in a director runtime of its
   BUS.count(filter)    sent messages matching filter (prefix, kind, chan, sender, target, from, to
                        (stub clock), or a function)
 
-Modules (F-202, D-130): a test file with a line "--[[without raid]]" or "--[[without gear]]" in its first
-lines runs without the files of that module (tools/modules.py), as a client where it is switched off. In a
-multi-client test "--[[without raid for Kim_Eisherz Lia_Weide]]" takes it away from those clients only.
+Modules (F-202, D-130; F-228, D-158): a test file with a line "--[[without gear]]" (or dungeons, talents) in
+its first lines runs without the files of that module (tools/modules.py), as a client where it is switched
+off. In a multi-client test "--[[without gear for Kim_Eisherz Lia_Weide]]" takes it away from those clients
+only.
 
 Clients: a test file with a line "--[[game tbc]]" or "--[[game era]]" in its first lines runs as that
 client: only the TOC files whose load condition lets it load them, WOW_PROJECT_ID of that client,
@@ -87,14 +88,18 @@ def toc_meta():
 
 
 # The suffix of the TOC each classic client loads instead of <folder>.toc (D-57, written by tools/build.py
-# tocs): the core and the raid module there; the gear module's lists no file.
+# tocs): the core there (without its Forever lines); the modules' list no file.
 GAME_TOCS = {'tbc': '_TBC', 'era': '_Vanilla'}
+
+# the parts whose folder has its TOC (a part of tools/modules.py not built yet has none), and the modules
+PARTS = [m for m in modules.MODULES if os.path.isfile(os.path.join(modules.folder(m), modules.toc_name(m)))]
+MODULE_PARTS = [m for m in PARTS if m != 'core']
 
 
 def toc_files(game=None, module=None):
     """The files the TOCs load in order, as (part, path relative to its folder). game None: every file of
-    the three TOCs (the Forever tests); "tbc" or "era": the files of that client's own TOCs, the core and
-    the raid part (D-57). module: only that part's."""
+    the parts' TOCs (the Forever tests); "tbc" or "era": the files of that client's own TOCs, the core's
+    without its Forever lines (D-57). module: only that part's."""
     out = []
     for name, _, part in modules.toc_entries(module or modules.MODULES, GAME_TOCS.get(game, '')):
         # XML files (templates) are for the client; a test reads them itself
@@ -165,9 +170,9 @@ def file_game(source):
     return m.group(1) if m else None
 
 
-# "--[[without raid]]" (or gear) in the first lines: the module is not installed or switched off (F-202,
+# "--[[without gear]]" (or dungeons, talents) in the first lines: the module is not installed or switched off (F-202,
 # D-130); the runtime loads none of its files (tools/modules.py says which)
-WITHOUT_LINE = re.compile(r'^--\[\[without (raid|gear)\]\]\s*$', re.M)
+WITHOUT_LINE = re.compile(r'^--\[\[without (gear|dungeons|talents)\]\]\s*$', re.M)
 
 
 def file_without(source):
@@ -175,8 +180,8 @@ def file_without(source):
     return m.group(1) if m else None
 
 
-# "--[[without raid for Kim_Eisherz]]": in a multi-client test, those clients only lack the module
-WITHOUT_FOR_LINE = re.compile(r'^--\[\[without (raid|gear) for ([^\]\n]+)\]\]\s*$', re.M)
+# "--[[without gear for Kim_Eisherz]]": in a multi-client test, those clients only lack the module
+WITHOUT_FOR_LINE = re.compile(r'^--\[\[without (gear|dungeons|talents) for ([^\]\n]+)\]\]\s*$', re.M)
 
 
 def clients_without(source):
@@ -222,12 +227,12 @@ def fresh(source='', player=None, setup=None, locale=None, without=None):
     lua.globals().ADDON_DIR = ADDON
     lua.globals().ADDON_FILE = addon_file
     # the TOCs of the core and its modules (the paths), in load order
-    lua.globals().ADDON_TOCS = lua.table_from([os.path.join(modules.folder(m), modules.toc_name(m)) for m in modules.MODULES])
+    lua.globals().ADDON_TOCS = lua.table_from([os.path.join(modules.folder(m), modules.toc_name(m)) for m in PARTS])
     without = without or file_without(source)
     # the modules this client has (F-202): the stub's C_AddOns answers for them, and the core waits for
-    # the ADDON_LOADED of those it will load (Locales/Locale.lua); the gear module is Forever's only
-    present = [m for m in ('raid', 'gear') if m != without and not (m == 'gear' and game)]
-    for m in ('raid', 'gear'):
+    # the ADDON_LOADED of those it will load (Locales/Locale.lua); every module is Forever's only
+    present = [m for m in MODULE_PARTS if m != without and not game]
+    for m in MODULE_PARTS:
         state = '{ loadable = true }' if m in present else (
             '{ loadable = false, enabled = false }' if m == without else 'nil')
         lua.execute('STUB.addons["%s"] = %s' % (modules.FOLDERS[m], state))

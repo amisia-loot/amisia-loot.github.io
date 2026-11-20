@@ -1,0 +1,43 @@
+## Interface: 16001
+## Title: Amisia: Dungeons & Raids
+## Title-deDE: Amisia: Dungeons & Raids
+## Notes: Amisia's dungeon module, WoW Forever only: what every dungeon and raid brings (bosses, loot, quests), the quest pages, the map with routes and pins, runs, best times and the run timer. With Amisia: Gear it also shows your upgrades per dungeon. Needs Amisia.
+## Notes-deDE: Dungeon-Modul von Amisia, nur WoW Forever: was jeder Dungeon und Raid bringt (Bosse, Beute, Quests), die Quest-Seiten, die Karte mit Routen und Markierungen, Läufe, Bestzeiten und der Speedrun-Timer. Mit Amisia: Ausrüstung zeigt es auch deine Upgrades je Dungeon. Braucht Amisia.
+## Author: mrvulo
+## Version: 2.103.1
+## Category: VuloUI
+## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia_Dungeons
+## Dependencies: Amisia
+## OptionalDeps: Amisia_Gear
+## X-License: GPL-3.0
+
+Dungeons\Module.lua
+Locales\enUS_dungeons.lua
+Data\MapData.lua
+Data\QuestData.lua
+Data\QuestItemData.lua
+Data\DungeonArt.lua
+Gear\Dungeons.lua
+Gear\Runs.lua
+Gear\RunTimes.lua
+Gear\RunGains.lua
+Gear\RunTimer.lua
+Gear\Quests.lua
+Gear\Map.lua
+Gear\MapPins.lua
+Gear\MapPlaces.lua
+Gear\MapBeacon.lua
+Gear\QuestGiverPins.lua
+Gear\Routes.lua
+Gear\RouteMap.lua
+Gear\DungeonNotes.lua
+Gear\DungeonBar.lua
+Gear\GroupQuests.lua
+Gear\QuestItems.lua
+Gear\QuestItemsWindow.lua
+Gear\QuestStart.lua
+UI\Pages\JournalParts.lua
+UI\Pages\Dungeons.lua
+UI\Pages\RaidJournal.lua
+UI\Pages\Map.lua
+UI\Pages\Quests.lua

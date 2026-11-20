@@ -16,9 +16,10 @@ ADDON = os.path.join(ROOT, 'Amisia_Gear')   # the gear module holds the data (F-
 sys.path.insert(0, TOOLS)
 import att_data  # noqa: E402
 import build_dungeons  # noqa: E402
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
 KEYS = os.path.join(TOOLS, 'forever_dungeon_keys.json')
-OUT = os.path.join(ADDON, 'Data', 'DungeonData.lua')
+OUT = modules.data_file('DungeonData.lua')
 WAGO = os.path.join(HERE, 'fixtures', 'wago')
 USER_WAGO = os.path.expanduser('~/addons/_wago')
 
@@ -36,10 +37,10 @@ def facts():
 def quest_titles():
     """{quest id: {titles}} of the repo's quest data (QuestData.lua and DungeonQuestData.lua)."""
     out = {}
-    with open(os.path.join(ADDON, 'Data', 'QuestData.lua'), encoding='utf-8') as fh:
+    with open(modules.data_file('QuestData.lua'), encoding='utf-8') as fh:
         for m in re.finditer(r'^\[(\d+)\]="\d+;((?:[^;\\]|\\.)*);', fh.read(), re.M):
             out.setdefault(int(m.group(1)), set()).add(m.group(2))
-    with open(os.path.join(ADDON, 'Data', 'DungeonQuestData.lua'), encoding='utf-8') as fh:
+    with open(modules.data_file('DungeonQuestData.lua'), encoding='utf-8') as fh:
         for m in re.finditer(r'\[(\d+)\] = \{ "((?:[^"\\]|\\.)*)"', fh.read()):
             out.setdefault(int(m.group(1)), set()).add(m.group(2).replace("\\'", "'"))
     return out

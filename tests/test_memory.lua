@@ -14,14 +14,14 @@ UpdateAddOnMemoryUsage = function() calls = calls + 1 end
 local asked = {}
 GetAddOnMemoryUsage = function(name)
     asked[name] = true
-    if name ~= "Amisia" then assert(name == "Amisia_Raid" or name == "Amisia_Gear", name); return 0 end
+    if name ~= "Amisia" then assert(name == "Amisia_Gear" or name == "Amisia_Dungeons" or name == "Amisia_Talents", name); return 0 end
     local v = value; value = 1024; return v
 end
 NS.Data("MAGESCROLLS")
 AmisiaDB.scan = { items = { [1] = "a", [2] = "b" }, sources = { x = 1 } }
 lines = NS.MemoryReport()
 assert(calls == 2, "measured twice: " .. calls)
-assert(asked.Amisia and asked.Amisia_Raid and asked.Amisia_Gear, "the core and both modules")
+assert(asked.Amisia and asked.Amisia_Gear and asked.Amisia_Dungeons and asked.Amisia_Talents, "the core and the modules")
 assert(has(lines[1], "Speicher: 2.0 MB, davon Müll 1.0 MB, echte Daten 1.0 MB."), lines[1])
 local text = table.concat(lines, "\n")
 assert(has(text, "Geladene Daten (beim Aufbau, mit Müll): ") and has(text, "MAGESCROLLS"), text)

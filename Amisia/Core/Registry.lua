@@ -30,8 +30,9 @@ ns.GAME = gameOf()
 ns.FOREVER = ns.GAME == "forever"
 ns.GAME_NAMES = { forever = "WoW Forever", tbc = "TBC Anniversary", era = "Classic Era" }
 
--- The modules (F-202, D-130): "raid" (Amisia_Raid) and "gear" (Amisia_Gear, Ausrüstung & Dungeons). A
--- module's first file (Raid/Module.lua, Gear/Module.lua) marks it loaded in ns.MODULES (made by
+-- The modules (F-202, D-130; F-228, D-158): "gear" (Amisia_Gear, Ausrüstung), "dungeons" (Amisia_Dungeons,
+-- Dungeons & Raids), "talents" (Amisia_Talents, Talente). A module's first file (Gear/Module.lua,
+-- Dungeons/Module.lua, Talents/Module.lua) marks it loaded in ns.MODULES (made by
 -- Locales/Locale.lua). The core uses a module's code only behind ns.HasModule or a check of the symbol
 -- itself, and the modules each other the same way (tools/modules.py checks it); a module that is not
 -- there is then simply missing, without an error. Ask in a function, not while the files load: a

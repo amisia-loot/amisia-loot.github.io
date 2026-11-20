@@ -1,6 +1,6 @@
--- The core and its modules load as three addons (F-202, D-128, D-130): one namespace through the
--- modules' Module.lua, the bodies after the ADDON_LOADED of the core and of every module that will load
--- (core, raid, gear), PLAYER_LOGIN when something still waits, a module the client loads late, a module
+-- The core and its modules load as addons of their own (F-202, D-128, D-130; F-228, D-158): one namespace
+-- through the modules' Module.lua, the bodies after the ADDON_LOADED of the core and of every module that
+-- will load (core, then the modules), PLAYER_LOGIN when something still waits, a module the client loads late, a module
 -- without the core. tests/run.py loaded the real addon as the client does (a namespace per folder, one
 -- ADDON_LOADED per addon); the small worlds below load Locales/Locale.lua and the Module.lua files again,
 -- each with a core namespace of its own.
@@ -10,12 +10,13 @@ local function same(a, b) return table.concat(a, ",") == table.concat(b, ",") en
 -- the real load: one namespace, every module there
 ---------------------------------------------------------------------------
 assert(_G.AmisiaCore == NS, "the core offers its namespace")
-assert(NS.ADDON == "Amisia" and NS.HasModule("raid") and NS.HasModule("gear"), "both modules loaded")
+assert(NS.ADDON == "Amisia" and NS.HasModule("gear") and NS.HasModule("dungeons") and NS.HasModule("talents"), "the modules loaded")
 assert(type(NS.AddAward) == "function" and type(NS.Gear) == "table" and type(NS.SessionHash) == "function",
-    "what the modules' files define stands in the core's namespace")
-assert(NS.OwnAddon("Amisia") and NS.OwnAddon("Amisia_Raid") and NS.OwnAddon("Amisia_Gear"), "Amisia's addons")
+    "what the core's and the modules' files define stands in the core's namespace")
+assert(NS.OwnAddon("Amisia") and NS.OwnAddon("Amisia_Gear") and NS.OwnAddon("Amisia_Dungeons") and NS.OwnAddon("Amisia_Talents"), "Amisia's addons")
+assert(not NS.OwnAddon("Amisia_Raid"), "the raid part is the core's (F-228)")
 assert(not NS.OwnAddon("Blizzard_Calendar") and not NS.OwnAddon(nil), "not Amisia's")
-assert(same(NS.OwnAddons(), { "Amisia", "Amisia_Raid", "Amisia_Gear" }), table.concat(NS.OwnAddons(), ","))
+assert(same(NS.OwnAddons(), { "Amisia", "Amisia_Gear", "Amisia_Dungeons", "Amisia_Talents" }), table.concat(NS.OwnAddons(), ","))
 assert(NS.HasData("GEAR") and NS.HasData("QUEST_DATA"), "the gear module's Data/* registered in the core")
 
 -- a module's ADDON_LOADED handler added after the core started gets the core's event once (ns.LateLoaded)
@@ -53,71 +54,98 @@ local function module(file, addon)
     return ns
 end
 
--- 1. both modules on: the core waits for both; the bodies run core, raid, gear (in whatever order they came)
-STUB.addons.Amisia_Raid, STUB.addons.Amisia_Gear = { loadable = true }, { loadable = true }
+-- 0. all three modules on: the core waits for each; the bodies run core, gear, dungeons, talents (in
+-- whatever order the modules came)
+STUB.addons.Amisia_Gear, STUB.addons.Amisia_Dungeons, STUB.addons.Amisia_Talents =
+    { loadable = true }, { loadable = true }, { loadable = true }
 local C, log = world()
 C.Load(function() log[#log + 1] = "core" end)
 STUB.fire("ADDON_LOADED", "Amisia")
-local R = module("Raid/Module.lua", "Amisia_Raid")
+local T = module("Talents/Module.lua", "Amisia_Talents")
+local Dg = module("Dungeons/Module.lua", "Amisia_Dungeons")
 local G = module("Gear/Module.lua", "Amisia_Gear")
+T.Load(function() log[#log + 1] = "talents" end)
+Dg.Load(function() log[#log + 1] = "dungeons" end)
 G.Load(function() log[#log + 1] = "gear" end)
-R.Load(function() log[#log + 1] = "raid" end)
-assert(#log == 0, "nothing runs before the modules came")
-STUB.fire("ADDON_LOADED", "Amisia_Raid")
+STUB.fire("ADDON_LOADED", "Amisia_Talents")
+STUB.fire("ADDON_LOADED", "Amisia_Dungeons")
 assert(#log == 0, "the gear module still comes")
 STUB.fire("ADDON_LOADED", "Amisia_Gear")
-assert(same(log, { "core", "raid", "gear", "loaded" }), table.concat(log, ","))
+assert(same(log, { "core", "gear", "dungeons", "talents", "loaded" }), table.concat(log, ","))
+assert(C.MODULES.gear and C.MODULES.dungeons and C.MODULES.talents, "the marks")
+STUB.addons.Amisia_Dungeons, STUB.addons.Amisia_Talents = nil, nil
+
+-- 1. the module on: the core waits for it; the bodies run core, then the module
+STUB.addons.Amisia_Gear = { loadable = true }
+C, log = world()
+C.Load(function() log[#log + 1] = "core" end)
+STUB.fire("ADDON_LOADED", "Amisia")
+G = module("Gear/Module.lua", "Amisia_Gear")
+G.Load(function() log[#log + 1] = "gear" end)
+assert(#log == 0, "nothing runs before the module came")
+STUB.fire("ADDON_LOADED", "Amisia_Gear")
+assert(same(log, { "core", "gear", "loaded" }), table.concat(log, ","))
 -- one namespace: a module writes and reads the core's table, its Load stays its own
-R.Shared = 5
-assert(C.Shared == 5 and G.Shared == 5 and rawget(R, "Shared") == nil, "writes reach the core")
+G.Shared = 5
+assert(C.Shared == 5 and rawget(G, "Shared") == nil, "writes reach the core")
 C.FromCore = "x"
-assert(R.FromCore == "x" and G.FromCore == "x", "reads reach the core")
-assert(C.MODULES.raid and C.MODULES.gear and C.HasModule == nil, "the marks (ns.HasModule comes with Registry.lua)")
-assert(rawget(R, "Load") ~= C.Load and rawget(G, "Load") ~= C.Load, "a module queues its bodies as its part")
+assert(G.FromCore == "x", "reads reach the core")
+assert(C.MODULES.gear and C.HasModule == nil, "the mark (ns.HasModule comes with Registry.lua)")
+assert(rawget(G, "Load") ~= C.Load, "a module queues its bodies as its part")
 -- after the start a body runs at once
 G.Load(function() log[#log + 1] = "now" end)
 assert(log[#log] == "now")
 
--- 2. the gear module switched off for this character: the core waits for the raid module only
+-- 2. the module switched off for this character: the core starts at its own ADDON_LOADED
 STUB.addons.Amisia_Gear = { loadable = true, enabled = false }
 C, log = world()
 C.Load(function() log[#log + 1] = "core" end)
 STUB.fire("ADDON_LOADED", "Amisia")
-R = module("Raid/Module.lua", "Amisia_Raid")
-R.Load(function() log[#log + 1] = "raid" end)
-STUB.fire("ADDON_LOADED", "Amisia_Raid")
-assert(same(log, { "core", "raid", "loaded" }), table.concat(log, ","))
+assert(same(log, { "core", "loaded" }), table.concat(log, ","))
 assert(C.MODULES.gear == nil, "no gear module")
 
 -- 3. no module installed: the core starts at its own ADDON_LOADED
-STUB.addons.Amisia_Raid, STUB.addons.Amisia_Gear = nil, nil
+STUB.addons.Amisia_Gear = nil
 C, log = world()
 C.Load(function() log[#log + 1] = "core" end)
 STUB.fire("ADDON_LOADED", "Amisia")
 assert(same(log, { "core", "loaded" }), table.concat(log, ","))
 -- 4. ... and one loads after all: its bodies run at once, its handlers get the core's event late
-R = module("Raid/Module.lua", "Amisia_Raid")
-R.Load(function() log[#log + 1] = "raid" end)
-STUB.fire("ADDON_LOADED", "Amisia_Raid")
-assert(same(log, { "core", "loaded", "raid", "late" }), table.concat(log, ","))
+G = module("Gear/Module.lua", "Amisia_Gear")
+G.Load(function() log[#log + 1] = "gear" end)
+STUB.fire("ADDON_LOADED", "Amisia_Gear")
+assert(same(log, { "core", "loaded", "gear", "late" }), table.concat(log, ","))
 
 -- 5. a module the client named never comes: PLAYER_LOGIN runs the bodies and hands the login on
-STUB.addons.Amisia_Raid = { loadable = true }
+STUB.addons.Amisia_Gear = { loadable = true }
 C, log = world()
 C.Load(function() log[#log + 1] = "core" end)
 STUB.fire("ADDON_LOADED", "Amisia")
-assert(#log == 0, "waits for the raid module")
+assert(#log == 0, "waits for the gear module")
 STUB.fire("PLAYER_LOGIN")
 assert(same(log, { "core", "loaded", "login" }), table.concat(log, ","))
 
+-- 5b. a folder Amisia_Raid left over from before F-228 (D-158): its Module.lua points it at the core, but
+-- its bodies never run (the raid part is the core's now), and the core knows to ask for its removal
+STUB.addons.Amisia_Gear = nil
+C, log = world()
+C.Load(function() log[#log + 1] = "core" end)
+local old = {}
+setmetatable(old, { __index = C, __newindex = C })
+rawset(old, "Load", function(fn) C.LoadPart("raid", fn) end)
+old.Load(function() log[#log + 1] = "old raid" end)
+STUB.fire("ADDON_LOADED", "Amisia")
+STUB.fire("ADDON_LOADED", "Amisia_Raid")
+assert(same(log, { "core", "loaded" }), table.concat(log, ","))
+assert(C.OLD_MODULES_LOADED.Amisia_Raid, "the old folder is noted")
+
 -- 6. the gear module off Forever: not waited for, even when the client calls it loadable (D-57)
-STUB.addons.Amisia_Raid, STUB.addons.Amisia_Gear = { loadable = true }, { loadable = true }
+STUB.addons.Amisia_Gear = { loadable = true }
 local keepCamelot = WOW_PROJECT_CAMELOT
 WOW_PROJECT_CAMELOT = nil
 C, log = world()
 C.Load(function() log[#log + 1] = "core" end)
 STUB.fire("ADDON_LOADED", "Amisia")
-STUB.fire("ADDON_LOADED", "Amisia_Raid")
 WOW_PROJECT_CAMELOT = keepCamelot
 assert(same(log, { "core", "loaded" }), table.concat(log, ","))
 

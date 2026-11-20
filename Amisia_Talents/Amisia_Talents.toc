@@ -1,0 +1,18 @@
+## Interface: 16001
+## Title: Amisia: Talents
+## Title-deDE: Amisia: Talente
+## Notes: Amisia's talent module, WoW Forever only: plan talents and compare them with yours, the talent calculator, build codes and talent links. Needs Amisia.
+## Notes-deDE: Talent-Modul von Amisia, nur WoW Forever: Talente planen und mit deinen vergleichen, der Talentrechner, Build-Codes und Talent-Links. Braucht Amisia.
+## Author: mrvulo
+## Version: 2.103.1
+## Category: VuloUI
+## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia_Talents
+## Dependencies: Amisia
+## OptionalDeps: Amisia_Gear, Amisia_Dungeons
+## X-License: GPL-3.0
+
+Talents\Module.lua
+Locales\enUS_talents.lua
+Data\TalentData.lua
+Gear\Talents.lua
+UI\Pages\Talents.lua

@@ -37,13 +37,14 @@ import os
 import sys
 
 import att_data
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 FACTS = os.path.join(HERE, 'forever_dungeons.json')
 CLIENT = os.path.join(HERE, 'forever_dungeons_client.json')
 KEYS = os.path.join(HERE, 'forever_dungeon_keys.json')
-OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'DungeonData.lua')
+OUT = modules.data_file('DungeonData.lua')
 WAGO_DIRS = (os.path.expanduser('~/addons/_wago'), os.path.join(att_data.ATT_CACHE, '.config', '.wago'))
 # where a client table in another language lies (build.py tables --locale deDE writes the first)
 DE_DIRS = (os.path.expanduser('~/addons/_cache/wago'), os.path.expanduser('~/addons/_wago'))

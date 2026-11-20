@@ -14,11 +14,12 @@ ROOT = os.path.dirname(TOOLS)
 ADDON = os.path.join(ROOT, 'Amisia_Gear')   # the gear module holds the data (F-202)
 sys.path.insert(0, TOOLS)
 import build_dungeons  # noqa: E402
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
 FACTS = os.path.join(TOOLS, 'forever_dungeons.json')
 CLIENT = os.path.join(TOOLS, 'forever_dungeons_client.json')
 WAGO = os.path.join(HERE, 'fixtures', 'wago')
-OUT = os.path.join(ADDON, 'Data', 'DungeonData.lua')
+OUT = modules.data_file('DungeonData.lua')
 
 # The public facts on Forever's new instances as the user gave them (2026-10-05); the boss lists are
 # the item data's (GearData.lua), see test_every_label_says_where_its_facts_can_be_checked.
@@ -48,9 +49,9 @@ def entries():
 def repo_names():
     """Dungeon names the repo's own data uses: the item data's dungeon sources and dungeon quests,
     and the map data's entrances."""
-    with open(os.path.join(ADDON, 'Data', 'GearData.lua'), encoding='utf-8') as fh:
+    with open(modules.data_file('GearData.lua'), encoding='utf-8') as fh:
         gear = fh.read()
-    with open(os.path.join(ADDON, 'Data', 'MapData.lua'), encoding='utf-8') as fh:
+    with open(modules.data_file('MapData.lua'), encoding='utf-8') as fh:
         mapdata = fh.read()
     names = set(re.findall(r'\{"D",\s*"((?:[^"\\]|\\.)*)"', gear))
     # Q {name, quest level, minimum level, faction, zone, quest id, class mask, dungeon}
@@ -94,7 +95,7 @@ def test_every_label_says_where_its_facts_can_be_checked():
     dungeon source of GearData.lua for that dungeon. Nothing is labelled as from Blizzard."""
     sources = facts()['sources']
     assert 'forever' not in sources and 'Blizzard' not in json.dumps(sources), 'no claim the repo cannot back'
-    with open(os.path.join(ADDON, 'Data', 'GearData.lua'), encoding='utf-8') as fh:
+    with open(modules.data_file('GearData.lua'), encoding='utf-8') as fh:
         gear = fh.read()
     d_recs = set(re.findall(r'\{"D",\s*"((?:[^"\\]|\\.)*)",\s*"((?:[^"\\]|\\.)*)"', gear))
     d_recs = {(a.replace("\\'", "'"), b.replace("\\'", "'")) for a, b in d_recs}
@@ -171,7 +172,7 @@ def test_no_boss_of_the_old_scarlet_monastery_is_lost():
     order = [n for k in keys for n in c[k]['order']]
     assert order == old['order'], 'the same bosses in the same order, wing after wing'
     assert [x for k in keys for x in c[k]['enc']] == old['enc'] and [x for k in keys for x in c[k]['npcs']] == old['npcs']
-    with open(os.path.join(ADDON, 'Data', 'BisData.lua'), encoding='utf-8') as fh:
+    with open(modules.data_file('BisData.lua'), encoding='utf-8') as fh:
         bis = fh.read()
     npcs = {}
     for line in bis.splitlines():
@@ -182,7 +183,7 @@ def test_no_boss_of_the_old_scarlet_monastery_is_lost():
                 npcs[i] = (key.group(1), n)
     assert {i: n for i, (_, n) in npcs.items()} == old['bossNames'], 'every boss NPC of the build, under its name'
     assert npcs['3976'][0] == 'smcath' and npcs['6489'][0] == 'smgy', 'Mograine in the Cathedral, the rares in the Graveyard'
-    with open(os.path.join(ADDON, 'Data', 'GearData.lua'), encoding='utf-8') as fh:
+    with open(modules.data_file('GearData.lua'), encoding='utf-8') as fh:
         gear = fh.read()
     recs = set(re.findall(r'\{"D","Scarlet Monastery: (\w+)","((?:[^"\\]|\\.)*)"', gear))
     wing_of = {}
@@ -193,7 +194,7 @@ def test_no_boss_of_the_old_scarlet_monastery_is_lost():
         assert len(wing_of[boss]) == 1 or boss == 'Trash', (boss, wing_of[boss])
     assert wing_of['Trash'] == {'Graveyard', 'Library', 'Armory', 'Cathedral'}, 'each wing page lists its trash'
     assert '{"D","Scarlet Monastery",' not in gear and ',"Scarlet Monastery"},' not in gear, 'no source names the old dungeon'
-    with open(os.path.join(ADDON, 'Data', 'DungeonQuestData.lua'), encoding='utf-8') as fh:
+    with open(modules.data_file('DungeonQuestData.lua'), encoding='utf-8') as fh:
         dq = fh.read()
     listed = set()
     for k in keys:
@@ -278,12 +279,12 @@ def test_the_generated_file_is_valid_lua():
 
 
 def test_the_toc_loads_the_facts_on_forever_and_the_planner_after_bis():
-    with open(os.path.join(ADDON, 'Amisia_Gear.toc'), encoding='utf-8') as fh:
-        lines = [l.strip() for l in fh if l.strip() and not l.startswith('#')]
-    assert 'Data\\DungeonData.lua' in lines
-    names = [re.sub(r'\s*\[.*\]', '', l) for l in lines]
-    assert names.index('Data\\MapData.lua') < names.index('Data\\DungeonData.lua') < names.index('Gear\\Dungeons.lua')
-    assert names.index('Gear\\Bis.lua') < names.index('Gear\\Dungeons.lua') < names.index('UI\\Pages\\Gear.lua')
+    # every part's TOC in load order (core, gear, dungeons, talents; F-228): paths with "/"
+    names = [n for n, _, _ in modules.toc_entries()]
+    # the facts are the core's (the raid part reads them, F-228), the planner the module Dungeons & Raids'
+    assert modules.module_of('Data/DungeonData.lua') == 'core'
+    assert names.index('Data/DungeonData.lua') < names.index('Data/MapData.lua') < names.index('Gear/Dungeons.lua')
+    assert names.index('Gear/Bis.lua') < names.index('Gear/Dungeons.lua')
 
 
 # --- the client tables (tools/forever_dungeons_client.json, build_dungeons.py --wago)

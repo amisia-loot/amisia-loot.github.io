@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- refactor(modules): one module per tab: Gear, Dungeons & Raids, Talents; raid, professions and guild in the core (F-228)
+
+    The AddOn list now shows Amisia and three modules for WoW Forever: "Amisia: Gear", "Amisia: Dungeons & Raids"
+    and "Amisia: Talents". Each can be switched off on its own (AddOn list or Settings, Modules); Dungeons & Raids
+    then still shows bosses, loot, quests and the map, only without upgrades when Gear is off. The raid tools,
+    professions and the guild's layer, duels and tools are always there: "Amisia: Raid" is part of Amisia now. After
+    updating by hand, delete the old folder Amisia_Raid.
+
 ## [v2.103.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.103.1) (2026-11-20)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.103.0...v2.103.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

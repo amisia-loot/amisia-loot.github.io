@@ -36,8 +36,9 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import att_data  # noqa: E402  (the AllTheThings reader)
 import lua_data  # noqa: E402  (the lazy form of the data file)
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
-OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'QuestItemData.lua')
+OUT = modules.data_file('QuestItemData.lua')
 ARCHIVE = os.path.join(HERE, 'quest_item_archive.json')
 QUEST_CLASS = 12
 KINDS = 'SOD'              # the order of strength

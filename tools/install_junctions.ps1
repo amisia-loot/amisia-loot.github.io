@@ -1,26 +1,27 @@
 <#
 .SYNOPSIS
-Points the WoW AddOns folders at Amisia's three release folders: one junction per folder (F-202, D-130).
+Points the WoW AddOns folders at Amisia's release folders: one junction per folder (F-202, D-130; F-228, D-158).
 
 .DESCRIPTION
-Run once on the PC, in a PowerShell opened as administrator, after the first release with three folders
-has reached the PC (Syncthing folder "amisia": %USERPROFILE%\VuloSync\Amisia with the subfolders Amisia,
-Amisia_Raid and Amisia_Gear). The script
+Run once on the PC, in a PowerShell opened as administrator, after a release with a new set of folders
+has reached the PC (Syncthing folder "amisia": %USERPROFILE%\VuloSync\Amisia with one subfolder per
+addon, $Folders below). The script
 
-1. checks that the three subfolders are there (each with its TOC); otherwise it changes nothing;
+1. checks that the subfolders are there (each with its TOC); otherwise it changes nothing;
 2. in every client folder of WoW (_forever_, _anniversary_, _classic_era_) under Interface\AddOns:
-   - removes the old junction Amisia that pointed at the whole release folder, and any junction
-     Amisia, Amisia_Raid or Amisia_Gear that points elsewhere or does not belong to that client;
-   - makes the junctions Amisia and Amisia_Raid (all three clients) and Amisia_Gear (WoW Forever only:
-     the module "Ausruestung & Dungeons" loads nowhere else).
+   - removes the old junction Amisia that pointed at the whole release folder, any junction of
+     $Folders that points elsewhere or does not belong to that client, and the junctions of the
+     folders that are gone ($OldFolders: Amisia_Raid, the core's since F-228);
+   - makes the junction Amisia (all three clients) and those of the modules (WoW Forever only:
+     they load nowhere else).
 
-It only ever removes junctions, never a real folder: a real folder Amisia, Amisia_Raid or Amisia_Gear (an
-install by hand, say) stays as it is and the script says so. Running it again changes nothing ("ok").
+It only ever removes junctions, never a real folder: a real folder of these names (an install by hand,
+say) stays as it is and the script says so. Running it again changes nothing ("ok").
 A client folder that is not installed is skipped. Plain ASCII on purpose: Windows PowerShell 5.1 reads a
 script without byte order mark in the ANSI code page.
 
-After it: start WoW anew (a full client restart, not /reload); the AddOn list shows Amisia, Amisia: Raid
-and, on WoW Forever, Amisia: Ausruestung & Dungeons.
+After it: start WoW anew (a full client restart, not /reload); the AddOn list shows Amisia and, on WoW
+Forever, its modules.
 
 .PARAMETER Release
 The release folder on the PC. Default %USERPROFILE%\VuloSync\Amisia.
@@ -42,13 +43,15 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 
-# The addon folders, and which client gets which (the gear module is WoW Forever's only, D-57, D-130).
-$Folders = @('Amisia', 'Amisia_Raid', 'Amisia_Gear')
+# The addon folders, and which client gets which (the modules are WoW Forever's only, D-57, D-130, D-158).
+$Folders = @('Amisia', 'Amisia_Gear', 'Amisia_Dungeons', 'Amisia_Talents')
 $Clients = [ordered]@{
-    '_forever_'     = @('Amisia', 'Amisia_Raid', 'Amisia_Gear')
-    '_anniversary_' = @('Amisia', 'Amisia_Raid')
-    '_classic_era_' = @('Amisia', 'Amisia_Raid')
+    '_forever_'     = @('Amisia', 'Amisia_Gear', 'Amisia_Dungeons', 'Amisia_Talents')
+    '_anniversary_' = @('Amisia')
+    '_classic_era_' = @('Amisia')
 }
+# Folders of earlier releases that are gone: their junctions go (F-228: the raid part is the core's).
+$OldFolders = @('Amisia_Raid')
 
 function Test-Admin {
     $id = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -88,7 +91,7 @@ if (-not $DryRun -and -not (Test-Admin)) {
     exit 1
 }
 
-# 1. the three release folders, each with its TOC
+# 1. the release folders, each with its TOC
 $Release = $Release.TrimEnd('\')
 $missing = @()
 foreach ($f in $Folders) {
@@ -96,7 +99,7 @@ foreach ($f in $Folders) {
 }
 if ($missing.Count -gt 0) {
     Write-Host "In $Release fehlen: $($missing -join ', ')." -ForegroundColor Yellow
-    Write-Host 'Erst den Release mit drei Ordnern abwarten (Syncthing), dann noch einmal starten. Nichts geaendert.' -ForegroundColor Yellow
+    Write-Host 'Erst den Release mit diesen Ordnern abwarten (Syncthing), dann noch einmal starten. Nichts geaendert.' -ForegroundColor Yellow
     exit 1
 }
 Write-Host "Release-Ordner: $Release"
@@ -112,6 +115,19 @@ foreach ($client in $Clients.Keys) {
     }
     Write-Host "$client`:"
     $wanted = $Clients[$client]
+    foreach ($f in $OldFolders) {
+        $link = Join-Path $addons $f
+        $j = Get-Junction $link
+        if ($j) {
+            $points = Get-LinkTarget $j
+            Remove-Junction $link
+            Write-Host "  $f`: Verknuepfung entfernt, der Ordner gehoert nicht mehr zu Amisia (zeigte auf $points)"
+            $removed++
+        } elseif (Test-Path -LiteralPath $link) {
+            Write-Host "  $f`: echter Ordner, bleibt unberuehrt. Er gehoert nicht mehr zu Amisia: bitte selbst loeschen." -ForegroundColor Yellow
+            $skipped++
+        }
+    }
     foreach ($f in $Folders) {
         $link = Join-Path $addons $f
         $target = Join-Path $Release $f

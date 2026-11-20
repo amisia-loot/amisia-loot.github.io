@@ -19,8 +19,8 @@ import modules  # noqa: E402
 
 FLAVORS = ('', '_TBC', '_Vanilla')
 HEADER = re.compile(r'^local [\w_]+, ns = \.\.\.\s*$')
-AT_ONCE = {'Locales/Locale.lua', 'Core/LazyData.lua', 'Raid/Module.lua', 'Gear/Module.lua'}
-FIRST = {'core': 'Locales/Locale.lua', 'raid': 'Raid/Module.lua', 'gear': 'Gear/Module.lua'}
+FIRST = {m: modules.FIRST_FILE[m] for m in modules.MODULES}
+AT_ONCE = {'Core/LazyData.lua'} | set(FIRST.values())
 
 
 def at_once(name):
@@ -37,11 +37,11 @@ def all_files():
 
 def test_each_part_starts_with_its_first_file():
     # the core's Locales/Locale.lua (ns.Load, _G.AmisiaCore), a module's Module.lua (the shared namespace);
-    # the gear module's classic TOCs list no file (Forever only, D-130)
+    # the modules' classic TOCs list no file (Forever only, D-130, D-158)
     for module in modules.MODULES:
         for flavor in FLAVORS:
             files = toc_files(module, flavor)
-            if module == 'gear' and flavor:
+            if module != 'core' and flavor:
                 assert files == [], modules.toc_name(module, flavor)
                 continue
             assert files and files[0] == FIRST[module], modules.toc_name(module, flavor)
@@ -68,7 +68,7 @@ def test_every_other_file_waits_for_the_language():
 def test_what_loads_at_once_has_no_texts():
     files = sorted((f, m) for f, m in all_files() if at_once(f) and f != 'Locales/Locale.lua')
     names = [f for f, _ in files]
-    assert 'Core/LazyData.lua' in names and 'Raid/Module.lua' in names and len(files) > 10
+    assert 'Core/LazyData.lua' in names and 'Gear/Module.lua' in names and len(files) > 10
     for name, module in files:
         with open(os.path.join(modules.folder(module), name), encoding='utf-8') as fh:
             text = fh.read()
@@ -79,7 +79,7 @@ def test_what_loads_at_once_has_no_texts():
 
 def test_a_module_shares_the_core_namespace():
     # Module.lua: the metatable onto _G.AmisiaCore, the bodies queued as the module's part, the mark
-    for module, name in (('raid', 'Raid/Module.lua'), ('gear', 'Gear/Module.lua')):
+    for module, name in ((m, FIRST[m]) for m in modules.MODULES if m != 'core'):
         with open(os.path.join(modules.folder(module), name), encoding='utf-8') as fh:
             text = fh.read()
         assert 'local core = _G.AmisiaCore' in text, name

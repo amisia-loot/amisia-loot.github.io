@@ -28,9 +28,12 @@ end
 ---------------------------------------------------------------------------
 -- the TOC: no template file, no pin mixin
 ---------------------------------------------------------------------------
-local toc = readFile("Amisia_Gear.toc")
-local iPins, iPlaces, iWish = toc:find("\nGear\\MapPins.lua", 1, true), toc:find("\nGear\\MapPlaces.lua", 1, true), toc:find("\nGear\\GuildWishes.lua", 1, true)
-assert(iPins and iPlaces and iWish and iWish < iPins and iPins < iPlaces, "MapPins.lua, then MapPlaces.lua, after GuildWishes.lua")
+-- the map is the module Dungeons & Raids' (F-228); the wishes it pins are the module Ausrüstung's, which
+-- loads before it (## OptionalDeps)
+local toc = readFile("Amisia_Dungeons.toc")
+local iPins, iPlaces = toc:find("\nGear\\MapPins.lua", 1, true), toc:find("\nGear\\MapPlaces.lua", 1, true)
+assert(iPins and iPlaces and iPins < iPlaces, "MapPins.lua, then MapPlaces.lua")
+assert(toc:find("## OptionalDeps: Amisia_Gear", 1, true), "after the module Ausrüstung")
 assert(not toc:find("MapPin.xml", 1, true) and not io.open(ADDON_FILE("Gear/MapPin.xml"), "rb"), "no pin template any more")
 assert(AmisiaMapPinMixin == nil, "no pin mixin")
 

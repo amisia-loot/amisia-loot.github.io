@@ -24,11 +24,12 @@ import sys
 
 import att_data
 import build_dungeons
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 SNAPSHOT = os.path.join(HERE, 'forever_dungeon_art.json')
-OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'DungeonArt.lua')
+OUT = modules.data_file('DungeonArt.lua')
 WAGO_DIRS = (os.path.expanduser('~/addons/_wago'), os.path.expanduser('~/addons/_cache/wago'))
 
 # The general screens of the client's LoadingScreens table (LoadScreenDungeon, LoadScreenRaid).

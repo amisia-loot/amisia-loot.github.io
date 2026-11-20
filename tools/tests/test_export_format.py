@@ -16,9 +16,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 ADDON_TESTS = os.path.join(ROOT, 'tests')
 DRIVER = os.path.join(ROOT, 'tools', 'tests', 'site_parser.cjs')
 CORE = os.path.join(ROOT, 'Amisia', 'Core', 'Core.lua')
-PRIO = os.path.join(ROOT, 'Amisia_Raid', 'Raid', 'LootPrio.lua')
-RECORD = os.path.join(ROOT, 'Amisia_Raid', 'Raid', 'Record.lua')
-POINTS = os.path.join(ROOT, 'Amisia_Raid', 'Raid', 'Points.lua')
+PRIO = os.path.join(ROOT, 'Amisia', 'Raid', 'LootPrio.lua')
+RECORD = os.path.join(ROOT, 'Amisia', 'Raid', 'Record.lua')
+POINTS = os.path.join(ROOT, 'Amisia', 'Raid', 'Points.lua')
 
 sys.path.insert(0, ADDON_TESTS)
 
@@ -413,7 +413,7 @@ def test_the_raid_export_is_the_same_with_and_without_wishes(wishes):
     assert '\nWL ' not in after
 
 
-DROPS = os.path.join(ROOT, 'Amisia_Gear', 'Collect', 'Drops.lua')
+DROPS = os.path.join(ROOT, 'Amisia', 'Collect', 'Drops.lua')
 PAGE = os.path.join(ROOT, 'Amisia-Website', 'index.html')
 
 

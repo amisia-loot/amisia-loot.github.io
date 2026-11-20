@@ -13,6 +13,7 @@ TOOLS = os.path.dirname(HERE)
 ROOT = os.path.dirname(TOOLS)
 sys.path.insert(0, TOOLS)
 import build  # noqa: E402
+import modules  # noqa: E402
 
 TOC = """## Interface: 16001, 20506, 11509
 ## Title: Amisia
@@ -21,15 +22,13 @@ TOC = """## Interface: 16001, 20506, 11509
 
 Core\\Core.lua
 """
-# the modules (F-202, D-130): the raid module on every client with one Forever-only file, the gear module
-# on Forever only
-RAID_TOC = """## Interface: 16001, 20506, 11509
-## Title: Amisia: Raid
+# the modules (F-202, D-130; F-228, D-158): Forever only
+TALENTS_TOC = """## Interface: 16001
+## Title: Amisia: Talents
 ## Version: {v}
 ## Dependencies: Amisia
 
-Raid\\Rolls.lua
-Raid\\Handover.lua [AllowLoadGameType camelot]
+Talents\\Module.lua
 """
 GEAR_TOC = """## Interface: 16001
 ## Title: Amisia: Gear & Dungeons
@@ -58,10 +57,9 @@ def make_addon(root, version='1.0.0'):
     write(os.path.join(a, 'Core', 'Core.lua'), 'local ADDON, ns = ...\nns.x = "ü"\n')
     write(os.path.join(a, 'Media', 'Icons', 'x.tga'), b'\x00\x01\xff', 'wb')
     write(os.path.join(a, '.stignore'), '.vscode\n')
-    r = os.path.join(root, 'Amisia_Raid')
-    write(os.path.join(r, 'Amisia_Raid.toc'), RAID_TOC.format(v=version))
-    write(os.path.join(r, 'Raid', 'Rolls.lua'), '-- rolls\n')
-    write(os.path.join(r, 'Raid', 'Handover.lua'), '-- trade\n')
+    t = os.path.join(root, 'Amisia_Talents')
+    write(os.path.join(t, 'Amisia_Talents.toc'), TALENTS_TOC.format(v=version))
+    write(os.path.join(t, 'Talents', 'Module.lua'), '-- talents\n')
     g = os.path.join(root, 'Amisia_Gear')
     write(os.path.join(g, 'Amisia_Gear.toc'), GEAR_TOC.format(v=version))
     write(os.path.join(g, 'Data', 'GearData.lua'), '-- GENERATED\n')
@@ -111,9 +109,11 @@ def test_the_repo_toc_has_the_version_and_matches_the_folder():
     first = [f for f in files if not f.startswith('Locales/')][0]
     assert first == 'Core/Registry.lua', 'the registry loads right after the locale files'
     # the modules (F-202): their own folders and TOCs, the same version
-    assert build.addon_folders(ROOT) == ['Amisia', 'Amisia_Raid', 'Amisia_Gear']
-    assert 'Gear/MapPins.lua' in build.toc_files(ROOT, 'Amisia_Gear') and 'Raid/Awards.lua' in build.toc_files(ROOT, 'Amisia_Raid')
-    assert build.toc_version(ROOT, 'Amisia_Raid') == v and build.toc_version(ROOT, 'Amisia_Gear') == v
+    assert build.addon_folders(ROOT) == [modules.FOLDERS[m] for m in modules.MODULES] and 'Amisia_Gear' in build.addon_folders(ROOT)
+    # the raid part is the core's (F-228, D-158)
+    assert 'Raid/Awards.lua' in files and 'Amisia_Raid' not in build.addon_folders(ROOT)
+    for folder in build.addon_folders(ROOT):
+        assert build.toc_version(ROOT, folder) == v, folder
 
 
 def test_set_toc_version(tmp_path):
@@ -134,20 +134,20 @@ def test_check_toc_finds_missing_and_unlisted_files(tmp_path):
     assert build.check_toc(str(tmp_path)) == []
     write(os.path.join(a, 'Raid', 'New.lua'), '-- new\n')
     os.remove(os.path.join(str(tmp_path), 'Amisia_Gear', 'Data', 'GearData.lua'))
-    write(os.path.join(a, 'Raid', 'Rolls.lua'), '-- twice\n')
+    write(os.path.join(a, 'Talents', 'Module.lua'), '-- twice\n')
     bad = build.check_toc(str(tmp_path))
     assert 'Amisia_Gear/Data/GearData.lua: in the TOC, but no such file' in bad
     assert 'Raid/New.lua: not in the TOC' in bad
-    assert 'Raid/Rolls.lua: in Amisia and in Amisia_Raid (a path stands in one folder only)' in bad
+    assert 'Talents/Module.lua: in Amisia and in Amisia_Talents (a path stands in one folder only)' in bad
 
 
 def test_check_toc_wants_the_core_version_in_the_modules(tmp_path):
     make_addon(str(tmp_path))
-    path = build.toc_path(str(tmp_path), 'Amisia_Raid')
-    write(path, RAID_TOC.format(v='0.9.0'))
+    path = build.toc_path(str(tmp_path), 'Amisia_Talents')
+    write(path, TALENTS_TOC.format(v='0.9.0'))
     build.flavor_tocs(str(tmp_path), write=True)
     assert build.check_toc(str(tmp_path)) == [
-        "Amisia_Raid.toc: ## Version 0.9.0 is not the core's 1.0.0 (python3 tools/build.py tocs)"]
+        "Amisia_Talents.toc: ## Version 0.9.0 is not the core's 1.0.0 (python3 tools/build.py tocs)"]
 
 
 def test_flavor_tocs_leave_out_the_forever_parts(tmp_path):
@@ -162,10 +162,10 @@ def test_flavor_tocs_leave_out_the_forever_parts(tmp_path):
     with open(os.path.join(a, 'Amisia_TBC.toc'), encoding='utf-8') as fh:
         tbc = fh.read()
     assert '## Interface: 20506\n' in tbc and 'Raid\\New.lua' in tbc and 'Gear' not in tbc
-    # the raid module without its Forever-only file; the gear module (Forever only) without any file
-    with open(os.path.join(str(tmp_path), 'Amisia_Raid', 'Amisia_Raid_Vanilla.toc'), encoding='utf-8') as fh:
+    # the modules (Forever only) without any file
+    with open(os.path.join(str(tmp_path), 'Amisia_Talents', 'Amisia_Talents_Vanilla.toc'), encoding='utf-8') as fh:
         era = fh.read()
-    assert '## Interface: 11509\n' in era and 'Raid\\Rolls.lua' in era and 'Handover' not in era
+    assert '## Interface: 11509\n' in era and '.lua' not in era
     with open(os.path.join(str(tmp_path), 'Amisia_Gear', 'Amisia_Gear_TBC.toc'), encoding='utf-8') as fh:
         gear = fh.read()
     assert '## Interface: 20506\n' in gear and '## Dependencies: Amisia\n' in gear and '.lua' not in gear
@@ -265,11 +265,11 @@ def test_release(repo):
                          'Amisia/Core/Core.lua', 'Amisia/Media/Icons/x.tga',
                          'Amisia_Gear/Amisia_Gear.toc', 'Amisia_Gear/Amisia_Gear_TBC.toc', 'Amisia_Gear/Amisia_Gear_Vanilla.toc',
                          'Amisia_Gear/Data/GearData.lua',
-                         'Amisia_Raid/Amisia_Raid.toc', 'Amisia_Raid/Amisia_Raid_TBC.toc', 'Amisia_Raid/Amisia_Raid_Vanilla.toc',
-                         'Amisia_Raid/Raid/Handover.lua', 'Amisia_Raid/Raid/Rolls.lua'], names
+                         'Amisia_Talents/Amisia_Talents.toc', 'Amisia_Talents/Amisia_Talents_TBC.toc',
+                         'Amisia_Talents/Amisia_Talents_Vanilla.toc', 'Amisia_Talents/Talents/Module.lua'], names
         assert '## Version: 1.1.0' in zf.read('Amisia/Amisia.toc').decode('utf-8')
         assert '## Version: 1.1.0' in zf.read('Amisia/Amisia_TBC.toc').decode('utf-8'), 'the classic TOCs follow'
-        assert '## Version: 1.1.0' in zf.read('Amisia_Raid/Amisia_Raid.toc').decode('utf-8'), 'the modules follow'
+        assert '## Version: 1.1.0' in zf.read('Amisia_Talents/Amisia_Talents.toc').decode('utf-8'), 'the modules follow'
         assert '## Version: 1.1.0' in zf.read('Amisia_Gear/Amisia_Gear_TBC.toc').decode('utf-8')
     with open(os.path.join(root, 'CHANGELOG.md'), encoding='utf-8') as fh:
         log = fh.read()

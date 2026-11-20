@@ -16,7 +16,7 @@ try {
 
 const root = path.join(__dirname, '..');
 // the core and its modules (F-202): one addon folder each
-const dirs = ['Amisia', 'Amisia_Raid', 'Amisia_Gear'];
+const dirs = ['Amisia', 'Amisia_Gear', 'Amisia_Dungeons', 'Amisia_Talents'];
 // every .lua file in an addon folder and its subfolders (Core, Raid, Gear, Collect, Data, UI, UI/Pages)
 function luaFiles(dir, rel) {
   let out = [];

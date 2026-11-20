@@ -55,8 +55,9 @@ import att_data  # noqa: E402
 import build_scan  # noqa: E402  (parse_note: the collector's merchant notes)
 import build_scan_archive  # noqa: E402  (the scan archive: those notes for good)
 import lua_data  # noqa: E402  (the lazy form of the data file)
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
-OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'ProfessionData.lua')
+OUT = modules.data_file('ProfessionData.lua')
 TRAINERS = os.path.join(HERE, 'trainer_archive.json')
 MAX_TRAINER_TOKENS = 3   # trainers per recipe (N), the newest readings first
 WAGO = os.path.expanduser('~/addons/_wago')

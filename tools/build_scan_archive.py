@@ -41,13 +41,14 @@ import hashlib
 import json
 import os
 import sys
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 
 ARCHIVE = os.path.join(HERE, 'scan_archive.json')
-MARKER = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'ScanDone.lua')
+MARKER = modules.data_file('ScanDone.lua')
 DEFAULT_SV = os.path.expanduser('~/addons/_SavedVariables/Amisia.lua')
 WAGO = os.path.expanduser('~/addons/_wago')
 WOW_ROOT = os.environ.get('AMISIA_WOW_ROOT', r'C:\Program Files (x86)\World of Warcraft')

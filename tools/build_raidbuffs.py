@@ -36,9 +36,10 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import att_data  # noqa: E402
 import lua_data  # noqa: E402
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
-OUT = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'RaidBuffData.lua')
-TALENTS = os.path.join(ROOT, 'Amisia_Gear', 'Data', 'TalentData.lua')
+OUT = modules.data_file('RaidBuffData.lua')
+TALENTS = modules.data_file('TalentData.lua')
 WAGO = os.path.expanduser('~/addons/_wago')
 
 REQUIRED = ['SpellName', 'SkillLineAbility', 'SkillRaceClassInfo', 'ChrClasses']

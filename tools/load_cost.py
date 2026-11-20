@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.join(ROOT, 'tests'))
 sys.path.insert(0, HERE)
 import lua_data  # noqa: E402
 import run as addon_run  # noqa: E402
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
 LAZY = ('GEAR', 'GEAR_WEIGHTS', 'MAP', 'QUEST_DATA', 'PROFESSIONS', 'TALENTS', 'MAGESCROLLS')
 FILES = {'GEAR': 'GearData', 'GEAR_WEIGHTS': 'GearWeights', 'MAP': 'MapData', 'QUEST_DATA': 'QuestData',
@@ -70,7 +71,7 @@ def per_file(eager):
     out = []
     for key in LAZY:
         lua = LuaRuntime(unpack_returned_tuples=True)
-        with open(os.path.join(ROOT, 'Amisia_Gear', 'Data', FILES[key] + '.lua'), encoding='utf-8') as fh:
+        with open(modules.data_file(FILES[key] + '.lua'), encoding='utf-8') as fh:
             src = fh.read()
         ms, kb, _ = lua.execute(MEASURE)(src, FILES[key] + '.lua', eager)
         out.append((FILES[key], len(src.encode('utf-8')) // 1024, ms, kb))

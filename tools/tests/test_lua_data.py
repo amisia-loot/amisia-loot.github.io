@@ -8,6 +8,7 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import lua_data  # noqa: E402
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
 ADDON = os.path.join(os.path.dirname(os.path.dirname(HERE)), 'Amisia_Gear')
 SHIPPED = {'GearData': ('GEAR', 'I'), 'MapData': ('MAP', 'P'), 'QuestData': ('QUEST_DATA', 'Q'),
@@ -39,7 +40,7 @@ def test_load_builds_at_once():
 @pytest.mark.parametrize('name', sorted(SHIPPED))
 def test_shipped_files_wait_for_their_first_use(name):
     key, field = SHIPPED[name]
-    with open(os.path.join(ADDON, 'Data', name + '.lua'), encoding='utf-8') as fh:
+    with open(modules.data_file(name + '.lua'), encoding='utf-8') as fh:
         text = fh.read()
     assert f'\nns.LazyData("{key}", [' in text and f'\nns.{key} = {{' not in text
     plain = lua_data.eager(text)

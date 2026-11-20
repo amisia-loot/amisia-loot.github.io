@@ -299,15 +299,16 @@ def test_the_module_map_has_every_toc_file(arch):
 # ---------------------------------------------------------------- decision guards
 # the Forever parts (D-57): exactly these files load on Forever only; tests/test_tbc_raid.lua loads the rest alone
 FOREVER_DIRS = ('Data/', 'Collect/', 'Gear/')
-FOREVER_FILES = {'Core/Duels.lua', 'Core/SelfTestLayer.lua', 'Raid/Handover.lua', 'UI/GearDoll.lua', 'UI/SlotCard.lua', 'UI/DuelInfo.lua'} | {
+FOREVER_FILES = {'Core/Duels.lua', 'Core/SelfTestLayer.lua', 'Raid/Handover.lua', 'UI/GearDoll.lua', 'UI/SlotCard.lua', 'UI/DuelInfo.lua',
+                 'UI/ItemKit.lua'} | {
     f'UI/Pages/{p}.lua' for p in ('Gear', 'JournalParts', 'Dungeons', 'RaidJournal', 'Map', 'Professions', 'Quests', 'Talents',
                                   'MageScrolls', 'Duels', 'Tools', 'Export', 'Planner')}
 
 
 def test_the_classic_clients_have_their_own_toc_without_the_forever_parts():
     # TBC Anniversary loaded the camelot-tagged files anyway; <folder>_TBC.toc and <folder>_Vanilla.toc,
-    # which those clients prefer, are the folder's TOC without them (D-57, build.py tocs); the gear
-    # module's list no file at all (Forever only, D-130)
+    # which those clients prefer, are the folder's TOC without them (D-57, build.py tocs); the modules'
+    # list no file at all (Forever only, D-130, D-158)
     for module in modules.MODULES:
         base = read(os.path.join(modules.folder(module), modules.toc_name(module))).splitlines()
         for flavor, interface in (('_TBC', '20506'), ('_Vanilla', '11509')):
@@ -316,18 +317,18 @@ def test_the_classic_clients_have_their_own_toc_without_the_forever_parts():
             assert f'## Interface: {interface}' in lines, f'{name} targets {interface}'
             assert not any('AllowLoadGameType' in ln for ln in lines), f'{name} lists a Forever part'
             want = [ln for ln in base if 'AllowLoadGameType camelot' not in ln and not ln.startswith('## Interface:')]
-            if module == 'gear':
+            if module != 'core':
                 want = [ln for ln in want if ln.startswith('##') or not ln.strip()]
             have = [ln for ln in lines if not ln.startswith('## Interface:') and not re.match(r'#(?!#)', ln)]
             assert have == want, f'{name} is not {modules.toc_name(module)} without the Forever parts (python3 tools/build.py tocs)'
 
 
 def test_the_toc_loads_the_forever_parts_on_forever_only():
-    # the core and the raid module target all three clients, the gear module (the Forever part, D-130)
-    # WoW Forever only; the raid module marks its two Forever-only features per file
+    # the core (with the raid part) targets all three clients and marks its Forever parts per file, the
+    # modules WoW Forever only (D-130, D-158)
     for module in modules.MODULES:
         toc = read(os.path.join(modules.folder(module), modules.toc_name(module)))
-        targets = '16001' if module == 'gear' else '16001, 20506, 11509'
+        targets = '16001, 20506, 11509' if module == 'core' else '16001'
         assert re.search(r'^## Interface: ' + targets + r'\s*$', toc, re.M), f'{module}: ## Interface: {targets}'
         assert '## AllowLoadGameType' not in toc, 'no TOC-wide load condition'
         assert module == 'core' or re.search(r'^## Dependencies: Amisia\s*$', toc, re.M), f'{module} needs the core'
@@ -337,13 +338,13 @@ def test_the_toc_loads_the_forever_parts_on_forever_only():
             name = re.sub(r'\s*\[[^\]]*\]', '', line).replace('\\', '/').strip()
             forever = name.startswith(FOREVER_DIRS) or name in FOREVER_FILES
             conds = re.findall(r'\[([^\]]*)\]', line)
-            if module == 'gear':
-                assert not conds, f'the gear module is Forever\'s by its TOC, no mark per file: {line}'
-                assert forever or name.startswith('Locales/') or name == 'Gear/Module.lua', f'not a Forever part: {line}'
+            if module != 'core':
+                assert not conds, f'a module is Forever\'s by its TOC, no mark per file: {line}'
+                assert forever or name.startswith('Locales/') or name == modules.FIRST_FILE[module], f'not a Forever part: {line}'
             elif forever:
                 assert conds == ['AllowLoadGameType camelot'], f'a Forever part loads on Forever only: {line}'
             else:
-                assert not conds, f'the raid part loads on all three clients: {line}'
+                assert not conds, f'the rest of the core loads on all three clients: {line}'
 
 
 def test_no_tbc_client_left_in_the_addon():
@@ -698,7 +699,7 @@ def test_every_decision_says_how_it_is_kept():
 
 def test_every_test_the_decisions_name_exists():
     text = read(DECISIONS)
-    named = re.findall(r'`((?:tools|tests|Amisia|Amisia_Raid|Amisia_Gear|Amisia-Website)/[\w./-]+?)(?:::(\w+))?`', text)
+    named = re.findall(r'`((?:tools|tests|Amisia|Amisia_Gear|Amisia_Dungeons|Amisia_Talents|Amisia-Website)/[\w./-]+?)(?:::(\w+))?`', text)
     assert named
     for path, func in named:
         full = os.path.join(ROOT, path)

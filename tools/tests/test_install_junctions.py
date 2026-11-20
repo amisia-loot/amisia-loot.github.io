@@ -1,6 +1,6 @@
 """tools/install_junctions.ps1 (runs once on the PC, no PowerShell here; F-202, D-130): read as text. It
-names the three addon folders of tools/modules.py and the release folders tools/release_addon.sh writes,
-gives each WoW client the folders that load there (the gear module only WoW Forever), removes junctions
+names the addon folders of tools/modules.py and the release folders tools/release_addon.sh writes,
+gives each WoW client the folders that load there (the modules only WoW Forever, F-228), removes junctions
 only (never a real folder, never with rmdir /s or Remove-Item) and stays plain ASCII for Windows
 PowerShell 5.1."""
 import os
@@ -34,11 +34,11 @@ def test_every_client_gets_its_folders():
         m = re.match(r"\s*'(\w+)'\s*=\s*@\(([^)]*)\)", line)
         assert m, line
         clients[m.group(1)] = names(m.group(2))
-    assert clients == {
-        '_forever_': ['Amisia', 'Amisia_Raid', 'Amisia_Gear'],
-        '_anniversary_': ['Amisia', 'Amisia_Raid'],
-        '_classic_era_': ['Amisia', 'Amisia_Raid'],
-    }
+    every = [modules.FOLDERS[m] for m in modules.MODULES]
+    assert clients == {'_forever_': every, '_anniversary_': ['Amisia'], '_classic_era_': ['Amisia']}
+    # the raid module's folder is the core's since F-228 (D-158): its old junction goes
+    old = re.search(r"^\$OldFolders = @\(([^)]*)\)", text, re.M)
+    assert old and names(old.group(1)) == ['Amisia_Raid']
 
 
 def test_the_release_folder_is_the_one_syncthing_fills():
@@ -46,7 +46,8 @@ def test_the_release_folder_is_the_one_syncthing_fills():
     assert "Join-Path $env:USERPROFILE 'VuloSync\\Amisia'" in text
     with open(os.path.join(TOOLS, 'release_addon.sh'), encoding='utf-8') as fh:
         release = fh.read()
-    assert 'FOLDERS=(Amisia Amisia_Raid Amisia_Gear)' in release
+    m = re.search(r'^FOLDERS=\(([^)]*)\)', release, re.M)
+    assert m and m.group(1).split() == [modules.FOLDERS[x] for x in modules.MODULES]
     # each folder checked with its TOC before anything changes
     assert re.search(r'Join-Path \(Join-Path \$Release \$f\) "\$f\.toc"', text)
 

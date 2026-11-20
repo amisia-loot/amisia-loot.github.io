@@ -15,10 +15,11 @@ sys.path.insert(0, TOOLS)
 import att_data  # noqa: E402
 import build_magescrolls  # noqa: E402
 import lua_data  # noqa: E402
+import modules  # noqa: E402  (where each Data/* file stands, F-228)
 
 FIX = os.path.join(HERE, 'fixtures', 'wago_magescrolls')
 ATT = os.path.join(HERE, 'fixtures', 'att')
-OUT = os.path.join(ADDON, 'Data', 'MageScrollData.lua')
+OUT = modules.data_file('MageScrollData.lua')
 
 
 @pytest.fixture(scope='module')
@@ -101,7 +102,7 @@ def test_empty_file_loads():
 
 
 def test_shipped_data_file_in_toc_and_valid():
-    with open(os.path.join(ADDON, 'Amisia_Gear.toc'), encoding='utf-8') as fh:
+    with open(modules.data_toc('MageScrollData.lua'), encoding='utf-8') as fh:
         toc = fh.read()
     assert 'Data\\MageScrollData.lua' in toc
     assert toc.index('Data\\MageScrollData.lua') < toc.index('Gear\\MageScrolls.lua') < toc.index('UI\\Pages\\MageScrolls.lua')

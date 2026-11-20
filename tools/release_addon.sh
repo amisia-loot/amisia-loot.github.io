@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Copies the committed addon (HEAD of Amisia/, Amisia_Raid/ and Amisia_Gear/: the core and its modules,
-# F-202) into the release folder that Syncthing sends to the PC, one subfolder each
-# (_release/Amisia/Amisia, _release/Amisia/Amisia_Raid, _release/Amisia/Amisia_Gear). Work in progress
+# Copies the committed addon (HEAD of Amisia/ and the modules' folders: the core and its modules,
+# F-202, F-228) into the release folder that Syncthing sends to the PC, one subfolder each
+# (_release/Amisia/Amisia, _release/Amisia/Amisia_Gear, ...); a folder of an earlier release goes. Work in progress
 # stays on the N100; only a finished version reaches the game.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 REL="${AMISIA_RELEASE:-$HOME/addons/_release/Amisia}"
-FOLDERS=(Amisia Amisia_Raid Amisia_Gear)
+FOLDERS=(Amisia Amisia_Gear Amisia_Dungeons Amisia_Talents)
 cd "$ROOT"
 if ! git diff --quiet HEAD -- "${FOLDERS[@]}"; then
     echo "${FOLDERS[*]}: uncommitted changes; commit them first" >&2

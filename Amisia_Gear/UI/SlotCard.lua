@@ -76,6 +76,8 @@ local function rowClick(self, button)
         return
     end
     if K().modifiedClick(e.id) then return end
+    -- the waypoint to its source: the map is the module Dungeons & Raids' (F-228)
+    if not ns.MapSetTarget then return end
     local ok, why = ns.MapSetTarget(e.id)
     if not ok and why then ns.msg(why) end
 end
