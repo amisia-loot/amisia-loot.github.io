@@ -450,4 +450,65 @@ NS.ShowPlanner("suggest", nil, "CHEST")
 assert(f.title:GetText() == "Brust" and ids() == "pick,403")
 NS.ShowPlanner("goals")
 assert(f.tabGoals.on)
+
+---------------------------------------------------------------------------
+-- epic world drops (D-59 Nachtrag 2026-11-20, setting bis.epicWorld): in the suggestions, marked
+-- "Weltdrop", ranked as if 10 % weaker (their gain the real one); never a target
+---------------------------------------------------------------------------
+NS.GEAR.S[5] = { "W", nil, 50, 60, 1429 }
+gear(421, "Armschiene des Kerns", "WRIST", 40, 58, { 1 })   -- 80
+gear(420, "Weltarmschiene", "WRIST", 42, 57, { 5 })         -- an epic world drop: 84, ranked as 75.6
+gear(422, "Grobe Armschiene", "WRIST", 30, 58, { 2 })       -- 60: more than 10 % below it
+gear(423, "Blaue Weltarmschiene", "WRIST", 45, 57, { 5 }, 3)   -- a blue world drop: only with the switch Welt
+gear(425, "Gürtel des Kerns", "WAIST", 40, 58, { 1 })       -- 80
+gear(424, "Weltgürtel", "WAIST", 60, 57, { 5 })             -- 120, ranked as 108: first, still no target
+Gear._reset()
+NS.Fire("BIS_CHANGED")
+assert(NS.Get("bis.epicWorld") == true and NS.BisOpts().worldEpic and not NS.BisOpts().sources.W,
+    "on by default, with the switch Welt off")
+assert(Gear.WORLD_EPIC_FACTOR == 0.9)
+local wr = NS.BisRanking("WRIST", 10)
+local wids = {}
+for i, e in ipairs(wr) do wids[i] = e.id .. (e.world and "w" or "") end
+assert(table.concat(wids, ",") == "421,420w,422,407", "below the item less than 10 % worse, above the one more: " .. table.concat(wids, ","))
+assert(wr[2].score == 84 and math.abs(wr[2].gain - (84 - (wr[2].mine or 0))) < 1e-6, "its score and gain stay the real ones: " .. tostring(wr[2].score) .. " " .. tostring(wr[2].gain) .. " " .. tostring(wr[2].mine))
+local tr = NS.BisTargets()
+assert(tr.WRIST[1].id == 421 and tr.WAIST[1].id == 425, "the targets stay items you get on purpose")
+for _, sl in ipairs(Gear.SLOTS) do
+    for _, e in ipairs(tr[sl.key]) do assert(e.id ~= 420 and e.id ~= 424, "no world drop among the targets") end
+end
+assert(NS.BisRanking("WAIST", 10)[1].id == 424, "clearly better: first among the suggestions")
+-- the page: the tag after the name, the tooltip line
+NS.ShowPlanner("suggest", nil, "WRIST")
+assert(ids() == "pick,421,420,422,407", "the wrist's suggestions: " .. ids())
+assert(has(plain(rowOf(420).name:GetText()), "Weltarmschiene  Weltdrop"), plain(rowOf(420).name:GetText()))
+assert(not has(plain(rowOf(421).name:GetText()), "Weltdrop"), "only the world drop is marked")
+local wtip = tipOf(function() rowOf(420).scripts.OnEnter(rowOf(420)) end)
+assert(has(wtip, "Epischer Weltdrop: fällt irgendwo zufällig, nicht gezielt zu farmen."), wtip)
+-- above the own level the same (ns.BisFor)
+f.all:Click()
+assert(ids() == "pick,421,420,422,407", "on 1 to 60: " .. ids())
+assert(has(plain(rowOf(420).name:GetText()), "Weltdrop"), "marked there too")
+f.mine:Click()
+-- a hand-picked world drop is the own choice, as before
+assert(NS.BisSetPick("WRIST", 420), "a world drop as the own pick")
+assert(NS.BisTargets().WRIST[1].id == 420 and NS.BisTargets().WRIST[1].own, "the own choice is the target")
+NS.BisSetPick("WRIST", nil)
+-- off: from the menu "Optionen"
+f.optLink:Click()
+local found
+for _, b in ipairs(AmisiaMenu.buttons) do
+    if b:IsShown() and plain(b.label:GetText()):find("Epische Weltdrops vorschlagen", 1, true) then found = b end
+end
+assert(found and has(found.label:GetText(), "ReadyCheck-Ready"), "the menu's entry, checked")
+found:Click()
+assert(NS.Get("bis.epicWorld") == false and not NS.BisOpts().worldEpic, "switched off")
+assert(ids() == "pick,421,422,407", "off: no world drop: " .. ids())
+assert(NS.BisTargets().WRIST[1].id == 421, "the target the same")
+NS.Set("bis.epicWorld", true)
+NS.Refresh()
+assert(ids() == "pick,421,420,422,407", "on again: " .. ids())
+-- the merge never puts a world drop ahead of a BiS pick or an own pick
+local merged = Gear.MergeWorld({ { 1, 50, pick = {} }, { 2, 40 } }, { { 9, 100, world = true } })
+assert(merged[1][1] == 1 and merged[2][1] == 9 and merged[3][1] == 2, "behind the pick")
 print("gear planner ok")

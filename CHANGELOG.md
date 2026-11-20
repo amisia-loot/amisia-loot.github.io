@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(gear): epic world drops show in the planner's suggestions, marked and ranked lower (F-149)
+
+    An epic item that only drops at random in the world (and perhaps sells in the auction house), such as
+    "Hand von Edgar dem Seltsamen", now appears among a slot's suggestions with the tag "Weltdrop". It is ranked as if
+    it were 10 percent weaker, so it stands above an item you can get on purpose only when it is clearly better; its
+    gain stays the real one. Goals and the automatic target of a slot still never pick it, but you can still choose it
+    by hand. The new option "Epische Weltdrops vorschlagen" (on) in the planner's "Optionen" menu and in the settings
+    turns it off.
+
 - fix(gear): the planner's item search no longer makes the game stall (F-123)
 
     Every key stroke read and folded the names of all ~25000 items again and asked the server for 150 more, and

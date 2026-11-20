@@ -58,7 +58,9 @@ local function fillRow(r, e, o)
     end
     local _, _, _, _, _, _, _, _, _, icon = C_Item.GetItemInfo(e.id)
     r.icon:SetTexture(icon or QUESTION)
-    r.name:SetText((e.own and (T.GOLD_TEXT .. "* |r") or "") .. K().itemText(e.id))
+    -- an epic world drop (D-59 Nachtrag): its tag after the name, as in the planner
+    r.name:SetText((e.own and (T.GOLD_TEXT .. "* |r") or "") .. K().itemText(e.id)
+        .. (e.world and ("  " .. T.ORANGE .. L["Weltdrop"] .. "|r") or ""))
     r.src:SetText(e.owned and K().OWNED_TEXT[e.owned] or K().sourceText(e.id, o, e.pick))
     r.gain:SetText(gainOf(e))
     r:Show()

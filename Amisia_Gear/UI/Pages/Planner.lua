@@ -137,7 +137,8 @@ end
 
 -- The suggestions of a slot in the level range: up to the own level the slot's ranking (the own
 -- sources, exclusions and play style, ns.BisRanking), above it the same calculation at the range's
--- top (ns.BisFor); kept until the targets or the choice change.
+-- top (ns.BisFor); with the setting bis.epicWorld both with the epic world drops (marked world, ranked
+-- lower, D-59 Nachtrag); kept until the targets or the choice change.
 local memo = {}
 local function suggestions(res, o, slot, lo, hi)
     local key = table.concat({ tostring(res), slot, lo, hi }, "|")
@@ -148,17 +149,22 @@ local function suggestions(res, o, slot, lo, hi)
             local lv = levelOf(r.id)
             if lv >= lo and lv <= hi then
                 rows[#rows + 1] = { id = r.id, slotKey = slot, level = lv, owned = r.owned, gain = r.gain, mine = r.mine,
-                    upgrade = r.upgrade, switch = r.switch }
+                    upgrade = r.upgrade, switch = r.switch, world = r.world }
             end
         end
     else
         local b = ns.BisFor(o.class, o.spec, hi, { sources = o.sources, plan = o.plan, kind = o.kind, exclude = o.exclude,
-            faction = o.faction, style = o.style })
+            faction = o.faction, style = o.style, worldEpic = o.worldEpic })
         local list = b[NORM[slot] or slot] or {}
+        if b.world then list = Gear.MergeWorld(list, Gear.WorldList(b, slot)) end
         for i = 1, math.min(PL.RANK_N, #list) do
             local id = list[i][1]
             local lv = levelOf(id)
-            if lv >= lo and lv <= hi then rows[#rows + 1] = measured(id, o, slot) end
+            if lv >= lo and lv <= hi then
+                local e = measured(id, o, slot)
+                e.world = list[i].world
+                rows[#rows + 1] = e
+            end
         end
     end
     memo.key, memo.rows = key, rows
@@ -487,6 +493,8 @@ local function fillRow(r, e)
     local own = e.pickSlot ~= nil and ns.BisPick(e.pickSlot) == e.id
     local rec = firstSource(e.id, o)
     local mark = rec and rec[1] == "Q" and (" " .. PL.QUEST_MARK) or ""
+    -- an epic world drop (D-59 Nachtrag): its tag after the name
+    if e.world then mark = mark .. "  " .. T.ORANGE .. L["Weltdrop"] .. "|r" end
     r.name:SetText((own and DK.ownMark() or "") .. (e.piece and "  " or "") .. K.itemText(e.id) .. mark)
     r.sub:SetText(subOf(e, o, rec))
     r.gain:SetText(gainOf(e))
@@ -524,6 +532,10 @@ local function rowTip(self)
         GameTooltip:AddLine(L["Quelle: %s"]:format(Gear.SourceText(rec, true) or ""), 0.85, 0.85, 0.85, true)
     else
         GameTooltip:AddLine(L["Amisia kennt die Werte aus dem Item-Scan, aber nicht, woher es kommt. Tötet jemand mit Amisia den Boss oder gibt eine Quest es als Belohnung, lernt Amisia die Quelle."], 0.85, 0.85, 0.85, true)
+    end
+    if e.world then
+        GameTooltip:AddLine(L["Epischer Weltdrop: fällt irgendwo zufällig, nicht gezielt zu farmen."], 1, 0.6, 0.2, true)
+        GameTooltip:AddLine(L["Eingereiht, als wäre er 10 Prozent schwächer; nie ein automatisches Ziel."], 0.85, 0.85, 0.85, true)
     end
     if e.pickSlot then
         GameTooltip:AddLine(L["Klick: deine Wahl für %s. Rechtsklick: Menü."]:format(ns.BIS_SLOT_NAME[e.pickSlot] or e.pickSlot),
@@ -962,6 +974,11 @@ local function optionsMenu(self)
     if NSR then
         out[#out + 1] = { (NSR.On() and CHECK or "") .. L["Items ohne bekannte Quelle"], function() NSR.SetOn(not NSR.On()) end }
     end
+    -- the epic world drops in the suggestions (setting bis.epicWorld, D-59 Nachtrag)
+    out[#out + 1] = { (o.worldEpic and CHECK or "") .. L["Epische Weltdrops vorschlagen"], function()
+        ns.Set("bis.epicWorld", not ns.BisOpts().worldEpic)   -- l10n-ok: setting key
+        if ns.Refresh then ns.Refresh() end
+    end }
     local n = ns.PlayStyle.Count()
     out[#out + 1] = { n > 0 and L["Spielstil (%d) ..."]:format(n) or L["Spielstil ..."], function() W.Menu(self, K.styleEntries(self)) end }
     W.Menu(self, out)

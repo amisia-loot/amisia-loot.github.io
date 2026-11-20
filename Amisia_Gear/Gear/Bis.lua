@@ -372,6 +372,8 @@ function ns.BisOpts()
         plan = c and c.plan or "auto",
     }
     scoringOpts(o)
+    -- the epic world drops in the suggestions (D-59 Nachtrag): only the own options, never a target
+    o.worldEpic = ns.Get("bis.epicWorld") ~= false   -- l10n-ok: setting key
     o.cap = ns.BisHitCaps and ns.BisHitCaps(o) or nil
     o.own, o.ownUnused = ownPicks(c, o)
     -- the play style (F-124): only the own options carry it
@@ -382,7 +384,8 @@ end
 -- The same calculation for any class, spec and level (the simulation, the planner table, the
 -- catalog's level sets): no ownership, no exclusions unless opts.exclude, both factions unless
 -- opts.faction, the own source switches unless opts.sources, no play style unless opts.style (a
--- ns.PlayStyle.Context). Returns Gear.Best's result.
+-- ns.PlayStyle.Context), the epic world drops apart only with opts.worldEpic (res.world, the planner's
+-- suggestions above the own level). Returns Gear.Best's result.
 function ns.BisFor(class, spec, level, opts)
     opts = opts or {}
     local o = {
@@ -394,6 +397,7 @@ function ns.BisFor(class, spec, level, opts)
     if opts.tie ~= nil then o.tie = opts.tie end
     if opts.picks ~= nil then o.picks = opts.picks end
     o.style = opts.style
+    o.worldEpic = opts.worldEpic or nil
     return Gear.Best(o)
 end
 
@@ -426,7 +430,7 @@ local function optsKey(o, st, noOwn)
         tostring(o.kind), tostring(o.faction), tostring(o.prof), sortedKeys(o.sources, true), sortedKeys(o.skills),
         sortedKeys(ex.item, true), sortedKeys(ex.boss, true), sortedKeys(ex.place, true), tostring(o.plan),
         tostring(o.suffix), tostring(o.sets), tostring(o.tie), tostring(o.picks), capKey(o.cap), noOwn and "" or sortedKeys(o.own),
-        ns.PlayStyle and ns.PlayStyle.Key(o.style) or "" }, "|")
+        ns.PlayStyle and ns.PlayStyle.Key(o.style) or "", tostring(o.worldEpic) }, "|")
 end
 
 ---------------------------------------------------------------------------
@@ -1504,6 +1508,11 @@ function ns.BisTargets(opts)
     r.dwScore, r.shieldScore, r.planWanted, r.sets = best.dwScore, best.shieldScore, best.planWanted, best.sets
     -- the own picks in use and those kept but not used (F-112), each slot's ranking (ns.BisRanking)
     r.own, r.ownUnused, r.rank = o.own, o.ownUnused, lists.rank
+    -- the epic world drops of each row by the weapon plan in use, for the ranking only (D-59 Nachtrag)
+    if best.world then
+        r.world = {}
+        for _, sl in ipairs(Gear.SLOTS) do r.world[sl.key] = Gear.WorldList(best, sl.key, lists.plan) end
+    end
     local ctx = context(o)
     local c = ns.BisChar()
     for _, sl in ipairs(Gear.SLOTS) do
@@ -1554,7 +1563,7 @@ function ns.BisStyleHidden(o)
     local none = { n = 0, list = {} }
     if not o.style or not o.class or not Gear.Available() then return none end
     local plain = Gear.Copy(o)
-    plain.style = nil
+    plain.style, plain.worldEpic = nil, nil
     local key = optsKey(plain, scoreStamp, true) .. "|" .. ns.PlayStyle.Key(o.style)
     if key == hiddenKey then return hiddenRes end
     local w0 = Gear.StatsWaits()
@@ -1619,8 +1628,10 @@ end
 
 -- The ranking of a row for the own character (F-112): the best n (10) items of Gear.Best's list for
 -- the row, with the own sources and exclusions and without the own pick moved ahead, best first:
--- { { id, score, gain, mine, owned, worn, upgrade, switch, own (the own pick), pick, suffix, setb } },
--- and how many the list holds. Both rings (both trinkets) share one list. Kept with the targets.
+-- { { id, score, gain, mine, owned, worn, upgrade, switch, own (the own pick), pick, suffix, setb, world } },
+-- and how many the list holds. Both rings (both trinkets) share one list. With the setting
+-- bis.epicWorld the epic world drops stand in it, marked world, ranked by score x
+-- Gear.WORLD_EPIC_FACTOR (their score and gain stay the real ones; D-59 Nachtrag). Kept with the targets.
 function ns.BisRanking(slotKey, n)
     n = n or 10
     local res = ns.BisTargets()
@@ -1629,6 +1640,7 @@ function ns.BisRanking(slotKey, n)
     local kept = res.ranked[key]
     if kept then return kept[1], kept[2] end
     local list = res.rank and res.rank[slotKey] or {}
+    if res.world then list = Gear.MergeWorld(list, res.world[slotKey]) end
     local o = ns.BisOpts()
     local ctx = context(o)
     local mine = res.own and res.own[slotKey] or ns.BisPick(slotKey)
@@ -1640,6 +1652,7 @@ function ns.BisRanking(slotKey, n)
         local owned = ns.BisOwned(id)
         out[i] = { id = id, score = src[2], gain = gain, mine = worth, owned = owned, worn = owned == "worn",
             switch = switch or nil, own = mine == id or nil, pick = src.pick, suffix = src.suffix, setb = src.setb,
+            world = src.world or nil,
             upgrade = (not switch and owned ~= "worn" and ns.BisIsUpgrade(gain, worth)) or false }
     end
     res.ranked[key] = { out, #list }
@@ -1772,7 +1785,8 @@ function ns.BisOvertaken(slotKey)
     -- against the pick's own score (a ring's gain would be held against the weaker worn ring)
     local base = first.score or 0
     for _, e in ipairs((ns.BisRanking(slotKey, 10))) do
-        if e.id ~= first.id and not e.worn then
+        -- an epic world drop is no target to take over (D-59)
+        if e.id ~= first.id and not e.worn and not e.world then
             local gain = (e.score or 0) - base
             if ns.BisIsUpgrade(gain, base) then
                 return { id = e.id, gain = gain, pct = base > 0 and math.floor(gain / base * 100 + 0.5) or nil }
@@ -2803,6 +2817,8 @@ ns.RegisterSettings{ key = "bis", label = L["Ausrüstung und Wünsche"], order =
       tip = L["Grüner Punkt an Items, die besser sind als das, was du trägst."] },
     { key = "bis.noSource", type = "toggle", label = L["Items ohne bekannte Quelle vorschlagen"], default = false,   -- l10n-ok: setting key
       tip = L["Die Vorschläge des Ausrüstungsplaners zeigen auch Items, deren Werte Amisia aus dem Item-Scan kennt, aber nicht, woher sie kommen (\"Quelle unbekannt\")."] },
+    { key = "bis.epicWorld", type = "toggle", label = L["Epische Weltdrops vorschlagen"], default = true,   -- l10n-ok: setting key
+      tip = L["Die Vorschläge des Ausrüstungsplaners zeigen auch epische Items, die nur zufällig in der Welt fallen, markiert mit \"Weltdrop\" und eingereiht, als wären sie 10 Prozent schwächer. Das automatische Ziel bleibt ein Item, das du gezielt bekommst."] },
     { key = "bis.slotClick", type = "toggle", label = L["Rechtsklick auf Slots im Charakterfenster"], default = true,   -- l10n-ok: setting key
       tip = L["Ein Rechtsklick auf einen Slot im Charakterfenster zeigt die besten Items für diesen Slot (bei Items mit Benutzen-Effekt Alt+Rechtsklick)."] },
 }}

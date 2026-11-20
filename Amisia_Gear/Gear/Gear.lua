@@ -690,13 +690,18 @@ end
 -- (opts.exclude = { boss = { [name] = true }, place = { [Gear.PlaceOf key] = true } }). With
 -- opts.prof "mine" and the own professions in opts.skills ({ tailoring = 375, ... }), a crafted
 -- item that binds on pickup (row given) counts only with that profession and skill.
-function Gear.SourceOk(rec, opts, row)
+local function sourceOk(rec, opts, row, worldEpic)
     if not rec then return false end
     local kind = rec[1]
-    -- a named rare mob is a fixed source: no switch (D-59)
-    if kind ~= "R" and not opts.sources[Gear.FilterKey(rec)] then return false end
-    if kind == "W" and row and (row[5] or 0) >= 4 then return false end
-    if kind == "A" and row and not Gear.BuyRealistic(row, opts.sources) then return false end
+    if worldEpic then
+        -- an epic world drop for the suggestions only (Gear.WorldEpicOk): no switch, no epic rule
+        if kind ~= "W" then return false end
+    else
+        -- a named rare mob is a fixed source: no switch (D-59)
+        if kind ~= "R" and not opts.sources[Gear.FilterKey(rec)] then return false end
+        if kind == "W" and row and (row[5] or 0) >= 4 then return false end
+        if kind == "A" and row and not Gear.BuyRealistic(row, opts.sources) then return false end
+    end
     -- the play style of the own options (Gear/PlayStyle.lua, F-124)
     if opts.style and not ns.PlayStyle.RecOk(rec, row, opts.style) then return false end
     if rec[1] == "C" and row and row[6] == 1 and opts.prof == "mine" and type(opts.skills) == "table" then
@@ -716,6 +721,21 @@ function Gear.SourceOk(rec, opts, row)
         end
     end
     return true
+end
+
+function Gear.SourceOk(rec, opts, row) return sourceOk(rec, opts, row, false) end
+
+-- Epic world drops in the planner's suggestions (D-59 Nachtrag 2026-11-20, setting bis.epicWorld):
+-- they never count for a target, but the suggestions show them, marked, ranked as if their score were
+-- WORLD_EPIC_FACTOR of it (so they stand above an item you can get on purpose only when clearly better).
+Gear.WORLD_EPIC_FACTOR = 0.9
+
+-- Whether rec makes row an epic world drop the suggestions may show: an epic item without a fixed
+-- source (only W, perhaps A) whose world drop passes the other filters (play style, faction, places);
+-- the world drop switch does not matter.
+function Gear.WorldEpicOk(rec, opts, row)
+    if not (rec and rec[1] == "W" and row and (row[5] or 0) >= 4) or Gear.HasFixedSource(row) then return false end
+    return sourceOk(rec, opts, row, true)
 end
 
 -- Whether a class bit mask includes a class.
@@ -1440,9 +1460,10 @@ end
 -- within which effort orders the options), cap ({ [row] = { HIT = %, SHIT = % } }: hit still
 -- useful per row), picks (false: no BiS picks; else Gear.PicksFor's picks go first in their rows,
 -- marked pick = the pick, scored as any option; a two-hand pick makes the plan "auto" two-hand, a
--- main or off-hand pick one-hand).
+-- main or off-hand pick one-hand), worldEpic (true: also collect the epic world drops apart, res.world,
+-- for the suggestions only; Gear.WorldList, Gear.MergeWorld).
 -- Returns { [slotKey] = { {id, score, effort, suffix, sc, easier, set, pick}, ... best first }, plan =
--- "2H" or "1H", twoHandScore, oneHandScore, dwScore, shieldScore, sets, missing = n, total = n }.
+-- "2H" or "1H", twoHandScore, oneHandScore, dwScore, shieldScore, sets, missing = n, total = n, world }.
 function Gear.Best(opts)
     local d = data()
     local res = { plan = "1H", missing = 0, total = 0 }
@@ -1500,9 +1521,42 @@ function Gear.Best(opts)
         list[#list + 1] = e
     end
 
+    -- the epic world drops (opts.worldEpic, D-59 Nachtrag): kept apart, by the same groups, never in
+    -- the lists above (targets, set plan and weapon plan do not see them); res.world
+    local world = opts.worldEpic and { ["2H"] = {}, MH = {}, OH = {}, FINGER = {}, TRINKET = {} } or nil
+    if world then
+        for _, sl in ipairs(Gear.SLOTS) do world[sl.key] = {} end
+    end
+    -- an item's options by its group: into = the lists of the weapons, rings and trinkets, slots = the
+    -- lists of the other slots (the same table for the world drops)
+    local function add(into, slots, id, s, group)
+        if group == "1H" or group == "MH" then
+            put(into.MH, score(id, s, "MH", group))
+            if group == "1H" and dual then
+                local e = score(id, s, "OH", "OHW")
+                e.weapon = true
+                put(into.OH, e)
+            end
+        elseif group == "OHW" then
+            local e = score(id, s, "OH", group)
+            e.weapon = true
+            put(into.OH, e)
+        elseif group == "SHIELD" or group == "HELD" then
+            put(into.OH, score(id, s, nil, group))
+        elseif group == "2H" then
+            put(into["2H"], score(id, s, "2H", group))
+        elseif group == "RANGED" then
+            put(slots.RANGED, score(id, s, "RANGED", group))
+        elseif group == "FINGER" or group == "TRINKET" then
+            put(into[group], score(id, s, nil, group))
+        elseif slots[group] then
+            put(slots[group], score(id, s, nil, group))
+        end
+    end
+
     for id, row in pairs(d.I) do
         if not (exItem and exItem[id]) and (row[4] or 0) <= level and Gear.Usable(class, row, level, opts.spec) then
-            local ok, effort = false, nil
+            local ok, effort, epicW = false, nil, false
             for i = Gear.FIRST_SOURCE, #row do
                 local rec = d.S[row[i]]
                 if Gear.SourceOk(rec, opts, row) then
@@ -1512,19 +1566,24 @@ function Gear.Best(opts)
                     if x and (not effort or x < effort) then effort = x end
                 end
             end
+            if not ok and world and (row[5] or 0) >= 4 then
+                for i = Gear.FIRST_SOURCE, #row do
+                    if Gear.WorldEpicOk(d.S[row[i]], opts, row) then epicW = true break end
+                end
+            end
             -- the play style (F-124): bought from other players, the reputation of the item
             local st = opts.style
             if st then
-                if not ok and ns.PlayStyle.BuyOk(row, st, opts.sources) then ok = true end
-                if ok and not ns.PlayStyle.ItemOk(id, st) then ok = false end
+                if not ok and not epicW and ns.PlayStyle.BuyOk(row, st, opts.sources) then ok = true end
+                if (ok or epicW) and not ns.PlayStyle.ItemOk(id, st) then ok, epicW = false, false end
             end
-            if ok and (row[8] or 0) > 0 and not Gear.HasClassBit(row[8], class) then ok = false end
+            if (ok or epicW) and (row[8] or 0) > 0 and not Gear.HasClassBit(row[8], class) then ok, epicW = false, false end
             -- engineering goggles and the like only with their switch, or with the profession
             -- itself when the own skill lines are known (opts.skills by skill line id)
-            if ok and not opts.sources.B then
+            if (ok or epicW) and not opts.sources.B then
                 local line, rank = Gear.WearProf(row)
                 local have = line and opts.skills and opts.skills[line]
-                if line and not (have and have >= rank) then ok = false end
+                if line and not (have and have >= rank) then ok, epicW = false, false end
             end
             if ok then
                 res.total = res.total + 1
@@ -1532,30 +1591,14 @@ function Gear.Best(opts)
                 if not s then
                     if not failed then res.missing = res.missing + 1 end
                 elseif not (s.CLASSES and not s.CLASSES[class]) then
-                    local group = GROUP[row[1]]
                     curEffort = effort
-                    if group == "1H" or group == "MH" then
-                        put(lists.MH, score(id, s, "MH", group))
-                        if group == "1H" and dual then
-                            local e = score(id, s, "OH", "OHW")
-                            e.weapon = true
-                            put(lists.OH, e)
-                        end
-                    elseif group == "OHW" then
-                        local e = score(id, s, "OH", group)
-                        e.weapon = true
-                        put(lists.OH, e)
-                    elseif group == "SHIELD" or group == "HELD" then
-                        put(lists.OH, score(id, s, nil, group))
-                    elseif group == "2H" then
-                        put(lists["2H"], score(id, s, "2H", group))
-                    elseif group == "RANGED" then
-                        put(res.RANGED, score(id, s, "RANGED", group))
-                    elseif group == "FINGER" or group == "TRINKET" then
-                        put(lists[group], score(id, s, nil, group))
-                    elseif res[group] then
-                        put(res[group], score(id, s, nil, group))
-                    end
+                    add(lists, res, id, s, GROUP[row[1]])
+                end
+            elseif epicW then
+                local s = Gear.Stats(id)
+                if s and not (s.CLASSES and not s.CLASSES[class]) then
+                    curEffort = nil
+                    add(world, world, id, s, GROUP[row[1]])
                 end
             end
         end
@@ -1582,6 +1625,20 @@ function Gear.Best(opts)
     end
     for _, sl in ipairs(Gear.SLOTS) do sort(res[sl.key]) end
     for _, list in pairs(lists) do sort(list) end
+    if world then
+        -- an epic world drop that scores nothing is no suggestion; each marked world
+        for k, list in pairs(world) do
+            local kept = {}
+            for _, e in ipairs(list) do
+                if e[2] > 0 then
+                    e.world = true
+                    kept[#kept + 1] = e
+                end
+            end
+            world[k] = sort(kept)
+        end
+        res.world = world
+    end
 
     -- the set plan works on the best-first lists, before effort reorders a tie
     if opts.sets ~= false then setPlan(res, w, level, class) end
@@ -1687,6 +1744,50 @@ function Gear.Best(opts)
         res.altMainhand = lists["2H"]
     end
     return res
+end
+
+-- The epic world drops of Gear.Best's result res for a row (res.world, opts.worldEpic), best first:
+-- the main hand by the weapon plan in use (plan "2H"/"1H", default res.plan), the off hand none beside
+-- a two-hander and only weapons (DW) or only shields and held items (SHIELD) with that plan; both rings
+-- (both trinkets) one list.
+function Gear.WorldList(res, slotKey, plan)
+    local w = res and res.world
+    if not w then return {} end
+    plan = plan or res.plan
+    if slotKey == "MAINHAND" then return plan == "2H" and w["2H"] or w.MH end
+    if slotKey == "OFFHAND" then
+        if plan == "2H" then return {} end
+        local want = res.planWanted
+        if want ~= "DW" and want ~= "SHIELD" then return w.OH end
+        local out = {}
+        for _, e in ipairs(w.OH) do
+            if (want == "DW") == (e.weapon == true) then out[#out + 1] = e end
+        end
+        return out
+    end
+    if slotKey == "FINGER1" or slotKey == "FINGER2" then return w.FINGER end
+    if slotKey == "TRINKET1" or slotKey == "TRINKET2" then return w.TRINKET end
+    return w[slotKey] or {}
+end
+
+-- A row's list (best first, perhaps ordered by effort) with the epic world drops put in where their
+-- lowered score (score x WORLD_EPIC_FACTOR) stands: ahead of an option only when that still beats it,
+-- never ahead of a BiS pick or an own pick. Their scores are not changed; a new list, list is not
+-- changed.
+function Gear.MergeWorld(list, worldList)
+    if not worldList or #worldList == 0 then return list end
+    local f = Gear.WORLD_EPIC_FACTOR
+    local out, j = {}, 1
+    for _, e in ipairs(list) do
+        local fixed = e.pick ~= nil or e.own
+        while not fixed and worldList[j] and worldList[j][2] * f > e[2] do
+            out[#out + 1] = worldList[j]
+            j = j + 1
+        end
+        out[#out + 1] = e
+    end
+    for k = j, #worldList do out[#out + 1] = worldList[k] end
+    return out
 end
 
 -- Score of an equipped item (or any link) the same way, for the upgrade mark.

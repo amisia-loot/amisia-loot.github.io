@@ -1390,6 +1390,18 @@ ein bestimmtes.
 **Durchgesetzt durch:** `tests/test_bis_score.lua` (Regeln, eigener Tooltip), `tests/test_bis_targets.lua`,
 `tests/test_play_style.lua`, `tools/tests/test_build_gear.py::test_names_and_icons_only_for_items_the_client_lacks`.
 
+**Nachtrag 2026-11-20 (F-149, epische Weltdrops in den Vorschlägen):** Wunsch des Nutzers zu "Hand von Edgar dem
+Seltsamen" (2243, nur Weltdrop und Auktionshaus): "wäre gut wenn mir das auch vorgeschlagen wird nur gekennzeichnet dass
+es Worlddrop ist und deswegen vielleicht etwas kleiner Prio hat". Die Einstellung `bis.epicWorld` ("Epische Weltdrops
+vorschlagen", an; auch im Menü "Optionen" des Planers) nimmt epische Items ohne feste Quelle, deren Weltdrop die übrigen
+Filter besteht (Spielstil, Fraktion, Orte; der Chip "Weltdrops" spielt keine Rolle), in die Vorschläge je Platz
+(`ns.BisRanking`, die Planer-Liste auch über der eigenen Stufe, die Karte am Charakterfenster): markiert "Weltdrop",
+eingereiht mit 90 % ihrer Wertung (`Gear.WORLD_EPIC_FACTOR`), also vor einem gezielt erreichbaren Item nur, wenn sie
+mehr als gut 11 % besser sind; Wertung und Zuwachs bleiben die echten; nie vor einer BiS-Empfehlung oder der eigenen
+Wahl. Unverändert: Ziele, Puppe, "Ziele", Upgrade-Prozente, Sets, Simulation, der Hinweis "Überholt" sowie
+`tools/build_bis.py` und die abgeleiteten Gewichte planen weiter ohne epische Weltdrops; von Hand gewählt (eigene Wahl)
+geht ein solches Item wie bisher. Durchgesetzt durch `tests/test_gear_planner.lua` (Abschnitt "epic world drops").
+
 ## D-60 Changelog auf Englisch, mit Links, aus eigenen Notizen
 
 **Datum:** 2026-11-05
