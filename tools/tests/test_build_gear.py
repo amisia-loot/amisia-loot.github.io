@@ -711,3 +711,108 @@ def test_an_item_that_gets_a_source_leaves_the_no_source_file(tmp_path):
     assert '[274998]="STAMINA=9;INTELLECT=5;SPELL_POWER=52"' in body
     assert '[275836]="Akolythenklinge"' in body and '[274998]="Schattenlichtathame"' not in body, \
         'names only for items the client lacks'
+
+
+# ---------------------------------------------------------------- item sources kept by hand (D-156)
+HAND_FACTS = FACTS + [{'key': 'dire', 'name': 'Dire Maul', 'kind': 'party', 'inst': 429,
+                       'order': ['Lethtendris', 'Pusillin'], 'npcs': [14327, 14354]}]
+
+
+def hand_file(tmp_path, items, comment='by hand'):
+    p = tmp_path / 'forever_gear_sources.json'
+    p.write_text(json.dumps({'_comment': comment, 'items': items}), encoding='utf-8')
+    return str(p)
+
+
+def hand_entry(kind, **kw):
+    return dict(kind=kind, src='Nutzer 2026-11-20 (im Spiel gesehen)', **kw)
+
+
+def test_hand_sources_every_kind_becomes_its_record(tmp_path):
+    items = {
+        '1': [hand_entry('D', dungeon='dire', boss='Pusillin', npc=14354)],
+        '2': [hand_entry('Q', quest=4711, name='Die Fackel', level=30, min=26, faction='A')],
+        '3': [hand_entry('V', npc=900, name='Griselda', zone=1429, faction='H')],
+        '4': [hand_entry('R', npc=901, name='Mother Fang', zone=1429)],
+        '5': [hand_entry('W', npc=902, name='Wolf', zone=1429), hand_entry('W')],
+        '6': [hand_entry('D', dungeon='onyxia', boss='Onyxia', npc=10184)],
+    }
+    hand = build_gear.load_hand_sources(hand_file(tmp_path, items), HAND_FACTS)
+    assert sorted(hand) == [1, 2, 3, 4, 5, 6] and hand[1][0]['npc'] == 14354
+    scan = {i: scan_item(f'I{i}', q=3) for i in hand}
+    src, keep, zone_rows, stats, *_ = build_gear.build(scan, {}, att(), facts=HAND_FACTS, hand=hand)
+    recs = lambda i: [src.rows[n - 1] for n in keep[i][1]]  # noqa: E731
+    assert recs(1) == [('D', 'Dire Maul', 'Pusillin', None, 429)]
+    assert recs(2) == [('Q', 'Die Fackel', 30, 26, 'A', None, 4711)]
+    assert recs(3) == [('V', 'Griselda', 1429, 'H', None, None, 900)]
+    assert recs(4) == [('R', 'Mother Fang', 0, 1429, 901)]
+    assert recs(5) == [('W', 'Wolf', 0, 0, 1429, 902), ('W', None, 0, 0)]
+    assert recs(6) == [('X', "Onyxia's Lair", 'Onyxia', 249, 2159, 1, 0)], 'a raid of the facts: a raid source'
+    assert 1429 in zone_rows and stats['hand dungeon'] == 1
+
+
+def test_hand_sources_come_after_the_automatic_ones_and_never_twice(tmp_path):
+    a = att(instances=DEADMINES, npcs={645: npc('Cookie', {'boss'}, zone=291, inst=63)},
+            drops=[(20, 645, 'boss', 63, 291, False, None)], quests={500: quest('The Quest', 24, 'A', rewards=[21])})
+    items = {'20': [hand_entry('D', dungeon='deadmines', boss='Cookie', npc=645),
+                    hand_entry('W', npc=299, name='Wolf', zone=1429)],
+             '21': [hand_entry('Q', quest=500, name='Anders')]}
+    hand = build_gear.load_hand_sources(hand_file(tmp_path, items), HAND_FACTS)
+    scan = {20: scan_item('Cookie Hat', q=3), 21: scan_item('Quest Hat', q=3)}
+    src, keep, _, stats, *_ = build_gear.build(scan, {}, a, facts=HAND_FACTS, hand=hand)
+    assert [src.rows[n - 1] for n in keep[20][1]] == [('D', 'The Deadmines', 'Cookie', None, 36, 1581),
+                                                      ('W', 'Wolf', 0, 0, 1429, 299)], 'the boss once, the hand one after'
+    assert [src.rows[n - 1][0] for n in keep[21][1]] == ['Q'] and len(keep[21][1]) == 1, "ATT's quest record, once"
+    assert stats['hand, known already'] == 2
+
+
+def test_an_item_with_only_a_hand_source_needs_its_stats_like_any_other(tmp_path):
+    hand = build_gear.load_hand_sources(
+        hand_file(tmp_path, {'30': [hand_entry('D', dungeon='dire', boss='Pusillin', npc=14354)]}), HAND_FACTS)
+    src, keep, *_, missing = build_gear.build({}, {}, att(), facts=HAND_FACTS, hand=hand)
+    assert 30 not in keep and missing == [30], 'unknown to every item table: the gear scan asks for it'
+    assert 30 in src.named
+
+
+def test_bad_hand_entries_stop_the_build(tmp_path):
+    import pytest
+    bad = [
+        ({'x1': [hand_entry('W')]}, 'no item id'),
+        ({'0': [hand_entry('W')]}, 'no item id'),
+        ({'1': []}, 'list of entries'),
+        ({'1': [hand_entry('Z')]}, "unknown kind 'Z'"),
+        ({'1': [hand_entry('D', dungeon='dire', boss='Pusillin')]}, 'needs "npc"'),
+        ({'1': [hand_entry('D', dungeon='nowhere', boss='Pusillin', npc=14354)]}, 'no dungeon "nowhere"'),
+        ({'1': [hand_entry('D', dungeon='dire', boss='Pusillin', npc=1)]}, 'is NPC 14354, not 1'),
+        ({'1': [hand_entry('D', dungeon='dire', boss='Pusillin', npc='14354')]}, 'positive whole number'),
+        ({'1': [hand_entry('V', npc=900, name='Griselda', zone=0)]}, 'positive whole number'),
+        ({'1': [hand_entry('V', npc=900, name='Griselda', zone=1429, faction='X')]}, '"faction"'),
+        ({'1': [hand_entry('Q', quest=4711, level=99)]}, 'level 0-60'),
+        ({'1': [hand_entry('R', npc=901, name='Mother Fang', zone=1429, chance='5%')]}, 'no field(s) chance'),
+        ({'1': [hand_entry('W', npc=902)]}, 'both "npc" and "name"'),
+        ({'1': [dict(kind='W', src=' ')]}, '"src" must say'),
+        ({'1': [dict(kind='W')]}, 'needs "src"'),
+    ]
+    for items, why in bad:
+        with pytest.raises(build_gear.HandSourceError) as e:
+            build_gear.load_hand_sources(hand_file(tmp_path, items), HAND_FACTS)
+        assert why in str(e.value), (items, str(e.value))
+    p = tmp_path / 'broken.json'
+    p.write_text('{"items": ', encoding='utf-8')
+    with pytest.raises(build_gear.HandSourceError):
+        build_gear.load_hand_sources(str(p), HAND_FACTS)
+    assert build_gear.load_hand_sources(str(tmp_path / 'none.json'), HAND_FACTS) == {}
+
+
+def test_the_real_hand_file_gives_18316_its_boss_pusillin():
+    facts = build_gear.load_facts()
+    hand = build_gear.load_hand_sources(build_gear.HAND, facts)
+    with open(build_gear.HAND, encoding='utf-8') as fh:
+        raw = json.load(fh)
+    assert 'never copied' in raw['_comment'] and all(e['src'].strip() for es in hand.values() for e in es)
+    assert hand[18316] == [{'kind': 'D', 'dungeon': 'dire', 'boss': 'Pusillin', 'npc': 14354,
+                            'src': 'Nutzer 2026-11-20 (im Spiel gesehen)'}]
+    scan = {18316: dict(scan_item('Obsidianschmuckstück', loc='INVTYPE_HOLDABLE', q=3, lvl=53), subclassID=0)}
+    src, keep, *_ = build_gear.build(scan, {}, att(), facts=facts, hand=hand)
+    recs = [src.rows[n - 1] for n in keep[18316][1]]
+    assert recs == [('D', 'Dire Maul', 'Pusillin', None, 429)], 'a boss drop of Dire Maul, instance 429'

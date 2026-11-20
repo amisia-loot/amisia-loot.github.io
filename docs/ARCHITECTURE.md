@@ -310,6 +310,7 @@ AllTheThings (MIT, --refresh-att)        -> ~/addons/_cache/att ($AMISIA_ATT_CAC
 client tables SkillLineAbility, SpellEffect, ItemSparse -> build_gear.client_crafts -> Data/GearData.lua (C, recipe skill)
 client table TaxiNodes (+ ATT's flight master names) -> build_map.py -> Data/MapData.lua (F flight points, F-171, D-102)
 tools/forever_transports.json (by hand) -> build_map.py -> Data/MapData.lua (T docks; F only where TaxiNodes has no node)
+tools/forever_gear_sources.json (by hand, D-156) -> build_gear.py -> Data/GearData.lua (S records after the automatic ones; checked strictly)
 client tables of two builds on disk     -> tools/build_diff.py (build.py diff, auto_data.py) -> "new in this build" (D-103)
 MapPlaces.lua (entering an instance)    -> AmisiaDB.entrances -> build_map.py -> tools/entrance_archive.json -> Data/MapData.lua
 Collector.lua (a quest taken, a mob looted) -> tools/quest_obs.json, tools/scan_archive.json -> build_map.py -> Data/MapData.lua (Q:/U: places ATT lacks)
@@ -331,7 +332,8 @@ Amisia clients  <--- addon messages (Comm: sync, exchanges) --->  Amisia clients
 
 - Build inputs: own data first (scan, collector, drop records of the guild, SavedVariables), the
   user's client table export, the CSV exports of wago.tools (D-101), AllTheThings (MIT), the user-accepted
-  input wowsrc.com and the hand list `tools/forever_transports.json`. The client tables the builders read
+  input wowsrc.com and the hand lists `tools/forever_transports.json` and `tools/forever_gear_sources.json` (item
+  sources the user saw or told, each with its `src`, D-156). The client tables the builders read
   are the lists of `tools/export_db2.ps1` (`client_tables.TABLES`: the PC's export and `fetch_tables.py`
   ask for the same; since 2026-11-10 also TaxiNodes for the flight points and QuestV2 for the build
   report). No copyleft data (D-04). Only

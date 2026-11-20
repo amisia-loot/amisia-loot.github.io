@@ -17,7 +17,7 @@ local _, ns = ...
 -- the quest scan's text alone (D-109; no source knows its giver, place or English name) }.
 -- Names and places the Amisia collector saw itself go first (German where it saw them); nil is unknown.
 ns.DUNGEON_QUESTS = {
-    built = "2026-11-18", source = "007a0073a4",
+    built = "2026-11-20", source = "007a0073a4",
     D = {
         bfd = { 908, 971, 1198, 1199, 1200, 1275, 3765, 6561, 6562, 6563, 6564, 6565, 6921, 6922 },
         brd = { 3701, 3702, 3801, 3802, 3906, 3907, 3981, 3982, 4001, 4002, 4003, 4004, 4022, 4023, 4024, 4061, 4062, 4063, 4081, 4082, 4083, 4121, 4122, 4123, 4126, 4128, 4132, 4133, 4134, 4136, 4182, 4183, 4184, 4185, 4186, 4201, 4223, 4224, 4241, 4242, 4262, 4263, 4264, 4282, 4286, 4295, 4322, 4324, 4341, 4342, 4361, 4362, 4363, 6402, 6403, 6501, 6642, 6643, 6644, 6645, 6646, 7201 },
@@ -257,8 +257,8 @@ ns.DUNGEON_QUESTS = {
         [3701] = { "The Smoldering Ruins of Thaurissan (2/2)", 50, 54, "A", 0, "O", "Royal Historian Archesonus", "1455:3837:5531", { 3702 }, nil, "brd", { 12102 }, nil, nil, nil, nil, 0, 0 },
         [3702] = { "The Smoldering Ruins of Thaurissan (1/2)", 50, 54, "A", 0, "O", "Royal Historian Archesonus", "1455:3837:5531", nil, nil, "brd", nil, nil, nil, nil, nil, 0, 0 },
         [3765] = { "The Corruption Abroad", 20, 24, "A", 0, "O", "Argos Nightwhisper", "1453:3620:6760", nil, nil, "bfd", nil, { 1275 }, true, nil, nil, 0, 0 },
-        [3801] = { "Dark Iron Legacy (1/2)", 48, 52, "", 0, "", "Franclorn Forgewright", nil, nil, nil, "brd", nil, nil, nil, nil, nil, 0, 0 },
-        [3802] = { "Dark Iron Legacy (2/2)", 48, 52, "", 0, "", "Franclorn Forgewright", nil, { 3801 }, nil, "brd", { 11000 }, nil, nil, nil, nil, 0, 0 },
+        [3801] = { "Dark Iron Legacy (1/2)", 48, 52, "", 0, "O", "Franclorn Forgewright", "1428:2894:2873", nil, nil, "brd", nil, nil, nil, nil, nil, 0, 0, "Franclorn Forgewright", "1428:2894:2873", "Sprecht mit Franclorn Forgewright, wenn Ihr daran interessiert seid, einen Schlüssel für die Hauptstadt zu erhalten." },
+        [3802] = { "Dark Iron Legacy (2/2)", 48, 52, "", 0, "O", "Franclorn Forgewright", "1428:2894:2873", { 3801 }, nil, "brd", { 11000 }, nil, nil, nil, nil, 0, 0, nil, nil, "Erschlagt Fineous Darkvire und bergt den großen Hammer Ironfel. Bringt Ironfel zum Schrein von Thaurissan und legt ihn auf die Statue von Franclorn Forgewright." },
         [3906] = { "Disharmony of Flame", 48, 52, "H", 0, "O", "Thunderheart", "1418:332:4809", nil, nil, "brd", nil, nil, nil, nil, nil, 0, 0, "Thunderheart", "1418:333:4786", "Reist zum Steinbruch am Blackrock und tötet Übermeister Pyron. Kehrt zu Thunderheart zurück, sobald Ihr den Auftrag erledigt habt." },
         [3907] = { "Disharmony of Fire", 48, 56, "H", 0, "O", "Thunderheart", "1418:330:4830", { 3906 }, nil, "brd", { 12112, 12114, 12115, 12113 }, nil, nil, nil, nil, 0, 0 },
         [3981] = { "Commander Gor'shak", 48, 52, "H", 0, "O", "Galamav the Marksman", "1418:580:4760", { 3906 }, nil, "brd", nil, nil, nil, nil, nil, 0, 0 },

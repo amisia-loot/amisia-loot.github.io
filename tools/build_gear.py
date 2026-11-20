@@ -37,6 +37,9 @@ Where an item comes from (tools/att_data.py reads all of it, MIT licence, see LI
     that teaches it (ItemXItemEffect, ItemSparse).
   - wowsrc.com dungeon loot pages (drop chances), kept parsed in tools/gear_wowsrc.json;
     --refresh-wowsrc downloads them again, --no-wowsrc leaves them out.
+  - Item sources kept by hand in tools/forever_gear_sources.json (D-156): what the user saw in game or
+    told, each entry with where it came from ("src"); added after all the others where none says the same.
+    A bad entry stops the build (load_hand_sources).
 
 The scanned gear no source names at all goes to Amisia_Gear/Data/GearNoSource.lua (lazy GEAR_NOSRC, the
 planner's "ohne bekannte Quelle", D-107): the rows and stats of GearData.lua without sources, minus test
@@ -79,6 +82,8 @@ WOWSRC_JSON = os.path.join(HERE, 'gear_wowsrc.json')
 FOREVER_JS = os.path.join(ROOT, 'Amisia-Website', 'data', 'forever.js')
 FOREVER_ZONES = os.path.join(HERE, 'forever_zones.json')
 FACTS = os.path.join(HERE, 'forever_dungeons.json')
+# item sources kept by hand: facts the user saw in game or told, each with where it came from (D-156)
+HAND = os.path.join(HERE, 'forever_gear_sources.json')
 ITEMSPARSE_JSON = os.path.join(HERE, 'gear_itemsparse.json')
 # the quest types the addon learned from the quest log (AmisiaDB.questtags), kept for good
 QUEST_TAGS = os.path.join(HERE, 'quest_tag_archive.json')
@@ -455,6 +460,91 @@ def load_facts(path=FACTS):
         return build_dungeons.merge(json.load(fh), build_dungeons.load_client())
 
 
+# ---------------------------------------------------------------- item sources kept by hand (D-156)
+# kind -> (required fields, optional fields) besides "kind" and "src"
+HAND_KINDS = {
+    'D': (('dungeon', 'boss', 'npc'), ()),                      # a boss drop in a dungeon or raid of the facts
+    'Q': (('quest',), ('name', 'level', 'min', 'faction')),     # a quest reward
+    'V': (('npc', 'name', 'zone'), ('faction',)),               # sold by a vendor
+    'R': (('npc', 'name', 'zone'), ()),                         # a rare mob's drop
+    'W': ((), ('npc', 'name', 'zone')),                         # a world drop, or a named mob's outside instances
+}
+HAND_IDS = ('npc', 'quest', 'zone')
+HAND_TEXTS = ('dungeon', 'boss', 'name')
+
+
+class HandSourceError(ValueError):
+    """A bad entry of tools/forever_gear_sources.json: the build stops with what is wrong."""
+
+
+def _positive_id(v):
+    return isinstance(v, int) and not isinstance(v, bool) and v > 0
+
+
+def load_hand_sources(path=HAND, facts=()):
+    """{item id: [entry dict, ...]} of the hand file, checked strictly: a known kind, its fields (none
+    missing, none unknown), positive ids, non-empty names and src, a dungeon key of the facts and for D
+    the boss's NPC id where the facts' boss order names it. A missing file is no hand source."""
+    if not path or not os.path.exists(path):
+        return {}
+    name = os.path.basename(path)
+    with open(path, encoding='utf-8') as fh:
+        try:
+            data = json.load(fh)
+        except ValueError as e:
+            raise HandSourceError(f'{name}: no valid JSON ({e})')
+    if not isinstance(data, dict) or not isinstance(data.get('items'), dict):
+        raise HandSourceError(f'{name}: needs an object "items" ({{"<item id>": [entries]}})')
+    by_key = {f['key']: f for f in facts or () if f.get('key')}
+    out = {}
+    for key, entries in data['items'].items():
+        if not (isinstance(key, str) and key.isdigit() and int(key) > 0):
+            raise HandSourceError(f'{name}: "{key}" is no item id')
+        iid = int(key)
+        if not isinstance(entries, list) or not entries:
+            raise HandSourceError(f'{name}: item {iid} needs a list of entries')
+        for n, e in enumerate(entries, 1):
+            where = f'{name}: item {iid}, entry {n}'
+            if not isinstance(e, dict):
+                raise HandSourceError(f'{where}: not an object')
+            kind = e.get('kind')
+            if kind not in HAND_KINDS:
+                raise HandSourceError(f'{where}: unknown kind {kind!r} (one of {", ".join(HAND_KINDS)})')
+            need, may = HAND_KINDS[kind]
+            for f in need + ('src',):
+                if e.get(f) in (None, ''):
+                    raise HandSourceError(f'{where}: kind {kind} needs "{f}"')
+            extra = set(e) - set(need) - set(may) - {'kind', 'src'}
+            if extra:
+                raise HandSourceError(f'{where}: kind {kind} has no field(s) {", ".join(sorted(extra))}')
+            if not isinstance(e['src'], str) or not e['src'].strip():
+                raise HandSourceError(f'{where}: "src" must say where the fact came from')
+            for f in HAND_IDS:
+                if f in e and not _positive_id(e[f]):
+                    raise HandSourceError(f'{where}: "{f}" must be a positive whole number, not {e[f]!r}')
+            for f in HAND_TEXTS:
+                if f in e and (not isinstance(e[f], str) or not e[f].strip()):
+                    raise HandSourceError(f'{where}: "{f}" must be a name')
+            for f in ('level', 'min'):
+                if f in e and not (isinstance(e[f], int) and not isinstance(e[f], bool) and 0 <= e[f] <= 60):
+                    raise HandSourceError(f'{where}: "{f}" must be a level 0-60, not {e[f]!r}')
+            if 'faction' in e and e['faction'] not in ('A', 'H'):
+                raise HandSourceError(f'{where}: "faction" is "A" or "H", not {e["faction"]!r}')
+            if kind == 'W' and ('npc' in e) != ('name' in e):
+                raise HandSourceError(f'{where}: a named mob\'s drop (W) needs both "npc" and "name"')
+            if kind == 'D':
+                fact = by_key.get(e['dungeon'])
+                if fact is None:
+                    raise HandSourceError(f'{where}: no dungeon "{e["dungeon"]}" in forever_dungeons.json')
+                order, npcs = fact.get('order') or [], fact.get('npcs') or []
+                if e['boss'] in order and len(npcs) == len(order):
+                    known = npcs[order.index(e['boss'])]
+                    if known and known != e['npc']:
+                        raise HandSourceError(f'{where}: {e["boss"]} of {fact["name"]} is NPC {known}, not {e["npc"]}')
+            out.setdefault(iid, []).append(dict(e))
+    return out
+
+
 class Places:
     """Dungeons and raids by ATT instance, name or instance id: (name, instance id, area id).
 
@@ -719,11 +809,13 @@ def is_junk(name):
 
 
 def build(scan_items, collected, att, crafts=None, wowsrc=None,
-          itemsparse=None, forever_raids=None, facts=None, prev_items=None, observed=None, scanned=None):
+          itemsparse=None, forever_raids=None, facts=None, prev_items=None, observed=None, scanned=None,
+          hand=None):
     """Joins the sources to the items. att is the neutral form of tools/att_data.py (att_data.empty_db()
     for none); crafts client_crafts' form (None for none); observed the source
     collector's records (build_scan.collect_observed); scanned the quest scan's rewards
-    (scan_quest_rewards). The ids any source names are kept as src.named (no_source). Returns the source
+    (scan_quest_rewards); hand the item sources kept by hand (load_hand_sources, D-156), added after all
+    the others where none of them says the same. The ids any source names are kept as src.named (no_source). Returns the source
     records, the kept items {id: (item, source numbers, level, class mask, speed, skill line)}, the
     zone names, link counts, what was left out and why, wowsrc names without an item, and the ids to
     ask the client for."""
@@ -1005,6 +1097,72 @@ def build(scan_items, collected, att, crafts=None, wowsrc=None,
     # --- Forever raids the site has recorded: raid, boss, instance, area, phase 1, no token
     for rname, boss, iid, inst, area in forever_raids or []:
         note(iid, src.add('X', rname, boss, inst or 0, area or 0, 1, 0), 'raid')
+
+    # --- item sources kept by hand (tools/forever_gear_sources.json, D-156): facts the user saw or told,
+    # after every automatic source; one an automatic source already says (the same boss of the same
+    # dungeon, quest, vendor, rare or mob) is not added twice
+    fact_by_key = {f['key']: f for f in facts or () if f.get('key')}
+
+    def same(rec):
+        k = rec[0]
+        if k in ('D', 'X'):
+            return (k, dungeon_key(rec[1]), norm_name(rec[2]))
+        if k == 'Q':
+            return (k, rec[6] if len(rec) > 6 else None, None if len(rec) > 6 else rec[1])
+        if k in ('V', 'P'):
+            return ('V', rec[6] if len(rec) > 6 else rec[1])
+        if k == 'R':
+            return (k, rec[4] if len(rec) > 4 else rec[1])
+        if k == 'W':
+            return (k, rec[5] if len(rec) > 5 else None, rec[1])
+        return rec
+
+    def hand_rec(e):
+        kind = e['kind']
+        if kind == 'D':
+            f = fact_by_key[e['dungeon']]
+            place = places.of_name(f['name'])
+            if not place[0]:
+                place = (f['name'], f.get('inst'), f.get('area'))
+            dname, inst, area = places.split(place, e['boss'], e['npc'])
+            if f.get('kind') == 'raid':
+                return 'raid', src.add('X', dname, e['boss'], inst or 0, area or 0, 1, 0)
+            return 'dungeon', src.add('D', dname, e['boss'], None, inst, area)
+        if kind == 'Q':
+            qid = e['quest']
+            aq = quests.get(qid)
+            num = quest_rec(qid, aq) if aq else None
+            if aq and num is None:
+                return 'quest', None   # a raid quest
+            if num is None and qid in (obs.get('q') or {}):
+                num = obs_quest(qid, obs['q'][qid])
+            if num is None:
+                num = src.add('Q', e.get('name') or f'Quest {qid}', e.get('level') or 0, e.get('min') or 0,
+                              e.get('faction'), None, qid)
+            return 'quest', num
+        if kind == 'V':
+            n = npcs.get(e['npc'])
+            if n:
+                k = 'P' if is_pvp_vendor(n.get('title')) else 'V'
+                return 'vendor', src.add(k, n.get('name') or e['name'], zone_ref(npc_zone(n, e['zone'])),
+                                         n.get('faction') or e.get('faction'), n.get('title'), None, e['npc'])
+            return 'vendor', src.add('V', e['name'], zone_ref(e['zone']), e.get('faction'), None, None, e['npc'])
+        if kind == 'R':
+            return 'rare', src.add('R', e['name'], 0, zone_ref(e['zone']), e['npc'])
+        if 'npc' in e:
+            return 'world', src.add('W', e['name'], 0, 0, zone_ref(e.get('zone')), e['npc'])
+        return 'world', src.add('W', None, 0, 0, zone_ref(e.get('zone')))
+
+    for iid in sorted(hand or {}):
+        for e in hand[iid]:
+            kind, num = hand_rec(e)
+            if num is None:
+                continue
+            have = {same(src.rows[n - 1]) for n in found.get(iid, ())}
+            if num in found.get(iid, ()) or same(src.rows[num - 1]) in have:
+                stats['hand, known already'] = stats.get('hand, known already', 0) + 1
+                continue
+            note(iid, num, 'hand ' + kind)
 
     # --- keep what the item table knows and a character can wear
     keep = {}
@@ -1463,9 +1621,15 @@ def main(argv=None):
     # the quest scan by id (D-104): its rewards are quest sources where no quest names an item yet
     id_scans = build_scan_archive.id_scans(args.scan_archive or None, dbs)
     scanned = scan_quest_rewards(id_scans)
+    facts = load_facts()
+    try:
+        hand = load_hand_sources(HAND, facts)
+    except HandSourceError as e:
+        raise SystemExit(str(e))
+    log(f'hand sources (tools/forever_gear_sources.json): {sum(len(v) for v in hand.values())} for {len(hand)} items')
     src, keep, zone_rows, stats, dropped, unmatched, missing = build(
-        scan_items, collected, att, crafts, wowsrc, itemsparse, forever_raids, load_facts(),
-        prev_items, observed, scanned)
+        scan_items, collected, att, crafts, wowsrc, itemsparse, forever_raids, facts,
+        prev_items, observed, scanned, hand)
     log(f'quest scan rewards: {len(scanned)} quests with reward items, {stats.get("scan quest", 0)} items took one as their source')
     missing = client_known(missing, args.wago)
     sources = [att_data.ATT_SOURCE + (f' at {att["commit"][:10]}' if att.get('commit') else ''), 'the Amisia item scan']
@@ -1473,6 +1637,8 @@ def main(argv=None):
         sources.append('the WoW Forever client tables (recipes)')
     if wowsrc:
         sources.append('wowsrc.com')
+    if hand:
+        sources.append('item sources kept by hand (tools/forever_gear_sources.json)')
     rep = client_reputation(args.wago)
     # a build into another file keeps its own copy of the quest type archive beside it (a test's trial build
     # with the synced SavedVariables once wrote their new quest types into tools/quest_tag_archive.json on every

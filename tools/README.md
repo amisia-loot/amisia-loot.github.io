@@ -653,6 +653,23 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
   400000-999999) only for items ATT lists as crafted for Forever, as in `build_professions.py`.
 - wowsrc.com dungeon pages (drop chances) are kept in `tools/gear_wowsrc.json`;
   `--refresh-wowsrc` downloads them again, `--no-wowsrc` leaves them out.
+- Item sources kept by hand (D-156): `tools/forever_gear_sources.json`, for an item none of the sources above
+  knows. Only what the user saw in game or told, never copied from another addon, Wowhead or foreverchanges.
+  Add an entry under `"items"`, keyed by the item id as a string, with `"src"` saying who saw it when:
+
+  ```json
+  "18316": [{"kind": "D", "dungeon": "dire", "boss": "Pusillin", "npc": 14354, "src": "Nutzer 2026-11-20 (im Spiel gesehen)"}]
+  ```
+
+  Kinds: `D` boss drop (`dungeon` the key in `tools/forever_dungeons.json`, `boss` English, `npc`; a raid of that
+  file becomes an `X` record), `Q` quest reward (`quest`; optional `name`, `level`, `min`, `faction` A/H, used
+  only where neither AllTheThings nor the collector knows the quest), `V` vendor (`npc`, `name`, `zone` uiMapID,
+  optional `faction`), `R` rare (`npc`, `name`, `zone`), `W` world drop (optional `zone`; a named mob with `npc`
+  and `name`). `load_hand_sources` stops the build on an unknown kind, a missing or unknown field, a bad id, an
+  unknown dungeon or a boss whose NPC id differs from the dungeon data. The entries come after all automatic
+  sources; one an automatic source already gives (same boss and dungeon, quest or NPC) is not added twice. Then
+  `python3 tools/build.py data`: an item the scan or client has stats for joins `I`; one without goes to `M`
+  until `/amisia scan gear` has asked the client for it.
 - In game, `/amisia scan gear` (outside instances) asks the client for every item the planner lists
   plus the ids its sources name but no item table knows (`M` in GearData.lua, items Forever still
   hides until they are revealed). It stores each item's stats too. Log out, rebuild: the stats go

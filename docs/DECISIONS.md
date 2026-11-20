@@ -4421,3 +4421,33 @@ Sperre eines Bosskampfs (dort sperrt der Client Addon-Nachrichten) und das Schla
 **Durchgesetzt durch:** `tests/test_guild_queue.lua` (Fremde, Kanal, Felder, Abstände, Schlachtfeld, Teilen aus,
 Kampf geht, Bosskampfsperre wartet, deutsch und englisch), `tests/test_guild_queue_tbc.lua` (TBC: die globale Funktion),
 `tools/tests/test_contracts.py::test_the_gap_of_every_kind_is_the_documented_one`.
+
+## D-156 Item-Quellen von Hand: tools/forever_gear_sources.json
+
+**Datum:** 2026-11-20
+**Entscheidung:** Woher ein Item kommt, das keine unserer Quellen kennt (AllTheThings, Item-Scan, Sammler,
+Quest-Scan, Client-Tabellen, wowsrc), darf von Hand in `tools/forever_gear_sources.json` stehen: je Item eine Liste
+von Einträgen mit `kind` (`D` Bossdrop in einem Dungeon oder Raid der Datei `tools/forever_dungeons.json`: `dungeon`
+Schlüssel, `boss`, `npc`; `Q` Questbelohnung: `quest`, dazu `name`, `level`, `min`, `faction`; `V` Händler: `npc`,
+`name`, `zone`, dazu `faction`; `R` Rarmob: `npc`, `name`, `zone`; `W` Weltdrop, auch eines benannten Gegners: `npc`
+und `name`, dazu `zone`) und `src`, woher die Tatsache stammt. Nur was der Nutzer im Spiel gesehen oder gesagt hat;
+nie aus einem anderen Addon, von Wowhead, foreverchanges oder einer ähnlichen Seite abgeschrieben (D-03, D-04).
+`tools/build_gear.py` (`load_hand_sources`) prüft die Datei streng (unbekannte Art, fehlendes oder fremdes Feld,
+falsche Nummer, unbekannter Dungeon, ein Boss mit anderer NPC-Nummer als in den Dungeondaten: der Datenbau bricht mit
+der Stelle ab) und hängt jeden Eintrag nach allen automatischen Quellen als Quelle in derselben Form an (D-Datensatz
+mit Name, Instanz und Gebiet aus den Dungeondaten; ein Raid als X); sagt eine automatische Quelle dasselbe (derselbe
+Boss im selben Dungeon, dieselbe Quest, derselbe NPC), kommt er nicht doppelt. Der Sammler des Addons lernt Quellen aus
+Kills weiter wie bisher. Erster Eintrag: 18316 Obsidianschmuckstück von Pusillin (NPC 14354), Düsterbruch,
+"Nutzer 2026-11-20 (im Spiel gesehen)".
+**Grund:** Der Nutzer 2026-11-20 auf die Frage, wie Quellen ohne Kill eines Amisia-Spielers in die Daten kommen:
+"Von Hand + Sammler". Ein Item, das niemand mit Amisia hat fallen sehen und das keine Datenquelle nennt, stand sonst
+für immer als "Quelle unbekannt" da, obwohl der Nutzer die Quelle kennt. Die Pflicht zu `src` hält jede Tatsache
+nachprüfbar und die Herkunftsregel von D-03/D-04 ein.
+**Folge:** Ein Item mit nur einer Quelle von Hand kommt wie jedes andere in `GearData.lua` `I`, sobald seine Werte
+bekannt sind (Item-Scan oder Client-Tabelle); bis dahin steht es in `M`, und `/amisia scan gear` fragt den Client
+danach. 18316 kennt bisher weder der Scan noch `ItemSparse` (nur die Client-Tabelle `Item`): nach dem nächsten
+`/amisia scan gear` und Datenbau steht es mit "Düsterbruch: Pusillin" im Planer. Ein falscher Eintrag von Hand bleibt,
+bis ihn jemand entfernt; die Datei ist klein und wird im Commit geprüft.
+**Durchgesetzt durch:** `tools/tests/test_build_gear.py::test_bad_hand_entries_stop_the_build`,
+`tools/tests/test_build_gear.py::test_hand_sources_come_after_the_automatic_ones_and_never_twice`,
+`tools/tests/test_build_gear.py::test_the_real_hand_file_gives_18316_its_boss_pusillin`, `tests/test_gear.lua`.

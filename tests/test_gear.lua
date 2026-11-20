@@ -222,6 +222,10 @@ assert(Gear.SourceText(NS.GEAR.S[1]):find("Quest: Helm Quest (20)", 1, true))
 assert(Gear.SourceText(NS.GEAR.S[3]) == "Deadmines: VanCleef 20%")
 assert(Gear.SourceText(NS.GEAR.S[4]) == "Schmiedekunst (150)")
 assert(Gear.SourceText({ "W", nil, 20, 30 }) == "Weltdrop (Gegner 20-30)")
+-- a hand-kept boss drop (D-156: 18316 from Pusillin) is a D record like any other, named by the client's area
+STUB.areas[2557] = "Düsterbruch"
+assert(Gear.SourceText({ "D", "Dire Maul", "Pusillin", nil, 429, 2557 }) == "Düsterbruch: Pusillin")
+STUB.areas[2557] = nil
 
 -- the window opens, switches views and classes without errors
 _G.UnitClass = function() return "Krieger", "WARRIOR" end

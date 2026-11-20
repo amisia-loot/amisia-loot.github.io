@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-18",
+ "updated": "2026-11-20",
  "entrances": {
   "33": {
    "map": 1421,
@@ -64,6 +64,14 @@
    "name": "Blackrockspitze",
    "kind": "party",
    "seen": 1795024871
+  },
+  "230": {
+   "map": 1427,
+   "x": 2702,
+   "y": 7269,
+   "name": "Blackrocktiefen",
+   "kind": "party",
+   "seen": 1795182476
   },
   "349": {
    "map": 1414,

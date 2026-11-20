@@ -5,6 +5,19 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- data(data): add the save file of 2026-11-20: quest places, map points, an entrance and a quest item
+
+    Dark Iron Legacy places, two quest points on the map, the Blackrock Depths entrance and one quest item join the
+    archives and the dungeon quest, map and gear data.
+
+- data(gear): item sources kept by hand; Obsidianschmuckstück drops from Pusillin in Dire Maul (F-132)
+
+    Where none of Amisia's data sources knows where an item comes from, a source the user saw in game can now be
+    entered by hand, always noting who saw it and when. The first one: Obsidianschmuckstück (18316) drops from
+    Pusillin in Dire Maul. The gear scan (`/amisia scan gear`) now asks the game for this item; after the next data
+    build it appears in the gear planner as a normal boss drop instead of "Quelle unbekannt". Sources learned from
+    kills keep coming in as before.
+
 ## [v2.102.3](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.102.3) (2026-11-20)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.102.2...v2.102.3) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
