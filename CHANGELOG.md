@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- data(gear): battleground supply officers count as PvP vendors, holiday items stay out (F-132)
+
+    The gear of the Silverwing, Arathor, Frostwolf and other supply officers needs reputation with the battleground
+    and is marked PvP (off in the planner by default). The Winter Veil hats, which bosses drop only during the
+    feast, are left out of the gear data.
+
 - data(gear): item sources from QuestieDB where none of our sources knew one (F-132)
 
     Items that none of Amisia's own sources could place now take their sources from QuestieDB's WoW Forever data:

@@ -3,6 +3,8 @@ the last build over the item export), places of dungeons, and the join of AllThe
 tools/att_data.py hands it over) and the collector with the items; QuestieDB (as tools/questie_data.py
 hands it over) only for items no other source names (D-157)."""
 import json
+
+import pytest
 import os
 import sys
 
@@ -890,3 +892,16 @@ def test_questie_sources_become_records_of_our_kinds():
     assert recs(8) == [('X', "Onyxia's Lair", 'Onyxia', 249, 2159, 1, 0)], 'a raid boss of the facts: X'
     assert recs(9) is None, 'raid trash is left out, as for AllTheThings'
     assert recs(10) == [('W', 'Trash (The Deadmines)', 0, 0)], 'an object inside a dungeon: its trash'
+
+
+def test_supply_officers_are_pvp_and_holiday_items_stay_out(tmp_path):
+    # user 2026-11-20: battleground supply officers count as PvP vendors; holiday items leave the gear data
+    assert build_gear.is_pvp_vendor('Silverwing Supply Officer') and build_gear.is_pvp_vendor('Frostwolf Supply Officer')
+    assert not build_gear.is_pvp_vendor('Blacksmithing Supplies')
+    p = tmp_path / 'hand.json'
+    p.write_text('{"items": {}, "holiday": {"21524": "Winter Veil"}}', encoding='utf-8')
+    assert build_gear.load_hand_holidays(str(p)) == {21524: 'Winter Veil'}
+    assert build_gear.load_hand_holidays(str(build_gear.HAND))[21524]
+    p.write_text('{"items": {}, "holiday": {"x": ""}}', encoding='utf-8')
+    with pytest.raises(build_gear.HandSourceError):
+        build_gear.load_hand_holidays(str(p))

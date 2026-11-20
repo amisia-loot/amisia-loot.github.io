@@ -448,7 +448,10 @@ class Sources:
 def is_pvp_vendor(title):
     """PvP rank quartermasters: their gear needs an honour rank, not just gold."""
     title = str(title or '')
-    return 'Quartermaster' in title and ('Armor' in title or 'Accessories' in title) or 'Legacy' in title
+    # the battleground supply officers (Silverwing, Arathor, Frostwolf...) sell for reputation with the
+    # battleground: PvP as well (user 2026-11-20)
+    return ('Quartermaster' in title and ('Armor' in title or 'Accessories' in title) or 'Legacy' in title
+            or 'Supply Officer' in title)
 
 
 def zone_name(const):
@@ -483,6 +486,29 @@ class HandSourceError(ValueError):
 
 def _positive_id(v):
     return isinstance(v, int) and not isinstance(v, bool) and v > 0
+
+
+def load_hand_holidays(path=HAND):
+    """{item id: why} of the hand file's "holiday" object: items of a holiday (a Winter Veil hat a boss drops only
+    then) that the gear data leaves out (user 2026-11-20). A missing file or object: none."""
+    if not path or not os.path.exists(path):
+        return {}
+    with open(path, encoding='utf-8') as fh:
+        try:
+            data = json.load(fh)
+        except ValueError as e:
+            raise HandSourceError(f'{os.path.basename(path)}: no valid JSON ({e})')
+    h = data.get('holiday') if isinstance(data, dict) else None
+    if h is None:
+        return {}
+    if not isinstance(h, dict):
+        raise HandSourceError(f'{os.path.basename(path)}: "holiday" must be an object {{"<item id>": "why"}}')
+    out = {}
+    for key, why in h.items():
+        if not (isinstance(key, str) and key.isdigit() and int(key) > 0) or not (isinstance(why, str) and why.strip()):
+            raise HandSourceError(f'{os.path.basename(path)}: holiday "{key}" needs an item id and a reason')
+        out[int(key)] = why
+    return out
 
 
 def load_hand_sources(path=HAND, facts=()):
@@ -979,7 +1005,7 @@ def questie_sources(questie, src, places, facts, quests, npcs, zone_ref, npc_zon
 
 def build(scan_items, collected, att, crafts=None, wowsrc=None,
           itemsparse=None, forever_raids=None, facts=None, prev_items=None, observed=None, scanned=None,
-          hand=None, questie=None):
+          hand=None, questie=None, holidays=None):
     """Joins the sources to the items. att is the neutral form of tools/att_data.py (att_data.empty_db()
     for none); crafts client_crafts' form (None for none); observed the source
     collector's records (build_scan.collect_observed); scanned the quest scan's rewards
@@ -1344,7 +1370,8 @@ def build(scan_items, collected, att, crafts=None, wowsrc=None,
 
     # --- keep what the item table knows and a character can wear
     keep = {}
-    dropped = {'unknown item': 0, 'not gear': 0, 'quality': 0, 'junk': 0, 'raid level': 0}
+    dropped = {'unknown item': 0, 'not gear': 0, 'quality': 0, 'junk': 0, 'raid level': 0, 'holiday': 0}
+    holidays = holidays or {}
     itemsparse = itemsparse or {}
     classes, delays, skills = itemsparse.get('classes', {}), itemsparse.get('delay', {}), itemsparse.get('skill', {})
     for iid, nums in found.items():
@@ -1362,6 +1389,9 @@ def build(scan_items, collected, att, crafts=None, wowsrc=None,
             continue
         if iid in TEST_ITEMS or is_junk(it.get('name')):
             dropped['junk'] += 1
+            continue
+        if iid in holidays:
+            dropped['holiday'] += 1
             continue
         if iid < FOREVER_IDS and it['ilvl'] > CLASSIC_MAX_ILVL and 'X' not in kinds:
             dropped['raid level'] += 1
@@ -1806,6 +1836,7 @@ def main(argv=None):
     facts = load_facts()
     try:
         hand = load_hand_sources(HAND, facts)
+        holidays = load_hand_holidays(HAND)
     except HandSourceError as e:
         raise SystemExit(str(e))
     log(f'hand sources (tools/forever_gear_sources.json): {sum(len(v) for v in hand.values())} for {len(hand)} items')
@@ -1817,7 +1848,7 @@ def main(argv=None):
         questie['area_names'] = questie_data.area_names(args.wago)
     src, keep, zone_rows, stats, dropped, unmatched, missing = build(
         scan_items, collected, att, crafts, wowsrc, itemsparse, forever_raids, facts,
-        prev_items, observed, scanned, hand, questie)
+        prev_items, observed, scanned, hand, questie, holidays)
     if questie:
         took = {k[len('questie '):]: v for k, v in stats.items() if k.startswith('questie ')}
         log(f'QuestieDB: {sum(took.values())} sources for items no other source names: {took}')

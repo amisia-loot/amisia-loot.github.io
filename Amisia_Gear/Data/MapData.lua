@@ -60,7 +60,6 @@ P={
 ["N:The Stockade"]="1453:5035:6618",
 ["N:The Temple of Atal'Hakkar"]="1435:7730:3592",
 ["N:Uldaman"]="1418:3521:1029 16:3660:2940 1418:6400:4400",
-["N:Upper Blackrock Spire"]="1428:3299:2517",
 ["N:Wailing Caverns"]="1413:4769:3498",
 ["N:Zul'Farrak"]="1446:3873:1990",
 ["Q:1009"]="1440:1480:3130",
@@ -2150,7 +2149,6 @@ E={
 ["N:The Stockade"]="c",
 ["N:The Temple of Atal'Hakkar"]="c",
 ["N:Uldaman"]="c",
-["N:Upper Blackrock Spire"]="c",
 ["N:Wailing Caverns"]="c",
 ["N:Zul'Farrak"]="c",
 },
@@ -2235,4 +2233,4 @@ T={
 {1445,7160,5640,"S","A",{{150,"Menethil Harbor"}}},
 },
 }
-]=], 1326)
+]=], 1325)

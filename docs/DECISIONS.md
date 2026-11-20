@@ -4473,6 +4473,12 @@ Andere Quellen kommen über ihre eigenen Skripte (QuestieDB über `tools/questie
 abgeschrieben. Ein Eintrag von Hand gewinnt gegen QuestieDB: QuestieDB füllt nur Items, die nach allen anderen
 Quellen und der Datei hier noch keine Quelle haben.
 
+**Nachtrag 2026-11-20 (Nutzer zu zwei Folgen von QuestieDB: "1. ja 2 ja"):** Festtags-Items bleiben draußen: die
+Liste von Hand führt sie unter `"holiday"` (`{"<item id>": "warum"}`), der Datenbau lässt sie weg (die
+Winterhauch-Mützen 21524 und 21525, die Bosse nur zum Fest fallen lassen; die Client-Tabelle markiert sie nicht).
+Die Versorgungsoffiziere der Schlachtfelder ("... Supply Officer") zählen als PvP-Händler (P, wie die Quartiermeister),
+weil ihre Ware Ruf beim Schlachtfeld braucht; P ist im Planer standardmäßig aus.
+
 ## D-157 Amisia unter GPL-3.0; Item-Quellen auch aus QuestieDB
 
 **Datum:** 2026-11-20
