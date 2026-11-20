@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.102.2](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.102.2) (2026-11-20)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.102.1...v2.102.2) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - data(data): add the save file of 2026-11-19: new items, item sources, observed quests and quest items
 
     2 items (72 changed), 82 item sources (36 changed), 24 observed quests and 13 quest items join the archives and
