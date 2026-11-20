@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.103.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.103.0) (2026-11-20)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.102.3...v2.103.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - data(gear): item sources from foreverchanges.pro and MetaForge where no other source knew one (F-132)
 
     Items that neither Amisia's own sources nor QuestieDB could place now take their source from the item pages of
