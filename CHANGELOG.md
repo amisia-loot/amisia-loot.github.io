@@ -10,6 +10,8 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
     Every key stroke read and folded the names of all ~25000 items again and asked the server for 150 more, and
     each answer started the next full search. Names are now read and folded once a session, a missing one is asked
     once (60 per search at most), the same search keeps its result, and new names refresh it once a second.
+    On a German client an item the client does not hold yet is found at once by the name the scan saw
+    (before, a search found only names the client happened to have in memory, e.g. "Hand von Edgar dem Seltsamen").
 
 ## [v2.102.2](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.102.2) (2026-11-20)
 

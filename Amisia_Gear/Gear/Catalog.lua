@@ -230,13 +230,17 @@ end
 local names, folded = {}, {}   -- item id -> name / folded name
 local missing = {}             -- item id -> "wait" (asked, answer pending) or "ask" (still to ask)
 local namesVersion = 0         -- bumped by every name that arrives (a kept result is stale then)
-local function nameOf(id)
+-- dataN: the gear data's names (N: as the German client showed them to the scan), used on a German client
+-- for an item the client does not hold yet, so the search finds it at once (before, only names the client
+-- happened to have in memory were found)
+local function nameOf(id, dataN)
     local f = folded[id]
     if f then return f end
+    -- known missing (asked, or still to ask): no client call again; the answer comes by the event
     if missing[id] then return nil end
-    local name = itemName(id)
-    if name then
-        names[id], folded[id] = name, ns.Fold(name)
+    local name = itemName(id) or (dataN and dataN[id])
+    if type(name) == "string" and name ~= "" then
+        missing[id], names[id], folded[id] = nil, name, ns.Fold(name)
         return folded[id]
     end
     missing[id] = "ask"
@@ -276,10 +280,11 @@ function C.Search(text, lo, hi, o)
     local key = table.concat({ q, lo, hi, namesVersion, tostring(ns.BisStamp and ns.BisStamp() or "") }, "\1")
     if kept and kept.key == key then return kept.out, kept.n, kept.missing end
     local found, nMissing, asked = {}, 0, 0
+    local dataN = type(GetLocale) == "function" and GetLocale() == "deDE" and type(d.N) == "table" and d.N or nil
     for id, row in pairs(d.I or {}) do
         local lv = tonumber(row[4]) or 0
         if lv >= lo and lv <= hi then
-            local f = nameOf(id)
+            local f = nameOf(id, dataN)
             if f then
                 if f:find(q, 1, true) then found[#found + 1] = { id = id, name = names[id] } end
             else

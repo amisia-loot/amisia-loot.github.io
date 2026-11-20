@@ -68,6 +68,22 @@ do
     assert(calls == first, "later searches read no name again: " .. calls .. " vs " .. first)
     C_Item.GetItemInfo = getInfo
 end
+-- an item the client does not hold yet is found by the gear data's name on a German client (GEAR.N)
+do
+    local getInfo = C_Item.GetItemInfo
+    C_Item.GetItemInfo = function(id) if id == 406 then return nil end return getInfo(id) end
+    local G = NS.Data("GEAR")
+    local oldN = G.N
+    G.N = { [406] = "Unbekannter Wunderhelm" }
+    Cat._reset()
+    local hits2, n2 = Cat.Search("wunderhelm", 1, 60)
+    if GetLocale() == "deDE" then
+        assert(n2 == 1 and hits2[1].id == 406, "found by the data's name before the client has it")
+    end
+    G.N = oldN
+    C_Item.GetItemInfo = getInfo
+    Cat._reset()
+end
 -- the level sets: per range of ten levels the best per slot at the range's top, for the own spec
 assert(Cat.ValidCat("level") and Cat.CATS[1].key == "level", "the level sets first")
 assert(Cat.Count("level", 1, 60) == 6 and Cat.Count("level", 1, 7) == 1 and Cat.Count("level", 25, 45) == 3)
