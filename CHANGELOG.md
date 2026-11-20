@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.103.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.103.1) (2026-11-20)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.103.0...v2.103.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - data(gear): the Darkspear Islands quartermasters in the Barrens count as PvP vendors (F-132)
 
     Bryanna Embreeze and Creeg Bothunk sell for reputation with the battleground; their 81 items are marked PvP like
