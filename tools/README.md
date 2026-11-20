@@ -37,6 +37,9 @@ python3 tools/build.py perf [--sv FILE] [--rows N]
   from what is on disk, so the same files give the same data.
 - `questie` downloads QuestieDB's Forever data into `~/addons/_cache/questiedb` (`questie_data.py`, below;
   D-157). `data` only reads that cache.
+- `web [--site SITE] [--limit N] [--parse]` fetches the fan sites' item pages for the items no other source
+  explains into `~/addons/_cache/web/<site>` and parses them into `~/addons/_cache/web/<site>.json`
+  (`web_sources.py`, below; D-157 step 2). `data` only reads the parsed files.
 - `tables` downloads the client tables from wago.tools (`fetch_tables.py`, below): the newest `wowf` build
   or `--version`, every table of `client_tables.TABLES` or only `--tables`. The one step that asks the site.
   `--locale deDE` writes `<Table>.<build>.deDE.csv` beside the others (the builders' chooser never takes such a
@@ -653,6 +656,36 @@ python3 tools/build.py questie      # = tools/questie_data.py [--dest DIR] [--re
 Tests: `tools/tests/test_questie_data.py` (a cut of the files in their format under
 `tools/tests/fixtures/questiedb`, the sandbox, the download without network).
 
+## web_sources.py: item sources from fan sites (D-157, step 2)
+
+```
+python3 tools/build.py web [--site foreverchanges] [--limit N] [--parse]
+python3 tools/web_sources.py [--site S] [--limit N] [--items ID ...] [--refresh] [--refresh-sitemap] [--parse]
+```
+
+- The only script that asks foreverchanges.pro, and only for its item sitemap (`/item/sitemap.xml`) and the item
+  pages it lists (`/item/<id>/<slug>`); `check_url` refuses any other path, host, query, and every path the site's
+  robots.txt disallows (`/admin`, `/api/`, `/search`, `/spell/`, read 2026-11-20). Only the items of
+  `Amisia_Gear/Data/GearNoSource.lua` (or `--items`) that the sitemap lists; no URL is guessed.
+- Polite: GET only, one request at a time, `PAUSE` = 3 s apart, 30 s timeout, the User-Agent
+  `Amisia-build-tool/1.0 (tools/web_sources.py; GPL-3.0 WoW addon data build)`. A cached page is never fetched
+  again (`--refresh` asks once more), a 404 is recorded in `_fetch.json` and not asked again; 403, 429, any other
+  status or a network failure stops the run at once (no retry).
+- metaforge.app is refused (`SITES['metaforge']['refused']`): its robots.txt allows item pages, but its Terms of
+  Service forbid "bots, scripts, or automated tools without permission". Nothing of it is fetched until the site
+  gives permission.
+- Cache (outside the repo, `$AMISIA_WEB_CACHE`): `~/addons/_cache/web/<site>/_item_sitemap.xml`,
+  `item/<id>.html`, `_fetch.json` (per item URL, date, status; the request count); after each run the pages are
+  parsed into `~/addons/_cache/web/<site>.json` (per item URL, fetch date, the entries). `build_gear.py` reads only
+  that file (`load()`).
+- `parse_page()`: the server-rendered block "Where it comes from" (`<section class="it-from">`), one group per
+  kind (`<h3>`: "Creature drop", "Sold by a vendor", ...), each `<li>` with the name (`<b>` or a link), the place
+  (`<span>`, coordinates removed) and the chance or price (`<em>`). A group of an unknown heading is kept as
+  `{'kind': None, 'heading': ...}` so a new kind of the site shows up in the parsed file.
+
+Tests: `tools/tests/test_web_sources.py` (the URL check, pause, no refetch, the stop on 403/429, the parser on
+trimmed pages of 2026-11-20 under `tools/tests/fixtures/web`; no network).
+
 ## build_gear.py
 
 Builds `Amisia_Gear/Data/GearData.lua` for the addon's gear window (`/amisia gear`, WoW Forever only):
@@ -710,6 +743,16 @@ python tools/build_gear.py [--att DIR] [--refresh-att] [--wago DIR] [--sv FILE..
   -> `V` (`P` for a rank quartermaster); a quest -> `Q` (ATT's or the collector's record where they know it).
   Raids outside the facts and unknown instances are left out. `--questie DIR` reads another download,
   `--no-questie` leaves it out; a missing download prints a note and adds nothing.
+- Fan-site item pages (D-157 step 2, `web_sources.py` below): after QuestieDB, site by site in
+  `web_sources.ORDER`, each only for an item that still has no source and is no holiday item of the hand file
+  (`web_records`). The pages name NPCs by name only: a boss of `tools/forever_dungeons.json` -> `D` (`X` for a raid
+  there) in the dungeon the page names, or the one dungeon that has a boss of that name; another creature inside a
+  dungeon -> `W "Trash (<dungeon>)"`; outside a rare -> `R`, another creature -> `W` with its zone (the page's zone
+  name as uiMapID through the map names, else a zone key of its own); a drop with a zone but no creature -> `W`
+  of that zone; a vendor -> `V` (`P` for a rank quartermaster; AllTheThings' NPC, faction and title where exactly
+  one NPC has the name); a quest -> `Q`; an object -> `W` (its dungeon's trash inside one). A drop the page knows
+  nothing about ("Creature drop" without name or place), crafted items, raid trash and raids outside the facts are
+  left out. `--web DIR` reads other parsed files, `--no-web` leaves them out.
 - In game, `/amisia scan gear` (outside instances) asks the client for every item the planner lists
   plus the ids its sources name but no item table knows (`M` in GearData.lua, items Forever still
   hides until they are revealed). It stores each item's stats too. Log out, rebuild: the stats go

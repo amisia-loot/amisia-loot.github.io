@@ -1857,6 +1857,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Wunsch des Nutzers 2026-11-05 ("können wir bei den set nur realistischge sachen rein machen die man würklich bekommt", Bildschirmfoto der Tabelle voller 288xxx-Epics). DECISIONS D-59.
 - Prüfung: Wenn du im Katalog die ID 19572 suchst, dann nennt das Item als Quelle "Händler: Illiyana Moonblaze" statt "Quelle unbekannt".
 - Notiz: Nachtrag 2026-11-20: Items, die keine eigene Quelle kennt, bekommen ihre Quellen aus QuestieDB (DECISIONS D-157, "Alles wie die anderen"); im ersten Bau 465 Items mehr mit Quelle.
+- Notiz: Nachtrag 2026-11-20 (Schritt 2): Items ohne Quelle nach QuestieDB bekommen sie von den Item-Seiten von foreverchanges.pro (`build.py web`, DECISIONS D-157 Nachtrag); 229 neue Forever-Items mit Quelle, 935 noch ohne. MetaForge nicht (Bedingungen verbieten Skripte). Im Spiel zu sehen: ID 271934 (Insurgent's Manifesto) nennt "Händler: Bryanna Embreeze" im Brachland statt "Quelle unbekannt".
 
 ### F-122 Seite Raids
 - Version: 2.45.0

@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- data(gear): item sources from foreverchanges.pro and MetaForge where no other source knew one (F-132)
+
+    Items that neither Amisia's own sources nor QuestieDB could place now take their source from the item pages of
+    foreverchanges.pro: 229 more new Forever items have a source (935 scanned items are still without one): 81
+    sold by the Theramore and Darkspear quartermasters in the Barrens, 74 dungeon and world drops, 64 quest
+    rewards, 6 rare mobs and 4 boss drops. Sources Amisia already knew, sources entered by hand and QuestieDB always
+    come first. MetaForge is not used: its terms do not allow scripts without permission.
+
 - data(gear): battleground supply officers count as PvP vendors, holiday items stay out (F-132)
 
     The gear of the Silverwing, Arathor, Frostwolf and other supply officers needs reputation with the battleground

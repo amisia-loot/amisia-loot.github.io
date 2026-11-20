@@ -74,6 +74,7 @@ ROOT = os.path.dirname(HERE)
 sys.path.insert(0, HERE)
 import att_data  # noqa: E402  (the AllTheThings reader)
 import questie_data  # noqa: E402  (the QuestieDB reader, D-157)
+import web_sources  # noqa: E402  (the fan sites' parsed item pages, D-157 step 2; never fetches here)
 import lua_data  # noqa: E402  (the lazy form of the data file)
 import build_scan  # noqa: E402  (scan dump parsing is shared)
 import build_scan_archive  # noqa: E402  (the scan archive the builds read under the SavedVariables)
@@ -1003,15 +1004,145 @@ def questie_sources(questie, src, places, facts, quests, npcs, zone_ref, npc_zon
     return out
 
 
+
+# ---------------------------------------------------------------- fan-site item pages (D-157, step 2)
+def web_records(entries_of, src, places, facts, quests, npcs, zone_ref, zone_text_ref, zone_ids, quest_rec, obs,
+                obs_quest, skip=()):
+    """{item id: [(kind for the counts, source number), ...]} from one site's parsed item pages
+    (tools/web_sources.py load(): {item id: [entries]}) for the items not in skip. The pages name NPCs by name
+    only: a name that the dungeon facts list as a boss gives a D record of that dungeon (X for a raid of the
+    facts), in the dungeon the page names, else the one dungeon whose boss it is; another creature the page files as a
+    dungeon drop a D record under the page's name, any other drop inside a dungeon of Amisia that dungeon's trash; outside a rare (the page's "rare") an R record, any other a W record with its
+    zone; a drop without a creature but with a zone a world drop of that zone. A vendor gives V (P for a PvP rank
+    quartermaster), with AllTheThings' NPC where exactly one NPC carries that name; a quest Q (AllTheThings' or the
+    collector's record where they know it); an object W with its name and zone. Raids outside the facts, unknown
+    instances, crafted items (the client's recipes say more) and a drop the page knows nothing of are left out."""
+    if not entries_of:
+        return {}
+    bosses = {}   # norm_name(boss) -> [(fact, boss name)]
+    for f in facts or ():
+        for b in f.get('order') or []:
+            bosses.setdefault(norm_name(b), []).append(f)
+    by_name = {}  # norm_name(npc name) -> [ATT npc ids]
+    for nid, n in sorted((npcs or {}).items()):
+        if n.get('name'):
+            by_name.setdefault(norm_name(n['name']), []).append(nid)
+
+    def named(f, key):
+        return key in {dungeon_key(n) for n in [f['name']] + list(f.get('aliases') or [])}
+
+    def dungeon_of(name):
+        """(place, fact or None) of a dungeon or raid name the page gives, or (None, None)."""
+        if not name:
+            return None, None
+        key = dungeon_key(name)
+        place = places.by_key.get(key)
+        fact = next((f for f in facts or () if named(f, key)), None)
+        if place is None and fact is None:
+            return None, None
+        return tuple(place) if place else (fact['name'], fact.get('inst'), fact.get('area')), fact
+
+    def boss_rec(f, boss):
+        b = next(x for x in f.get('order') or [] if norm_name(x) == norm_name(boss))
+        nid = dict(zip(f.get('order') or [], f.get('npcs') or [])).get(b)
+        place = places.of_name(f['name'])
+        if not place[0]:
+            place = (f['name'], f.get('inst'), f.get('area'))
+        dname, inst, area = places.split(place, b, nid)
+        if f.get('kind') == 'raid':
+            return 'raid', src.add('X', dname, b, inst or 0, area or 0, 1, 0)
+        return 'dungeon', src.add('D', dname, b, None, inst, area)
+
+    def att_npc(name):
+        ids = by_name.get(norm_name(name)) or []
+        return (ids[0], npcs[ids[0]]) if len(ids) == 1 else (None, None)
+
+    def zone_of(name):
+        """A zone the page names: its uiMapID (zone_ids: norm_name(zone name) -> uiMapID), else a zone key of
+        its own (the name)."""
+        if not name:
+            return None
+        return zone_ref((zone_ids or {}).get(norm_name(name))) or zone_text_ref(name)
+
+    out = {}
+    for iid in sorted(entries_of):
+        if iid in skip:
+            continue
+        recs = []
+        for e in entries_of[iid] or ():
+            kind = e.get('kind')
+            name, zone = e.get('name'), e.get('zone')
+            if kind == 'drop':
+                place, fact = dungeon_of(zone)
+                cands = bosses.get(norm_name(name)) or [] if name else []
+                here = [f for f in cands if zone and named(f, dungeon_key(zone))]
+                if here:
+                    recs.append(boss_rec(here[0], name))
+                elif place is None and fact is None and len(cands) == 1 and not zone:
+                    recs.append(boss_rec(cands[0], name))
+                elif place is not None:
+                    dname, inst, area = places.split(place, name)
+                    if dname in RAIDS or fact is not None and fact.get('kind') == 'raid':
+                        continue
+                    if name and e.get('boss'):
+                        recs.append(('dungeon', src.add('D', dname, name, None, inst, area)))
+                    else:
+                        recs.append(('world', src.add('W', f'Trash ({dname})', 0, 0)))
+                elif name:
+                    nid, n = att_npc(name)
+                    if e.get('rare') or (n and 'rare' in n.get('kinds', ())):
+                        recs.append(('rare', src.add('R', name, 0, zone_of(zone), nid)))
+                    else:
+                        recs.append(('world', src.add('W', name, 0, 0, zone_of(zone), nid)))
+                elif zone:
+                    recs.append(('world', src.add('W', None, 0, 0, zone_of(zone))))
+            elif kind == 'vendor' and name:
+                nid, n = (e['npc'], npcs.get(e['npc'])) if e.get('npc') else att_npc(name)
+                n = n or {}
+                k = 'P' if is_pvp_vendor(n.get('title')) else 'V'
+                z = zone_of(zone) if zone else zone_ref((n.get('zone') or (n.get('points') or [[None]])[0][0]))
+                recs.append(('pvp' if k == 'P' else 'vendor',
+                             src.add(k, n.get('name') or name, z, n.get('faction') or None, n.get('title'), None, nid)))
+            elif kind == 'quest' and (e.get('quest') or name):
+                qid = e.get('quest')
+                aq = quests.get(qid) if qid else None
+                num = quest_rec(qid, aq) if aq else None
+                if aq and num is None:
+                    continue   # a raid quest
+                if num is None and qid and qid in (obs.get('q') or {}):
+                    num = obs_quest(qid, obs['q'][qid])
+                if num is None:
+                    num = src.add('Q', name or f'Quest {qid}', e.get('level') or 0, 0, e.get('faction'), None, qid)
+                recs.append(('quest', num))
+            elif kind == 'object' and name:
+                place, fact = dungeon_of(zone)
+                if place is not None:
+                    dname = places.split(place)[0]
+                    if dname in RAIDS or fact is not None and fact.get('kind') == 'raid':
+                        continue
+                    recs.append(('world', src.add('W', f'Trash ({dname})', 0, 0)))
+                else:
+                    recs.append(('world', src.add('W', name, 0, 0, zone_of(zone))))
+        seen, uniq = set(), []
+        for kind, num in recs:
+            if num not in seen:
+                seen.add(num)
+                uniq.append((kind, num))
+        if uniq:
+            out[iid] = uniq
+    return out
+
 def build(scan_items, collected, att, crafts=None, wowsrc=None,
           itemsparse=None, forever_raids=None, facts=None, prev_items=None, observed=None, scanned=None,
-          hand=None, questie=None, holidays=None):
+          hand=None, questie=None, holidays=None, web=None):
     """Joins the sources to the items. att is the neutral form of tools/att_data.py (att_data.empty_db()
     for none); crafts client_crafts' form (None for none); observed the source
     collector's records (build_scan.collect_observed); scanned the quest scan's rewards
     (scan_quest_rewards); hand the item sources kept by hand (load_hand_sources, D-156), added after all
     the others where none of them says the same; questie QuestieDB's data (tools/questie_data.py, with
-    'zones' and 'area_inst', D-157), only for the items no source above names (questie_sources).
+    'zones' and 'area_inst', D-157), only for the items no source above names (questie_sources); web the parsed
+    item pages of the fan sites (tools/web_sources.py load(), D-157 step 2), site by site in web_sources.ORDER,
+    each only for the items still without a source (web_records), never for a holiday item.
     The ids any source names are kept as src.named (no_source). Returns the source
     records, the kept items {id: (item, source numbers, level, class mask, speed, skill line)}, the
     zone names, link counts, what was left out and why, wowsrc names without an item, and the ids to
@@ -1367,6 +1498,18 @@ def build(scan_items, collected, att, crafts=None, wowsrc=None,
                                      obs, obs_quest, skip=set(found)).items():
         for kind, num in recs:
             note(iid, num, 'questie ' + kind)
+
+    # --- fan-site item pages (D-157, step 2): after QuestieDB, site by site, each only for the items that still
+    # have no source; a holiday item of the hand file stays out
+    zone_ids = {}
+    for ui, name in sorted(map_names.items()):
+        zone_ids.setdefault(norm_name(name), ui)
+    for site in web_sources.ORDER:
+        for iid, recs in web_records((web or {}).get(site), src, places, facts, quests, npcs, zone_ref, zone_text_ref,
+                                     zone_ids, quest_rec, obs, obs_quest,
+                                     skip=set(found) | set(holidays or ())).items():
+            for kind, num in recs:
+                note(iid, num, f'web {site} {kind}')
 
     # --- keep what the item table knows and a character can wear
     keep = {}
@@ -1769,6 +1912,10 @@ def main(argv=None):
                     help=f'QuestieDB download (default {questie_data.QUESTIE_CACHE}; python3 tools/build.py questie '
                          'refreshes it, D-157); a missing one gives no QuestieDB sources')
     ap.add_argument('--no-questie', action='store_true', help='leave QuestieDB out')
+    ap.add_argument('--web', default=web_sources.CACHE,
+                    help=f'the fan sites\' parsed item pages (default {web_sources.CACHE}/<site>.json; python3 tools/build.py web '
+                         'fills them, D-157 step 2); missing ones give no sources from that site')
+    ap.add_argument('--no-web', action='store_true', help='leave the fan sites\' item pages out')
     ap.add_argument('--show-unmatched', action='store_true')
     ap.add_argument('--itemsparse', help='ItemSparse CSV export of the Forever client (wago.tools, with hotfixes), or a '
                                          'folder holding ItemSparse[.<build>].csv; refreshes tools/gear_itemsparse.json')
@@ -1846,12 +1993,22 @@ def main(argv=None):
         questie['zones'] = questie_data.area_zones(args.wago)
         questie['area_inst'] = att_data.read_area_instances(args.wago)[0]
         questie['area_names'] = questie_data.area_names(args.wago)
+    # the fan sites' item pages (D-157 step 2): read from the parsed cache only, never fetched here
+    web = {} if args.no_web else web_sources.load(args.web)
+    if not args.no_web and not web:
+        log(f'fan-site item pages: none parsed in {args.web} (python3 tools/build.py web); no sources from them')
     src, keep, zone_rows, stats, dropped, unmatched, missing = build(
         scan_items, collected, att, crafts, wowsrc, itemsparse, forever_raids, facts,
-        prev_items, observed, scanned, hand, questie, holidays)
+        prev_items, observed, scanned, hand, questie, holidays, web)
     if questie:
         took = {k[len('questie '):]: v for k, v in stats.items() if k.startswith('questie ')}
         log(f'QuestieDB: {sum(took.values())} sources for items no other source names: {took}')
+    web_took = {}
+    for site in web:
+        took = {k[len(f'web {site} '):]: v for k, v in stats.items() if k.startswith(f'web {site} ')}
+        web_took[site] = took
+        log(f'{web_sources.site_name(site)}: {len(web[site])} item pages parsed, {sum(took.values())} sources for '
+            f'items no other source names: {took}')
     log(f'quest scan rewards: {len(scanned)} quests with reward items, {stats.get("scan quest", 0)} items took one as their source')
     missing = client_known(missing, args.wago)
     sources = [att_data.ATT_SOURCE + (f' at {att["commit"][:10]}' if att.get('commit') else ''), 'the Amisia item scan']
@@ -1863,6 +2020,9 @@ def main(argv=None):
         sources.append('item sources kept by hand (tools/forever_gear_sources.json)')
     if questie and any(k.startswith('questie ') for k in stats):
         sources.append(questie_data.QUESTIE_SOURCE + (f' at {questie["commit"][:10]}' if questie.get('commit') else ''))
+    for site, took in web_took.items():
+        if took:
+            sources.append(web_sources.credit(site))
     rep = client_reputation(args.wago)
     # a build into another file keeps its own copy of the quest type archive beside it (a test's trial build
     # with the synced SavedVariables once wrote their new quest types into tools/quest_tag_archive.json on every

@@ -3,6 +3,7 @@
     python3 tools/build.py data [--sv FILE] [--wago DIR] [--att DIR] [--refresh-att]
     python3 tools/build.py tables [--version V] [--tables T ...]
     python3 tools/build.py questie
+    python3 tools/build.py web [--site SITE] [--limit N] [--parse]
     python3 tools/build.py diff [OLD NEW] [--out FILE]
     python3 tools/build.py check
     python3 tools/build.py tocs
@@ -27,6 +28,10 @@ questie  downloads QuestieDB's WoW Forever data (data/Forever/*.lua, LICENSE.md,
          QuestieDB's GitHub repository, GPL-3.0, D-157) through the GitHub API into ~/addons/_cache/questiedb
          (tools/questie_data.py), one request at a time. data reads that cache only and never downloads it;
          without it the gear build has no QuestieDB sources.
+web      fetches the item pages of the fan sites (tools/web_sources.py, D-157 step 2) for the items no other
+         source explains (Amisia_Gear/Data/GearNoSource.lua) into ~/addons/_cache/web/<site>, within their
+         robots.txt and terms: one request at a time, 3 s apart, a cached page never again, a stop on 403/429;
+         then parses the cache into ~/addons/_cache/web/<site>.json. data reads that file only, never fetches.
 diff     what a new client build brings (tools/build_diff.py, D-103): the client tables of two builds on
          disk compared (default: the build of the data on main against the newest on disk), new,
          removed and changed rows of items, quests, dungeons, bosses, flight points and the spells of
@@ -369,6 +374,20 @@ def cmd_tables(args):
 def cmd_questie(args):
     """QuestieDB's Forever data into its cache (tools/questie_data.py, D-157); data never downloads it."""
     rc, _ = run([sys.executable, os.path.join(ROOT, 'tools', 'questie_data.py')])
+    return rc
+
+
+def cmd_web(args):
+    """The fan sites' item pages into their cache, then parsed (tools/web_sources.py, D-157 step 2); data never
+    fetches them."""
+    cmd = [sys.executable, os.path.join(ROOT, 'tools', 'web_sources.py')]
+    for site in args.site or ():
+        cmd += ['--site', site]
+    if args.limit is not None:
+        cmd += ['--limit', str(args.limit)]
+    if args.parse:
+        cmd += ['--parse']
+    rc, _ = run(cmd)
     return rc
 
 
@@ -915,6 +934,11 @@ def main(argv=None):
     tb.add_argument('--locale', default=None, choices=('enUS', 'deDE'),
                     help='string columns in this language (deDE: DungeonEncounter for the boss matching of the NPC scan, D-104)')
     sub.add_parser('questie', help='download QuestieDB\'s Forever data into ~/addons/_cache/questiedb (tools/questie_data.py, D-157)')
+    wb = sub.add_parser('web', help='fetch and parse the fan sites\' item pages for the items without a source '
+                                    '(tools/web_sources.py, D-157 step 2)')
+    wb.add_argument('--site', action='append', default=None, help='only this site (a name of web_sources.SITES)')
+    wb.add_argument('--limit', type=int, default=None, help='at most N new pages per site')
+    wb.add_argument('--parse', action='store_true', help='only parse the cached pages again (no request)')
     df = sub.add_parser('diff', help='what a new client build brings: the tables of two builds compared (tools/build_diff.py)')
     df.add_argument('builds', nargs='*', help='OLD NEW (default: the build of the data on main, the newest on disk)')
     df.add_argument('--out', default=None, help='also write the full report into this file')
@@ -955,7 +979,7 @@ def main(argv=None):
         os.environ['AMISIA_BUILD_VENV'] = '1'
         rest = sys.argv[1:] if argv is None else list(argv)
         os.execv(VENV_PY, [VENV_PY, os.path.abspath(__file__)] + rest)
-    return {'data': cmd_data, 'tables': cmd_tables, 'questie': cmd_questie, 'diff': cmd_diff, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release,
+    return {'data': cmd_data, 'tables': cmd_tables, 'questie': cmd_questie, 'web': cmd_web, 'diff': cmd_diff, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release,
             'github-release': cmd_github_release,
             'testlist': cmd_testlist, 'tested': cmd_tested, 'errors': cmd_errors, 'perf': cmd_perf, 'tocs': cmd_tocs}[args.cmd](args)
 

@@ -22,3 +22,17 @@ Amisia: Gear & Dungeons are built in part from the data below.
   others copying it under the GPLv3 terms, but cannot promise that every historic contributor agrees ("when in
   doubt ... all rights reserved"). Amisia uses the data under the GPL-3.0 on that basis.
 - The Questie name and logo are not used by Amisia.
+
+## foreverchanges.pro (item pages)
+
+- Source: the item pages of the fan site foreverchanges.pro (Waypoint Digital SL), fetched on 2026-11-20 by
+  Amisia's build tool, one page every three seconds, within the site's robots.txt, only for items none of Amisia's
+  other sources (including QuestieDB) knows.
+- Used for: where those items come from (the creature, vendor, quest or object the page names, with its zone) in
+  `Amisia_Gear/Data/GearData.lua`. Nothing else of the site is used: no text, no images, no stats.
+- Terms: the site's terms of use (3 November 2026) welcome links and short quotes and ask not to overload it with
+  automated requests or to copy its compiled data wholesale to republish it as one's own. Amisia takes only the
+  sources of the items no other source knows (229 items of the 13568 the site lists, on 2026-11-20) and names the
+  site here and in the header of the data file. The game data itself
+  (names of items, creatures, quests, zones) belongs to Blizzard Entertainment.
+- MetaForge (metaforge.app) is not used: its terms of service do not allow scripts without permission.

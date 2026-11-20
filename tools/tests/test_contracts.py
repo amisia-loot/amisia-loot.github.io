@@ -365,10 +365,17 @@ LICENCE_HOSTS = ('fsf.org', 'gnu.org')
 AUTHOR_LINKS = ('https://www.twitch.tv/mrvulo', 'https://discord.gg/mxhvFBSXSf')
 
 
+# where the addon may name a fan site whose item pages tools/web_sources.py reads (D-157 step 2): as a credit in
+# the header of the gear data and in LICENSES/THIRD-PARTY.md (not read here: .md), never as a link
+FAN_SITE_CREDITS = {'Data/GearData.lua'}
+
+
 def test_no_links_to_fan_sites():
     texts = [('index.html', read(SITE))] + addon_files(exts=('.lua', '.toc', '.xml', '.txt'))
     for rel, text in texts:
-        assert 'foreverchanges' not in text.lower(), f'{rel} names foreverchanges (no links to fan sites)'
+        body = text.split('local _, ns', 1)[-1] if rel in FAN_SITE_CREDITS else text
+        for site in ('foreverchanges', 'metaforge'):
+            assert site not in body.lower(), f'{rel} names {site} (no links to fan sites; a credit only in a data header)'
         allowed = ALLOWED_HOSTS + (LICENCE_HOSTS if rel.startswith('LICENSES/') else ())
         if rel.replace('\\', '/').endswith('UI/Theme.lua'):
             for url in AUTHOR_LINKS:
@@ -384,6 +391,9 @@ WOWHEAD_FETCH_KNOWN = {'build_scan.py'}
 WAGO_FETCHER = 'fetch_tables.py'
 # the one tool that downloads QuestieDB, through the GitHub API (DECISIONS.md D-157)
 QUESTIE_FETCHER = 'questie_data.py'
+# the one tool that may ask foreverchanges.pro (and name metaforge.app), only for item pages and the item sitemap
+# within the sites' robots.txt (DECISIONS.md D-157, step 2); Wowhead stays forbidden everywhere
+WEB_FETCHER = 'web_sources.py'
 
 
 def test_no_tool_fetches_from_the_forbidden_sites():
@@ -393,7 +403,11 @@ def test_no_tool_fetches_from_the_forbidden_sites():
                 f'tools/{name} has a wago.tools URL (only tools/{WAGO_FETCHER} may ask the site, D-101)'
             assert not re.search(r'^\s*(import|from)\s+fetch_tables\b', text, re.M), \
                 f'tools/{name} imports the fetcher (build.py tables runs it as its own program)'
-        assert 'foreverchanges' not in text.lower(), f'tools/{name} names foreverchanges'
+        if name != WEB_FETCHER:
+            for site in ('foreverchanges', 'metaforge'):
+                assert site not in text.lower(), f'tools/{name} names {site} (only tools/{WEB_FETCHER} may, D-157)'
+            assert not re.search(r'^\s*(import|from)\s+web_sources\b', text, re.M) or name == 'build_gear.py', \
+                f'tools/{name} imports the fan-site fetcher (build.py web runs it as its own program)'
         if name != QUESTIE_FETCHER:
             assert 'questie/questiedb' not in text.lower(), \
                 f'tools/{name} names the QuestieDB repository (only tools/{QUESTIE_FETCHER} downloads it, D-157)'
@@ -417,6 +431,21 @@ def test_no_tool_fetches_from_the_forbidden_sites():
                         url), f'tools/{QUESTIE_FETCHER} names {url}'
     assert "QUESTIE_REPO = 'Questie/questiedb'" in text
     assert text.count('urlopen(') == 1, f'tools/{QUESTIE_FETCHER}: one place that asks the network'
+    # the fan-site fetcher: only the item pages and the item sitemap of the two sites' hosts, one place that asks
+    # the network, behind check_url, GET only, never Wowhead
+    text = read(os.path.join(TOOLS, WEB_FETCHER))
+    for url in re.findall(r'https?://[^\s\'"\)\]]+', text):
+        assert re.match(r'^https://(\{cfg\[|(foreverchanges\.pro|metaforge\.app)(/item/|/wow-forever/|/terms\b|$))', url), \
+            f'tools/{WEB_FETCHER} names {url}'
+    assert 'wowhead' not in text.lower(), f'tools/{WEB_FETCHER} names Wowhead'
+    assert text.count('urlopen(') == 1, f'tools/{WEB_FETCHER}: one place that asks the network'
+    body = text[text.index('def http_get('):]
+    body = body[:body.index('\ndef ')]
+    assert body.index('check_url(') < body.index('urlopen('), 'http_get checks the URL before it asks'
+    assert not re.search(r'method=[\'"](?!GET)', text), 'GET only'
+    import web_sources
+    assert web_sources.SITES['foreverchanges']['disallow'] == ('/admin', '/api/', '/search', '/spell/')
+    assert web_sources.SITES['metaforge']['disallow'] == ('/api/wardogs/map/',)
 
 
 # the tools that may read QuestieDB (D-157): its reader and the gear build; build.py only runs the reader's download
@@ -459,6 +488,10 @@ def test_every_generated_file_names_its_generator_and_sources():
         if 'AllTheThings' in head:
             assert 'MIT' in head and 'LICENSES' in head, f'{rel}: AllTheThings data without its MIT credit'
             assert rel in licence, f'{rel} uses AllTheThings data but LICENSES/AllTheThings-MIT.txt does not list it'
+        if re.search(r'foreverchanges|metaforge', head, re.I):
+            assert rel in FAN_SITE_CREDITS, f'{rel}: fan-site data outside the gear data (D-157 step 2)'
+            assert 'LICENSES/THIRD-PARTY.md' in head and rel in third, f'{rel}: fan-site data without its credit'
+            assert not re.search(r'https?://', head), f'{rel}: a fan site as a link (D-02)'
         if 'QuestieDB' in head:
             assert 'GPL-3.0' in head and 'LICENSES/THIRD-PARTY.md' in head, f'{rel}: QuestieDB data without its credit'
             assert rel in third, f'{rel} uses QuestieDB data but LICENSES/THIRD-PARTY.md does not name it'

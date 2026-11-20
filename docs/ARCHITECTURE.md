@@ -313,6 +313,9 @@ tools/forever_transports.json (by hand) -> build_map.py -> Data/MapData.lua (T d
 tools/forever_gear_sources.json (by hand, D-156) -> build_gear.py -> Data/GearData.lua (S records after the automatic ones; checked strictly)
 QuestieDB (GPL-3.0, build.py questie)     -> ~/addons/_cache/questiedb -> tools/questie_data.py (sandbox) -> build_gear.py
                                              (questie_sources: only items no other source names) -> Data/GearData.lua (S, D-157)
+foreverchanges.pro item pages (build.py web) -> ~/addons/_cache/web/<site>/item/*.html -> tools/web_sources.py (parse)
+                                             -> ~/addons/_cache/web/<site>.json -> build_gear.py (web_records: after QuestieDB,
+                                             only items still without a source) -> Data/GearData.lua (S, D-157 step 2)
 client tables of two builds on disk     -> tools/build_diff.py (build.py diff, auto_data.py) -> "new in this build" (D-103)
 MapPlaces.lua (entering an instance)    -> AmisiaDB.entrances -> build_map.py -> tools/entrance_archive.json -> Data/MapData.lua
 Collector.lua (a quest taken, a mob looted) -> tools/quest_obs.json, tools/scan_archive.json -> build_map.py -> Data/MapData.lua (Q:/U: places ATT lacks)
@@ -334,7 +337,8 @@ Amisia clients  <--- addon messages (Comm: sync, exchanges) --->  Amisia clients
 
 - Build inputs: own data first (scan, collector, drop records of the guild, SavedVariables), the
   user's client table export, the CSV exports of wago.tools (D-101), AllTheThings (MIT), QuestieDB (GPL-3.0,
-  D-157: item sources only for the items no other source names, after the hand file), the user-accepted
+  D-157: item sources only for the items no other source names, after the hand file), the item pages of
+  foreverchanges.pro (D-157 step 2: after QuestieDB, only for the items still without a source), the user-accepted
   input wowsrc.com and the hand lists `tools/forever_transports.json` and `tools/forever_gear_sources.json` (item
   sources the user saw or told, each with its `src`, D-156). The client tables the builders read
   are the lists of `tools/export_db2.ps1` (`client_tables.TABLES`: the PC's export and `fetch_tables.py`
@@ -343,8 +347,10 @@ Amisia clients  <--- addon messages (Comm: sync, exchanges) --->  Amisia clients
   `Amisia/LICENSES/THIRD-PARTY.md`. Only
   `tools/fetch_tables.py` (`build.py tables`, and `tools/auto_data.py` running it as a program: D-103)
   asks wago.tools, and only its API and CSV routes (D-101); only `tools/questie_data.py` (`build.py questie`)
-  downloads QuestieDB, through the GitHub API (D-157);
-  nothing is fetched from Wowhead or foreverchanges by script (D-03). `build.py data` never touches the
+  downloads QuestieDB, through the GitHub API (D-157); only `tools/web_sources.py` (`build.py web`) asks
+  foreverchanges.pro, and only for its item sitemap and item pages within its robots.txt (D-157 step 2;
+  metaforge.app is refused: its terms forbid scripts without permission);
+  nothing is fetched from Wowhead by script (D-03). `build.py data` never touches the
   network: it builds from the files on disk, per client table the copy `tools/client_tables.py` chooses.
 - The scan data (`AmisiaDB.scan`: item lines, collector notes, suffixes) lives for good in
   `tools/scan_archive.json` (committed, about 2.5 MB; git keeps it compressed). `build.py data` joins
@@ -355,8 +361,9 @@ Amisia clients  <--- addon messages (Comm: sync, exchanges) --->  Amisia clients
   the real files). The marker holds per item a hash of its line, per item the hashes of its notes and
   the ids the client table ItemSparse knows; the addon removes only what it covers.
 - Every generated file names its generator and sources in its header; files with AllTheThings data
-  are listed in `Amisia/LICENSES/AllTheThings-MIT.txt`, files with QuestieDB data in
-  `Amisia/LICENSES/THIRD-PARTY.md` (their header says GPL-3.0 and points there). "Generated file is current" tests
+  are listed in `Amisia/LICENSES/AllTheThings-MIT.txt`, files with QuestieDB or fan-site data in
+  `Amisia/LICENSES/THIRD-PARTY.md` (their header names the source and points there; a fan site only as a name in
+  the header of `Data/GearData.lua`, never as a link). "Generated file is current" tests
   live in `tools/tests/test_build_*.py`.
 - After a change to an `Amisia-Website/data/*.js` file, bump `BUILD_ID` in `Amisia-Website/index.html`.
   `tools/build_site_drops.py` does it itself for `data/drops-forever.js` (only when the file's content changed).
@@ -800,6 +807,7 @@ The loot toast's settings (F-152) were `ui.lootToast*` until 2.71.0; since then 
 | `data [--sv FILE] [--wago DIR] [--refresh-att]` | first, without `--wago`, the choice of the client tables (`tools/client_tables.py`, printed per table: build, rows, source); then every generator in order: scan archive (and its marker), dungeons, gear, map, dungeon quests, quests, professions, talents, mage scrolls, raid check, dungeon art, site drops (`tools/drop_obs.json`, `Amisia-Website/data/drops-forever.js`, BUILD_ID; D-119), BiS; a step without its client tables is skipped or uses its kept snapshot; ends with `git diff --stat`; no network |
 | `tables [--version V] [--tables T ...]` | the client tables from wago.tools' CSV exports for the newest `wowf` build (or V) into `~/addons/_cache/wago` (`tools/fetch_tables.py`, D-101); a table already there is never asked for again |
 | `questie` | QuestieDB's Forever data (`data/Forever/*.lua`, `LICENSE.md`, `PROVENANCE.md`) through the GitHub API into `~/addons/_cache/questiedb` (`tools/questie_data.py`, D-157), one request at a time; `data` only reads it |
+| `web [--site SITE] [--limit N] [--parse]` | the item pages of foreverchanges.pro for the items of `GearNoSource.lua` its item sitemap lists, into `~/addons/_cache/web/<site>` (`tools/web_sources.py`, D-157 step 2): item pages and the item sitemap only, robots.txt obeyed, one request every 3 s, a cached page never again, a stop on 403/429; then parsed into `~/addons/_cache/web/<site>.json`; `data` only reads that file |
 | `diff [OLD NEW] [--out FILE]` | what a new client build brings (`tools/build_diff.py`, D-103): the tables of two builds on disk (default: the build of main's data against the newest on disk), new, removed and changed rows of items (quality, slot, the changed fields), quests (QuestV2), dungeons and bosses, flight points, the spells of talents and professions; floats compared as numbers; no network |
 | `check` | luaparse syntax, addon tests (deDE, then enUS), `tools/l10n.py check`, layout rules (`tools/ui_layout.py rules`, both locales), `pytest tools/tests` (incl. generated-file-current and `test_contracts.py`), UTF-8 without BOM, each TOC against its folder (and the modules' version), luacheck of the three folders |
 | `snapshots [--out DIR] [--compare DIR] [--locale enUS]` | PNG of every page and window from the test stub, an index.html contact sheet, changed layouts |
@@ -833,6 +841,7 @@ Actions (`.github/workflows/check.yml`) runs the checks on push.
 | `~/addons/_auto/amisia-wago.json`, `amisia-wago.off` | the time, answer and result of the last daily look at wago.tools (D-103); the file `amisia-wago.off` (or `AMISIA_AUTO_WAGO=0` in the service's environment) turns the look off |
 | `~/addons/_cache/att` | AllTheThings cache (MIT), read only through the sandboxed `tools/att_data.py` |
 | `~/addons/_cache/questiedb` | QuestieDB cache (GPL-3.0, `build.py questie`, `$AMISIA_QUESTIE_CACHE`): `data/Forever/*.lua`, `LICENSE.md`, `PROVENANCE.md`, `COMMIT`; read only through the sandboxed `tools/questie_data.py` (D-157); only on the N100, never committed |
+| `~/addons/_cache/web` | fan-site item pages (`build.py web`, `tools/web_sources.py`, `$AMISIA_WEB_CACHE`, D-157 step 2): per site `_item_sitemap.xml`, `item/<id>.html`, `_fetch.json` (URL, date, status per item; request count) and the parsed `<site>.json` that `build_gear.py` reads; only on the N100, never committed |
 | `~/.venvs/amisia` | Python with lupa and pytest for the tests |
 
 In-game tests are the user's (PC); `/reload` after a release (a new file or texture needs a full

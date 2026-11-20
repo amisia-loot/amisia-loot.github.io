@@ -67,7 +67,8 @@ Programmen jetzt erlauben. Wowhead und foreverchanges bleiben verboten wie oben.
 anderen". Seitdem lädt `tools/questie_data.py` (nur dieses Skript, `python3 tools/build.py questie`) die
 Forever-Daten von QuestieDB über die GitHub-API, eine Anfrage nach der anderen. foreverchanges.pro und
 metaforge.app erlauben Item-Seiten in ihrer robots.txt; sie kommen erst in einem zweiten Schritt und nur in dem
-Rahmen, den ihre robots.txt erlaubt (bis dahin bleibt foreverchanges im Test verboten). Wowhead bleibt verboten:
+Rahmen, den ihre robots.txt erlaubt. Seit Schritt 2 (Nachtrag zu D-157) fragt `tools/web_sources.py` die Item-Seiten
+von foreverchanges.pro; MetaForge bleibt draußen, weil seine Bedingungen Skripte ohne Erlaubnis verbieten. Wowhead bleibt verboten:
 seine robots.txt sperrt KI-Agenten ausdrücklich (anthropic-ai, ClaudeBot, Claude-Web), Amisia hält das ein.
 
 ## D-04 Lizenzen der Datenquellen
@@ -2454,7 +2455,7 @@ wago.tools; sonst bleibt D-03.
   Dateien geben dieselben Daten. Die Liste der Tabellen steht nur in `tools/export_db2.ps1`
   (`client_tables.TABLES` liest sie).
 - **Weiter verboten:** kein Skript und kein Agent lädt von wowhead.com oder foreverchanges (ihre Bedingungen
-  verbieten es; die Icon-Suche in `tools/build_scan.py` bleibt die benannte Ausnahme von D-03); keine Daten und kein
+  verbieten es; für foreverchanges seit 2026-11-20 nicht mehr: D-157, Schritt 2; die Icon-Suche in `tools/build_scan.py` bleibt die benannte Ausnahme von D-03); keine Daten und kein
   Code anderer Addons (D-04, D-05); nichts unter Copyleft. AllTheThings (MIT) und wowsrc.com bleiben wie in D-04.
 
 **Grund:** Der Nutzer am 2026-11-10 auf "Die Daten kommen nur aus AllTheThings, deinen exportierten Client-Tabellen
@@ -4516,7 +4517,7 @@ bis dahin als "ohne bekannte Quelle" im Planer. Wowhead bleibt draußen: seine r
 Schlachtfelder), 181 Quests, 5 Bosse, 7 Weltdrops; 107 Item-IDs mehr für `/amisia scan gear` (213 -> 320).
 QuestieDB kennt nur Items und NPCs mit Classic-IDs, keine neuen Forever-Items (ab 200000). Der Vorbehalt der
 QuestieDB-Lizenz für alte, aus Questie übernommene Inhalte bleibt bestehen und steht in `THIRD-PARTY.md`.
-Schritt 2 (foreverchanges, MetaForge im Rahmen ihrer robots.txt) ist offen. Vorher (D-04, 2026-11-04): keine
+Schritt 2 (foreverchanges, MetaForge im Rahmen ihrer robots.txt): siehe Nachtrag unten. Vorher (D-04, 2026-11-04): keine
 Copyleft-Daten, QuestieDB entfernt.
 **Durchgesetzt durch:** `tools/tests/test_contracts.py::test_amisia_ships_the_gpl_in_every_folder`,
 `tools/tests/test_contracts.py::test_questie_data_only_through_its_reader`,
@@ -4526,3 +4527,48 @@ Copyleft-Daten, QuestieDB entfernt.
 `tools/tests/test_build_gear.py::test_questie_gives_sources_only_to_items_no_other_source_names`,
 `tools/tests/test_build_gear.py::test_a_hand_source_wins_over_questie`,
 `tools/tests/test_build_gear.py::test_questie_sources_become_records_of_our_kinds`.
+
+**Nachtrag 2026-11-20 (Schritt 2: foreverchanges.pro; MetaForge abgelehnt):** Für die Items, die nach allen Quellen
+und QuestieDB noch keine Quelle haben, lädt `tools/web_sources.py` (nur dieses Skript, `python3 tools/build.py web`)
+die Item-Seiten von foreverchanges.pro; `build.py data` lädt nie, `tools/build_gear.py` liest nur die geparste Datei
+`~/addons/_cache/web/<site>.json` (`web_records`, nach QuestieDB, je Seite nur für Items noch ohne Quelle, nie für
+Festtags-Items der Liste von Hand).
+- **Regeln der Seite, am 2026-11-20 gelesen:** robots.txt von foreverchanges.pro: `Allow: /`, `Disallow: /admin`,
+  `/api/`, `/search`, `/spell/`. Die Nutzungsbedingungen (3. November 2026, "Fair use of the site"): "Do not overload
+  it with automated requests, try to get into its admin area, or copy its compiled data wholesale to republish it as
+  your own." und "the way its data is compiled and written up belong to Waypoint Digital SL". Darum: nur die
+  Item-Sitemap `/item/sitemap.xml` und die Item-Seiten, die sie nennt (`check_url` lehnt jeden anderen Pfad, Host,
+  jede Query und jeden von robots.txt gesperrten Pfad ab), keine geratene Adresse; nur GET, eine Anfrage nach der
+  anderen mit 3 Sekunden Pause, Zeitgrenze, ehrlicher User-Agent `Amisia-build-tool/1.0 (tools/web_sources.py;
+  GPL-3.0 WoW addon data build)`; eine Seite im Cache wird nie wieder geladen (`--refresh`), ein 404 steht im Manifest;
+  403, 429, jeder andere Status oder ein Netzfehler beendet den Lauf sofort ohne neuen Versuch. Nur die Items von
+  `GearNoSource.lua` (nicht die ganze Seite), die Seite genannt in `Amisia/LICENSES/THIRD-PARTY.md` und im Kopf von
+  `GearData.lua` (als Name, nie als Link; D-02 bleibt). Laut ihrer Seite "About the data" stammen ihre Daten aus dem
+  Client (über wago.tools), Raidbots' Cache, AtlasLootClassic (Classic-Beute) und dem eigenen Addon der Seite (was
+  Spieler fallen sehen).
+- **MetaForge (metaforge.app) abgelehnt:** robots.txt erlaubt alles außer `/api/wardogs/map/`, aber die Terms of
+  Service (gültig ab 7. November 2025, Abschnitt 3) sagen: "You agree not to: ... Use bots, scripts, or automated
+  tools without permission". Ohne Erlaubnis der Seite lädt kein Skript von dort (`SITES['metaforge']['refused']`,
+  `check_url` lehnt jede Adresse ab); gelesen wurden nur robots.txt, Startseite und Bedingungen (3 Anfragen von Hand).
+  Fragt der Nutzer die Seite und sie erlaubt es, wird die Sperre aufgehoben und ein Parser gebaut.
+- **Was geladen wurde (2026-11-20):** robots.txt, Startseite, terms, legal, about, die Item-Sitemap (13568 Items) und
+  1033 Item-Seiten (20 als Probe, 1012 im Lauf, 18316 von Hand), zusammen 1039 Anfragen, kein 403/429, kein 404;
+  132 der 1164 Items ohne Quelle stehen nicht in der Sitemap und wurden nicht gefragt. 235 Seiten nennen eine Quelle.
+  Die Seiten nennen NPCs nur mit Namen, nie mit ID: ein Name, der in den Dungeondaten Boss ist, wird D (Raid X); ein
+  "Dungeon drop" D unter dem Namen der Seite; ein Drop ohne Gegner in einem Dungeon dessen Trash; draußen R oder W
+  mit Gebiet (Name -> uiMapID über die Kartennamen); Händler V (mit NPC, Fraktion und Titel von AllTheThings, wo genau
+  ein NPC so heißt), Quests Q (Stufe und Fraktion der Seite, wo AllTheThings und Sammler die Quest nicht kennen).
+- **Folge:** 229 Items mehr in `GearData.lua` (8247 -> 8476), alle aus `GearNoSource.lua` (1164 -> 935), alle neue
+  Forever-Items (ab 200000); nach Art 81 Händler (die Rüstmeister Bryanna Embreeze und Creeg Bothunk im Brachland;
+  AllTheThings führt sie unter den Schlachtfeldern, Darkspear Islands, sein Leser kennt sie aber nicht: sie stehen als
+  V ohne NPC-Nummer), 74 Trash- und Weltdrops (vor allem "Trash" von Shaper's Terrace, Krol'dok Stronghold,
+  Blackmaw Hold: die Seite kennt dort den Drop, nicht den Gegner), 64 Quests, 6 Rarmobs, 4 Bossdrops. 18316 nennt
+  die Seite nur als "Creature drop" ohne Gegner; die Quelle von Hand (Pusillin) bleibt.
+**Durchgesetzt durch:** `tools/tests/test_contracts.py::test_no_tool_fetches_from_the_forbidden_sites` (foreverchanges
+und metaforge nur in `tools/web_sources.py`, dessen Adressen nur Item-Seiten und Sitemap, ein `urlopen` hinter
+`check_url`, nur GET, kein Wowhead), `tools/tests/test_contracts.py::test_no_links_to_fan_sites` (im Addon nur im Kopf
+von `Data/GearData.lua`), `tools/tests/test_contracts.py::test_every_generated_file_names_its_generator_and_sources`,
+`tools/tests/test_web_sources.py` (URL-Prüfung, Pause, kein zweites Laden, Stopp bei 403/429, Parser),
+`tools/tests/test_build_gear.py::test_web_sources_only_fill_what_no_other_source_names_in_their_order`,
+`tools/tests/test_build_gear.py::test_web_entries_become_records_of_our_kinds`,
+`tools/tests/test_build_gear.py::test_web_sources_never_give_a_holiday_item_a_source`. Wowhead bleibt verboten.

@@ -12,6 +12,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 import att_data  # noqa: E402
 import build_gear  # noqa: E402
+import web_sources  # noqa: E402
 import lua_data  # noqa: E402
 
 FIXTURE = os.path.join(HERE, 'fixtures', 'att')
@@ -905,3 +906,91 @@ def test_supply_officers_are_pvp_and_holiday_items_stay_out(tmp_path):
     p.write_text('{"items": {}, "holiday": {"x": ""}}', encoding='utf-8')
     with pytest.raises(build_gear.HandSourceError):
         build_gear.load_hand_holidays(str(p))
+
+
+# ---------------------------------------------------------------- fan-site item pages (D-157, step 2)
+def web_drop(name=None, zone=None, rare=False):
+    return {'kind': 'drop', 'npc': None, 'name': name, 'zone': zone, 'boss': False, 'rare': rare, 'chance': None}
+
+
+def test_web_sources_only_fill_what_no_other_source_names_in_their_order(tmp_path):
+    """hand > QuestieDB > the first site > the second site, each only for an item still without a source."""
+    hand = build_gear.load_hand_sources(
+        hand_file(tmp_path, {'1': [hand_entry('D', dungeon='dire', boss='Pusillin', npc=14354)]}), HAND_FACTS)
+    q = questie({2: qitem(vendors=[900])}, npcs={900: qnpc('Griselda', 12, title='Shoe Merchant', friendly='A')})
+    first, second = web_sources.ORDER
+    web = {first: {1: [web_drop('Hogger', 'Elwynn Forest')], 2: [web_drop('Hogger', 'Elwynn Forest')],
+                   3: [web_drop('Hogger', 'Elwynn Forest')], 5: [web_drop()]},
+           second: {3: [web_drop('Mother Fang', 'Elwynn Forest')], 4: [web_drop('Mother Fang', 'Elwynn Forest')],
+                    5: [web_drop('Mother Fang', 'Elwynn Forest')]}}
+    scan = {i: scan_item(f'Item {i}', q=3) for i in (1, 2, 3, 4, 5)}
+    src, keep, _, stats, *_ = build_gear.build(scan, {}, att(maps={'ELWYNN_FOREST': 1429}), facts=HAND_FACTS,
+                                               hand=hand, questie=q, web=web)
+
+    def recs(i):
+        return [src.rows[n - 1] for n in keep[i][1]] if i in keep else None
+    assert recs(1) == [('D', 'Dire Maul', 'Pusillin', None, 429)], 'the hand file wins'
+    assert recs(2) == [('V', 'Griselda', 1429, 'A', 'Shoe Merchant', None, 900)], 'QuestieDB wins over the sites'
+    assert recs(3) == [('W', 'Hogger', 0, 0, 1429)], 'the first site wins over the second'
+    assert recs(4) == [('W', 'Mother Fang', 0, 0, 1429)], 'the second site fills what the first does not know'
+    assert recs(5) == [('W', 'Mother Fang', 0, 0, 1429)], 'a drop without creature or zone is no source'
+    assert stats.get(f'web {first} world') == 1 and stats.get(f'web {second} world') == 2
+
+
+def test_web_sources_never_give_a_holiday_item_a_source():
+    first = web_sources.ORDER[0]
+    src, keep, *_ = build_gear.build({7: scan_item('Winter Hat', q=3)}, {}, att(), facts=HAND_FACTS,
+                                     web={first: {7: [web_drop('Hogger')]}}, holidays={7: 'Winter Veil'})
+    assert 7 not in keep and 7 not in src.named
+
+
+def test_web_entries_become_records_of_our_kinds():
+    facts = HAND_FACTS + [{'key': 'onyxia2', 'name': "Onyxia's Lair", 'kind': 'raid', 'inst': 249, 'area': 2159,
+                           'order': ['Onyxia'], 'npcs': [10184]}]
+    a = att(instances=DEADMINES, maps={'ELWYNN_FOREST': 1429, 'THE_BARRENS': 1413},
+            npcs={3000: npc('Bryanna Embreeze', {'vendor'}, zone=1413, faction='H', title='Tailoring Supplies'),
+                  3001: npc('Sergeant Hans', {'vendor'}, zone=1429, title='Legacy Armor Quartermaster')},
+            quests={4711: quest('Die Fackel', 25, faction='A', rewards=[])})
+    first = web_sources.ORDER[0]
+    entries = {
+        1: [web_drop('Pusillin', 'Dire Maul')],
+        2: [web_drop('Pusillin')],
+        3: [web_drop('Defias Pirate', 'The Deadmines')],
+        4: [web_drop('Mother Fang', 'Elwynn Forest', rare=True)],
+        5: [{'kind': 'vendor', 'npc': None, 'name': 'Bryanna Embreeze', 'zone': 'The Barrens', 'cost': '3g 23s'}],
+        6: [{'kind': 'vendor', 'npc': None, 'name': 'Sergeant Hans', 'zone': None, 'cost': None}],
+        7: [{'kind': 'quest', 'quest': 4711, 'name': 'Die Fackel'}],
+        8: [{'kind': 'quest', 'quest': 4712, 'name': 'Unknown Quest'}],
+        9: [{'kind': 'object', 'name': 'Dusty Chest', 'zone': 'Elwynn Forest'}],
+        10: [web_drop('Onyxia', "Onyxia's Lair")],
+        11: [web_drop('Onyxian Whelp', "Onyxia's Lair")],
+        12: [{'kind': 'crafted', 'name': 'Tailoring'}],
+        13: [web_drop(None, 'Nowhere Land')],
+        14: [dict(web_drop('Obsidian Sentinel', 'The Deadmines'), boss=True)],
+        15: [{'kind': 'quest', 'quest': 4713, 'name': 'For All To See', 'level': 60, 'faction': 'H'}],
+    }
+    scan = {i: scan_item(f'Item {i}', q=3) for i in entries}
+    scan[10] = scan_item('Onyxia Hat', q=4, lvl=60)
+    src, keep, zone_rows, *_ = build_gear.build(scan, {}, a, facts=facts, web={first: entries})
+
+    def recs(i):
+        return [src.rows[n - 1] for n in keep[i][1]] if i in keep else None
+    assert recs(1) == [('D', 'Dire Maul', 'Pusillin', None, 429)], "a boss of the facts in the page's dungeon"
+    assert recs(2) == [('D', 'Dire Maul', 'Pusillin', None, 429)], 'a boss of exactly one dungeon, no place given'
+    assert recs(3) == [('W', 'Trash (The Deadmines)', 0, 0)], 'another creature inside a dungeon: its trash'
+    assert recs(4) == [('R', 'Mother Fang', 0, 1429)], 'a rare outside, with its zone as uiMapID'
+    assert recs(5) == [('V', 'Bryanna Embreeze', 1413, 'H', 'Tailoring Supplies', None, 3000)], \
+        "a vendor AllTheThings knows by name: its NPC, faction and title"
+    assert recs(6) == [('P', 'Sergeant Hans', 1429, None, 'Legacy Armor Quartermaster', None, 3001)], 'PvP vendor'
+    assert recs(7) == [('Q', 'Die Fackel', 0, 25, 'A', 1436, 4711, 0)], "AllTheThings' quest record"
+    assert recs(8) == [('Q', 'Unknown Quest', 0, 0, None, None, 4712)]
+    assert recs(9) == [('W', 'Dusty Chest', 0, 0, 1429)]
+    assert recs(10) == [('X', "Onyxia's Lair", 'Onyxia', 249, 2159, 1, 0)], 'a raid boss of the facts: X'
+    assert recs(11) is None, 'raid trash is left out'
+    assert recs(12) is None, 'crafted: the client recipes say more'
+    assert recs(14) == [('D', 'The Deadmines', 'Obsidian Sentinel', None, 36, 1581)], \
+        'a creature the page files as a dungeon drop: a D record under its name'
+    assert recs(15) == [('Q', 'For All To See', 60, 0, 'H', None, 4713)], "the page's level and faction"
+    w = recs(13)
+    assert w and w[0][:4] == ('W', None, 0, 0) and zone_rows[w[0][4]] == 'Nowhere Land', \
+        'a zone the client does not know keeps its name'
