@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.104.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.104.0) (2026-11-21)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.103.1...v2.104.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - data(data): add data for client build 1.60.1.71037 and the save file of 2026-11-20 (built on main after the module split)
 
     The client tables of the new build (exported by the PC) and the newest save data are built into every
