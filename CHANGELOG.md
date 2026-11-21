@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.104.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.104.1) (2026-11-21)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.104.0...v2.104.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(modules): on a fresh install only the core is on; the three modules start switched off (F-228)
 
     Amisia: Ausrüstung, Amisia: Dungeons & Raids and Amisia: Talente carry DefaultState disabled, so a new player
