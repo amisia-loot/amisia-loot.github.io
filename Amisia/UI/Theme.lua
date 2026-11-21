@@ -600,7 +600,15 @@ T.LAYER = { W = 300, PAD = 14, TOP = 30, VALUE_H = 22, LINE_H = 14, GAP = 8, HEA
     ANSWERS = 5, ANSWER_H = 22, NAME_W = 160, BOTTOM = 14, TICK = 5, CHIP_W = 84, CHIP_H = 22, CHIP_PAD = 6, SHADE = 0.78,
     MIN = 24, MIN_OLD = 20, MINI_W = 210, MINI_H = 36, MINI_ICON = 22, MINI_ICON_X = 9, MINI_TEXT_X = 38,
     MINI_NAME_Y = 7, MINI_SUB_Y = -7, MINI_TEXT_W = 142, MINI_X = 20, MINI_X_R = 6, MINI_ONE_H = 26,
-    HOVER = 0.08, ASK_H = 34, ASK_ICON = 22, ASK_TEXT_X = 30, ASK_TITLE_Y = 3, ASK_LINE_GAP = 2, BTN_W = 132 }
+    HOVER = 0.08, ASK_H = 34, ASK_ICON = 22, ASK_TEXT_X = 30, ASK_TITLE_Y = 3, ASK_LINE_GAP = 2, BTN_W = 132,
+    -- F-229: the event field where the numbers are private (in place of the list): a symbol EV_ICON square, the
+    -- heading from EV_TEXT_X in its colour (EV_COL) with a time at the right, the lines under it, and the hour's
+    -- moves as EV_PIPS squares EV_PIP wide, EV_PIP_GAP apart (used ones gold, the rest dark)
+    EV_ICON = 16, EV_TEXT_X = 22, EV_PIP = 8, EV_PIP_GAP = 3, EV_PIPS = 10, EV_TAG_W = 50,
+    EV_COL = { ok = T.GREEN, warn = T.ORANGE, info = T.LABEL },
+    EV_TEX = { ok = "Interface\\RaidFrame\\ReadyCheck-Ready", warn = "Interface\\RaidFrame\\ReadyCheck-NotReady",
+        info = "Interface\\RaidFrame\\ReadyCheck-Waiting" },
+    EV_PIP_ON = { 0.89, 0.72, 0.34, 1 }, EV_PIP_OFF = { 0.25, 0.25, 0.28, 0.9 } }
 
 T.DUNGEONBAR = { H = 26, PAD = 6, GAP = 10, NAME_W = 130, CLOSE = 14, SHADE = 0.78, LIST_GAP = 2, LIST_W = 300, ROW_H = 18,
     ROW_NAME_W = 196, ROW_NOTE_W = 84, MAX_ROWS = 20, TICK = 0.5, NOTE_INDENT = 14 }

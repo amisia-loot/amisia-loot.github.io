@@ -13,7 +13,7 @@
 -- The asker accepts with layer.autoAccept exactly the invite of the member asked within ACCEPT_WAIT
 -- (AcceptGroup, the client's window "PARTY_INVITE" hidden); every other invite stays the client's.
 -- Once in that group (the swap): the layer reaching the host's zoneUID says "Gewechselt: Layer C";
--- "Gruppe verlassen" (SW.Leave) and, with layer.autoLeave, leaving by itself after layer.leaveSeconds,
+-- "Gruppe verlassen" (SW.Leave) and (F-229: always) leaving by itself after layer.leaveSeconds,
 -- only from the host's party of five at most (since F-216 also with other guests in it), never in an instance. After CHANGE_WAIT without a
 -- change: "Kein Wechsel". The host changes nothing in its group but the invite. Fires LAYER_CHANGE.
 -- Part 6, the plain chat convention of other layer addons (D-117): a short guild chat line or whisper of a
@@ -69,11 +69,8 @@
 -- layer.autoAccept; a heard helper from another layer holds "none" back once. The world restart (Layer.lua,
 -- LY.Refresh) pauses helping; SHARD_TRANSFER during an own swap counts as the change.
 -- Part 11 (F-221, D-146, changes D-139): behaves as the other layer addon does.
--- Helfen: every own ask ("Layer wechseln", a row, the command, the chat rows) turns it on while the ask runs
--- (holdForAsk) and LOCK seconds after a swap that worked (startLock: AmisiaDB.layerHelp.lock, per character, by the
--- clock, never longer or anew; a /reload or logout in the host's group with the verdict open counts as worked);
--- an "off" meanwhile is refused (SW.Notice: "Helfen bleibt noch m:ss an."); afterwards it goes off again when
--- Amisia had turned it on (layerHelp.forced). Off is kept through /reload (layerHelp.off); only a real login
+-- Helfen (the lock and the "on while the own ask runs" of D-146 are gone since F-229, part 12): off is kept
+-- through /reload (layerHelp.off); only a real login
 -- (PLAYER_ENTERING_WORLD with isInitialLogin) turns it on. SW.PauseReason: why helping waits (instance, group or
 -- dungeon finder, someone else's group, combat, world restart, the invite break). Invites one a second
 -- (INVITE_SPACING); open invites count PENDING_FOR seconds towards a full group; the game's "already in a
@@ -90,7 +87,24 @@
 -- layer; leaving at STUCK_WAIT at the earliest; SHARD_TRANSFER alone is no success, a new layer read is (also
 -- AFTER_GROUP seconds after the group ended); the real leader is the host after LEADER_WAIT; the automatic leave
 -- (layer.leaveSeconds, 4) only from a helper who answered the ask. Warnings on an invite of a host that did
--- not move the player (NOT_MOVED_KEEP), named the own layer, or stands on a layer seen ("Nur neue Layer").
+-- not move the player (NOT_MOVED_KEEP) or named the own layer.
+-- Part 12 (F-229, D-159, changes D-146): as the other layer addon does it since game build 71037.
+-- Helfen: no lock and no "on while the own ask runs" any more; off is off (an old forced "on" goes off at load).
+-- Leaving: always (no setting) from the group of a helper who answered, layer.leaveSeconds after the join once the
+-- game moved us, or that long after a later move. At the move the helper's answered number is taken for the own
+-- layer (LY.Take "host", shown at once). REFUSE_AFTER seconds after the join without a move the game's phase mark on
+-- the helper (UnitPhaseReason, only when the group shows it in the own zone) decides: "apart" = the game refused to
+-- move us (left at once, the hour held: below); no mark where the numbers are private (LY.Private) = it stands with
+-- us (left at once, its number taken unless the own one came from a helper, skipped MOVER_FOR seconds). Where the
+-- numbers are private and the game tells nothing, no move STUCK_WAIT seconds after the join is "not moved".
+-- The game's limit: CAP moves as a guest in an hour; an hour opens with the first move after the last one closed.
+-- AmisiaDB.layerCap[character] = { start, moves, hold, unsure } (epochs) keeps them through /reload and logins;
+-- with CAP in the running hour, or while a refusal holds (until the first of the last CAP moves is CAP_FOR old, with
+-- fewer known CAP_UNSURE seconds), no ask goes out. No ask either in a fight and COMBAT_REST seconds after it, while
+-- dead or a ghost, or on a flight path (SW.Blocked); a fight that starts ends the search (an invite already in stays).
+-- layer.combatPause (on) pauses helping in a fight and HOST_REST seconds after it. A search ends INVITE_WAIT seconds
+-- after it began when no invite came (an invite later still counts for REQ_LIFE). Asked without an answer: SILENT_KEEP
+-- (15 minutes). SW.Event: what the window's event field says (a happening for EVENT_FOR seconds, a wait while it lasts).
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -120,14 +134,11 @@ SW.ZONE_MAX = 49        -- quiet questions per search (F-221: 49, the own name n
 SW.ZQ_TTL = 45          -- seconds a quiet question may wait in the send queue
 SW.HOST_KEEP = 7 * 86400   -- seconds a player who answered stays first in line (AmisiaDB.layerHosts)
 SW.HOST_MAX = 300
-SW.SILENT_KEEP = 6 * 3600  -- seconds a player asked without an answer is not asked again
+SW.SILENT_KEEP = 15 * 60   -- seconds a player asked without an answer is not asked again (F-229: 15 minutes)
 SW.ZQ_WINDOW, SW.ZQ_MAX = 60, 20   -- quiet questions answered per minute at most
 SW.STUCK_WAIT = 15      -- seconds after joining before a read of the old layer means "not moved"
-SW.NEW_AGE = 3600       -- "Nur neue Layer": a layer seen in the zone within this many seconds is not new
-SW.GUILD_WAITS = { 3, 10 }   -- F-221: seconds after the zone's asks went before the guild members of the /who are asked
+SW.GUILD_WAITS = { 3 }   -- F-221: seconds after the zone's asks went before the guild members of the /who are asked
 -- F-221 (D-146)
-SW.LOCK = 240            -- seconds Helfen stays on after an own swap that worked
-SW.NOTICE_FOR = 5        -- seconds the window shows why "off" was refused
 SW.INVITE_SPACING = 1    -- seconds between two invites
 SW.PENDING_FOR = 60      -- seconds an open invite counts towards a full group
 SW.LATE_ACCEPT = 300     -- seconds an invite accepted after Helfen off is taken out again
@@ -145,6 +156,16 @@ SW.STOP_GUARD = 1        -- seconds a search runs before its button stops it
 SW.WARN_FOR = 30         -- seconds a warning on an invite shows
 SW.WHO_CLASSES = { 1, 2, 3, 4, 5, 7, 8, 9, 11 }   -- the classes of Forever, one per search
 SW.WHO_BANDS = 6         -- level bands of the /who by text
+-- F-229 (D-159)
+SW.INVITE_WAIT = 8       -- seconds a search waits for an invite, then it ends
+SW.REFUSE_AFTER = 3      -- seconds after joining without a move before the game's phase mark on the helper is read
+SW.MOVER_FOR = 600       -- seconds a helper the game showed on the own layer is not asked
+SW.CAP, SW.CAP_FOR, SW.CAP_UNSURE = 10, 3600, 15 * 60   -- the game's moves per hour; a refusal with fewer known holds
+SW.CAP_WARN = 3          -- from this many moves left the button counts them
+SW.COMBAT_REST = 6       -- seconds after a fight without an ask
+SW.HOST_REST = 2         -- seconds after a fight helping stays paused (layer.combatPause)
+SW.EVENT_FOR = 60        -- seconds the event field shows a happening
+SW.LATE_MOVE = 5         -- seconds after the verdict of refusal in which a move still counts as one
 local ZONE_CHANNELS = { [1] = true, [22] = true }   -- the client's zone channels: General, LocalDefense
 local MAX_LINE_KEYS = 8
 local INVITE_WORDS = { inv = true, invite = true, einladen = true, pls = true, bitte = true }
@@ -173,7 +194,6 @@ local zqAt = {}      -- host: times of the quiet questions answered within ZQ_WI
 local muted = {}     -- [frame name] = the client's who list while it does not hear WHO_LIST_UPDATE
 local mutedAt
 -- F-221
-local notice         -- { text, at }: why "Helfen aus" was refused
 local warning        -- { text, at, name }: the warning on an invite
 local offAt          -- host: the time Helfen went off
 local lastInviteAt   -- host: the time of the last invite
@@ -184,7 +204,9 @@ local notMoved = {}  -- asker: [lower name] = time the host did not move the pla
 local afterGroup     -- { s, untilAt }: a swap whose group ended before the verdict
 local whoRound = 0   -- the /who of the next search: 0 the zone, then a class (map) or a level band (text)
 local noMap          -- the client refused the map filter this session
-local helpTicker
+-- F-229
+local fighting, foughtAt   -- in a fight; the time the last fight ended (or the fight's start while in it)
+local event          -- { kind, at, ... }: the last happening for the event field
 
 local function newTrace()
     return { invite = { tried = 0, blocked = 0, joined = 0 }, accept = { tried = 0, blocked = 0, joined = 0 },
@@ -272,6 +294,74 @@ local function inGroupFinder()
     return false
 end
 
+---------------------------------------------------------------------------
+-- F-229: fights, death, the flight path
+---------------------------------------------------------------------------
+-- The poll catches a fight whose events were missed; it ends one only a second after the last sign of it (in
+-- PLAYER_REGEN_DISABLED itself InCombatLockdown still says no).
+local function watchFight()
+    local f = inCombat()
+    if f then
+        fighting, foughtAt = true, now()
+    elseif fighting and now() - foughtAt > 1 then
+        fighting, foughtAt = nil, now()
+    end
+end
+
+-- true in a fight, the seconds of COMBAT_REST left after it, nil when an ask may go.
+function SW.FightLeft()
+    watchFight()
+    if fighting then return true end
+    if not foughtAt then return nil end
+    local left = SW.COMBAT_REST - (now() - foughtAt)
+    return left > 0 and left or nil
+end
+
+-- Whether helping rests for combat now: in a fight or HOST_REST seconds after it.
+function SW.HostResting()
+    watchFight()
+    return fighting == true or (foughtAt ~= nil and now() - foughtAt < SW.HOST_REST)
+end
+
+local function dead() return unitFlag("UnitIsDeadOrGhost", "player") end
+local function onTaxi() return unitFlag("UnitOnTaxi", "player") end
+
+-- A fight starts or the player dies: the search ends and nobody new is asked; an invite already in, and the
+-- helper's group, stay.
+local function fightStart()
+    if swap then return end
+    local stopped = false
+    if auto or zone then stopped = true end
+    auto, zone = nil, nil
+    if pending and not pending.invited then pending, stopped = nil, true end
+    if chatAt then chatAt, chatAll, stopped = nil, nil, true end
+    if ns.LayerForeign and ns.LayerForeign.StopAsks then ns.LayerForeign.StopAsks() end
+    if stopped then ns.Fire("LAYER_CHANGE") end
+end
+SW._fightStart = fightStart
+ns.OnEvent("PLAYER_REGEN_DISABLED", function()
+    fighting, foughtAt = true, now()
+    fightStart()
+end)
+ns.OnEvent("PLAYER_REGEN_ENABLED", function()
+    fighting, foughtAt = nil, now()
+    ns.Fire("LAYER_CHANGE")
+end)
+ns.OnEvent("PLAYER_DEAD", function() fightStart() end)
+
+-- Why no ask may go now (a fight and its rest, death, a flight path, the game's hourly limit), nil when one may.
+-- Returns the reason and its kind ("fight", "dead", "taxi", "cap").
+function SW.Blocked()
+    local fight = SW.FightLeft()
+    if fight == true then return L["Kein Layer-Wechsel im Kampf."], "fight" end
+    if fight then return L["Kein Layer-Wechsel direkt nach dem Kampf: noch %d s."]:format(math.ceil(fight)), "fight" end
+    if dead() then return L["Kein Layer-Wechsel, solange du tot bist."], "dead" end
+    if onTaxi() then return L["Kein Layer-Wechsel im Flug."], "taxi" end
+    local left = SW.CapLeft()
+    if left > 0 then return L["Keine Layer-Wechsel mehr für diese Stunde: noch %s."]:format(SW.Clock(left)), "cap" end
+    return nil
+end
+
 -- The name the guild would write for an invite's sender: the own realm's ending dropped.
 local function nameOf(raw)
     raw = ns.Plain(raw)
@@ -287,7 +377,7 @@ local function canHelp()
     if not hosting then return false end
     -- F-220: no invites while the game counts down to a world restart
     if LY.Refresh and LY.Refresh() then return false end
-    if ns.Get("layer.combatPause") and inCombat() then return false end
+    if ns.Get("layer.combatPause") and SW.HostResting() then return false end
     return not inGroupFinder()
 end
 SW.CanHelp = canHelp
@@ -327,6 +417,8 @@ function SW.CanAsk()
     if inGroup() then return nil, L["Erst die Gruppe verlassen: nur wer allein ist, kann eingeladen werden."] end
     if not LY.Known() then return nil, L["Layer unbekannt: ziele oder überfahre erst einen NPC."] end
     if req and now() - req.at < SW.ASK_GAP then return nil, L["Einmal alle 10 Sekunden."] end
+    local blockedWhy = SW.Blocked()
+    if blockedWhy then return nil, blockedWhy end
     return true
 end
 
@@ -421,7 +513,8 @@ ns.CommOn("YQ", function(sender, f, chan)
             LY.Rescan()
             mine, myMap = LY.Current()
         end
-        if not mine or myMap ~= map or mine == uid then return end
+        -- F-229: the number given up for a taken one counts as the own layer too (LY.Ours)
+        if not mine or myMap ~= map or LY.Ours(uid) then return end
         if LY.InInstance() or not SW.CanInvite() then return end
         SW._answered(name:lower(), { id = id, map = map, uid = mine, at = now() })
         ns.CommSend("YA", { id, map, mine }, "WHISPER", name, { ttl = SW.ANSWER_WAIT, jitter = 2 })
@@ -453,8 +546,7 @@ function SW._addAnswer(r, name, uid, stranger)
     LY.Heard(r.map, uid)
     local a = auto
     -- a late answer picks too (F-216: the quiet questions go out one a second, the last ones after 40 s)
-    if a and a.req == r and not a.picking and not a.picked and not pending and not swap and (not a.target or a.target == uid)
-        and not (a.recent and a.recent[uid]) then
+    if a and a.req == r and not a.picking and not a.picked and not pending and not swap and (not a.target or a.target == uid) then
         a.picking, a.none = true, nil
         C_Timer.After(SW.PICK_WAIT, function() SW._pick(a) end)
     end
@@ -472,13 +564,14 @@ function SW.RequestInvite(name)
         if x.name:lower() == tostring(name):lower() then a = x break end
     end
     if not a then return nil, L["Dieses Mitglied hat nicht geantwortet."] end
+    local blockedWhy = SW.Blocked()
+    if blockedWhy then return nil, blockedWhy end
     if inGroup() then return nil, L["Erst die Gruppe verlassen: nur wer allein ist, kann eingeladen werden."] end
     if LY.InInstance() then return nil, L["Nicht in einer Instanz."] end
     if pending and now() - pending.at < SW.REQUEST_GAP then return nil, L["Einmal alle 10 Sekunden."] end
     local sent, err = ns.CommSend("YI", { req.id, req.map, a.uid }, "WHISPER", a.name, { ttl = SW.ANSWER_WAIT, anyone = a.stranger })
     if not sent then return nil, err end
     pending = { name = a.name, uid = a.uid, map = req.map, from = req.uid, at = now(), answered = true }
-    SW._holdForAsk()
     changed()
     return true
 end
@@ -607,19 +700,8 @@ local function clock(secs)
 end
 SW.Clock = clock
 
--- The seconds the lock holds Helfen on for this character, nil when none.
-function SW.LockLeft()
-    local hd = helpDB()
-    local l = hd and hd.lock
-    if type(l) ~= "table" or not isMe(l.who) then return nil end
-    local left = (tonumber(l.untilAt) or 0) - time()
-    return left > 0 and left or nil
-end
-
 -- Off: closes an open "... Einladen?" of Amisia's and (F-216) takes the guests of swaps out of the group.
--- byItself: the lock ran out (Amisia had turned Helfen on); guests already in the group stay, or a swap
--- that is still being made would break (D-146: only a late accept after "aus" is taken out).
-local function goOff(byItself)
+local function goOff()
     hosting = false
     offAt = now()
     local q = question
@@ -627,92 +709,15 @@ local function goOff(byItself)
         question = nil
         if q.frame and q.frame.IsShown and q.frame:IsShown() and q.frame.onOk == q.fn then q.frame:Hide() end
     end
-    if not byItself then SW.Kick(true) end
+    SW.Kick(true)
 end
 
--- Once a second while Amisia holds Helfen on: the lock ran out and no own ask runs: off again when Amisia had
--- turned it on.
-local function settleHelp()
-    local hd = helpDB()
-    if not hd then return end
-    if SW.LockLeft() then return end
-    if type(hd.lock) == "table" and isMe(hd.lock.who) then
-        hd.lock = nil
-        changed()
-    end
-    if ownAsk() then return end
-    if isMe(hd.forced) then
-        hd.forced = nil
-        if hosting then
-            hd.off = true
-            goOff(true)
-        end
-        changed()
-    end
-    if helpTicker then
-        helpTicker:Cancel()
-        helpTicker = nil
-    end
-end
-SW._settleHelp = settleHelp
-
-local function watchHelp()
-    if not helpTicker then helpTicker = C_Timer.NewTicker(1, settleHelp) end
-end
-
--- An own ask starts: Helfen on while it runs (and kept on by the lock after a swap that worked).
-function SW._holdForAsk()
-    watchHelp()
-    if hosting then return end
-    hosting = true
-    local hd = helpDB()
-    if hd then
-        hd.off = nil
-        hd.forced = myName()
-    end
-    changed()
-end
-local holdForAsk = SW._holdForAsk
-
--- A swap that worked: Helfen stays on LOCK seconds (never longer and never anew while a lock runs).
-local function startLock()
-    local hd = helpDB()
-    if not hd or SW.LockLeft() then return end
-    hd.lock = { untilAt = time() + SW.LOCK, who = myName() }
-    if not hosting then
-        hosting = true
-        hd.off = nil
-    end
-    watchHelp()
-    changed()
-end
-SW._startLock = startLock
-
--- Why "off" was refused, while it shows (NOTICE_FOR), else nil.
-function SW.Notice()
-    if notice and now() - notice.at <= SW.NOTICE_FOR then return notice.text end
-    notice = nil
-    return nil
-end
-
--- Switches the helping. Off is refused while the lock runs or the own ask runs (F-221); then returns hosting and
--- the reason. Off lasts through /reload until the next login.
+-- Switches the helping (F-229: off is off; nothing holds it on). Off lasts through /reload until the next login.
+-- Returns hosting.
 function SW.SetHosting(on)
     on = on and true or false
-    if not on and hosting then
-        local left = SW.LockLeft()
-        if left or ownAsk() then
-            local why = left and L["Helfen bleibt noch %s an."]:format(clock(left)) or L["Helfen bleibt an, solange du selbst fragst."]
-            notice = { text = why, at = now() }
-            changed()
-            return hosting, why
-        end
-    end
     local hd = helpDB()
-    if hd then
-        hd.off = (not on) or nil
-        hd.forced = nil
-    end
+    if hd then hd.off = (not on) or nil end
     if on then hosting = true else goOff() end
     changed()
     return hosting
@@ -724,27 +729,23 @@ function SW.PauseReason()
     if LY.InInstance() then return L["in einer Instanz"] end
     if inGroupFinder() then return L["in der Gruppensuche oder Dungeonsuche"] end
     if inGroup() and not SW.CanInvite() then return L["in einer fremden Gruppe"] end
-    if ns.Get("layer.combatPause") and inCombat() then return L["im Kampf"] end
+    if ns.Get("layer.combatPause") and SW.HostResting() then return L["im Kampf"] end
     if LY.Refresh and LY.Refresh() then return L["Neustart der Welt"] end
     if SW.InviteBreak() > 0 then return L["Pause nach sechs Einladungen"] end
     return nil
 end
 
--- The saved switch kept clean (on load): off true, lock { untilAt epoch, who name }, forced a name.
+-- The saved switch kept clean (on load): off true only. F-229: the lock of D-146 is gone; a Helfen that Amisia had
+-- turned on for an own ask (forced, this character) goes off again, as it said it would.
 function SW.LoadedHelp(DB)
     local hd = DB and DB.layerHelp
     if hd == nil then return end
     if type(hd) ~= "table" then DB.layerHelp = nil return end
+    if isMe(hd.forced) then hd.off = true end
     for k in pairs(hd) do
-        if k ~= "off" and k ~= "lock" and k ~= "forced" then hd[k] = nil end
+        if k ~= "off" then hd[k] = nil end
     end
     if hd.off ~= true then hd.off = nil end
-    local l = hd.lock
-    if type(l) ~= "table" or type(l.untilAt) ~= "number" or type(l.who) ~= "string" or #l.who > 64 or l.who:find("[%c|]")
-        or l.untilAt < time() or l.untilAt > time() + SW.LOCK then
-        hd.lock = nil
-    end
-    if type(hd.forced) ~= "string" or #hd.forced > 64 or hd.forced:find("[%c|]") then hd.forced = nil end
 end
 
 local function loadHelp()
@@ -752,22 +753,209 @@ local function loadHelp()
     SW.LoadedHelp(AmisiaDB)
     local hd = AmisiaDB.layerHelp
     hosting = not (hd and hd.off)
-    if hd and (isMe(hd.forced) or SW.LockLeft()) then watchHelp() end
 end
 
 -- A real login turns Helfen on; a /reload keeps it as it was.
 ns.OnEvent("PLAYER_ENTERING_WORLD", function(initial)
     if ns.Plain(initial) ~= true then return end
     local hd = helpDB()
-    if hd then
-        hd.off = nil
-        if isMe(hd.forced) then hd.forced = nil end
-    end
+    if hd then hd.off = nil end
     if not hosting then
         hosting = true
         changed()
     end
 end)
+
+---------------------------------------------------------------------------
+-- F-229: the game's limit of CAP moves an hour (AmisiaDB.layerCap, per character, by the clock)
+---------------------------------------------------------------------------
+local function capDB()
+    if type(AmisiaDB) ~= "table" then return nil end
+    if type(AmisiaDB.layerCap) ~= "table" then AmisiaDB.layerCap = {} end
+    return AmisiaDB.layerCap
+end
+
+-- This character's record, nil when none (create: a new one).
+local function capRecord(create)
+    local db, me = capDB(), myName()
+    if not db or type(me) ~= "string" then return nil end
+    local c = db[me]
+    if type(c) ~= "table" or type(c.start) ~= "number" or type(c.moves) ~= "table" then
+        if not create then return nil end
+        c = { start = time(), moves = {} }
+        db[me] = c
+    end
+    return c
+end
+
+-- The running hour of c: its start and the moves in it (none when it closed).
+local function capHour(c, t)
+    if t - c.start >= SW.CAP_FOR then return t, 0 end
+    local n = 0
+    for _, at in ipairs(c.moves) do
+        if at >= c.start then n = n + 1 end
+    end
+    return c.start, n
+end
+
+-- The moves of the running hour (0 while none is known).
+function SW.CapUsed()
+    local c = capRecord()
+    if not c then return 0 end
+    local _, n = capHour(c, time())
+    return n
+end
+
+-- Seconds until the game moves this character again; 0 when it does now.
+function SW.CapLeft()
+    local c = capRecord()
+    if not c then return 0 end
+    local t = time()
+    if type(c.hold) == "number" and t < c.hold then return c.hold - t end
+    local from, n = capHour(c, t)
+    if n >= SW.CAP then return from + SW.CAP_FOR - t end
+    return 0
+end
+
+-- Whether the last hold came from the game's refusal (not from the count).
+function SW.CapRefused()
+    local c = capRecord()
+    return c ~= nil and type(c.hold) == "number" and time() < c.hold
+end
+
+-- A move as a guest in a helper's group: counted. Moved although held: the game's hour was over before ours, the
+-- hours start anew with this move.
+function SW._capMoved()
+    local c = capRecord(true)
+    if not c then return end
+    local t = time()
+    if SW.CapLeft() > 0 then c.start, c.moves, c.hold, c.unsure = t, {}, nil, nil end
+    if t - c.start >= SW.CAP_FOR then c.start = t end
+    c.moves[#c.moves + 1] = t
+    while #c.moves > 2 * SW.CAP or (c.moves[1] and t - c.moves[1] > 2 * SW.CAP_FOR) do table.remove(c.moves, 1) end
+end
+
+-- The game refused to move us: with CAP moves known within the hour, held until the first of them is CAP_FOR old
+-- (the hours counted from it); with fewer, CAP_UNSURE seconds.
+function SW._capRefused()
+    local c = capRecord(true)
+    if not c then return end
+    local t = time()
+    local first = c.moves[#c.moves - SW.CAP + 1]
+    if first and t - first < SW.CAP_FOR then
+        c.start, c.hold, c.unsure = first, first + SW.CAP_FOR, nil
+    else
+        c.hold, c.unsure = t + SW.CAP_UNSURE, true
+    end
+end
+
+-- The record as it is (for SW._capRestore), false when there is none.
+function SW._capSnapshot()
+    local c = capRecord()
+    if not c then return false end
+    local moves = {}
+    for i, at in ipairs(c.moves) do moves[i] = at end
+    return { start = c.start, moves = moves, hold = c.hold, unsure = c.unsure }
+end
+
+-- A refusal taken back: the record as it was before it (false: none).
+function SW._capRestore(before)
+    local db, me = capDB(), myName()
+    if not db or type(me) ~= "string" then return end
+    db[me] = before or nil
+end
+
+-- The saved counts kept clean (on load): a name, numbers only, and only what still holds or counts.
+function SW.LoadedCap(DB)
+    local db = DB and DB.layerCap
+    if db == nil then return end
+    if type(db) ~= "table" then DB.layerCap = nil return end
+    local t, n = time(), 0
+    for who, c in pairs(db) do
+        local ok = type(who) == "string" and who ~= "" and #who <= 64 and not who:find("[%c|]") and type(c) == "table"
+            and type(c.start) == "number" and c.start <= t + 60 and type(c.moves) == "table" and n < 50
+        if ok then
+            local moves = {}
+            for _, at in ipairs(c.moves) do
+                if type(at) == "number" and at <= t + 60 and t - at <= 2 * SW.CAP_FOR and #moves < 2 * SW.CAP then moves[#moves + 1] = at end
+            end
+            c.moves = moves
+            if type(c.hold) ~= "number" or c.hold < t or c.hold > t + SW.CAP_FOR + 60 then c.hold = nil end
+            c.unsure = (c.hold and c.unsure == true) or nil
+            for k in pairs(c) do
+                if k ~= "start" and k ~= "moves" and k ~= "hold" and k ~= "unsure" then c[k] = nil end
+            end
+            local last = moves[#moves]
+            ok = c.hold ~= nil or (last ~= nil and t - last < SW.CAP_FOR)
+        end
+        if ok then n = n + 1 else db[who] = nil end
+    end
+    if next(db) == nil then DB.layerCap = nil end
+end
+
+---------------------------------------------------------------------------
+-- F-229: the event field (what just happened, or why no ask goes)
+---------------------------------------------------------------------------
+-- A happening: kind "moved", "same", "elsewhere", "refused", "none", "notMoved"; name the helper.
+local function note(kind, name)
+    event = { kind = kind, at = now(), name = name }
+    changed()
+end
+SW._note = note
+
+-- What the event field says now, nil while nothing happens: { kind, col ("ok", "warn", "info"), head, body, tag (a time
+-- at the right), used (the moves of the hour) }.
+function SW.Event()
+    local t = now()
+    local used = SW.CapUsed()
+    local e = event
+    if e and t - e.at < SW.EVENT_FOR then
+        local who = e.name or L["Der Helfer"]
+        if e.kind == "moved" then
+            return { kind = e.kind, col = "ok", head = L["Gewechselt"], used = used,
+                body = L["%s hat dich auf einen anderen Layer gebracht. Amisia verlässt die Gruppe gleich."]:format(who) }
+        elseif e.kind == "same" then
+            return { kind = e.kind, col = "warn", head = L["Der Helfer stand auf deinem Layer"], used = used,
+                body = L["%s stand auf deinem Layer, das Spiel hatte nichts zu bewegen; kein Wechsel verbraucht. Layer wechseln fragt andere Helfer."]:format(who) }
+        elseif e.kind == "elsewhere" then
+            return { kind = e.kind, col = "info", head = L["Helfer in einer anderen Zone"], used = used,
+                body = L["%s war in einer anderen Zone, darum hat das Spiel dich nicht bewegt; kein Wechsel verbraucht."]:format(who) }
+        elseif e.kind == "notMoved" then
+            return { kind = e.kind, col = "warn", head = L["Nicht gewechselt"], used = used,
+                body = L["%s hat dich nicht bewegt. Amisia hat die Gruppe verlassen; Layer wechseln fragt andere Helfer."]:format(who) }
+        elseif e.kind == "none" then
+            return { kind = e.kind, col = "info", head = L["Kein Helfer hat geantwortet"], used = used,
+                body = L["Niemand, der dich bewegen kann, hat eingeladen. Helfer sind Spieler mit Amisia oder dem anderen Layer-Addon und eingeschaltetem Helfen; in belebten Zonen gibt es mehr."] }
+        end
+    end
+    local left = SW.CapLeft()
+    if left > 0 then
+        if SW.CapRefused() then
+            return { kind = "refused", col = "warn", head = L["Das Spiel hat dich nicht bewegt"], tag = clock(left), used = used,
+                body = L["Ein Helfer auf einem anderen Layer hat eingeladen, aber das Spiel hat dich nicht bewegt: es erlaubt %d Wechsel je Stunde. Amisia wartet so lange."]:format(SW.CAP) }
+        end
+        return { kind = "full", col = "warn", head = L["Keine Wechsel mehr für diese Stunde"], tag = clock(left), used = used,
+            body = L["Das Spiel bewegt einen Charakter %d-mal je Stunde, deine sind verbraucht. Amisia wartet, damit dich niemand umsonst einlädt."]:format(SW.CAP) }
+    end
+    if swap then return nil end
+    local why, kind = SW.Blocked()
+    if kind == "fight" then
+        local f = SW.FightLeft()
+        return { kind = "fight", col = "warn", head = L["Warum Layer wechseln aus ist"], tag = f ~= true and clock(f) or nil, used = used,
+            body = L["Kein Layer-Wechsel im Kampf und %d Sekunden danach: ein Wechsel ist kein Weg aus einem Kampf."]:format(SW.COMBAT_REST) }
+    elseif kind == "dead" then
+        return { kind = "dead", col = "warn", head = L["Warum Layer wechseln aus ist"], used = used,
+            body = L["Kein Layer-Wechsel, solange du tot oder ein Geist bist: ein Wechsel ist kein Weg an Spielern an deiner Leiche vorbei."] }
+    elseif kind == "taxi" then
+        return { kind = "taxi", col = "warn", head = L["Warum Layer wechseln aus ist"], used = used,
+            body = L["Du fliegst. Das Spiel bewegt niemanden in der Luft; nach der Landung geht Layer wechseln wieder."] }
+    end
+    if inGroup() and not ownAsk() then
+        return { kind = "group", col = "warn", head = L["Warum Layer wechseln aus ist"], used = used,
+            body = L["Du bist in einer Gruppe. Ein Wechsel ist die Einladung eines Helfers in seine Gruppe: erst diese verlassen."] }
+    end
+    return why and { kind = "off", col = "warn", head = L["Warum Layer wechseln aus ist"], body = why, used = used } or nil
+end
 
 -- The seconds until the next invite may go (six in ten minutes), 0 when one may go now.
 function SW.InviteBreak()
@@ -952,13 +1140,14 @@ end
 function SW.AskChat()
     if not ns.InGuild() then return nil, L["Du bist in keiner Gilde."] end
     if LY.InInstance() then return nil, L["Nicht in einer Instanz."] end
+    local blockedWhy = SW.Blocked()
+    if blockedWhy then return nil, blockedWhy end
     if inGroup() then return nil, L["Erst die Gruppe verlassen: nur wer allein ist, kann eingeladen werden."] end
     local LF = ns.LayerForeign
     local tagged = LF and LF.Active() and LF.GuildText and LF.GuildText() or nil
     local ok, why = openChat("/g " .. (tagged or SW.ChatText(ns.Get("layer.chatText")) or "inv layer"))
     if not ok then return nil, why end
-    chatAt, chatAll, pending, auto, zone = now(), nil, nil, nil, nil
-    holdForAsk()
+    chatAt, chatAll, pending, auto, zone, event = now(), nil, nil, nil, nil, nil
     changed()
     return true
 end
@@ -980,13 +1169,14 @@ end
 -- invite counts as the swap, whoever sends it (players outside the guild answer a channel line).
 function SW.AskChannel()
     if LY.InInstance() then return nil, L["Nicht in einer Instanz."] end
+    local blockedWhy = SW.Blocked()
+    if blockedWhy then return nil, blockedWhy end
     if inGroup() then return nil, L["Erst die Gruppe verlassen: nur wer allein ist, kann eingeladen werden."] end
     local n, name = SW.Channel()
     if not name then return nil, L["Du bist in keinem Kanal %d (Einstellungen, Layer: Kanal)."]:format(n) end
     local ok, why = openChat(("/%d %s"):format(n, SW.ChatText(ns.Get("layer.chatText")) or "inv layer"))
     if not ok then return nil, why end
-    chatAt, chatAll, pending, auto, zone = now(), true, nil, nil, nil
-    holdForAsk()
+    chatAt, chatAll, pending, auto, zone, event = now(), true, nil, nil, nil, nil
     changed()
     return true
 end
@@ -1003,6 +1193,8 @@ end
 local function accept()
     local fn = rawget(_G, "AcceptGroup")
     if type(fn) ~= "function" then return false end
+    -- F-229: never by itself in a fight, dead, in flight or with the hour's moves used up (the game's question stays)
+    if SW.Blocked() then return false end
     tried("accept")
     if not pcall(fn) then return false end
     hidePopup()
@@ -1036,8 +1228,8 @@ end
 -- F-220: the first invite of a player who answered the own search on the other layer addon's prefix (not one
 -- that named the own layer) is the swap's; it takes the place of a request for an invite that got none yet.
 local function foreignInvite(f)
-    pending = { name = f.name, uid = f.uid, map = req and req.map or LY.Map(), from = req and req.uid, at = now(), invited = now(),
-        foreign = true, answered = true }
+    pending = { name = f.name, uid = f.uid, zuid = f.zuid, map = req and req.map or LY.Map(), from = req and req.uid, at = now(),
+        invited = now(), foreign = true, answered = true }
     -- F-221: the first invite ends the asks still waiting to go
     if ns.LayerForeign and ns.LayerForeign.StopAsks then ns.LayerForeign.StopAsks() end
     changed()
@@ -1049,7 +1241,7 @@ local function foreignInvite(f)
 end
 
 -- F-221: the warning on an invite of name, nil when none: a host that did not move the player within
--- NOT_MOVED_KEEP, one whose answer named the own layer, one on a layer seen ("Nur neue Layer").
+-- NOT_MOVED_KEEP, one whose answer named the own layer.
 function SW.InviteWarning(name)
     local low = tostring(name):lower()
     local t = now()
@@ -1057,12 +1249,8 @@ function SW.InviteWarning(name)
         return L["%s hat dich vor Kurzem nicht bewegt: ablehnen und warten."]:format(name)
     end
     local z = zone
-    local a = z and z.req == req and req and z.answered and z.answered[low]
+    local a = z and z.req == req and req and t - req.at <= SW.REQ_LIFE and z.answered and z.answered[low]
     if a and a.uid and a.uid == req.uid then return L["%s ist auf deinem Layer: ablehnen und warten."]:format(name) end
-    local au = auto
-    if a and a.uid and au and au.req == req and au.recent and au.recent[a.uid] then
-        return L["%s ist auf %s, den du schon gesehen hast: ablehnen und warten."]:format(name, LY.Name(req.map, a.uid))
-    end
     return nil
 end
 
@@ -1076,7 +1264,8 @@ end
 function SW.InviteRequest(raw)
     local name = nameOf(raw)
     if not name then return end
-    local warn = not swap and ownAsk() and SW.InviteWarning(name) or nil
+    -- F-229: also after the search ended (8 s): the answers and the hosts that did not move us still warn
+    local warn = not swap and SW.InviteWarning(name) or nil
     if warn then
         -- never taken by itself; the game's own question stays
         warning = { text = warn, at = now(), name = name }
@@ -1128,7 +1317,8 @@ end
 
 -- The host did not move the player (F-216; F-221 as the other layer addon judges it): from NO_MOVE_AFTER seconds
 -- on without SHARD_TRANSFER, FRESH_OLD creatures of the old layer read since joining; or a world restart that
--- kept the old layer. Amisia leaves the group STUCK_WAIT seconds after joining at the earliest; "Layer wechseln"
+-- kept the old layer; F-229: where the numbers are private (no creature ever shows the old one) no move STUCK_WAIT
+-- seconds after joining. Amisia leaves the group STUCK_WAIT seconds after joining at the earliest; "Layer wechseln"
 -- is offered again, and that host is skipped for a while.
 local function checkStuck(s)
     if swap ~= s or s.changed or s.stuck or not s.from then return end
@@ -1136,22 +1326,102 @@ local function checkStuck(s)
     local uid, map = LY.Current()
     local kept = s.transferAt and uid == s.from and map == s.map
     local old = not s.transferAt and since >= SW.NO_MOVE_AFTER and s.freshN >= SW.FRESH_OLD
-    if not kept and not old then return end
+    local silent = not s.transferAt and LY.Private() and since >= SW.STUCK_WAIT
+    if not kept and not old and not silent then return end
     s.stuck, s.failed = true, true
     trace.stuck = trace.stuck + 1
     local low = s.host:lower()
     notMoved[low] = now()
     avoid[low] = { at = now(), uid = s.from }
-    changed()
+    note("notMoved", s.host)
     C_Timer.After(math.max(0, SW.STUCK_WAIT - since), function()
         if swap ~= s then return end
-        -- leaving by itself belongs to layer.autoLeave (its tip: "hat er dich nicht bewegt, frühestens nach 15 Sekunden")
-        if ns.Get("layer.autoLeave") and SW.Leave(true) then
+        if not s.leaving and SW.Leave(true) then
             ns.msg(L["Der Wechsel über %s hat nicht geklappt: Amisia verlässt die Gruppe, Layer wechseln geht wieder."]:format(s.host))
         else
             ns.msg(L["Der Wechsel über %s hat nicht geklappt."]:format(s.host))
         end
     end)
+end
+
+-- F-229: the zone map of the group member called name and its unit, nil when not in the group or unknown.
+local function memberUnit(name)
+    local low = tostring(name):lower()
+    for i = 1, 4 do
+        local unit = "party" .. i
+        if unitFlag("UnitExists", unit) then
+            local ok, n = pcall(ns.UnitFullName, unit)
+            n = ok and nameOf(n) or nil
+            if n and n:lower() == low then return unit end
+        end
+    end
+    return nil
+end
+
+-- F-229: how the game marks the group member name against us (UnitPhaseReason, the party frame's phase symbol):
+-- "here" no mark, "apart" another layer (sharding), nil when the game tells nothing; and whether the group shows
+-- it in the own zone (true), in another (false) or nobody knows (nil).
+function SW._hostMark(name)
+    local unit = memberUnit(name)
+    if not unit then return nil, nil end
+    local zoneHere
+    local api = rawget(_G, "C_Map")
+    if type(api) == "table" and type(api.GetBestMapForUnit) == "function" then
+        local ok1, a = pcall(api.GetBestMapForUnit, "player")
+        local ok2, b = pcall(api.GetBestMapForUnit, unit)
+        a, b = ok1 and tonumber(ns.Plain(a)) or nil, ok2 and tonumber(ns.Plain(b)) or nil
+        if a and b then zoneHere = a == b end
+    end
+    local f = rawget(_G, "UnitPhaseReason")
+    if type(f) ~= "function" then return nil, zoneHere end
+    local ok, r = pcall(f, unit)
+    if not ok then return nil, zoneHere end
+    if r == nil then return "here", zoneHere end
+    r = ns.Plain(r)
+    local sharding = Enum and Enum.PhaseReason and Enum.PhaseReason.Sharding or 1
+    if r == sharding then return "apart", zoneHere end
+    return nil, zoneHere
+end
+
+-- F-229: REFUSE_AFTER seconds into the helper's group without a move, the game's mark on the helper decides
+-- (only while the group shows it in the own zone; in another zone it is marked the same way and moves nobody).
+local function readMark(s)
+    if swap ~= s or s.changed or s.stuck or s.transferAt then return end
+    local mark, zoneHere = SW._hostMark(s.host)
+    if not mark then return end
+    local low = s.host:lower()
+    if zoneHere == false then
+        s.stuck, s.failed, s.elsewhere = true, true, true
+        trace.stuck = trace.stuck + 1
+        notMoved[low] = now()
+        note("elsewhere", s.host)
+        if SW.Leave(true) then ns.msg(L["%s war in einer anderen Zone und hat dich nicht bewegt: Amisia verlässt die Gruppe."]:format(s.host)) end
+        return
+    end
+    if zoneHere ~= true then return end
+    local private = LY.Private()
+    -- outside private numbers: a helper that answered with another layer and is now shown with us was moved over
+    local over = not private and mark == "here" and s.wanted and s.from and s.wanted ~= s.from
+    if mark == "apart" or over then
+        s.stuck, s.failed, s.refused = true, true, true
+        trace.refused = (trace.refused or 0) + 1
+        s.capBefore = SW._capSnapshot()
+        SW._capRefused()
+        note("refused", s.host)
+        if SW.Leave(true) then ns.msg(L["Das Spiel hat dich nicht bewegt (zehn Wechsel je Stunde): Amisia verlässt die Gruppe."]) end
+        return
+    end
+    if private and mark == "here" then
+        -- the helper stands with us: its number is our layer's too, unless ours came from a helper already
+        s.stuck, s.failed, s.sameMark = true, true, true
+        trace.stuck = trace.stuck + 1
+        local was = LY.Current()
+        if s.wanted and s.wanted ~= was and not LY.Taken() then LY.Take(s.map, s.wanted, s.zuid or 0, "same") end
+        notMoved[low] = now()
+        avoid[low] = { at = now(), uid = LY.Current() or was, keep = SW.MOVER_FOR }
+        note("same", s.host)
+        if SW.Leave(true) then ns.msg(L["%s stand auf deinem Layer: Amisia verlässt die Gruppe, kein Wechsel verbraucht."]:format(s.host)) end
+    end
 end
 
 -- F-221: every reading while the swap is judged: a creature of the old layer read after joining (each once).
@@ -1163,26 +1433,35 @@ LY.onRead = function(uid, map, guid)
     checkStuck(s)
 end
 
--- The change found: say it, hold Helfen on (the lock) and, with layer.autoLeave and only from a helper who
--- answered the ask, leave after layer.leaveSeconds. noLeave: the group is gone already.
+-- F-229: the group of a helper who answered the ask is left layer.leaveSeconds after the join once the game moved
+-- us, or that long after a later move (always; no setting since F-229).
+local function leaveLater(s)
+    if s.leaveAt or not s.answered then return end
+    local secs = tonumber(ns.Get("layer.leaveSeconds")) or 4
+    local t = now()
+    s.leaveAt = (t - s.at <= secs) and (s.at + secs) or (t + secs)
+    C_Timer.After(math.max(0, s.leaveAt - t), function()
+        if swap == s then SW.Leave(true) end
+    end)
+end
+
+-- The change found: say it and (F-229) leave the group of a helper who answered. noLeave: the group is gone already.
 local function changeDone(s, noLeave)
     s.changed, s.failed = now(), nil
     -- the search is over: "Weiter fragen" after the leave would say nobody answered
     auto = nil
     trace.changed = trace.changed + 1
-    startLock()
-    if s.wanted and s.target ~= s.wanted then
+    note("moved", s.host)
+    if LY.Private() then
+        ns.msg(L["Gewechselt auf einen anderen Layer."])
+    elseif s.wanted and s.target ~= s.wanted then
         ns.msg(L["Gewechselt, aber nicht auf den gewünschten Layer: %s"]:format(LY.Name(s.map, s.target)))
     else
         ns.msg(L["Gewechselt: %s"]:format(LY.Name(s.map, s.target)))
     end
     changed()
-    if noLeave or not ns.Get("layer.autoLeave") or not s.answered then return end
-    local secs = tonumber(ns.Get("layer.leaveSeconds")) or 4
-    s.leaveAt = now() + secs
-    C_Timer.After(secs, function()
-        if swap == s and ns.Get("layer.autoLeave") then SW.Leave(true) end
-    end)
+    if noLeave then return end
+    leaveLater(s)
 end
 
 -- Whether the layer read now is the change of s: another layer than before in the same zone (the one asked for,
@@ -1217,18 +1496,6 @@ local function checkChange()
     s.target = uid
     changeDone(s)
 end
--- F-221: SHARD_TRANSFER in the swap's group only marks the move; the new layer read decides.
-local function transferred()
-    local s = swap
-    if not s or s.changed or s.stuck or not inGroup() then return end
-    s.transferAt, s.moved = now(), true
-    changed()
-end
-ns.Listen("LAYER", function(what)
-    if what == "transfer" then transferred() end
-    checkChange()
-end)
-
 -- The group's leader (F-221): the real host after LEADER_WAIT; nil when none can be read.
 local function leaderName()
     for i = 1, 4 do
@@ -1241,6 +1508,38 @@ local function leaderName()
     end
     return nil
 end
+
+-- F-221: SHARD_TRANSFER in the swap's group marks the move. F-229: the first move as a guest counts for the game's
+-- hour; the helper's answered number (from the own zone, not the layer left) is taken for the new layer at once
+-- (LY.Take "host"), and the group is left layer.leaveSeconds after the join.
+local function transferred()
+    local s = swap
+    -- a move that comes just after a verdict of refusal: the game did move us after all, the hold goes back
+    if s and s.refused and s.capBefore ~= nil and not s.counted and now() - s.at <= SW.REFUSE_AFTER + SW.LATE_MOVE then
+        SW._capRestore(s.capBefore)
+        s.capBefore, s.refused, s.stuck, s.failed = nil, nil, nil, nil
+    end
+    if not s or s.changed or s.stuck or not inGroup() then return end
+    s.transferAt, s.moved = now(), true
+    if not s.counted then
+        s.counted = true
+        SW._capMoved()
+    end
+    -- the game moves us to the leader's layer: the answer counts only when the leader is the one who answered
+    local lead = leaderName()
+    if s.wanted and s.wanted ~= s.from and s.map == LY.Map() and (not lead or lead:lower() == s.answerer:lower()) then
+        LY.Take(s.map, s.wanted, s.zuid or 0, "host")
+    end
+    leaveLater(s)
+    changed()
+end
+-- F-229: for LY.SaveOwn: in a helper's group before the game's move (the move may come while the interface reloads)
+LY.Between = function() return swap ~= nil and not swap.transferAt and not swap.stuck end
+ns.Listen("LAYER", function(what)
+    if what == "transfer" then transferred() end
+    checkChange()
+end)
+
 
 -- The swap's judging: scans at JUDGE_STEPS, then every JUDGE_EVERY seconds until CHANGE_WAIT.
 local function judge(s)
@@ -1259,11 +1558,12 @@ local function judge(s)
         C_Timer.After(SW.JUDGE_EVERY, every)
     end
     C_Timer.After(last + SW.JUDGE_EVERY, every)
+    C_Timer.After(SW.REFUSE_AFTER, function() readMark(s) end)
     C_Timer.After(SW.LEADER_WAIT, function()
         if swap ~= s then return end
         local lead = leaderName()
         if lead and lead:lower() ~= s.host:lower() then
-            s.host = lead
+            s.host, s.lead = lead, lead
             changed()
         end
     end)
@@ -1312,12 +1612,6 @@ local function setLoot()
     pcall(set, ffa ~= nil and api and set == api.SetLootMethod and ffa or "freeforall")
 end
 
--- F-221: a /reload or logout in the host's group with the verdict open counts as a swap that worked (the lock).
-ns.OnEvent("PLAYER_LOGOUT", function()
-    local s = swap
-    if s and not s.changed and not s.failed and not s.unknown then startLock() end
-end)
-
 ns.OnEvent("GROUP_ROSTER_UPDATE", function()
     local t = now()
     if not inGroup() then lootDone, lootWas, lootBack = nil, nil, nil end
@@ -1360,7 +1654,8 @@ ns.OnEvent("GROUP_ROSTER_UPDATE", function()
     setLoot()
     local p = pending
     if not swap and p and inGroup() and t - p.at <= SW.ACCEPT_WAIT + 30 and ns.InMyGroup(p.name) then
-        local s = { host = p.name, map = p.map, from = p.from, wanted = p.uid, at = t, answered = p.answered, fresh = {}, freshN = 0 }
+        local s = { host = p.name, answerer = p.name, map = p.map, from = p.from, wanted = p.uid, zuid = p.zuid, at = t,
+            answered = p.answered, fresh = {}, freshN = 0 }
         if p.accepted then trace.accept.joined = trace.accept.joined + 1 end
         swap, pending, chatAt, chatAll, zone, afterGroup = s, nil, nil, nil, nil, nil
         if ns.LayerForeign and ns.LayerForeign.StopAsks then ns.LayerForeign.StopAsks() end
@@ -1717,7 +2012,7 @@ function SW._sendZone(z, names, full)
         local quiet = askedAt(low) ~= nil
         local resting = gone[low] and t - gone[low] < SW.GONE_FOR
         local av = avoid[low]
-        local avoided = av and t - av.at < SW.AVOID_FOR and av.uid == mine
+        local avoided = av and t - av.at < (av.keep or SW.AVOID_FOR) and av.uid == mine
         if not z.sent[low] and not isMe(name) and not resting and not avoided and (known or not quiet) then
             local x = { name = name, low = low, helper = known and e and e.h == 1 or false, amisia = at >= cut }
             if not (ns.InGuild() and ns.GuildMember(name)) then
@@ -1774,7 +2069,7 @@ function SW._foreignAnswer(name, uid, zuid, helps, same)
     rememberHost(name, true, helps or same)
     z.answered = z.answered or {}
     local other = uid ~= nil and uid ~= req.uid
-    z.answered[low] = { name = name, uid = uid, helps = helps or same, at = now() }
+    z.answered[low] = { name = name, uid = uid, zuid = (not same) and zuid or nil, helps = helps or same, at = now() }
     if not z.heard[low] then
         z.heard[low] = true
         z.heardN = z.heardN + 1
@@ -1798,11 +2093,11 @@ function SW._foreignInviter(name)
 end
 
 -- F-220: the open search for the other layer addon's ask (Gear/LayerForeign.lua): zone search, question, the
--- layer target of a row's click, the layers "Nur neue Layer" leaves out (their uids).
+-- layer target of a row's click.
 function SW._search()
     local z, a = zone, auto
     if not z or not req or z.req ~= req then return nil end
-    return z, req, a and a.req == req and a.target or nil, a and a.req == req and a.recent or nil
+    return z, req, a and a.req == req and a.target or nil
 end
 
 -- The self-test's probe (F-216, /amisia selbsttest layer, typed: a key press): one /who of the zone, whether the
@@ -1924,7 +2219,7 @@ ns.CommOn("ZQ", function(sender, f, chan)
     local known = mine ~= nil and myMap == map
     -- a player outside the guild only with "Auch Spielern außerhalb der Gilde helfen" (layer.others)
     local member = ns.GuildMember(name) ~= nil
-    local helps = known and mine ~= uid and SW.CanHelp() and ns.Get("layer.answer") and not asking() and SW.CanInvite()
+    local helps = known and not LY.Ours(uid) and SW.CanHelp() and ns.Get("layer.answer") and not asking() and SW.CanInvite()
         and (member or ns.Get("layer.others") == true)
     local low = name:lower()
     if helps then SW._answered(low, { id = id, map = map, uid = mine, at = t, stranger = true, name = name }) end
@@ -1998,21 +2293,19 @@ function SW.Stop()
     return true
 end
 
--- The pick's clock: no fitting answer within ANSWER_WAIT means "none" unless (F-221) a helper of another layer
--- answered, the asks still go out or the guild is still to be asked: then the search waits up to REQ_LIFE.
+-- The search's clock (F-229): no invite within INVITE_WAIT seconds ends it ("none"; the asks still waiting are
+-- dropped), unless a pick is running or the /who answer is still awaited. An invite that comes later still counts.
 local function armNone(a)
     local function check()
         if auto ~= a or a.picked or a.none or pending or swap then return end
-        if a.picking then return C_Timer.After(SW.PICK_WAIT, check) end
         local z = zone
-        local LF = ns.LayerForeign
-        local busy = z and z.req == a.req and ((z.other or 0) > 0 or z.waiting or z.guildDue or (LF and LF.Busy and LF.Busy()))
-        if busy and now() - a.req.at < SW.REQ_LIFE then return C_Timer.After(5, check) end
+        if (a.picking or (z and z.req == a.req and z.waiting)) and now() - a.req.at < SW.REQ_LIFE then return C_Timer.After(1, check) end
         a.none = true
+        local LF = ns.LayerForeign
         if LF and LF.StopAsks then LF.StopAsks() end
-        changed()
+        note("none")
     end
-    C_Timer.After(SW.ANSWER_WAIT, check)
+    C_Timer.After(SW.INVITE_WAIT, check)
 end
 
 -- The pick PICK_WAIT after the first fitting answer: the invite of the first answer in SW.Answers' order
@@ -2024,7 +2317,7 @@ function SW._pick(a)
     local t, mine = now(), LY.Current()
     for _, x in ipairs(SW.Answers()) do
         local av = avoid[x.name:lower()]
-        if (not a.target or x.uid == a.target) and not (a.recent and a.recent[x.uid]) and not (av and t - av.at < SW.AVOID_FOR and av.uid == mine) then
+        if (not a.target or x.uid == a.target) and not (av and t - av.at < (av.keep or SW.AVOID_FOR) and av.uid == mine) then
             a.picked = true
             local ok, why = SW.RequestInvite(x.name)
             if not ok and why then ns.msg(why) end
@@ -2036,13 +2329,16 @@ function SW._pick(a)
 end
 
 -- "Layer wechseln" (target nil) or a click on a layer's row (target its server part). Returns true, or nil
--- and the reason.
--- onlyNew (or layer.onlyNew): only layers nobody saw in this zone within NEW_AGE. Inside a click (the zone's
--- /who needs one); every search asks one /who, the next search the next class.
-function SW.Swap(target, onlyNew)
+-- and the reason. Inside a click (the zone's /who needs one); every search asks one /who, the next search the next
+-- class. F-229: never in a fight and COMBAT_REST seconds after it, dead, on a flight path, or with the hour's moves
+-- used up (SW.Blocked); no row where the numbers are private.
+function SW.Swap(target)
     target = tonumber(target)
     local step = SW.SwapStep()
     if step == "leave" or step == "leaveAsk" or step == "stop" then return nil, L["Ein Layer-Wechsel läuft schon."] end
+    local blockedWhy = SW.Blocked()
+    if blockedWhy then return nil, blockedWhy end
+    if target and LY.Private() then target = nil end
     if step == "channel" and (not target or (not ns.InGuild() and not SW.ZonePossible())) then
         auto, zone = nil, nil
         return SW.AskChannel()
@@ -2056,23 +2352,15 @@ function SW.Swap(target, onlyNew)
         ok, why = askAlone()
         if not ok then return nil, why end
     end
-    local recent
-    if onlyNew or ns.Get("layer.onlyNew") then
-        recent = {}
-        for _, e in ipairs(LY.List(req.map)) do
-            if e.age < SW.NEW_AGE then recent[e.uid] = true end
-        end
-    end
-    local a = { req = req, target = target, recent = recent }
+    local a = { req = req, target = target }
     auto = a
     zone = nil
-    warning = nil
+    warning, event = nil, nil
     if zoneOk then
         zone = { req = req, sent = {}, heard = {}, heardN = 0, reached = 0, hosts = 0, other = 0, same = 0 }
         local okZ, whyZ = SW.AskZone()
         if not okZ and whyZ then ns.msg(whyZ) end
     end
-    holdForAsk()
     armNone(a)
     changed()
     return true
@@ -2103,7 +2391,8 @@ function SW.State()
         chat = open or nil, chatAll = open and chatAll or nil, auto = a, step = SW.SwapStep(),
         hosting = hosting, helped = helped, zone = z, zoneNext = SW.ZoneNext(), helping = SW.CanHelp(),
         pause = SW.InviteBreak(), refresh = LY.RefreshText and LY.RefreshText() or nil,
-        lock = SW.LockLeft(), why = SW.PauseReason(), notice = SW.Notice(), warning = SW.Warning(), age = SW.AskAge() }
+        why = SW.PauseReason(), warning = SW.Warning(), age = SW.AskAge(), event = SW.Event(), cap = SW.CapLeft(),
+        capUsed = SW.CapUsed(), blocked = SW.Blocked() }
 end
 
 -- for the tests and the UI scene: st = { req, pending, swap } to start from (nil: nothing open); a login: Helfen on
@@ -2113,13 +2402,11 @@ function SW._reset(st)
     chatAll, othersAt, lastCall, trace = st.chatAll, nil, nil, newTrace()
     hosting, helped, auto, question = true, { asked = 0, invited = 0, joined = 0 }, nil, nil
     zone, whoBlocked, lootBlocked, lootDone, silentMem, zqAt, probe = nil, nil, nil, nil, {}, {}, nil
-    notice, warning, offAt, lastInviteAt, lootWas, lootBack, afterGroup = nil, nil, nil, nil, nil, nil, nil
+    warning, offAt, lastInviteAt, lootWas, lootBack, afterGroup = nil, nil, nil, nil, nil, nil
     gone, avoid, notMoved, whoRound, noMap = {}, {}, {}, 0, nil
+    fighting, foughtAt, event = nil, nil, nil
+    -- the hour's count stays (a login keeps it, F-229)
     if type(AmisiaDB) == "table" then AmisiaDB.layerHelp, AmisiaDB.layerAsked, askedN = nil, nil, nil end
-    if helpTicker then
-        helpTicker:Cancel()
-        helpTicker = nil
-    end
     if next(muted) ~= nil then unmute() end
 end
 
@@ -2128,6 +2415,7 @@ local function loaded()
     if type(AmisiaDB) ~= "table" then return end
     SW.LoadedHosts(AmisiaDB)
     SW.LoadedAsked(AmisiaDB)
+    SW.LoadedCap(AmisiaDB)
     loadHelp()
 end
 loaded()

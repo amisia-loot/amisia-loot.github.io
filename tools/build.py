@@ -455,13 +455,15 @@ def check_utf8(root=ROOT):
 
 
 def check_toc(root=ROOT):
-    """Each folder's TOC lists only files that exist, every .lua and .xml of the folder is in it, a path
+    """Each folder's TOC lists only files that exist, every .lua and .xml of the folder is in it (but the client's
+    own Bindings.xml), a path
     stands in one folder only, the classic TOCs are current and the modules carry the core's version."""
     bad, seen = [], {}
     version = toc_version(root)
     for folder in addon_folders(root):
         listed = toc_files(root, folder)
-        have = [f for f in addon_files(root, folder) if f.endswith(('.lua', '.xml'))]
+        # Bindings.xml (F-229, the key bindings) is read by the client by itself and must not stand in the TOC
+        have = [f for f in addon_files(root, folder) if f.endswith(('.lua', '.xml')) and f != 'Bindings.xml']
         pre = '' if folder == ADDON_REL else folder + '/'
         bad += [f'{pre}{f}: in the TOC, but no such file' for f in listed if f not in have]
         bad += [f'{pre}{f}: not in the TOC' for f in have if f not in listed]

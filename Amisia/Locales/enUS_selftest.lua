@@ -585,4 +585,16 @@ L["Wer-Abfrage"] = "Who query"
 L["Nachlesen"] = "rescans"
 L["wartet: %s"] = "waiting: %s"
 L["Dein Status zu diesem Termin ist nicht lesbar: die Prüfung schreibt nichts."] = "Your status for this event cannot be read: the check writes nothing."
+
+-- F-229: layer after game build 71037
+L["%d Kreaturen, %d Nummern: seit Build 71037 trägt jede Kreatur ihre eigene (erwartet)"] = "%d creatures, %d numbers: since build 71037 every creature carries its own (expected)"
+L["%d von %d"] = "%d of %d"
+L["Build %s, eigene Nummern: %s, eigene Nummer von einem Helfer: %s"] = "Build %s, own numbers: %s, own number from a helper: %s"
+L["Eigene Nummern je Kreatur"] = "A number of its own per creature"
+L["Phasen-Zeichen der Gruppe"] = "Phase marks of the group"
+L["Phasen-Zeichen, Kampf, Tod, Flug"] = "Phase marks, combat, death, flight"
+L["Wechsel in dieser Stunde"] = "Swaps this hour"
+L["andere Zone"] = "another zone"
+L["bei dir"] = "with you"
+L["nicht in einer Gruppe"] = "not in a group"
 end)

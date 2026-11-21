@@ -71,7 +71,7 @@ C(A, [[AmisiaDB.layerHosts = { ["kai lindner"] = time() }
 assert(C(A, "return NS.LayerChange.Swap()") == true)
 C(A, "STUB.fire('WHO_LIST_UPDATE')")
 BUS.tick(1)
-local ask = "inv layer <LS 1429 not 4012-5250 48.2,42.5>"
+local ask = "inv layer <LS 1429 not 4012-5250 r2 48.2,42.5>"
 for _, n in ipairs({ U, "Ole Fremd", "Pia Weit", "Rolf Leer" }) do
     local t = sentTo(A, n)
     assert(#t == 1 and t[1] == ask, n .. ": " .. tostring(t[1]))
@@ -95,13 +95,11 @@ local z = C(A, "NS.LayerChange.State().zone")
 assert(z.reached == 5 and z.heardN == 5 and z.hosts == 4 and z.other == 2, ("%d %d %d %d"):format(z.reached, z.heardN, z.hosts, z.other))
 C(A, "NS.LayerWindow.Show()")
 assert(C(A, "AmisiaLayerFrame.zone:GetText()") == "Erreicht: 5 · gehört: 5 · auf anderem Layer: 2", C(A, "AmisiaLayerFrame.zone:GetText()"))
--- F-221: the ask without a layer goes in rounds 3 s and 10 s after the burst; the first waits while a helper of
--- another layer answered
+-- F-221, F-229: the ask without a layer goes in rounds 1 s and 4 s after the burst (the first waits while a helper of
+-- another layer answered); a helper that answers after them gets it
 BUS.tick(4)
-assert(#sentTo(A, "Rolf Leer") == 1, "not in the first round: helpers of another layer answered")
-BUS.tick(6)
 local re = sentTo(A, "Rolf Leer")
-assert(#re == 2 and re[2] == "inv layer <LS 1429 48.2,42.5>", "the helper without a layer gets the ask without one: " .. tostring(re[2]))
+assert(#re == 2 and re[2] == "inv layer <LS 1429 r2 48.2,42.5>", "the helper without a layer gets the ask without one: " .. tostring(re[2]))
 assert(#sentTo(A, "Ole Fremd") == 1, "once per name")
 local hosts = C(A, "AmisiaDB.layerHosts")
 assert(hosts["udo fremd"].t < 0 and hosts["ole fremd"].t < 0 and hosts["kai lindner"].t > 0 and not hosts["zoe niemand"], "answerers kept")
@@ -118,21 +116,22 @@ assert(C(A, "ACCEPTED") == 0, "a helper on the own layer: not accepted")
 assert(C(A, "NS.LayerWindow.StatusText(NS.LayerChange.State())") == "Pia Weit ist auf deinem Layer: ablehnen und warten.")
 C(A, [[STUB.fire("PARTY_INVITE_REQUEST", "Udo Fremd")]])
 assert(C(A, "ACCEPTED") == 1 and C(A, "NS.LayerChange.State().pending.foreign") == true, "Udo answered: accepted")
--- 5. the group; F-221: SHARD_TRANSFER alone is no success, the new layer read is; Amisia leaves 4 s after it
+-- 5. the group; F-229: at SHARD_TRANSFER the helper's answered layer (3999-5250 from the own zone) is the new one at
+-- once; the move counts for the game's hour; Amisia leaves 4 s after the join
 BUS.setRaid({ U, A })
 C(A, "STUB.party = true; STUB.fire('GROUP_ROSTER_UPDATE')")
 assert(C(A, "NS.LayerChange.State().swap.host") == U)
+BUS.tick(1)
 C(A, "STUB.fire('SHARD_TRANSFER')")
-assert(C(A, "NS.LayerChange.State().swap.changed") == nil and C(A, "NS.LayerChange.State().swap.moved") == true
-    and C(A, "NS.Layer.Current()") == nil, "moved; the layer to be read again")
-assert(C(A, "NS.LayerWindow.StatusText(NS.LayerChange.State())"):find("bewegt", 1, true))
+assert(C(A, "NS.LayerChange.State().swap.changed ~= nil") and C(A, "NS.Layer.Current()") == 3999
+    and C(A, "NS.Layer.CurrentWire()") == "3999-5250" and C(A, "NS.Layer.Taken()") == true, "the helper's word: changed at once")
+assert(C(A, "NS.LayerChange.CapUsed()") == 1, "one move of the hour")
 C(A, "STUB.fire('PLAYER_TARGET_CHANGED')")
-assert(C(A, "NS.Layer.Current()") == nil, "the old layer's creature in view does not count")
-C(A, ([[STUB.targetGUID = "%s"; STUB.fire("PLAYER_TARGET_CHANGED")]]):format(guid(3999, 5, "0B1")))
-C(A, ([[STUB.targetGUID = "%s"; STUB.fire("PLAYER_TARGET_CHANGED")]]):format(guid(3999, 6, "0B2")))
-assert(C(A, "NS.LayerChange.State().swap.changed ~= nil"), "the new layer read: changed")
-BUS.tick(5)
-assert(C(A, "LEFT") == 1, "left 4 s after the change")
+assert(C(A, "NS.Layer.Current()") == 3999, "the old layer's creature in view does not count")
+BUS.tick(2)
+assert(C(A, "LEFT") == 0, "not before 4 s after the join")
+BUS.tick(2)
+assert(C(A, "LEFT") == 1, "left 4 s after the join")
 C(A, "STUB.party = nil; STUB.roster = {}; STUB.fire('GROUP_ROSTER_UPDATE')")
 BUS.setRaid({})
 

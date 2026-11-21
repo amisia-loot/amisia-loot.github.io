@@ -96,11 +96,10 @@ assert(C(U, "#LOOT") == 2)
 -- the change (three creatures of the new layer, F-221), then leaving after 4 s by itself (Udo answered the ask)
 for i = 1, 3 do C(A, [[STUB.targetGUID = "]] .. guid(3999, 6 + i, "0C" .. i) .. [["; STUB.fire("PLAYER_TARGET_CHANGED")]]) end
 assert(C(A, "NS.LayerChange.State().swap.changed ~= nil"))
-assert(C(A, "NS.LayerChange.LockLeft()") == 240, "Helfen held on for four minutes")
 BUS.tick(3)
 assert(C(A, "LEFT") == 0)
 BUS.tick(2)
-assert(C(A, "LEFT") == 1, "left 4 s after the change")
+assert(C(A, "LEFT") == 1, "left 4 s after the join (F-229)")
 for _, n in ipairs({ A, U }) do C(n, "STUB.party = nil; STUB.roster = {}; STUB.fire('GROUP_ROSTER_UPDATE')") end
 BUS.setRaid({})
 C(U, "STUB.leader = false")
@@ -108,7 +107,7 @@ local hosts = C(A, "AmisiaDB.layerHosts")
 assert(hosts["udo fremd"] and hosts["kai lindner"] and hosts["lena kraus"] and not hosts["pia offline"], "who answered is kept")
 
 -- 2. nobody helps: no answer from another layer, the next search asks the next class (F-221: one /who per search,
--- the map and a class; who did not answer within 6 h is not asked again, kept through /reload)
+-- the map and a class; who did not answer within 15 minutes (F-229) is not asked again, kept through /reload)
 C(A, "NS.LayerChange._reset(); WHO = {}")
 C(A, [[STUB.fire("ZONE_CHANGED_NEW_AREA"); STUB.targetGUID = "]] .. guid(4012, 8, "0D1") .. [["; STUB.fire("PLAYER_TARGET_CHANGED")]])
 C(A, [[STUB.targetGUID = "]] .. guid(4012, 9, "0D2") .. [["; STUB.fire("PLAYER_TARGET_CHANGED")]])
@@ -133,7 +132,7 @@ assert(C(A, "return NS.LayerChange.Swap()") == true)
 assert(C(A, "WHO[2]") == 'z-"Wald von Elwynn"' and C(A, "WHOF[2].classIDs[1]") == 1, tostring(C(A, "WHO[2]")))
 C(A, everyone .. "; STUB.fire('WHO_LIST_UPDATE')")
 BUS.tick(1)
-assert(BUS.count({ kind = "ZQ", sender = A, target = "Pia Offline" }) == toPia, "not asked again within 6 h")
+assert(BUS.count({ kind = "ZQ", sender = A, target = "Pia Offline" }) == toPia, "not asked again within 15 minutes")
 assert(BUS.count({ kind = "ZQ", sender = A, target = K }) == 3, "who answered is asked again")
 assert(C(A, "return NS.LayerChange.Stop()") == true and C(A, "NS.LayerChange.State().zone") == nil, "Stopp ends the search")
 -- the map filter refused: the zone by name with the client's zone word and level bands
@@ -221,8 +220,6 @@ assert(C(A, "NS.LayerWindow.Command('helfen')") == "host" and C(A, "NS.LayerChan
 assert(C(A, "NS.LayerWindow.Command('swap z')") == "unknown")
 assert(C(A, "NS.LayerWindow.Command('kick')") == "kick")
 assert(C(A, "NS.LayerWindow.Command('quatsch')") == "help")
-BUS.tick(11)
-assert(C(A, "NS.LayerWindow.Command('swap neu')") == "swap-new" and C(A, "NS.LayerChange.State().auto.recent") ~= nil)
 
 -- 8. the saved list cleaned on load: old, bad and too many go
 C(A, [[local db = { layerHosts = { ["alt"] = time() - 8 * 86400, ["neu"] = time(), [""] = time(), ["x|y"] = time(), ["zahl"] = "x" } }

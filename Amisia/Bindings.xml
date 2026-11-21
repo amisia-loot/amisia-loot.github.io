@@ -1,0 +1,7 @@
+<Bindings>
+	<!-- F-229: "Layer wechseln" on a key of the player's choice (Tastenbelegung, AddOns, Amisia); the function is
+	     set by Gear/LayerWindow.lua (WoW Forever only), so the key does nothing on the other clients. -->
+	<Binding name="AMISIA_LAYER_SWAP" header="AMISIA" category="ADDONS">
+		if AmisiaLayerKey then AmisiaLayerKey() end
+	</Binding>
+</Bindings>

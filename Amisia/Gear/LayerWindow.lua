@@ -36,6 +36,12 @@
 -- (layer.bar, on; its place settings.layerBar): line 1 the layer, line 2 the state (LW.MiniSub); a click opens or
 -- closes the window, a right click on its symbol the layers of the zone (LW.MiniMenu), elsewhere it hides the bar
 -- (layer.bar off). /amisia layer an, aus, status.
+-- F-229 (D-159): no lock on "Helfen" any more. The red button says why no ask goes ("Warten 12:34" for the game's
+-- hourly limit, "Im Kampf", "Kampf 0:04", "Tot", "Im Flug"; disabled) and counts the last moves of the hour
+-- ("Layer wechseln (noch 3)"). Where the numbers are private (LY.Private) the list "Gesehen in dieser Zone" is
+-- gone; in its place the event field (SW.Event): a symbol, a heading in its colour with a time at the right, a few
+-- lines and the hour's moves as ten squares, empty while nothing happens. The key binding "Layer wechseln"
+-- (Bindings.xml of the core, AmisiaLayerKey) presses the red button.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -202,6 +208,26 @@ local function build()
     F.seen = {}
     for i = 1, S.ROWS do F.seen[i] = buildSeen() end
     F.more = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD)
+    -- F-229: the event field
+    F.ev = CreateFrame("Frame", nil, F)
+    F.ev:SetWidth(S.W - 2 * S.PAD)
+    F.ev.icon = F.ev:CreateTexture(nil, "ARTWORK")
+    F.ev.icon:SetSize(S.EV_ICON, S.EV_ICON)
+    F.ev.icon:SetPoint("TOPLEFT", 0, 0)
+    F.ev.head = W.Text(F.ev, T.FONT.head, S.W - 2 * S.PAD - S.EV_TEXT_X - S.EV_TAG_W)
+    F.ev.head:SetPoint("TOPLEFT", S.EV_TEXT_X, 0)
+    F.ev.tag = W.Text(F.ev, T.FONT.head, S.EV_TAG_W)
+    F.ev.tag:SetPoint("TOPRIGHT", 0, 0)
+    F.ev.tag:SetJustifyH("RIGHT")
+    F.ev.body = W.Text(F.ev, T.FONT.hint, S.W - 2 * S.PAD - S.EV_TEXT_X, true)
+    F.ev.body:SetJustifyV("TOP")
+    F.ev.pips = {}
+    for i = 1, S.EV_PIPS do
+        local pip = F.ev:CreateTexture(nil, "ARTWORK")
+        pip:SetSize(S.EV_PIP, S.EV_PIP)
+        F.ev.pips[i] = pip
+    end
+    F.ev:Hide()
     F.guildRow = buildAskRow(T.TAB_ICONS.guild, L["Im Gildenchat fragen"], L["Der Gildenchat erreicht jeden Layer."],
         L["Öffnet den Gildenchat mit deiner Bitte (Einstellung \"Text für Im Gildenchat fragen\"); du schickst sie mit Enter ab. So erreichst du Gildenmitglieder mit anderen Layer-Addons. Eine Minute lang nimmt Amisia dann die Einladung eines Gildenmitglieds an."],
         function() return SW.AskChat() end)
@@ -212,13 +238,12 @@ local function build()
         say(SW.Press())
         LW.Refresh()
     end)
-    W.Tooltip(F.swap, L["Layer wechseln"], L["Fragt die Spieler der Zone und die Gilde, wer auf einem anderen Layer ist und dich einladen kann; die erste Einladung bringt dich hinüber. Während die Frage läuft, stoppt ein Klick sie; in der Gruppe des Helfers verlässt ein Klick die Gruppe. Solange du fragst und vier Minuten nach einem gelungenen Wechsel hilfst du selbst. Nur wer allein ist, kann eingeladen werden."])
+    W.Tooltip(F.swap, L["Layer wechseln"], L["Fragt die Spieler der Zone und die Gilde, wer auf einem anderen Layer ist und dich einladen kann; die erste Einladung bringt dich hinüber, nach 8 Sekunden ohne Einladung endet die Frage. Während die Frage läuft, stoppt ein Klick sie; in der Gruppe des Helfers verlässt ein Klick die Gruppe. Nicht im Kampf, tot oder im Flug; das Spiel erlaubt zehn Wechsel je Stunde. Nur wer allein ist, kann eingeladen werden. Eine Taste dafür: Tastenbelegung, AddOns, Amisia."])
     F.host = W.Button(F, L["Helfen: AN"], S.BTN_W, function()
-        -- a refused "off" says why in the grey line (SW.Notice)
         SW.SetHosting(not SW.Hosting())
         LW.Refresh()
     end)
-    W.Tooltip(F.host, L["Helfen"], L["An: Amisia beantwortet Layer-Fragen und lädt Fragende ein, wie unter Einstellungen, Gilde, Layer eingestellt. Aus: Amisia antwortet niemandem und lädt niemanden ein, bis du es wieder anschaltest oder dich neu einloggst; über /reload bleibt es aus. Solange du selbst fragst und vier Minuten nach deinem Wechsel bleibt es an."])
+    W.Tooltip(F.host, L["Helfen"], L["An: Amisia beantwortet Layer-Fragen und lädt Fragende ein, wie unter Einstellungen, Gilde, Layer eingestellt. Aus: Amisia antwortet niemandem und lädt niemanden ein, bis du es wieder anschaltest oder dich neu einloggst; über /reload bleibt es aus."])
     F.hostInfo = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD, true)
     F.hostInfo:SetJustifyV("TOP")
     F.helped = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD, true)
@@ -234,8 +259,8 @@ local function build()
     local acc = 0
     F:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate LayerWindow", function(_, elapsed)
         acc = acc + (elapsed or 0)
-        -- the world restart's countdown, the lock's clock and a running search every second
-        if acc < ((LY.Refresh() or SW.LockLeft() or SW.OwnAsk()) and 1 or S.TICK) then return end
+        -- the world restart's countdown, a running search and (F-229) a wait every second
+        if acc < (LW.Ticking() and 1 or S.TICK) then return end
         acc = 0
         LW.Refresh()
     end))
@@ -252,30 +277,48 @@ function LW.SubText(uid, zone)
     return L["Kennung %s"]:format(tostring(uid))
 end
 
+-- Whether the window and the bar count every second: the world restart, a running search, a wait (F-229).
+function LW.Ticking()
+    return (LY.Refresh() or SW.OwnAsk() or SW.CapLeft() > 0 or SW.FightLeft()) and true or false
+end
+
 -- The red button's word for SW.SwapStep's step (with nextClass: what another search asks; age: seconds the
--- running search has run), and whether it is enabled (F-221: "Suche stoppen" from its first second on).
-function LW.SwapLabel(step, nextClass, age)
+-- running search has run), and whether it is enabled (F-221: "Suche stoppen" from its first second on). F-229:
+-- st (SW.State, optional): why no ask may go now, and the moves left in the hour.
+function LW.SwapLabel(step, nextClass, age, st)
     if step == "stop" then return L["Suche stoppen"], (age or SW.STOP_GUARD) >= SW.STOP_GUARD end
     if step == "leave" then return L["Gruppe verlassen"], true end
     if step == "leaveAsk" then return L["Verlassen und neu fragen"], true end
+    if st and st.blocked then
+        local _, kind = SW.Blocked()
+        if kind == "cap" then return L["Warten %s"]:format(SW.Clock(SW.CapLeft())), false end
+        if kind == "fight" then
+            local left = SW.FightLeft()
+            if left == true then return L["Im Kampf"], false end
+            return L["Kampf %s"]:format(SW.Clock(left or 0)), false
+        end
+        if kind == "dead" then return L["Tot"], false end
+        if kind == "taxi" then return L["Im Flug"], false end
+    end
     if step == "more" and nextClass then return L["Weiter fragen: %s"]:format(nextClass), true end
     if step == "channel" then return L["Im Kanal fragen"], true end
+    local left = st and SW.CAP - (st.capUsed or 0)
+    if left and left > 0 and left <= SW.CAP_WARN and step ~= "busy" then
+        return L["Layer wechseln (noch %d)"]:format(left), true
+    end
     return L["Layer wechseln"], step ~= "busy"
 end
 
--- The word on "Helfen" (F-221): "AN 3:41" while the lock runs, "PAUSIERT" (grey) while it waits, "AN", "AUS".
+-- The word on "Helfen" (F-221): "PAUSIERT" (grey) while it waits, "AN", "AUS".
 function LW.HostLabel(st)
     if not st.hosting then return L["Helfen: AUS"] end
-    if st.lock then return L["Helfen: AN %s"]:format(SW.Clock(st.lock)) end
     if st.why then return GREY .. L["Helfen: PAUSIERT"] .. "|r" end
     return L["Helfen: AN"]
 end
 
 -- The grey line under the buttons: helping on or off, paused, or waiting out the invite limit (pause seconds);
--- refresh: the world restart's text (F-220); why: the pause's reason, notice: why "off" was refused, lock: the
--- seconds the lock holds it on (F-221).
-function LW.HostText(on, helping, pause, refresh, why, notice, lock)
-    if notice then return notice end
+-- refresh: the world restart's text (F-220); why: the pause's reason.
+function LW.HostText(on, helping, pause, refresh, why)
     if not on then return L["Helfen aus: Amisia antwortet niemandem und lädt niemanden ein, bis du es wieder anschaltest oder dich neu einloggst."] end
     if refresh then return L["%s: Helfen lädt bis nach dem Neustart der Welt niemanden ein."]:format(refresh) end
     if (tonumber(pause) or 0) > 0 then
@@ -283,7 +326,6 @@ function LW.HostText(on, helping, pause, refresh, why, notice, lock)
     end
     if why then return L["Helfen pausiert: %s."]:format(why) end
     if helping == false then return L["Helfen an, gerade pausiert (im Kampf oder in der Gruppensuche)."] end
-    if lock then return L["Helfen bleibt nach deinem Wechsel noch %s an, dann wie vorher."]:format(SW.Clock(lock)) end
     return L["Helfen an: Amisia lädt Fragende ein, wie unter Einstellungen, Gilde, Layer eingestellt. Aus gilt bis zum Ausloggen."]
 end
 
@@ -306,10 +348,15 @@ end
 function LW.StatusText(st)
     local s, p, r, a, z = st.swap, st.pending, st.req, st.auto, st.zone
     if s then
+        if s.changed and LY.Private() then return GREEN .. L["Gewechselt auf einen anderen Layer."] .. "|r", true end
         if s.changed then return GREEN .. L["Gewechselt: %s"]:format(LY.Name(s.map, s.target)) .. "|r", true end
+        if s.refused then return L["Das Spiel hat dich nicht bewegt (zehn Wechsel je Stunde)."], true end
+        if s.sameMark then return L["%s stand auf deinem Layer: kein Wechsel verbraucht."]:format(s.host), true end
+        if s.elsewhere then return L["%s war in einer anderen Zone: kein Wechsel."]:format(s.host), true end
         if s.failed then return L["Kein Wechsel: der Layer ist derselbe geblieben."], true end
         if s.unknown then return L["Dein Layer war vor der Anfrage unbekannt: ob du gewechselt hast, ist nicht zu sehen."], true end
         if s.moved then return L["Das Spiel hat dich bewegt; Amisia liest den neuen Layer ..."], true end
+        if LY.Private() then return L["In der Gruppe mit %s: das Spiel bewegt dich gleich ..."]:format(s.host), true end
         return L["In der Gruppe mit %s: ziele einen NPC an, sobald du gewechselt bist."]:format(s.host), true
     end
     if st.warning then return st.warning, false end
@@ -339,6 +386,8 @@ function LW.StatusText(st)
         end
         return L["Gefragt, warte auf Antworten ..."], false
     end
+    local blockedWhy = st.blocked
+    if blockedWhy then return blockedWhy, false end
     local ok, why = SW.CanAsk()
     -- without a guild the channel is the way: its reason would only name the guild
     if not ok and not ns.InGuild() then return L["Frag im Kanal: wer dich einlädt, bringt dich auf seinen Layer."], false end
@@ -351,6 +400,40 @@ local function textHeight(fs)
     local h = tonumber(fs:GetStringHeight()) or 0
     local lines = math.ceil((tonumber(fs:GetStringWidth()) or 0) / (S.W - 2 * S.PAD))
     return math.max(S.LINE_H, math.ceil(h), lines * S.LINE_H)
+end
+
+-- F-229: the event field at y (the list's place), filled from SW.Event's e; empty (hidden) while nothing happens.
+-- Returns the y under it.
+function LW.FillEvent(e, y)
+    local ev = F.ev
+    if not e then
+        ev:Hide()
+        return y
+    end
+    local col = S.EV_COL[e.col] or S.EV_COL.info
+    ev.icon:SetTexture(S.EV_TEX[e.col] or S.EV_TEX.info)
+    ev.head:SetText(col .. (e.head or "") .. "|r")
+    ev.tag:SetText(e.tag and (col .. e.tag .. "|r") or "")
+    ev.body:SetHeight(0)
+    ev.body:SetText(e.body or "")
+    ev.body:ClearAllPoints()
+    ev.body:SetPoint("TOPLEFT", S.EV_TEXT_X, -S.HEAD_H)
+    local h = textHeight(ev.body)
+    ev.body:SetHeight(h)
+    local pipY = -(S.HEAD_H + h + S.GAP / 2)
+    local used = tonumber(e.used) or 0
+    for i, pip in ipairs(ev.pips) do
+        local c = i <= used and S.EV_PIP_ON or S.EV_PIP_OFF
+        pip:SetColorTexture(c[1], c[2], c[3], c[4])
+        pip:ClearAllPoints()
+        pip:SetPoint("TOPLEFT", S.EV_TEXT_X + (i - 1) * (S.EV_PIP + S.EV_PIP_GAP), pipY)
+    end
+    local total = S.HEAD_H + h + S.GAP / 2 + S.EV_PIP
+    ev:SetHeight(total)
+    ev:ClearAllPoints()
+    ev:SetPoint("TOPLEFT", S.PAD, y)
+    ev:Show()
+    return y - total
 end
 
 function LW.Refresh()
@@ -373,8 +456,10 @@ function LW.Refresh()
     local y = -(S.TOP + S.HEAD_H + S.VALUE_H + S.LINE_H + S.GAP)
     F.seenHead:ClearAllPoints()
     F.seenHead:SetPoint("TOPLEFT", S.PAD, y)
-    y = y - S.HEAD_H
-    local list = inside and {} or LY.List(zone)
+    if not (LY.Private() and not inside) then y = y - S.HEAD_H end
+    -- F-229: where the numbers are private the event field takes the list's place
+    local private = LY.Private() and not inside
+    local list = (inside or private) and {} or LY.List(zone)
     local asked = st.step == "stop" and st.auto and st.auto.target or nil
     for i, r in ipairs(F.seen) do
         local e = list[i]
@@ -397,7 +482,7 @@ function LW.Refresh()
             r:Hide()
         end
     end
-    if inside then
+    if inside or private then
         F.more:SetText("")
     elseif #list == 0 then
         F.more:SetText(L["Noch keiner."])
@@ -412,9 +497,10 @@ function LW.Refresh()
         F.more:SetPoint("TOPLEFT", S.PAD, y)
         y = y - S.ROW_H
     end
+    if private then y = LW.FillEvent(st.event, y) else F.ev:Hide() end
     y = y - S.GAP
     local guild = ns.InGuild() and not inside
-    F.seenHead:SetShown(not inside)
+    F.seenHead:SetShown(not inside and not private)
     F.guildRow:SetShown(guild and true or false)
     if guild then
         F.guildRow:ClearAllPoints()
@@ -427,14 +513,14 @@ function LW.Refresh()
         F.channelRow:SetPoint("TOPLEFT", S.PAD, y)
         y = y - S.ASK_H - S.GAP
     end
-    local label, enabled = LW.SwapLabel(st.step, st.zoneNext, st.age)
+    local label, enabled = LW.SwapLabel(st.step, st.zoneNext, st.age, st)
     F.swap:SetText(label)
     if enabled and not (inside and st.step ~= "leave" and st.step ~= "leaveAsk") then F.swap:Enable() else F.swap:Disable() end
     F.host:SetText(LW.HostLabel(st))
     W.Row(F, { F.swap, F.host }, S.GAP, S.PAD, y)
     y = y - T.BUTTON_H - S.GAP
     F.hostInfo:SetHeight(0)
-    F.hostInfo:SetText(LW.HostText(st.hosting, st.helping, st.pause, st.refresh, st.why, st.notice, st.lock))
+    F.hostInfo:SetText(LW.HostText(st.hosting, st.helping, st.pause, st.refresh, st.why))
     F.hostInfo:ClearAllPoints()
     F.hostInfo:SetPoint("TOPLEFT", S.PAD, y)
     local h = textHeight(F.hostInfo)
@@ -581,8 +667,8 @@ local function buildMini()
     local acc = 0
     bar:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate LayerMiniBar", function(_, elapsed)
         acc = acc + (elapsed or 0)
-        -- the world restart's countdown (F-220), the lock's clock and a running search (F-221) every second
-        if acc < ((LY.Refresh() or SW.LockLeft() or SW.OwnAsk()) and 1 or S.TICK) then return end
+        -- the world restart's countdown (F-220), a running search (F-221) and a wait (F-229) every second
+        if acc < (LW.Ticking() and 1 or S.TICK) then return end
         acc = 0
         LW.UpdateMini()
     end))
@@ -595,7 +681,8 @@ end
 
 -- The bar's second line (F-221): the state. An own swap ("In der Gruppe des Helfers", "Verlasse in 4 s",
 -- "Gewechselt", "Kein Wechsel"), the request, the search ("Frage, 3 gehört"), the world restart, else helping:
--- "Helfen 3:41" (the lock), "Pausiert", "Helfen", "Helfen aus"; while the layer is unknown how to learn it.
+-- "Pausiert", "Helfen", "Helfen aus"; while the layer is unknown how to learn it. F-229: a wait ("Warten 12:34",
+-- "Kampf 0:04") before helping.
 function LW.MiniSub(known, _, st)
     st = st or {}
     local s, p = st.swap, st.pending
@@ -616,9 +703,12 @@ function LW.MiniSub(known, _, st)
     end
     -- F-220: the world restart counts down
     if st.refresh then return st.refresh end
+    if st.blocked then
+        local label = LW.SwapLabel("ask", nil, nil, st)
+        return label
+    end
     if not known then return L["Ziele einen NPC an."] end
     if not st.hosting then return L["Helfen aus"] end
-    if st.lock then return GREEN .. L["Helfen %s"]:format(SW.Clock(st.lock)) .. "|r" end
     if st.why then return L["Pausiert"] end
     return GREEN .. L["Helfen"] .. "|r"
 end
@@ -655,7 +745,7 @@ LW.StyleMini = styleMini
 -- stopping the search, helping, the window.
 function LW.MiniMenu()
     local st = SW.State()
-    local label, enabled = LW.SwapLabel(st.step, st.zoneNext, st.age)
+    local label, enabled = LW.SwapLabel(st.step, st.zoneNext, st.age, st)
     local out = { { label, enabled and function() say(SW.Press()) end or nil } }
     if st.step == "ask" or st.step == "more" or st.step == "channel" then
         for _, e in ipairs(LY.InInstance() and {} or LY.List()) do
@@ -827,26 +917,29 @@ function LW.StatusLines()
     end
     local help
     if not st.hosting then help = L["aus bis zum nächsten Einloggen"]
-    elseif st.lock then help = L["an, noch %s nach deinem Wechsel"]:format(SW.Clock(st.lock))
     elseif st.why then help = L["pausiert: %s"]:format(st.why)
     else help = L["an"] end
     out[#out + 1] = L["Helfen: %s"]:format(help)
     local h = st.helped
     out[#out + 1] = L["Geholfen: %d haben gefragt, %d eingeladen, %d gekommen."]:format(h.asked, h.invited, h.joined)
     out[#out + 1] = L["Frage: %s"]:format((LW.StatusText(st)))
+    -- F-229: the game's hourly limit
+    out[#out + 1] = L["Wechsel in dieser Stunde: %d von %d"]:format(st.capUsed or 0, SW.CAP)
+        .. ((st.cap or 0) > 0 and (" · " .. L["Warten %s"]:format(SW.Clock(st.cap))) or "")
     if st.refresh then out[#out + 1] = st.refresh end
     return out
 end
 
--- "/amisia layer <words>": nothing toggles the window; swap [<letter>|neu], gilde, stopp, an, aus, status, helfen,
--- kick (and the English words swap, new, guild, stop, on, off, host). Returns what it did for the tests.
+-- "/amisia layer <words>": nothing toggles the window; swap [<letter>], gilde, stopp, an, aus, status, helfen,
+-- kick (and the English words swap, guild, stop, on, off, host). Returns what it did for the tests. F-229: "neu"
+-- is gone, and where the numbers are private a letter asks for nothing.
 local WORDS = { swap = "swap", wechseln = "swap", gilde = "guild", guild = "guild", stopp = "stop", stop = "stop",
     helfen = "host", host = "host", kick = "kick", an = "on", on = "on", aus = "off", off = "off", status = "status" }
 function LW.Command(rest)
     local word, arg = tostring(rest or ""):lower():match("^%s*(%S*)%s*(%S*)")
     local what = WORDS[word or ""]
     if not what then
-        if word ~= "" then ns.msg(L["/amisia layer: swap [B|neu], gilde, stopp, an, aus, status, helfen, kick"]) return "help" end
+        if word ~= "" then ns.msg(L["/amisia layer: swap [B], gilde, stopp, an, aus, status, helfen, kick"]) return "help" end
         LW.Toggle()
         return "window"
     end
@@ -861,7 +954,10 @@ function LW.Command(rest)
         return what
     end
     if what == "swap" then
-        if arg == "neu" or arg == "new" then say(SW.Swap(nil, true)) return "swap-new" end -- l10n-ok: command words
+        if arg ~= "" and LY.Private() then
+            ns.msg(L["Layer wechseln bringt dich auf einen anderen Layer."])
+            return "private"
+        end
         if arg ~= "" then
             for _, e in ipairs(LY.List()) do
                 if e.letter:lower() == arg then say(SW.Swap(e.uid)) return "swap-" .. e.letter end
@@ -879,7 +975,17 @@ function LW.Command(rest)
     return "kick"
 end
 
+-- F-229: the key binding "Layer wechseln" (Bindings.xml of the core): a key press is a click for the game (the /who)
+_G.BINDING_HEADER_AMISIA = "Amisia"
+_G.BINDING_NAME_AMISIA_LAYER_SWAP = L["Layer wechseln"]
+_G.AmisiaLayerKey = function()
+    if LY.InInstance() then return end
+    say(SW.Press())
+    LW.Refresh()
+    LW.UpdateMini()
+end
+
 ns.RegisterSlash("layer", { desc = L["Fenster Layer: dein Layer in dieser Zone, Wechsel in Gilde, Zone und Kanal"], forever = true,
-    args = "[swap [B|neu]|gilde|stopp|an|aus|status|helfen|kick]", -- l10n-ok: command words
+    args = "[swap [B]|gilde|stopp|an|aus|status|helfen|kick]", -- l10n-ok: command words
     run = function(rest) LW.Command(rest) end })
 end)

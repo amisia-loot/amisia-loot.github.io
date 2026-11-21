@@ -1,7 +1,5 @@
--- F-221 (D-146): Amisia behaves as the other layer addon does. Helfen: an own ask turns it on while it runs, a
--- swap that worked holds it on for four minutes (per character, by the clock, never longer or anew, also after a
--- /reload in the host's group), an "off" meanwhile is refused with the window's line, afterwards it goes off
--- again when it was off; off stays through /reload, a real login turns it on; the pause on the button; open
+-- F-221 (D-146), F-229 (D-159): Amisia behaves as the other layer addon does. Helfen: off is off (no lock, no "on
+-- while the own ask runs"; an old forced "on" goes off at load); off stays through /reload, a real login turns it on; the pause on the button; open
 -- invites and a late accept. The layer: rescans after entering the world and for an ask. A swap: SHARD_TRANSFER
 -- alone is no success, a restart that kept the layer is "not moved", three old creatures after five seconds are
 -- "not moved" (leaving at 15 s), the real leader is the host, a verdict after the group ended, leaving only from
@@ -43,73 +41,48 @@ local function part()
     STUB.fire("GROUP_ROSTER_UPDATE")
 end
 
--- 1. Helfen off; an own ask turns it on while it runs; "off" is refused meanwhile; stopped, it goes off again
+-- 1. F-229: Helfen off stays off: an own ask does not turn it on, "off" is never refused
 assert(SW.Hosting() and select(2, SW.SetHosting(false)) == nil and not SW.Hosting())
 assert(AmisiaDB.layerHelp.off == true, "off is saved")
-assert(SW.AskChannel() == true and SW.Hosting(), "the own ask holds Helfen on")
-assert(AmisiaDB.layerHelp.forced == "Vuloo")
-local on, why = SW.SetHosting(false)
-assert(on == true and why == "Helfen bleibt an, solange du selbst fragst.", tostring(why))
+assert(SW.AskChannel() == true and not SW.Hosting(), "the own ask leaves Helfen off")
 assert(SW.Stop() == true)
-STUB.tick(1.1)
-assert(not SW.Hosting() and AmisiaDB.layerHelp.off == true and AmisiaDB.layerHelp.forced == nil, "off again after the ask")
+SW.SetHosting(true)
+assert(SW.AskChannel() == true and select(1, SW.SetHosting(false)) == false and not SW.Hosting(), "off during the own ask")
+SW.Stop()
 
--- 2. the swap that worked: four minutes on, a click on "off" refused with the window's line, then off again
+-- 2. a swap that worked holds nothing on; left 4 s after the join (the helper answered the ask)
 SW._reset({ pending = { name = "Anna Bergmann", uid = 3999, map = 1429, from = 4012, at = GetTime(), invited = GetTime(), answered = true } })
--- Helfen off (as after a /reload), then the request's own ask holds it on
 AmisiaDB.layerHelp = { off = true }
 SW._loaded()
 assert(not SW.Hosting())
-SW._holdForAsk()
-assert(SW.Hosting())
 join("Anna Bergmann")
 assert(SW.State().swap and SW.SwapStep() == "leave")
 read(3999); read(3999); read(3999)
-assert(SW.State().swap.changed and SW.LockLeft() == 240, "the lock: four minutes")
+assert(SW.State().swap.changed and not SW.Hosting(), "no lock: Helfen stays off")
 LW.Show()
-assert(AmisiaLayerFrame.host:GetText() == "Helfen: AN 4:00", AmisiaLayerFrame.host:GetText())
-STUB.tick(19)
-AmisiaLayerFrame.host:Click()
-assert(SW.Hosting() and AmisiaLayerFrame.hostInfo:GetText() == "Helfen bleibt noch 3:41 an.", AmisiaLayerFrame.hostInfo:GetText())
--- left 4 s after the change (the helper answered the ask)
+assert(AmisiaLayerFrame.host:GetText() == "Helfen: AUS", AmisiaLayerFrame.host:GetText())
+STUB.tick(5)
 assert(LEFT == 1, "left by itself")
 part()
 assert(has(STUB.messages[#STUB.messages], "du bleibst auf deinem neuen Layer"))
-LW.UpdateMini()
-assert(AmisiaLayerMiniBar.sub:GetText() == "|cff4fbf7aHelfen 3:41|r", tostring(AmisiaLayerMiniBar.sub:GetText()))
--- a second swap during the lock neither lengthens nor restarts it
-local left = SW.LockLeft()
-SW._startLock()
-assert(SW.LockLeft() == left, "never longer")
--- /amisia layer aus: refused too; status names it
-assert(LW.Command("aus") == "off" and SW.Hosting() and has(STUB.messages[#STUB.messages], "Helfen bleibt noch"))
-assert(LW.Command("status") == "status")
-local found
-for i = #STUB.messages - 5, #STUB.messages do if has(STUB.messages[i], "Helfen: an, noch") then found = true end end
-assert(found, "the status line names the lock")
-STUB.tick(222)
-assert(not SW.Hosting() and SW.LockLeft() == nil and AmisiaDB.layerHelp.lock == nil, "after four minutes off again, as before")
 LW.Command("an")
 assert(SW.Hosting() and AmisiaDB.layerHelp.off == nil)
 
--- 3. the lock is the character's: another character's lock holds nothing here
-AmisiaDB.layerHelp.lock = { untilAt = time() + 100, who = "Anderer Charakter" }
-assert(SW.LockLeft() == nil and select(2, SW.SetHosting(false)) == nil and not SW.Hosting())
-assert(AmisiaDB.layerHelp.lock.who == "Anderer Charakter", "left alone")
+-- 3. an "on" Amisia had forced before F-229 goes off at load (as it said it would); an old lock is dropped
+AmisiaDB.layerHelp = { forced = "Vuloo", lock = { untilAt = time() + 100, who = "Vuloo" } }
+SW._loaded()
+assert(not SW.Hosting() and AmisiaDB.layerHelp.off == true and AmisiaDB.layerHelp.lock == nil and AmisiaDB.layerHelp.forced == nil)
+AmisiaDB.layerHelp = { forced = "Anderer Charakter" }
+SW._loaded()
+assert(SW.Hosting() and AmisiaDB.layerHelp.forced == nil, "another character's: left as it was")
 
 -- 4. off stays through /reload; only a real login turns it on
+SW.SetHosting(false)
 SW._loaded()
 STUB.fire("PLAYER_ENTERING_WORLD", false, true)
 assert(not SW.Hosting(), "a /reload keeps it off")
 STUB.fire("PLAYER_ENTERING_WORLD", true, false)
 assert(SW.Hosting() and AmisiaDB.layerHelp.off == nil, "a login turns it on")
--- a /reload in the host's group with the verdict open counts as a swap that worked
-SW._reset({ pending = { name = "Anna Bergmann", uid = 3999, map = 1429, from = 4012, at = GetTime(), invited = GetTime() } })
-STUB.fire("PLAYER_ENTERING_WORLD"); read(4012); read(4012)
-join("Anna Bergmann")
-STUB.fire("PLAYER_LOGOUT")
-assert(SW.LockLeft() == 240, "the reload in the group: the lock")
-part()
 -- the saved switch is cleaned on load
 local db = { layerHelp = { off = "ja", lock = { untilAt = time() + 9999, who = "X" }, forced = 7, junk = 1 } }
 SW.LoadedHelp(db)
@@ -143,18 +116,20 @@ assert(KICKED[#KICKED] == "Spaet Kommer" and has(STUB.messages[#STUB.messages], 
 part()
 SW.SetHosting(true)
 
--- 7. judging a swap: a restart that kept the layer is "not moved"; leaving from 15 s on
-SW._reset({ pending = { name = "Anna Bergmann", uid = 3999, map = 1429, from = 4012, at = GetTime(), invited = GetTime(), answered = true } })
+-- 7. judging a swap: the move without the helper's word is no success, but the group is left 4 s after the join
+-- (F-229); a restart that kept the layer is "not moved"
+SW._reset({ pending = { name = "Anna Bergmann", map = 1429, from = 4012, at = GetTime(), invited = GetTime(), answered = true } })
 LEFT = 0
 join("Anna Bergmann")
 STUB.fire("SHARD_TRANSFER")
 assert(not SW.State().swap.changed and SW.State().swap.moved, "the move alone is no success")
-STUB.tick(11)
+STUB.tick(4.1)
+assert(LEFT == 1, "left 4 s after the join, the layer read or not")
+STUB.tick(7)
 read(4012); read(4012)
 assert(SW.State().swap.failed and SW.SwapStep() == "leaveAsk", "the restart kept the layer: not moved")
-assert(LEFT == 0, "not before 15 s")
 STUB.tick(5)
-assert(LEFT == 1 and has(STUB.messages[#STUB.messages], "nicht geklappt"))
+assert(LEFT == 1 and has(STUB.messages[#STUB.messages], "nicht geklappt"), "said, not left twice")
 LW.Refresh()
 assert(AmisiaLayerFrame.swap:GetText() == "Verlassen und neu fragen")
 part()
@@ -202,7 +177,7 @@ SW._reset({ pending = { name = "Anna Bergmann", uid = 7000, map = 1429, from = 4
 join("Anna Bergmann")
 part()
 read(7000); read(7000); read(7000)
-assert(has(STUB.messages[#STUB.messages], "Gewechselt") and SW.LockLeft(), "the verdict after the group ended")
+assert(has(STUB.messages[#STUB.messages], "Gewechselt"), "the verdict after the group ended")
 
 -- 9. rescans: after entering the world (2, 5, 12 s) the plates are read; an ask with the own layer unknown reads them
 LY._reset(); SW._reset()
@@ -225,7 +200,7 @@ STUB.unitGUIDs.nameplate1, STUB.unitGUIDs.nameplate2 = nil, nil
 SW._reset()
 LF._reset()
 STUB.tick(11)
-assert(SW.AskChat() == true and OPENED[#OPENED] == "/g inv layer <LS 1429 not 5000-5250>", tostring(OPENED[#OPENED]))
+assert(SW.AskChat() == true and OPENED[#OPENED] == "/g inv layer <LS 1429 not 5000-5250 r2>", tostring(OPENED[#OPENED]))
 SW.Stop()
 SW._reset()
 INVITED = {}

@@ -4627,3 +4627,49 @@ das Modul), `tests/test_module_load.lua` (vier Teile, Reihenfolge, alter Raid-Or
 **Nachtrag 2026-11-21 (Nutzer: "können wir das als Standard machen, dass nur das an ist, wenn man das Addon neu
 herunterlädt"):** Die drei Module tragen `## DefaultState: disabled` in ihren TOCs: bei einer frischen Installation ist
 nur der Kern an; wer ein Modul schon angeschaltet hat, behält das (der Client merkt es sich je Charakter).
+
+## D-159 Layer ab Spiel-Build 71037: eigene Nummern, das Stunden-Limit, keine Wechsel im Kampf
+
+**Datum:** 2026-11-21
+**Entscheidung:** Ändert D-146 (F-229, Spec `docs/specs/2026-11-21-layer-build-71037.md`), wie das verbreitete
+Layer-Addon in seiner Version 1.14.42 (nur Verhalten und Nachrichtenformat gelesen, eigener Code, D-145).
+- **Eigene Nummern:** ab Build 71037 trägt auf WoW Forever jede Kreatur ihren eigenen Server-Teil (`LY.Private`).
+  Dort setzt die erste ruhige Kreatur die eigene Nummer, keine ersetzt sie; keine Buchstaben und keine Liste
+  "Gesehen in dieser Zone" (an ihrer Stelle das Ereignisfeld). Beim Wechsel in der Gruppe eines Helfers wird dessen
+  beantwortete Nummer übernommen (auch vor 71037: der neue Layer steht sofort); diese Nummer teilen alle, die er
+  bewegt hat, und nur sie hält die Helfer des eigenen Layers draußen. Die Nummer bleibt über `/reload`
+  (`AmisiaDB.layerOwn`), nie über ein Einloggen.
+- **Das Phasen-Zeichen des Spiels:** 3 s nach dem Beitritt ohne Wechsel entscheidet `UnitPhaseReason` des Helfers
+  (nur, wenn die Gruppe ihn in der eigenen Zone zeigt): "anderer Layer" = das Spiel hat abgelehnt (sofort verlassen,
+  die Stunde gesperrt); kein Zeichen bei eigenen Nummern = er steht bei uns (sofort verlassen, seine Nummer
+  übernommen, außer die eigene stammt schon von einem Helfer; die abgegebene zählt weiter als eigene, 10 Minuten
+  nicht gefragt). Ohne Antwort des Spiels: kein Wechsel 15 s nach dem Beitritt = "nicht gewechselt".
+- **Das Stunden-Limit:** das Spiel bewegt einen Charakter 10-mal je Stunde in die Gruppe eines Helfers; eine Stunde
+  beginnt mit dem ersten Wechsel nach dem Ende der vorigen. `AmisiaDB.layerCap` zählt je Charakter nach der Uhr (über
+  `/reload` und Einloggen); voll: keine Frage, der Knopf "Warten m:ss"; eine Ablehnung sperrt bis der erste der
+  letzten 10 Wechsel eine Stunde alt ist, mit weniger bekannten 15 Minuten; ein Wechsel trotz Sperre beginnt neu.
+- **Keine Frage im Kampf, 6 s danach, tot oder im Flug** (nur Forever, keine Einstellung: eine abschaltbare Regel
+  gegen Missbrauch hält niemanden auf); ein Kampfbeginn beendet die Suche. "Helfen im Kampf pausieren" ist Vorgabe an,
+  mit 2 s Ruhe.
+- **Abläufe:** keine Helfen-Sperre und kein "an, solange du fragst" mehr (dort entfernt nach Beschwerden); die Gruppe
+  eines Helfers, der geantwortet hat, wird immer `layer.leaveSeconds` nach dem Beitritt verlassen (Einstellung
+  "Gruppe nach dem Wechsel verlassen" entfällt); die Suche endet nach 8 s ohne Einladung; gefragt ohne Antwort ruht
+  ein Name 15 Minuten; die Frage ohne Layer geht nach 1 und 4 s; ein Helfer mit unbekanntem Layer lädt die
+  geflüsterte Wiederholung einer Frage ohne Layer nicht blind ein (die erste Frage ohne Layer wie dort schon);
+  "Nur neue Layer" entfällt. Im Kampf, tot, im Flug oder mit verbrauchter Stunde nimmt Amisia keine Einladung von
+  selbst an, und ein Kampfbeginn beendet auch die Chat-Frage; folgt dem Urteil "abgelehnt" binnen 5 s doch der
+  Wechsel, zählt er, und die Sperre wird zurückgenommen; die Nummer des Helfers gilt nur, wenn er die Gruppe führt.
+- **Format:** die Bitte trägt `r2` zwischen den Layern und der Position; jedes `r<n>` wird gelesen und nicht als Grund
+  zum Einladen oder Ablehnen genommen (bis 2.104 verwarf Amisia solche Bitten ganz).
+- **Fenster:** das Ereignisfeld (`SW.Event`), die Knopftexte für die Sperren, eine Tastenbelegung "Layer wechseln"
+  (`Amisia/Bindings.xml`).
+**Grund:** Nutzer 2026-11-21 mit dem eingefügten Quelltext der neuesten Version jenes Addons: "schau dir die neuste
+version von <ihm> an und verbessere unsere"; zur Spec mit fünf Vorschlägen: "Passt, bauen". Seit Build 71037 gab
+Amisias Erkennung (2 von 5 Kreaturen) Zufall, und Helfer des eigenen Layers luden umsonst ein.
+**Folge:** Zwei neue `AmisiaDB`-Schlüssel (`layerCap`, `layerOwn`), `layerHelp` nur noch `off`; zwei Einstellungen
+weniger, eine Vorgabe anders; eine neue Datei `Amisia/Bindings.xml` (vom Client von selbst geladen, auf den anderen
+Clients tut die Taste nichts). Wer zehnmal in einer Stunde wechselt, wartet; im Kampf geht keine Frage.
+**Durchgesetzt durch:** `tests/test_layer_private.lua` (Nummer, Wort des Helfers, Phasen-Zeichen, Stunde, Kampf,
+`/reload`, `r2`, kein blindes Einladen, Ereignisfeld, Taste), `tests/test_layer_help.lua` (keine Sperre, altes
+`forced`), `tests/test_layer_change.lua` (Verlassen nach 4 s ohne Einstellung), `tests/test_layer_foreign.lua`
+(`r2`, Runden 1 und 4 s, Wort des Helfers beim Wechsel).

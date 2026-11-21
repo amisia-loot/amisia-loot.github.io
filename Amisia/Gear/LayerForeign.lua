@@ -5,8 +5,8 @@
 -- Off with layer.foreign, and whenever that addon itself is loaded (it asks and answers then; two answers and
 -- two invites would follow): LF.Active.
 -- Asker: SW._sendZone (Gear/LayerChange.lua) hands every /who name that is not a known Amisia user to LF.Ask:
--- the ask "inv layer <LS <zone map> not <own wire id> <x>,<y>>" ("want <id>" for a row's layer, more "not"
--- for "Nur neue Layer"; the position in percent of the zone map, one decimal), one per name and search, at
+-- the ask "inv layer <LS <zone map> not <own wire id> r2 <x>,<y>>" ("want <id>" for a row's layer; the position in
+-- percent of the zone map, one decimal), one per name and search, at
 -- most BURST whispers a second (ns.CommSendPlain, Core/Comm.lua; result 3 waits for the next second, 4 ends
 -- the asks for the session). Answers: "heard <asker>|<wire id or ->|<zone or ->|<h or ->" (only with the own
 -- name, from a name asked) and "same" go to SW._foreignAnswer (counted like ZA); a "heard" with "h" but no
@@ -26,6 +26,11 @@
 -- another layer answered). The guild: "Im Gildenchat fragen" puts the tagged line in the chat box
 -- (LF.GuildText); a guild member's tagged line in the guild chat (LF.GuildLine) is answered as a whisper is, the
 -- "heard" over GUILD on the prefix (no "same").
+-- F-229 (D-159): the ask carries the mark of the rules its sender keeps, "r<n>" between the layers and the position
+-- (RULES 2: the game's hourly limit and no ask in a fight); Amisia sends "r2" and reads any "r<n>" (kept in ask.rules,
+-- invited as before). The ask without a layer goes REASK_ROUNDS 1 and 4 s after the burst. A helper whose own layer
+-- is still unknown after the reads does not invite a whispered ask again without its layer (it may stand on the
+-- asker's layer). "Same layer" counts the number given up for a taken one too (LY.Ours).
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -44,10 +49,12 @@ LF.MAX_QUEUE = 100
 LF.MAX_TEXT = 120           -- characters of a received line at most
 LF.HEARD_GAP = 10           -- seconds between two answers to one asker
 LF.HEARD_WINDOW, LF.HEARD_MAX = 60, 20
-LF.REASK_ROUNDS = { 3, 10 } -- F-221: seconds after the burst: the ask without a layer to the helpers that named none
+LF.REASK_ROUNDS = { 1, 4 }  -- F-221, F-229: seconds after the burst: the ask without a layer to the helpers that named none
 LF.REASK_STEP, LF.REASK_READS = 0.5, 3   -- host: the reads before an ask again without its layer is decided
 LF.LEAVES_KEEP = 30         -- seconds the layers an asker leaves count for its ask without a layer
 LF.MAX_NOTS = 7             -- "not" ids in one ask (the own and six seen ones)
+LF.RULES = 2                -- F-229: the generation of rules Amisia keeps, sent as "r2"
+LF.MAX_RULES = 99
 local MAX_ZONE = 999999
 
 local queue = {}            -- { target, text, sent, at }
@@ -96,7 +103,8 @@ end
 ---------------------------------------------------------------------------
 -- The format
 ---------------------------------------------------------------------------
--- The ask: zone map, opts.want (a wire id) or opts.nots (wire ids), opts.x, opts.y (percent, both or none).
+-- The ask: zone map, opts.want (a wire id) or opts.nots (wire ids), the rules mark (F-229), opts.x, opts.y (percent,
+-- both or none).
 function LF.AskText(zoneMap, opts)
     opts = opts or {}
     local parts = { "inv layer <LS", tostring(zoneMap) }
@@ -108,12 +116,14 @@ function LF.AskText(zoneMap, opts)
             parts[#parts + 1] = "not " .. id
         end
     end
+    parts[#parts + 1] = "r" .. LF.RULES
     if opts.x and opts.y then parts[#parts + 1] = ("%.1f,%.1f"):format(opts.x, opts.y) end
     return table.concat(parts, " ") .. ">"
 end
 
--- An ask read strictly: { zone, want = { uid, zuid }, nots = { { uid, zuid } }, x, y } or nil. A position out of
--- 0-100 counts as none (as the other addon reads it); every other deviation drops the line.
+-- An ask read strictly: { zone, want = { uid, zuid }, nots = { { uid, zuid } }, rules, x, y } or nil. A position out of
+-- 0-100 counts as none (as the other addon reads it); "r<n>" (F-229) only right before the position (or last); every
+-- other deviation drops the line.
 function LF.ParseAsk(text)
     text = ns.Plain(text)
     if type(text) ~= "string" or #text > LF.MAX_TEXT or text:find("%c") then return nil end
@@ -122,7 +132,7 @@ function LF.ParseAsk(text)
     local words = {}
     for w in body:gmatch("%S+") do
         words[#words + 1] = w
-        if #words > 2 * LF.MAX_NOTS + 3 then return nil end
+        if #words > 2 * LF.MAX_NOTS + 4 then return nil end
     end
     local zone = words[1] and words[1]:match("^%d+$") and tonumber(words[1])
     if not zone or zone <= 0 or zone > MAX_ZONE then return nil end
@@ -132,6 +142,11 @@ function LF.ParseAsk(text)
     if last > 1 and px then
         px, py = tonumber(px), tonumber(py)
         if px and py and px <= 100 and py <= 100 then ask.x, ask.y = px, py end
+        last = last - 1
+    end
+    local rules = last > 1 and (words[last] or ""):match("^r(%d%d?)$")
+    if rules then
+        ask.rules = tonumber(rules)
         last = last - 1
     end
     local i = 2
@@ -253,9 +268,8 @@ local function ownPercent(map)
     return x * 100, y * 100
 end
 
--- The ask of the open search (built once per search): "want" for a row's layer, else "not" the own layer and,
--- with "Nur neue Layer", the layers seen within the hour.
-local function searchText(z, r, target, recent)
+-- The ask of the open search (built once per search): "want" for a row's layer, else "not" the own layer.
+local function searchText(z, r, target)
     local x, y = ownPercent(r.map)
     local opts = { x = x, y = y }
     if target then
@@ -263,12 +277,7 @@ local function searchText(z, r, target, recent)
         opts.want = LY.Wire(r.map, target) or LY.WireText(target, zuid or 0)
     else
         local own = LY.Wire(r.map, r.uid)
-        opts.nots = { own }
-        for uid in pairs(recent or {}) do
-            local wire = uid ~= r.uid and LY.Wire(r.map, uid)
-            if wire and #opts.nots < LF.MAX_NOTS then opts.nots[#opts.nots + 1] = wire end
-        end
-        if not own then opts.nots = {} end
+        opts.nots = own and { own } or {}
     end
     return { z = z, text = LF.AskText(r.map, opts), plain = LF.AskText(r.map, { x = x, y = y }), want = target ~= nil, reasked = {},
         noLayer = {} }
@@ -277,9 +286,9 @@ end
 -- The ask to name for the open search z of Gear/LayerChange.lua; sent() once it went. false when it cannot go.
 function LF.Ask(z, name, sent)
     if not LF.Active() then return false end
-    local zz, r, target, recent = SW._search()
+    local zz, r, target = SW._search()
     if not zz or zz ~= z then return false end
-    if not search or search.z ~= z then search = searchText(z, r, target, recent) end
+    if not search or search.z ~= z then search = searchText(z, r, target) end
     local s = search
     s.asked = (s.asked or 0) + 1
     return whisper(name, s.text, function()
@@ -389,17 +398,18 @@ end
 
 -- Whether the own layer mine fits the ask (nots: the layers it leaves): not one of them; "want": exactly it.
 local function fits(ask, nots, mine)
-    if ask.want then return mine ~= nil and ask.want[1] == mine end
+    if ask.want then return mine ~= nil and LY.Ours(ask.want[1]) end
     for _, n in ipairs(nots) do
-        if n[1] == mine then return false end
+        if n[1] == mine or LY.Ours(n[1]) then return false end
     end
     return true
 end
 
 -- The invite of a heard ask, by the layer rules (F-221): "want" and "not" need the own layer; an ask without a
 -- layer goes even while it is unknown, but the same asker's ask again without its layer (LEAVES_KEEP) first
--- reads the units in view, up to REASK_READS times.
-local function decide(ask, low, name)
+-- reads the units in view, up to REASK_READS times; F-229: still unknown then, a whispered one is not invited (no
+-- blind invite: the own layer may be the asker's), a guild line is.
+local function decide(ask, low, name, guild)
     local function offer()
         if not LF.CanHost() then return end
         -- a player outside the guild only with layer.others, and without a question only with layer.othersAuto
@@ -431,7 +441,7 @@ local function decide(ask, low, name)
             LY.Rescan()
             return C_Timer.After(LF.REASK_STEP, step)
         end
-        if not now_ or fits(ask, l.nots, now_) then offer() end
+        if (not now_ and guild) or (now_ and fits(ask, l.nots, now_)) then offer() end
     end
     C_Timer.After(LF.REASK_STEP, step)
 end
@@ -478,7 +488,7 @@ local function onAsk(text, sender, name, guild)
     else
         whisper(sender, line)
     end
-    local on = ask.nots[1] and mine and ask.nots[1][1] == mine
+    local on = ask.nots[1] and mine and LY.Ours(ask.nots[1][1])
     if on and host and not guild then
         stats.same = stats.same + 1
         whisper(sender, "same")
@@ -486,7 +496,7 @@ local function onAsk(text, sender, name, guild)
     -- the layers this ask leaves count for the same asker's ask again without them
     if #ask.nots > 0 then leaves[low] = { nots = ask.nots, at = t } end
     if not host or near or on then return end
-    decide(ask, low, name)
+    decide(ask, low, name, guild)
 end
 
 -- A whisper on the other layer addon's prefix: asks to the host, answers to the asker; nothing else.

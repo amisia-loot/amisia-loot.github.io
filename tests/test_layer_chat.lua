@@ -107,7 +107,7 @@ assert(not confirmShown(), "the chat line right after the YI makes no second que
 -- the asker: "Im Gildenchat fragen" opens the chat box with the other layer addon's tagged line (F-221: zone, layer,
 -- place; its helpers skip a guild line without it), without that way with the setting's text
 NS.Set("layer.chatText", "layer inv bitte")
-assert(SW.AskChat() == true and OPENED[1] == "/g inv layer <LS 1429 not 3999-5250>", tostring(OPENED[1]))
+assert(SW.AskChat() == true and OPENED[1] == "/g inv layer <LS 1429 not 3999-5250 r2>", tostring(OPENED[1]))
 NS.Set("layer.foreign", false)
 assert(SW.AskChat() == true and OPENED[2] == "/g layer inv bitte", tostring(OPENED[2]))
 NS.Set("layer.foreign", true)

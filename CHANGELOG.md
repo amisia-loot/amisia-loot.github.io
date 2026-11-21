@@ -5,6 +5,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(layer): layer swaps work again after game build 71037, with the game's hourly limit and no swap in combat (F-229)
+
+    Since build 71037 every creature carries a number of its own, so Amisia now keeps the first number it reads and
+    takes the helper's number at the move; three seconds into a helper's group the game's phase mark tells whether
+    the helper stood on your layer (left at once, no swap used) or the game refused. Amisia counts the game's ten
+    swaps an hour ("Warten 12:34"), asks nothing in combat, six seconds after it, dead or in flight, leaves the
+    helper's group four seconds after the join, ends a search after eight seconds, keeps no lock on Helfen, shows
+    what happened in an event field, offers a key binding, and reads and sends the other layer addon's new "r2" mark
+    (its newest users' requests were dropped before).
+
 ## [v2.104.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.104.1) (2026-11-21)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.104.0...v2.104.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

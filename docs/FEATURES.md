@@ -38,6 +38,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Andere Zeilen innerhalb eines Eintrags sind ein Fehler (der Test nennt die Zeile).
 
 ## Addon: Grundlagen
+### F-229 Layer nach Spiel-Build 71037: eigene Nummern, Stunden-Limit, keine Wechsel im Kampf
+- Version: -
+- Status: geplant
+- Braucht: Gruppe
+- Prüfung: Wenn du "Layer wechseln" klickst und ein Helfer dich bewegt, dann steht im Fenster sofort "Gewechselt" und Amisia verlässt die Gruppe 4 Sekunden nach dem Beitritt.
+- Prüfung: Wenn dich ein Helfer auf deinem eigenen Layer einlädt, dann verlässt Amisia die Gruppe nach etwa 3 Sekunden mit "stand auf deinem Layer: kein Wechsel verbraucht"; die nächste Frage lädt er nicht wieder ein.
+- Prüfung: Wenn du im Kampf, tot oder im Flug "Layer wechseln" drückst, dann geht keine Bitte raus und der Knopf zeigt "Im Kampf", "Kampf 0:06", "Tot" oder "Im Flug".
+- Prüfung: Wenn du zehn Wechsel in einer Stunde gemacht hast, dann zeigt der Knopf "Warten m:ss" bis die Stunde um ist, auch nach `/reload` und neuem Einloggen.
+- Prüfung: Wenn du `/amisia selbsttest layer` tippst, dann zeigt der Bericht "Build 71037, eigene Nummern: ja", die Wechsel der Stunde und in einer Gruppe das Phasen-Zeichen jedes Mitglieds.
+- Notiz: Spec docs/specs/2026-11-21-layer-build-71037.md. Nutzer 2026-11-21 mit dem eingefügten Quelltext der neuesten Version des verbreiteten Layer-Addons: "schau dir die neuste version von <ihm> an und verbessere unsere", dann "Passt, bauen".
+
 ### F-228 Module je Reiter: Ausrüstung, Dungeons & Raids, Talente; Raid, Berufe, Gilde im Kern
 - Version: 2.104.0
 - Status: gebaut

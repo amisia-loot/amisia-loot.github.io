@@ -3,7 +3,7 @@
 -- of the same zone answers by whisper (YA), Kai on Anna's layer stays silent; Anna asks Vulo for the
 -- invite (YI), Vulo is asked (W.Confirm) or invites at once (layer.autoInvite); Anna's Amisia accepts
 -- only Vulo's invite (an invite of anyone else stays untouched), sees the change and leaves the two-player
--- group by itself only with layer.autoLeave and only that group. Udo outside the guild gets nothing; a
+-- group by itself (F-229: always, layer.leaveSeconds after the join) and only that group. Udo outside the guild gets nothing; a
 -- foreign prefix is ignored; the host's limits (once a minute per player, six in ten minutes).
 local A, V, K, U = "Anna Bergmann", "Vulo Sturmwind", "Kai Lindner", "Udo Fremd"
 BUS.setGuild({ { A, 3 }, { V, 3 }, { K, 3 } })
@@ -30,8 +30,8 @@ local function world(name, zone)
 end
 -- the question first (layer.autoInvite is on by default since F-216)
 for _, n in ipairs({ A, V, K, U }) do
-    assert(C(n, "NS.Get('layer.autoLeave') == true and NS.Get('layer.leaveSeconds') == 4"), "leaving after 4 s by default (F-221)")
-    C(n, "NS.Set('layer.autoInvite', false); NS.Set('layer.autoLeave', false)")
+    assert(C(n, "NS.Get('layer.leaveSeconds') == 4"), "leaving after 4 s by default (F-221)")
+    C(n, "NS.Set('layer.autoInvite', false)")
 end
 world(A, 4012)
 world(V, 3999)
@@ -110,10 +110,11 @@ assert(C(A, "NS.LayerWindow.StatusText(NS.LayerChange.State())"):find("In der Gr
 reads(A, 3999, 70, "0C1")
 assert(C(A, "NS.LayerChange.State().swap.changed ~= nil"), "the change is seen")
 assert(C(A, "STUB.messages[#STUB.messages]"):find("Gewechselt: Layer A", 1, true))
--- without layer.autoLeave nothing leaves; the link does
-BUS.tick(40)
-assert(C(A, "LEFT") == 0, "no auto leave with layer.autoLeave off")
-assert(C(A, "return NS.LayerChange.Leave()") == true and C(A, "LEFT") == 1)
+-- F-229: the group of a helper who answered is always left, layer.leaveSeconds (4) after the join
+BUS.tick(3)
+assert(C(A, "LEFT") == 0, "not before 4 s")
+BUS.tick(2)
+assert(C(A, "LEFT") == 1, "left by itself 4 s after the join (no setting since F-229)")
 assert(C(V, "LEFT") == 0, "the host changes nothing")
 
 -- the group ends; a second swap with auto invite and auto leave
@@ -121,7 +122,7 @@ for _, n in ipairs({ A, V }) do C(n, "STUB.roster = {}; STUB.party = nil; STUB.f
 BUS.setRaid({})
 assert(C(A, "NS.LayerChange.State().swap") == nil)
 C(V, "NS.Set('layer.autoInvite', true)")
-C(A, "NS.Set('layer.autoLeave', true); NS.Set('layer.leaveSeconds', 10)")
+C(A, "NS.Set('layer.leaveSeconds', 10)")
 -- Anna is back on her old layer (a new zone resets, her id is known)
 C(A, [[STUB.fire("ZONE_CHANGED_NEW_AREA")]])
 reads(A, 4012, 80, "0D1")

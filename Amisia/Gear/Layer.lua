@@ -32,6 +32,14 @@
 -- (a creature carried over it is the zone left behind), by itself RESCAN seconds after entering the world and
 -- after a move. LY.onRead (one function, Gear/LayerChange.lua) hears every reading. The layers of a zone seen
 -- within SEEN_KEEP seconds stay through /reload (AmisiaDB.layerSeen, written at PLAYER_LOGOUT).
+-- F-229 (D-159): from game build PRIVATE_BUILD on (LY.Private) every creature carries a server part of its own: the
+-- number read off a creature is the player's alone. There the first calm creature (not within BORDER_QUIET of a
+-- zone border, not one in view at the last move) sets the own number and no creature ever replaces it; a number
+-- taken from a helper (LY.Take, Gear/LayerChange.lua: at the move in its group, or when the game shows it with us)
+-- is shared by everyone that helper moved, and only such a number keeps the helpers of the own layer out. LY.Ours
+-- also accepts the number given up for a taken one (the own guests still hold it). No letters and no list there
+-- (LY.Name: "Layer bekannt"). The number is written down at PLAYER_LOGOUT (AmisiaDB.layerOwn) and taken up again
+-- after a /reload in the same zone within KEPT_FOR seconds, never after a login.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -56,9 +64,20 @@ local ZONE = (Enum and Enum.UIMapType and Enum.UIMapType.Zone) or 3
 local LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 LY.REFRESH_SOON = 120   -- seconds "Neustart gleich" shows after the countdown reached 0
+-- F-229
+LY.PRIVATE_BUILD = 71037   -- the first game build with a number of its own on every creature
+LY.KEPT_AGE = 120          -- seconds AmisiaDB.layerOwn may be old at a /reload
+LY.KEPT_FOR = 10           -- seconds after entering the world in which it is taken up again
+LY.KEPT_TRIES = { 0.5, 1, 2, 4, 7, 10 }
 
 local maps = {}         -- [map] = { layers = { [uid] = { first, last, own, heard, zuid } }, cand = { [uid] = { [spawn] = t } } }
-local cur               -- { map, uid, zuid, at = the last time a creature of uid was read }
+local cur               -- { map, uid, zuid, at = the last time a creature of uid was read; F-229: taken = the number came
+                        -- from a helper, also = the number given up for it }
+local kept              -- F-229: AmisiaDB.layerOwn taken at a /reload, until it is taken up or KEPT_FOR is over
+local enteredAt         -- the time of the last PLAYER_ENTERING_WORLD
+local private           -- F-229: LY.Private's answer (the build does not change within a session)
+local restore           -- F-229: takes up AmisiaDB.layerOwn (defined below the events)
+local zuidOf = {}       -- F-229: [zone map] = the last zoneUID read there (a helper's number without one takes it)
 local evictAt           -- the time the announced world restart comes (GetEvictionTimeRemaining), nil: none
 local zoneMap           -- the player's zone map (cached until a zone event), false: none
 local lastAt = {}       -- source -> time of its last read
@@ -94,6 +113,19 @@ LY.InInstance = inInstance
 -- Nothing is read inside an instance, in a boss fight (restriction 1) or the chat lockdown.
 local function blocked()
     return inInstance() or ns.AddOnRestricted(1) or ns.ChatLocked()
+end
+
+-- F-229: whether every creature carries a number of its own (WoW Forever, game build PRIVATE_BUILD or later).
+function LY.Private()
+    if private == nil then
+        private = false
+        local f = rawget(_G, "GetBuildInfo")
+        if ns.FOREVER and type(f) == "function" then
+            local ok, _, build = pcall(f)
+            private = ok and (tonumber(ns.Plain(build)) or 0) >= LY.PRIVATE_BUILD
+        end
+    end
+    return private
 end
 
 ---------------------------------------------------------------------------
@@ -151,7 +183,8 @@ local function readZoneMap()
 end
 
 function LY.Map()
-    if zoneMap == nil then zoneMap = readZoneMap() or false end
+    -- F-229: "no map" is not kept (right after entering the world the client may not name it yet)
+    if not zoneMap then zoneMap = readZoneMap() or false end
     return zoneMap or nil
 end
 
@@ -204,15 +237,22 @@ local function grouped()
     return ok and ns.Plain(v) == true
 end
 
-local function setCurrent(map, uid, t, zuid)
+local function setCurrent(map, uid, t, zuid, how)
     if cur and cur.map == map and cur.uid == uid then
         cur.at = t
         cur.zuid = zuid or cur.zuid
         return
     end
     cur = { map = map, uid = uid, zuid = zuid, at = t }
-    remember({ at = t, map = map, uid = uid, grouped = grouped() })
+    if zuid then zuidOf[map] = zuid end
+    remember({ at = t, map = map, uid = uid, grouped = grouped(), how = how })
     ns.Fire("LAYER", "current")
+end
+
+-- F-229: a creature read now may set the own number where the numbers are private: nothing known in this zone, and
+-- no zone border within BORDER_QUIET (a creature carried over it belongs to the zone left).
+local function calm(t)
+    return not (borderAt and t - borderAt < LY.BORDER_QUIET)
 end
 
 -- A creature of map with server part uid, spawn and zoneUID zuid (GUID guid) was read at t. The list: an id is
@@ -220,6 +260,15 @@ end
 -- the votes (see the head).
 local function note(map, uid, spawn, t, zuid, guid)
     sweep()
+    if LY.Private() then
+        -- F-229: the number of the own layer is set once and never replaced by creatures (each has its own)
+        if cur and cur.map == map then
+            if cur.uid == uid then cur.at = t end
+            return
+        end
+        if calm(t) then setCurrent(map, uid, t, zuid, "creature") end
+        return
+    end
     local m = mapState(map)
     local e = m.layers[uid]
     if not (e and e.own) then
@@ -298,6 +347,7 @@ local function readOne(unit, key, t)
     end
     local map = LY.Map()
     if not map then return nil end
+    if kept then restore() end
     note(map, uid, spawn, t, zuid, guid)
     stats.ok[key] = (stats.ok[key] or 0) + 1
     if LY.onRead then
@@ -404,8 +454,13 @@ function LY.Letter(map, uid)
     return nil
 end
 
--- "Layer B", or "Layer ?" when unknown.
+-- "Layer B", or "Layer ?" when unknown. F-229: where the numbers are private "Layer bekannt" for the own one,
+-- "anderer Layer" for any other.
 function LY.Name(map, uid)
+    if LY.Private() then
+        if cur and cur.map == tonumber(map) and cur.uid == tonumber(uid) then return L["Layer bekannt"] end
+        return L["anderer Layer"]
+    end
     return L["Layer %s"]:format(LY.Letter(map, uid) or "?")
 end
 
@@ -423,13 +478,50 @@ function LY.Known()
     return LY.Current() ~= nil
 end
 
+-- F-229: the number of a helper taken for the own layer, on the player's zone map: how "host" (it moved us: everyone
+-- it moved holds that number) or "same" (the game shows it with us: our number given up is kept as `also`, the own
+-- guests still hold it). Returns whether it was taken.
+function LY.Take(map, uid, zuid, how)
+    map, uid = tonumber(map), tonumber(uid)
+    if not map or not uid or uid <= 0 or uid > MAX_ZONE_UID or map ~= LY.Map() then return false end
+    local was = cur and cur.map == map and cur.uid or nil
+    if was == uid then
+        cur.taken = true
+        return true
+    end
+    local t = now()
+    -- an Amisia helper names no zoneUID: the one read in this zone stands in (the other addon compares server parts)
+    zuid = tonumber(zuid)
+    if not zuid or zuid <= 0 then zuid = zuidOf[map] end
+    setCurrent(map, uid, t, zuid, how)
+    cur.taken = true
+    cur.also = how == "same" and was or nil
+    return true
+end
+
+-- F-229: whether the own number came from a helper (then a helper with another number on our layer does not change it).
+function LY.Taken()
+    local map = LY.Map()
+    return cur ~= nil and cur.map == map and cur.taken == true
+end
+
+-- F-229: whether uid (a server part another player names) is the own layer's: the current one, or the one given up
+-- for it (cur.also).
+function LY.Ours(uid)
+    uid = tonumber(uid)
+    local mine = LY.Current()
+    if not uid or not mine then return false end
+    return uid == mine or (cur.also ~= nil and cur.also == uid)
+end
+
 -- The layers of map (default the player's zone), by letter: { { uid, letter, name, first, last, age,
 -- own, heard, current } }.
 function LY.List(map)
     sweep()
     map = map or LY.Map()
     local out = {}
-    if not map or not maps[map] then return out end
+    -- F-229: the numbers read off creatures count no layers
+    if not map or not maps[map] or LY.Private() then return out end
     local t = now()
     local m = maps[map]
     for i, uid in ipairs(sortedIds(map)) do
@@ -504,8 +596,35 @@ ns.OnEvent("ZONE_CHANGED_NEW_AREA", function()
     borderAt = now()
     zoneChanged()
 end)
-ns.OnEvent("PLAYER_ENTERING_WORLD", function()
+-- F-229: the number written down at the logout, taken up after a /reload (never a login) in the same zone.
+restore = function()
+    local k = kept
+    if not k then return end
+    if not enteredAt or now() - enteredAt > LY.KEPT_FOR then
+        kept = nil
+        return
+    end
+    local map = LY.Map()
+    if not map or map ~= k.map then return end
+    kept = nil
+    if cur and cur.map == map and cur.uid == k.id then return end
+    setCurrent(map, k.id, now(), k.z, "reload")
+    cur.taken = k.taken and true or nil
+    cur.also = k.also
+end
+LY._restore = restore
+
+ns.OnEvent("PLAYER_ENTERING_WORLD", function(_, reload)
     zoneChanged()
+    enteredAt = now()
+    kept = nil
+    local own = type(AmisiaDB) == "table" and AmisiaDB.layerOwn or nil
+    if type(AmisiaDB) == "table" then AmisiaDB.layerOwn = nil end
+    if ns.Plain(reload) == true and LY.Private() and LY.LoadedOwn({ layerOwn = own }) and ns.SameName(own.who, ns.UnitFullName("player")) then
+        kept = own
+        restore()
+        for _, s in ipairs(LY.KEPT_TRIES) do C_Timer.After(s, restore) end
+    end
     rescanSoon()
 end)
 -- inside a zone only the sub zone changes: its zone map stays, the cache is read again
@@ -571,6 +690,7 @@ ns.OnEvent("SHARD_TRANSFER", function()
     add("mouseover")
     stale = { untilAt = now() + LY.STALE_FOR, guid = guids }
     votes, voted = {}, {}
+    kept = nil   -- F-229: a move of the game's ends the number kept across the /reload
     rescanSoon()
     if cur then
         cur = nil
@@ -645,7 +765,32 @@ function LY.SaveSeen()
     end
     AmisiaDB.layerSeen = n > 0 and out or nil
 end
-ns.OnEvent("PLAYER_LOGOUT", function() LY.SaveSeen() end)
+ns.OnEvent("PLAYER_LOGOUT", function() LY.SaveSeen() LY.SaveOwn() end)
+
+-- F-229: AmisiaDB.layerOwn = { id, z, map, who, at (epoch), taken = true, also }: the own number for the next /reload,
+-- only where the numbers are private, and not in a helper's group before the game's move (LY.Between, set by
+-- Gear/LayerChange.lua: the move may come while the interface reloads).
+function LY.SaveOwn()
+    if type(AmisiaDB) ~= "table" then return end
+    AmisiaDB.layerOwn = nil
+    if not LY.Private() or not cur or cur.map ~= LY.Map() then return end
+    if LY.Between and LY.Between() then return end
+    AmisiaDB.layerOwn = { id = cur.uid, z = (cur.zuid or 0) > 0 and cur.zuid or nil, map = cur.map, who = ns.UnitFullName("player"), at = time(),
+        taken = cur.taken or nil, also = cur.also }
+end
+
+-- F-229: whether DB.layerOwn is fit to be taken up (numbers in range, a name, at most KEPT_AGE seconds old); a broken
+-- one is removed.
+function LY.LoadedOwn(DB)
+    local o = DB and DB.layerOwn
+    if o == nil then return false end
+    local function num(v) return type(v) == "number" and v > 0 and v <= MAX_ZONE_UID end
+    local ok = type(o) == "table" and num(o.id) and num(o.map) and (o.z == nil or num(o.z)) and (o.also == nil or num(o.also))
+        and type(o.who) == "string" and #o.who <= 64 and not o.who:find("[%c|]") and type(o.at) == "number"
+        and o.at <= time() + 60 and time() - o.at <= LY.KEPT_AGE and (o.taken == nil or o.taken == true)
+    if not ok then DB.layerOwn = nil end
+    return ok and true or false
+end
 
 local function loadSeen()
     if type(AmisiaDB) ~= "table" then return end
@@ -677,14 +822,10 @@ ns.RegisterSettings{ key = "layer", label = L["Layer"], order = 62, group = "gui
       tip = L["Bittet dich ein Spieler mit Amisia, den du beantwortet hast (aus der Gilde oder der Zone), um eine Einladung auf deinen Layer, lädt Amisia ihn sofort ein. Aus: Amisia fragt dich erst. Nie in Instanzen, höchstens sechs Einladungen in zehn Minuten."] },
     { key = "layer.autoAccept", type = "toggle", label = L["Einladung des Gefragten annehmen"], default = true,
       tip = L["Hast du ein Gildenmitglied um eine Einladung auf seinen Layer gebeten, nimmt Amisia genau seine Einladung an (eine Minute lang); nach \"Im Gildenchat fragen\" die Einladung eines Gildenmitglieds, nach \"Im Kanal fragen\" die nächste Einladung, egal von wem. Jede andere Einladung fragt das Spiel wie immer."] },
-    { key = "layer.autoLeave", type = "toggle", label = L["Gruppe nach dem Wechsel verlassen"], default = true,
-      tip = L["Ist der Wechsel gelungen, verlässt Amisia die Gruppe des Helfers nach den eingestellten Sekunden, wenn er auf deine Frage geantwortet hat; hat er dich nicht bewegt, frühestens nach 15 Sekunden. Nie eine Gruppe, in der du vorher warst, und keinen Schlachtzug."] },
     { key = "layer.leaveSeconds", type = "slider", label = L["Verlassen nach Sekunden"], default = 4, min = 3, max = 120,
-      tip = L["So lange nach dem gelungenen Wechsel wartet Amisia, bevor es die Zweiergruppe verlässt."] },
-    { key = "layer.onlyNew", type = "toggle", label = L["Nur neue Layer"], default = false,
-      tip = L["\"Layer wechseln\" nimmt nur Antworten von Layern, die in der letzten Stunde in dieser Zone niemand gesehen hat."] },
-    { key = "layer.combatPause", type = "toggle", label = L["Helfen im Kampf pausieren"], default = false,
-      tip = L["Im Kampf beantwortet Amisia keine Layer-Fragen und lädt niemanden ein; danach geht es weiter."] },
+      tip = L["So lange nach dem Beitritt verlässt Amisia die Gruppe eines Helfers, der auf deine Frage geantwortet hat, sobald das Spiel dich bewegt hat; kommt der Wechsel später, so lange danach. Hat er dich nicht bewegt, verlässt Amisia sie gleich."] },
+    { key = "layer.combatPause", type = "toggle", label = L["Helfen im Kampf pausieren"], default = true,
+      tip = L["Im Kampf und zwei Sekunden danach beantwortet Amisia keine Layer-Fragen als Helfer und lädt niemanden ein; danach geht es weiter."] },
     -- F-220 (D-145)
     { key = "layer.foreign", type = "toggle", label = L["Mit dem anderen Layer-Addon zusammenarbeiten"], default = true,
       tip = L["\"Layer wechseln\" fragt die Spieler der Zone auch so, wie das meistgenutzte Layer-Addon fragt, und Helfen antwortet und lädt dessen Nutzer ein. Aus: nur Amisias eigene Fragen. Ist das andere Addon selbst geladen, überlässt Amisia ihm diesen Teil."] },
@@ -707,6 +848,7 @@ ns.RegisterSettings{ key = "layer", label = L["Layer"], order = 62, group = "gui
 function LY._reset()
     maps, cur, zoneMap, lastAt, sweptAt, evictAt = {}, nil, nil, {}, 0, nil
     votes, voted, stale, borderAt = {}, {}, nil, nil
+    kept, enteredAt, private, zuidOf = nil, nil, nil, {}
     stats, history = { read = {}, ok = {}, secret = 0 }, {}
 end
 end)

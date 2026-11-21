@@ -58,6 +58,8 @@ LT.FUNCTIONS = {
         "C_ChatInfo.InChatMessagingLockdown" } },
     { L["Anderes Layer-Addon und Neustart"], { "C_AddOns.IsAddOnLoaded|IsAddOnLoaded", "GetEvictionTimeRemaining",
         "C_Map.GetPlayerMapPosition", "C_Map.GetWorldPosFromMapPos" } },
+    -- F-229
+    { L["Phasen-Zeichen, Kampf, Tod, Flug"], { "UnitPhaseReason", "GetBuildInfo", "UnitIsDeadOrGhost", "UnitOnTaxi" } },
 }
 
 local run
@@ -146,6 +148,35 @@ local function sectionNow(P)
     check(R, L["Neustart der Welt"], function()
         return "WERT", LY.RefreshText() or L["keiner angekündigt"]
     end)
+    -- F-229: the game build, the private numbers, where the own one came from, the hour's moves, the phase marks
+    check(R, L["Eigene Nummern je Kreatur"], function()
+        local f = rawget(_G, "GetBuildInfo")
+        local ok, _, build = false, nil, nil
+        if type(f) == "function" then ok, _, build = pcall(f) end
+        return "WERT", L["Build %s, eigene Nummern: %s, eigene Nummer von einem Helfer: %s"]:format(ok and show(build) or "?",
+            show(LY.Private()), show(LY.Taken()))
+    end)
+    check(R, L["Wechsel in dieser Stunde"], function()
+        local left = SW.CapLeft()
+        return "WERT", L["%d von %d"]:format(SW.CapUsed(), SW.CAP) .. (left > 0 and (", " .. L["Warten %s"]:format(SW.Clock(left))) or "")
+    end)
+    check(R, L["Phasen-Zeichen der Gruppe"], function()
+        local parts = {}
+        for i = 1, 4 do
+            local unit = "party" .. i
+            local okE, there = pcall(rawget(_G, "UnitExists") or error, unit)
+            if okE and there then
+                local okN, name = pcall(ns.UnitFullName, unit)
+                name = okN and ns.Plain(name) or nil
+                if type(name) == "string" then
+                    local mark, zoneHere = SW._hostMark(name)
+                    parts[#parts + 1] = ("%s: %s%s"):format(name, mark == "here" and L["bei dir"] or mark == "apart" and L["anderer Layer"]
+                        or L["keine Antwort"], zoneHere == false and (" · " .. L["andere Zone"]) or "")
+                end
+            end
+        end
+        return "WERT", #parts > 0 and table.concat(parts, ", ") or L["nicht in einer Gruppe"]
+    end)
     check(R, L["Bekannte Layer dieser Zone"], function()
         local parts = {}
         for _, e in ipairs(LY.List()) do
@@ -204,6 +235,10 @@ end
 
 -- What the creatures in sight say about the id: mark and text.
 function LT.IdVerdict(pl)
+    -- F-229: from game build 71037 on every creature carries its own number: many numbers are what is expected
+    if LY.Private() and pl.creatures >= LT.FEW then
+        return "OK", L["%d Kreaturen, %d Nummern: seit Build 71037 trägt jede Kreatur ihre eigene (erwartet)"]:format(pl.creatures, pl.kinds)
+    end
     if pl.creatures < LT.FEW then
         return "WERT", L["zu wenige Kreaturen in Sicht (%d): mit Namensplaketten (Taste V) in einer belebten Gegend neu prüfen"]:format(pl.creatures)
     end
