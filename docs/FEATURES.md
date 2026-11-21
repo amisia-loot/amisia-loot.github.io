@@ -39,8 +39,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 ### F-229 Layer nach Spiel-Build 71037: eigene Nummern, Stunden-Limit, keine Wechsel im Kampf
-- Version: -
-- Status: geplant
+- Version: 2.105.0
+- Status: gebaut
 - Braucht: Gruppe
 - Prüfung: Wenn du "Layer wechseln" klickst und ein Helfer dich bewegt, dann steht im Fenster sofort "Gewechselt" und Amisia verlässt die Gruppe 4 Sekunden nach dem Beitritt.
 - Prüfung: Wenn dich ein Helfer auf deinem eigenen Layer einlädt, dann verlässt Amisia die Gruppe nach etwa 3 Sekunden mit "stand auf deinem Layer: kein Wechsel verbraucht"; die nächste Frage lädt er nicht wieder ein.
