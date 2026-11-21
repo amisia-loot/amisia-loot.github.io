@@ -607,7 +607,7 @@ def test_the_pc_scripts_go_out_as_committed(tmp_path):
     # D-154: the committed version of main, written only when it differs, nothing from a file being edited
     import auto_data as ad
     out = tmp_path / 'pc'
-    assert ad.publish_pc_scripts('main', out=str(out)) == ['export_db2.ps1', 'install_export_task.ps1']
+    assert ad.publish_pc_scripts('main', out=str(out)) == ['export_db2.ps1', 'install_export_task.ps1', 'install_junctions.ps1']
     assert (out / 'export_db2.ps1').read_bytes() == ad.subprocess.run(
         ['git', 'show', 'main:tools/export_db2.ps1'], cwd=ad.ROOT, stdout=ad.subprocess.PIPE).stdout
     assert ad.publish_pc_scripts('main', out=str(out)) == [], 'unchanged: nothing written'

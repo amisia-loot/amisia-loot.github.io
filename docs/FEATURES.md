@@ -39,8 +39,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 ### F-228 Module je Reiter: Ausrüstung, Dungeons & Raids, Talente; Raid, Berufe, Gilde im Kern
-- Version: -
-- Status: geplant
+- Version: 2.104.0
+- Status: gebaut
 - Prüfung: Wenn du "Amisia: Ausrüstung" abhakst und einloggst, dann kommt kein Lua-Fehler, der Reiter Ausrüstung fehlt und Dungeons & Raids zeigt Bosse, Beute und Quests ohne Upgrade-Angaben.
 - Prüfung: Wenn du "Amisia: Dungeons & Raids" abhakst, dann laufen Ausrüstungsplaner, Berufe, Talente, Raid und Gilde ohne Lua-Fehler.
 - Prüfung: Wenn du "Amisia: Talente" abhakst, dann fehlt nur der Reiter Talente.

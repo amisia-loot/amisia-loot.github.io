@@ -8,7 +8,7 @@ local _, ns = ...
 -- level less five); ST, N, IC as in GearData.lua (N and IC only for the items the client's table lacks).
 ns.LazyData("GEAR_NOSRC", [=[
 return {
-built="2026-11-20",
+built="2026-11-21",
 I={
 [2275]={"HEAD",4,3,15,3,2,20,0,0,0},
 [3068]={"HEAD",4,1,27,2,2,32,0,0,0},
@@ -912,7 +912,6 @@ I={
 [284100]={"CLOAK",4,1,57,3,1,62,0,0,0},
 [284101]={"WEAPONMAINHAND",2,7,57,3,1,62,0,0,0},
 [284102]={"FINGER",4,0,57,3,1,62,0,0,0},
-[284105]={"SHOULDER",4,2,52,2,2,57,0,0,0},
 [284187]={"CLOAK",4,1,16,2,2,21,0,0,0},
 [284192]={"LEGS",4,1,13,2,2,18,0,0,0},
 [284215]={"CHEST",4,2,53,3,1,58,0,0,0},
@@ -1849,7 +1848,6 @@ ST={
 [284100]="ATTACK_POWER=27;RESISTANCE0_NAME=44;STAMINA=13",
 [284101]="AGILITY=4;DAMAGE_PER_SECOND=40.740741729736;STAMINA=5;STRENGTH=11",
 [284102]="HIT_RATING=5;SPIRIT=9;STRENGTH=14",
-[284105]="AGILITY=11;RESISTANCE0_NAME=111;STRENGTH=13",
 [284187]="FIRE_DAMAGE_DONE=4;INTELLECT=3;RESISTANCE0_NAME=17",
 [284192]="HEALTH_REGEN=4;RESISTANCE0_NAME=28;STAMINA=4",
 [284215]="INTELLECT=16;RESISTANCE0_NAME=165;SPELL_POWER=20;SPIRIT=18",
@@ -1926,7 +1924,6 @@ N={
 [284100]="Unbeugsamer Schleier des Reiters",
 [284101]="Klinge des sinnlosen Gemetzels",
 [284102]="Siegelring des seelenlosen Reiters",
-[284105]="Schiftung des Wildhammersoldaten",
 [284187]="Umhang des rasenden Feuerrufers",
 [284192]="Furbolglendenschurz",
 [284215]="Urflechtengewänder",
@@ -1997,7 +1994,6 @@ IC={
 [284100]=133772,
 [284101]=135302,
 [284102]=133359,
-[284105]=135039,
 [284187]=133770,
 [284192]=134706,
 [284215]=132720,
@@ -2026,4 +2022,4 @@ IC={
 [289302]=135271,
 },
 }
-]=], 935)
+]=], 934)

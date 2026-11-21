@@ -66,7 +66,7 @@ STATE_DIR = os.path.expanduser('~/addons/_auto')
 # the scripts the PC runs (D-154): Syncthing folder "amisia-pc" (send only here, receive only on the PC) instead of
 # GitHub; only the committed version of the base branch goes in, never a file being edited
 PC_SCRIPTS = os.path.expanduser('~/addons/_pcscripts')
-PC_FILES = ('tools/export_db2.ps1', 'tools/install_export_task.ps1')
+PC_FILES = ('tools/export_db2.ps1', 'tools/install_export_task.ps1', 'tools/install_junctions.ps1')
 WORKTREE = os.path.expanduser('~/addons/.amisia-auto')
 SETTLE = 300            # seconds without a change before a build counts as complete
 BUILD = re.compile(r'^_export\.(\d+\.\d+\.\d+\.\d+)\.txt$')

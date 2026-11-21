@@ -5,6 +5,11 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- data(data): add data for client build 1.60.1.71037 and the save file of 2026-11-20 (built on main after the module split)
+
+    The client tables of the new build (exported by the PC) and the newest save data are built into every
+    generated file; the automatic branch was built on the old folder layout and is not merged.
+
 - refactor(modules): one module per tab: Gear, Dungeons & Raids, Talents; raid, professions and guild in the core (F-228)
 
     The AddOn list now shows Amisia and three modules for WoW Forever: "Amisia: Gear", "Amisia: Dungeons & Raids"
