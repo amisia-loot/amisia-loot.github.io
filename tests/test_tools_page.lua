@@ -151,10 +151,15 @@ refresh()
 assert(R.gear.state:GetText() == "Fertig: 100 neue Items warten auf die Übernahme.", R.gear.state:GetText())
 assert(not R.gear.bar:IsShown() and shown(R.gear) == "Starten", shown(R.gear))
 
--- taken over (the trim of D-34 left nothing): "Fertig: alles übernommen."
+-- taken over (the trim of D-34 left nothing), but the gear list not run under these data: "noch einmal scannen"
 AmisiaDB.scan.items, AmisiaDB.scan.count = {}, 0
 refresh()
+assert(R.gear.state:GetText() == "Fertig unter älteren Daten: noch einmal scannen.", R.gear.state:GetText())
+-- the gear list through under these data: "Fertig: alles übernommen."
+AmisiaDB.scan.gear = NS.ScanById.GearStamp()
+refresh()
 assert(R.gear.state:GetText() == "Fertig: alles übernommen.", R.gear.state:GetText())
+AmisiaDB.scan.gear = nil
 
 -- a list run (the gear list): its own total, honest to the ids it asks
 assert(NS.ScanList({ 1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009 }, "Test"))

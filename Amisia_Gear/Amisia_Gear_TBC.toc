@@ -8,6 +8,7 @@
 ## Category: VuloUI
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia_Gear
 ## Dependencies: Amisia
+## DefaultState: disabled
 ## X-License: GPL-3.0
 # Written by tools/build.py from Amisia_Gear.toc (D-57, D-130): Amisia_Gear loads on WoW Forever only, this client gets no file. Edit Amisia_Gear.toc.
 

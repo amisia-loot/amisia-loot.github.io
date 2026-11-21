@@ -4623,3 +4623,7 @@ neue Datendatei einen Eintrag in `DATA_HOME`, sonst weiß kein Bauer, wohin; am 
 `tests/test_without_gear.lua`, `tests/test_without_dungeons.lua`, `tests/test_without_talents.lua` (jede Seite ohne
 das Modul), `tests/test_module_load.lua` (vier Teile, Reihenfolge, alter Raid-Ordner), `tests/test_modules.lua`,
 `tests/test_version.lua` (`rgdt`), `tools/tests/test_install_junctions.py`.
+
+**Nachtrag 2026-11-21 (Nutzer: "können wir das als Standard machen, dass nur das an ist, wenn man das Addon neu
+herunterlädt"):** Die drei Module tragen `## DefaultState: disabled` in ihren TOCs: bei einer frischen Installation ist
+nur der Kern an; wer ein Modul schon angeschaltet hat, behält das (der Client merkt es sich je Charakter).

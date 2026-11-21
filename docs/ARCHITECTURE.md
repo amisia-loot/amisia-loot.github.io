@@ -225,7 +225,7 @@ Other folders: `Media/Icons` (TGA, made by `tools/make_icons.py`; the map pins `
 - Four addons (F-202, D-130; F-228, D-158): the core `Amisia/Amisia.toc` and the modules
   `Amisia_Gear/Amisia_Gear.toc`, `Amisia_Dungeons/Amisia_Dungeons.toc` (`## OptionalDeps: Amisia_Gear`) and
   `Amisia_Talents/Amisia_Talents.toc` (`## OptionalDeps: Amisia_Gear, Amisia_Dungeons`), each module with
-  `## Dependencies: Amisia` and `## Interface: 16001` (Forever only); the OptionalDeps make the client load them in
+  `## Dependencies: Amisia`, `## DefaultState: disabled` (off on a fresh install, D-158) and `## Interface: 16001` (Forever only); the OptionalDeps make the client load them in
   that order. Each TOC lists every `.lua`/`.xml` of its folder exactly once, a path stands in one folder only, and
   the modules carry the core's `## Version` (`build.py check`: TOC against the folder, which also fails while a
   `<folder>_TBC.toc` or `<folder>_Vanilla.toc` differs from its folder's TOC without the camelot lines, a module's

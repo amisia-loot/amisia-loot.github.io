@@ -8,6 +8,7 @@
 ## Category: VuloUI
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia_Dungeons
 ## Dependencies: Amisia
+## DefaultState: disabled
 ## OptionalDeps: Amisia_Gear
 ## X-License: GPL-3.0
 # Written by tools/build.py from Amisia_Dungeons.toc (D-57, D-130): Amisia_Dungeons loads on WoW Forever only, this client gets no file. Edit Amisia_Dungeons.toc.

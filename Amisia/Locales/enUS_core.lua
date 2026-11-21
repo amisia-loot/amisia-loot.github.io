@@ -961,4 +961,5 @@ L["Zielfenster"] = "Target window"
 -- UI/GuildButton.lua (F-210)
 L["Öffnet Amisia auf der Seite Mitglieder: Twinks und Itemlevel der Gilde."] = "Opens Amisia on the Members page: the guild's alts and item levels."
 L["Der Empfänger ist gerade offline gegangen."] = "The recipient just went offline."
+L["Fertig unter älteren Daten: noch einmal scannen."] = "Done with older data: scan again."
 end)

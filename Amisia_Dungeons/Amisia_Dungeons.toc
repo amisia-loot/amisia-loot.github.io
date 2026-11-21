@@ -8,6 +8,7 @@
 ## Category: VuloUI
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia_Dungeons
 ## Dependencies: Amisia
+## DefaultState: disabled
 ## OptionalDeps: Amisia_Gear
 ## X-License: GPL-3.0
 

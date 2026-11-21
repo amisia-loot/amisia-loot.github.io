@@ -5,6 +5,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(modules): on a fresh install only the core is on; the three modules start switched off (F-228)
+
+    Amisia: Ausrüstung, Amisia: Dungeons & Raids and Amisia: Talente carry DefaultState disabled, so a new player
+    turns on what they want in the AddOn list; a module already switched on stays on.
+
+- fix(tools): a scan done under older data says "noch einmal scannen" (F-186)
+
+    After a new client build "Noch offen" named scans whose rows still read "Fertig: alles übernommen"; such a row
+    now reads "Fertig unter älteren Daten: noch einmal scannen."
+
 ## [v2.104.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.104.0) (2026-11-21)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.103.1...v2.104.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

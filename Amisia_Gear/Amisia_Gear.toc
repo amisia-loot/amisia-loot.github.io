@@ -8,6 +8,7 @@
 ## Category: VuloUI
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia_Gear
 ## Dependencies: Amisia
+## DefaultState: disabled
 ## X-License: GPL-3.0
 
 Gear\Module.lua

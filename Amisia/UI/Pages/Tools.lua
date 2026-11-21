@@ -295,9 +295,21 @@ local WAITING = {
     quests = { L["%d neue Quests warten auf die Übernahme."], L["Fertig: %d neue Quests warten auf die Übernahme."] },
     npcs = { L["%d neue Namen warten auf die Übernahme."], L["Fertig: %d neue Namen warten auf die Übernahme."] },
 }
+-- Whether a scan is open again although its last run went through: a newer client build or other shipped
+-- lists (ScanAll's own test, D-120); the row says so, as the line "Noch offen" above it does.
+local OPEN_AGAIN = {
+    gear = function() return ns.ScanGearOpen and ns.ScanGearOpen() end,
+    quests = function() return ns.QuestScan and ns.QuestScan.Open and ns.QuestScan.Open() end,
+    npcs = function() return ns.NpcScan and ns.NpcScan.Open and ns.NpcScan.Open() end,
+}
+
 local function waiting(key, n, finished, ran)
     if n > 0 then return WAITING[key][finished and 2 or 1]:format(n) end
-    if finished or ran then return L["Fertig: alles übernommen."] end
+    if finished or ran then
+        local again = OPEN_AGAIN[key]
+        if again and again() then return L["Fertig unter älteren Daten: noch einmal scannen."] end
+        return L["Fertig: alles übernommen."]
+    end
     return L["Noch nicht gelaufen."]
 end
 
