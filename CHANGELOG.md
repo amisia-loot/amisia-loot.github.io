@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.105.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.105.0) (2026-11-21)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.104.1...v2.105.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(layer): layer swaps work again after game build 71037, with the game's hourly limit and no swap in combat (F-229)
 
     Since build 71037 every creature carries a number of its own, so Amisia now keeps the first number it reads and
