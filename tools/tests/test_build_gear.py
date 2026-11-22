@@ -508,6 +508,19 @@ def test_without_observations_nothing_changes():
     assert one[0].rows == two[0].rows and one[1].keys() == two[1].keys()
 
 
+def test_scan_gear_asks_for_set_pieces_no_table_describes(tmp_path):
+    # the pieces of an item set ItemSparse and the scans lack (the Forever Tier 0.5 sets of 71037): asked for
+    (tmp_path / 'ItemSet.1.60.1.70235.csv').write_text(
+        'ID,Name_lang,ItemID_0,ItemID_1,ItemID_2\n1,Set A,280010,280020,280030\n2,Set B,280040,0,0\n'
+        '3,Old,209683,0,0\n', encoding='utf-8')
+    (tmp_path / 'ItemSparse.1.60.1.70235.csv').write_text('ID,Display_lang\n280010,A\n', encoding='utf-8')
+    # a piece below Forever's own ids (Classic, Season of Discovery) does not exist in Forever: not asked
+    assert build_gear.set_items_unseen(str(tmp_path), {280030: {}}) == {280020, 280040}
+    assert build_gear.set_items_unseen(str(tmp_path / 'none'), {}) == set()
+    (tmp_path / 'ItemSet.1.60.1.70235.csv').unlink()
+    assert build_gear.set_items_unseen(str(tmp_path), {}) == set()
+
+
 def test_scan_gear_asks_only_for_ids_the_client_has(tmp_path):
     # an id neither ItemSparse nor Item has does not exist in Forever: /amisia scan gear leaves it out
     (tmp_path / 'ItemSparse.1.60.1.70235.csv').write_text('ID,Display_lang\n10,A\n30,C\n', encoding='utf-8')

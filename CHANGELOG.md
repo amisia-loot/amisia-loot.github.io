@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(gear): the gear scan also asks for the pieces of Forever's new Tier 0.5 sets (F-188)
+
+    The game lists 18 new Forever sets (one per spec) but does not describe their 108 pieces yet, so the gear planner
+    cannot show them. "/amisia scan gear" (and "Scan everything missing") now asks the game for these pieces as well;
+    once the game reveals them, the next scan and data build bring the sets into the planner and the catalog.
+
 - chore(release): CurseForge shows a short changelog: version, links and one line per change
 
     The CurseForge file page now lists only each change's summary, without the long paragraphs and the

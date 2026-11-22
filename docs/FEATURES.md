@@ -202,6 +202,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du in einer Zeile oder oben "Anhalten" klickst (oder `/amisia scan stop`), dann ist die Reihe aus und auch nach einer Instanz startet nichts von selbst.
 - Prüfung: Wenn der Client nach einem Patch einen neueren Build hat als die Daten des Addons, dann steht beim Login einmal im Chat "Neuer Spiel-Build: es gibt Neues zu scannen (Gilde > Werkzeuge, "Alles Fehlende scannen")."; mit "Neuen Spiel-Build melden" aus (Einstellungen, Werkzeuge) nicht mehr.
 - Notiz: Spec `docs/specs/2026-11-13-alles-scannen.md`; DECISIONS D-120. Die Reihe lebt nur in der Sitzung: nach `/reload` oder Login bietet die Seite den Link wieder an. Die Scans fragen so schnell wie bisher (Einstellungen), nie in Instanzen; die Daten kommen erst nach dem Ausloggen und dem Datenbau des N100 ins Addon.
+- Notiz: Nachtrag 2026-11-22 (D-120): die Ausrüstungsliste fragt auch Forevers eigene Set-Teile, die weder `ItemSparse` noch ein Scan beschreibt (1.60.1.71037: die 18 Tier-0.5-Sets 2098-2115 mit 108 Teilen und 11 weitere); ein Scan am 2026-11-22 über 280450-281003 bekam für keins eine Antwort. Prüfung, sobald Forever sie verrät: `/amisia scan gear`, ausloggen, Datenbau, dann stehen die Sets im Katalog.
 
 ### F-186 Werkzeuge: eine Zeile je Scan, Klartext und nächster Schritt
 - Version: 2.81.0

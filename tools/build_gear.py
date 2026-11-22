@@ -284,6 +284,32 @@ def client_named_ids(wago_dir):
     return known
 
 
+# The first item id of Forever's own set pieces. The client's ItemSet table also carries the sets of Classic and of
+# Season of Discovery (pieces up to 251771 in 1.60.1.71037), which ItemSparse lacks because Forever has no such
+# items; Forever's own pieces begin at 278476 (Scale of the Gods). Only those are worth a question to the client.
+FOREVER_SET_PIECES = 270000
+
+
+def set_items_unseen(wago_dir, seen):
+    """Forever's set pieces (FOREVER_SET_PIECES and up) of the client's item sets (ItemSet) that neither
+    ItemSparse nor a scan (seen) describes yet: pieces the server keeps back until it reveals them
+    (1.60.1.71037: the 18 Forever Tier 0.5 sets 2098-2115 with 108 pieces, and 11 more). /amisia scan gear
+    asks for them, so the sets reach the planner after the reveal. An empty set without the tables."""
+    path = att_data.wago_csv(wago_dir, 'ItemSet') if wago_dir and os.path.isdir(wago_dir) else None
+    sparse = client_item_ids(wago_dir)
+    if not path or sparse is None:
+        return set()
+    out = set()
+    with open(path, encoding='utf-8', newline='') as fh:
+        for r in csv.DictReader(fh):
+            for i in range(17):
+                v = r.get(f'ItemID_{i}') or ''
+                iid = int(v) if v.isdigit() else 0
+                if iid >= FOREVER_SET_PIECES and iid not in sparse and iid not in seen:
+                    out.add(iid)
+    return out
+
+
 def client_known(ids, wago_dir):
     """The ids of ids one of the client's item tables names (client_named_ids; an id both lack does
     not exist in Forever: /amisia scan gear would ask for it in vain). Without the tables, all of them."""
@@ -2032,7 +2058,10 @@ def main(argv=None):
         log(f'{web_sources.site_name(site)}: {len(web[site])} item pages parsed, {sum(took.values())} sources for '
             f'items no other source names: {took}')
     log(f'quest scan rewards: {len(scanned)} quests with reward items, {stats.get("scan quest", 0)} items took one as their source')
-    missing = client_known(missing, args.wago)
+    unseen = set_items_unseen(args.wago, scan_items) - set(missing)
+    if unseen:
+        log(f'scan gear: {len(unseen)} set pieces no item table or scan describes yet')
+    missing = client_known(sorted(set(missing) | unseen), args.wago)
     sources = [att_data.ATT_SOURCE + (f' at {att["commit"][:10]}' if att.get('commit') else ''), 'the Amisia item scan']
     if crafts:
         sources.append('the WoW Forever client tables (recipes)')

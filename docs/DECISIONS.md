@@ -3286,6 +3286,18 @@ der nächste Ausrüstungs-Scan fragt sie wieder. Durchgesetzt durch `tests/test_
 Liste öffnet wieder), `tools/tests/test_build_gear.py` (`client_known` mit `Item`, jede Quellenart),
 `tools/tests/test_scan_ids.py` (die Listen sind aktuell).
 
+**Nachtrag 2026-11-22 (Set-Teile):** In `M` kommen auch Forevers eigene Set-Teile (Item-ID ab 270000,
+`build_gear.FOREVER_SET_PIECES`) aus der Client-Tabelle `ItemSet`, die weder `ItemSparse` noch ein Scan beschreibt
+(`build_gear.set_items_unseen`). In 1.60.1.71037 sind das die 18 Tier-0.5-Sets je Spezialisierung (2098-2115, 108
+Teile 280450-281003), ein Teil von Scale of the Gods und 10 Teile der Forever-Fassungen von Tier 1 (2138-2144), zusammen
+119; `M` wuchs von 294 auf 413 IDs. Der Server beschreibt sie noch nicht: ein Scan des Nutzers am 2026-11-22 über
+280450-281003 bekam für keins eine Antwort, und keine erlaubte Quelle hat ihre Werte (die Daten eines anderen Addons
+nennen Wowhead als Herkunft, D-04). Die Grenze 270000 lässt die Sets von Classic und Season of Discovery weg, die die
+Tabelle auch trägt (Teile bis 251771, rund 1900 Items, die es in Forever nicht gibt). Sobald der Server die Teile
+verrät, bringen Ausrüstungs-Scan und Datenbau sie ins Archiv; ins Set des Planers (`BisData.SET`) kommen sie wie jedes
+Item, sobald eine Quelle sie nennt. Grund: Nutzer 2026-11-22 nach dem Vergleich mit einem anderen Addon ("Ja, Sets
+angehen"). Durchgesetzt durch `tools/tests/test_build_gear.py::test_scan_gear_asks_for_set_pieces_no_table_describes`.
+
 ## D-121 Drop-Austausch sichtbar: wer teilt nur im Speicher, "Jetzt abgleichen" einmal in der Minute, Protokoll unverändert
 
 **Datum:** 2026-11-13
