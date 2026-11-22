@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.105.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.105.1) (2026-11-22)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.105.0...v2.105.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(gear): the gear scan also asks for the pieces of Forever's new Tier 0.5 sets (F-188)
 
     The game lists 18 new Forever sets (one per spec) but does not describe their 108 pieces yet, so the gear planner
