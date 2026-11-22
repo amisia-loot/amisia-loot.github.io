@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.106.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.106.1) (2026-11-22)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.106.0...v2.106.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - fix(professions): the way back from a guild member's recipes is easier to find (F-182)
 
     In a member's recipes the link back no longer hides at the right edge as "Back to members": it stands first in
