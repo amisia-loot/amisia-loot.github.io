@@ -39,8 +39,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Grundlagen
 ### F-230 Eigene Gewichte, Einfügen und Vorlagen aus der Simulation
-- Version: -
-- Status: geplant
+- Version: 2.106.0
+- Status: gebaut
 - Prüfung: Wenn du im Planer unter Optionen > "Gewichte ..." im Fenster "Gewichte" "Vorlage" > "Schatten (Sim)" wählst, dann steht die Gewichtung auf "Eigene: Schatten (Sim)", die Felder zeigen Zaubermacht 1, Schaden (Schatten) 1, Intelligenz 0,24, Trefferwertung 1,14, und die Reihenfolge der Vorschläge ändert sich.
 - Prüfung: Wenn du dort Intelligenz auf 2 setzt, dann rücken Teile mit viel Intelligenz in den Vorschlägen nach oben, ohne `/reload`.
 - Prüfung: Wenn du `Intellect=0.5, SpellDamage=1, HitRating=1.2, Foo=3` einfügst, dann nennt die Vorschau drei erkannte Werte und "unbekannt: Foo", und nach "Übernehmen" steht der neue Satz in der Auswahl.
