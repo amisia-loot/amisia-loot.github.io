@@ -717,6 +717,7 @@
   "7201": {"day": 324, "giver": 9078, "gname": "Schattenmagierin Vivian Lagrave", "gpos": "1418:308:4770", "objective": "Begebt Euch in die Blackrocktiefen und beschafft 10 Essenzen der Elemente. Euer erster Gedanke ist, die Golems und die Schöpfer der Golems zu suchen. Doch Ihr erinnert Euch, dass Vivian Lagrave auch etwas von Elementaren vor sich hin gemurmelt hat.", "qlevel": 54},
   "7241": {"day": 317, "giver": 13842, "gname": "Botschafterin Rokhstrom", "gpos": "1454:4979:7109", "qlevel": 60},
   "7321": {"day": 312, "ename": "Christoph Jeffcoat", "ender": 2393, "epos": "1424:6234:1923"},
+  "7441": {"day": 325, "objective": "Reist nach Düsterbruch und macht den Dämonen Pusillin ausfindig. Überzeugt ihn mit allen Mitteln davon, Euch Azj'Tordin's Buch der Zauberformeln zu geben. Kehrt mit dem Buch zu Az'Tordin, an Lariss' Pavillon in Feralas, zurück.", "qlevel": 58},
   "7481": {"day": 320, "giver": 14373, "gname": "Sage Korolusk", "gpos": "1444:7479:4390", "qlevel": 60},
   "7489": {"day": 320, "giver": 7776, "gname": "Talo Thornhoof", "gpos": "1444:7613:4377", "objective": "Bringt Lethtendris' Netz zu Talo Thornhoof im Camp Mojache in Feralas.", "qlevel": 57},
   "7492": {"day": 318, "giver": 10880, "gname": "Kriegsrufer Gorlach", "gpos": "1454:4682:6374", "objective": "Sprecht mit Talo Thornhoof in Camp Mojache, in Feralas."},

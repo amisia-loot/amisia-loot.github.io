@@ -49,6 +49,10 @@
    "party",
    "Ragefireabgrund"
   ],
+  "429": [
+   "party",
+   "Düsterbruch"
+  ],
   "47": [
    "party",
    "Kral von Razorfen"
@@ -467,6 +471,18 @@
     "9478": 1
    },
    "npc": 7267,
+   "o": "e8210148",
+   "src": "G"
+  },
+  "2718fe07": {
+   "day": 325,
+   "diff": 1,
+   "enc": 2792,
+   "inst": 429,
+   "it": {
+    "18267": 1
+   },
+   "npc": 14354,
    "o": "e8210148",
    "src": "G"
   },
@@ -899,6 +915,18 @@
    "o": "e8210148",
    "src": "G"
   },
+  "4e1bc984": {
+   "day": 325,
+   "diff": 1,
+   "enc": 344,
+   "inst": 429,
+   "it": {
+    "18307": 1
+   },
+   "npc": 13280,
+   "o": "e8210148",
+   "src": "G"
+  },
   "4efd92cd": {
    "day": 324,
    "diff": 1,
@@ -971,6 +999,18 @@
     "16711": 1
    },
    "npc": 11622,
+   "o": "e8210148",
+   "src": "G"
+  },
+  "56e0f42b": {
+   "day": 325,
+   "diff": 1,
+   "enc": 345,
+   "inst": 429,
+   "it": {
+    "18311": 1
+   },
+   "npc": 14327,
    "o": "e8210148",
    "src": "G"
   },
@@ -2161,6 +2201,18 @@
    "o": "e8210148",
    "src": "G"
   },
+  "eddb7e02": {
+   "day": 325,
+   "diff": 1,
+   "enc": 343,
+   "inst": 429,
+   "it": {
+    "18306": 1
+   },
+   "npc": 11490,
+   "o": "e8210148",
+   "src": "G"
+  },
   "f15bb759": {
    "day": 316,
    "diff": 1,
@@ -2347,6 +2399,7 @@
   "10596": "Mutter Glimmernetz",
   "10901": "Hüter des Wissens Polkelt",
   "11261": "Doktor Theolen Krastinov",
+  "11490": "Zevrim Dornhuf",
   "11517": "Flintauge",
   "11518": "Jergosh der Herbeirufer",
   "11519": "Bazzalan",
@@ -2357,9 +2410,12 @@
   "12225": "Celebras der Verfluchte",
   "12236": "Lord Schlangenzunge",
   "12258": "Schlingwurzler",
+  "13280": "Hydrobrut",
   "13282": "Noxxion",
   "13596": "Faulschnapper",
   "13601": "Tüftler Gizlock",
+  "14327": "Lethtendris",
+  "14354": "Pusillin",
   "1853": "Dunkelmeister Gandling",
   "255262": "Katerina die Aufräumerin",
   "255276": "Der Verhörer",
