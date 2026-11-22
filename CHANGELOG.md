@@ -5,6 +5,11 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- chore(release): CurseForge shows a short changelog: version, links and one line per change
+
+    The CurseForge file page now lists only each change's summary, without the long paragraphs and the
+    internal numbers; the full notes stay in CHANGELOG.md and on GitHub.
+
 ## [v2.105.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.105.0) (2026-11-21)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.104.1...v2.105.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

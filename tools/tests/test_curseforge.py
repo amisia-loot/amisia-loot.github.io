@@ -67,6 +67,20 @@ def test_the_changelog_is_the_release_section():
     assert curseforge.changelog_section(linked, '2.51.0').endswith('  Why.'), 'the D-60 heading with its links'
 
 
+def test_curseforge_gets_the_short_notes():
+    text = ('## Unreleased\n\n## [v2.51.0](https://x/releases/tag/v2.51.0) (2026-11-05)\n\n[Full Changelog](https://x) '
+            '[Previous Releases](https://y)\n\n- feat(gear): plan realistic sources (F-132)\n\n    Why it matters.\n\n'
+            '- fix(layer): no swap in combat (F-202, D-130)\n\n    More.\n\n- data(data): add the save file (built on main)\n\n'
+            '## 2.48.2 (d)\n\n- c\n')
+    assert curseforge.short_notes(text, '2.51.0') == (
+        '# Amisia\n\n## [v2.51.0](https://x/releases/tag/v2.51.0) (2026-11-05)\n\n'
+        '[Full Changelog](https://x) [Previous Releases](https://y)\n\n'
+        '- Plan realistic sources\n- No swap in combat\n- Add the save file (built on main)'), 'D-160'
+    assert curseforge.short_notes(text, '2.48.2') == '# Amisia\n\n## 2.48.2 (d)\n\n- C'
+    assert curseforge.short_notes(text, '1.0.0') == ''
+    assert curseforge.short_line('- feat!: Big change (F-1)') == 'Big change'
+
+
 def test_the_token_comes_from_the_environment_or_the_file(tmp_path):
     path = tmp_path / 'token'
     assert curseforge.read_token(str(path), env={}) is None
@@ -83,7 +97,7 @@ def test_upload_sends_the_zip_with_the_versions_and_the_changelog(tmp_path):
     assert post.full_url == 'https://wow.curseforge.com/api/projects/123456/upload-file'
     body = post.data
     meta = json.loads(body.split(b'\r\n\r\n', 1)[1].split(b'\r\n--', 1)[0])
-    assert meta == {'changelog': '- Neu: etwas', 'changelogType': 'markdown', 'displayName': 'Amisia 2.49.0',
+    assert meta == {'changelog': '# Amisia\n\n## 2.49.0 (2026-11-04)\n\n- Neu: etwas', 'changelogType': 'markdown', 'displayName': 'Amisia 2.49.0',
                     'gameVersions': [13001, 12001, 11001], 'releaseType': 'release'}
     assert b'filename="Amisia-2.49.0.zip"' in body and b'PK' in body
     assert 'uploaded Amisia 2.49.0 (file 777)' in said[-1]

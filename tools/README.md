@@ -75,7 +75,9 @@ python3 tools/build.py perf [--sv FILE] [--rows N]
   `--no-copy` leave out the push (and tag push, GitHub release, upload) and the copy.
 - A note in `## Unreleased`, written with the change itself, in English: `- type(scope): summary (F-xxx)`
   (types feat, fix, perf, data, docs, chore), a blank line, then two spaces and a short paragraph of what
-  a player notices. CurseForge and GitHub show the version's section as it is.
+  a player notices. GitHub shows the version's section as it is; CurseForge gets its short form (D-160):
+  the heading, the links and one line per note (no type(scope), no F-/D- numbers, no paragraph), so the
+  summary must stand on its own. `python3 tools/curseforge.py notes [X.Y.Z]` prints it.
 - After a successful push `release` uploads the zip to CurseForge with `tools/curseforge.py` (D-58): the
   project is `## X-Curse-Project-ID` in `Amisia.toc`, the token `~/.config/amisia/curseforge.token` (or
   `$CURSEFORGE_TOKEN`), the game versions are the TOC's interface numbers as CurseForge names them

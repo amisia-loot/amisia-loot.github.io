@@ -11,8 +11,10 @@ retry after a failed upload. The project is `## X-Curse-Project-ID` in Amisia/Am
 comes from ~/.config/amisia/curseforge.token (or $CURSEFORGE_TOKEN) and never from the repository.
 Without either the upload is skipped with a note. The game versions are the TOC's interface numbers
 read as CurseForge names (16001 -> 1.60.1, 20506 -> 2.5.6, 11509 -> 1.15.9); a name CurseForge does
-not know yet stops the upload, nothing is sent with a guessed version. The changelog is the release's
-section of CHANGELOG.md. Only Python's standard library, no download of anything.
+not know yet stops the upload, nothing is sent with a guessed version. The changelog is the short form of
+the release's section of CHANGELOG.md (D-160): the heading, the links and one line per note, without the
+paragraphs, the type(scope) and the F-/D- numbers. `notes [X.Y.Z]` prints it. Only Python's standard
+library, no download of anything.
 """
 import argparse
 import json
@@ -80,6 +82,33 @@ def changelog_section(text, version):
     return m.group(1).strip() if m else ''
 
 
+NOTE = re.compile(r'^- (?:[a-z]+(?:\([^)]*\))?!?: )?(.*)$')
+REFS = re.compile(r'\s*\((?:[FD]-\d+[a-z]?(?:,\s*|;\s*|\s+)?)+\)')
+
+
+def short_line(summary):
+    """A note's summary for players: no type(scope), no F-/D- numbers, a capital first letter."""
+    m = NOTE.match(summary)
+    text = REFS.sub('', m.group(1) if m else summary.lstrip('- ')).strip()
+    return text[:1].upper() + text[1:]
+
+
+def short_notes(text, version):
+    """The CurseForge changelog of version (D-160): "# Amisia", the version heading, the links line, one bullet a
+    note; '' when CHANGELOG.md has no such section."""
+    m = re.search(r'^(## \[?v?' + re.escape(version) + r'[\] ][^\n]*)\n(.*?)(?=^## |\Z)', text, re.M | re.S)
+    if not m:
+        return ''
+    links, bullets = '', []
+    for line in m.group(2).splitlines():
+        if line.startswith('[Full Changelog]') or line.startswith('[Previous Releases]'):
+            links = line.strip()
+        elif line.startswith('- '):
+            bullets.append('- ' + short_line(line))
+    parts = ['# Amisia', m.group(1).strip()] + ([links] if links else []) + ['\n'.join(bullets)]
+    return '\n\n'.join(p for p in parts if p)
+
+
 def multipart(metadata, filename, data, boundary=None):
     """The body of the upload request: the metadata as JSON, then the zip."""
     boundary = boundary or uuid.uuid4().hex
@@ -141,10 +170,11 @@ def upload(root=ROOT, dry_run=False, token=None, opener=None, say=print):
             say(f'CurseForge: no game version {", ".join(missing)} yet; nothing uploaded')
             return 1
         with open(os.path.join(root, 'CHANGELOG.md'), encoding='utf-8') as fh:
-            notes = changelog_section(fh.read(), version) or f'Amisia {version}'
+            notes = short_notes(fh.read(), version) or f'Amisia {version}'
         meta = {'changelog': notes, 'changelogType': 'markdown', 'displayName': f'Amisia {version}',
                 'gameVersions': ids, 'releaseType': 'release'}
         if dry_run:
+            say(notes)
             say(f'CurseForge: would upload Amisia {version} to project {project} for {", ".join(names)} {ids}')
             return 0
         with open(zpath, 'rb') as fh:
@@ -166,9 +196,18 @@ def main(argv=None):
     sub.add_parser('versions', help='the CurseForge game versions of the TOC\'s interface numbers')
     u = sub.add_parser('upload', help=f'upload {ZIP_REL} as the TOC\'s version')
     u.add_argument('--dry-run', action='store_true', help='check everything, send nothing')
+    n = sub.add_parser('notes', help='print the short changelog CurseForge gets (default: the TOC\'s version)')
+    n.add_argument('version', nargs='?')
     args = ap.parse_args(argv)
     if args.cmd == 'upload':
         return upload(dry_run=args.dry_run)
+    if args.cmd == 'notes':
+        with open(os.path.join(ROOT, TOC_REL), encoding='utf-8') as fh:
+            version = args.version or toc_field(fh.read(), 'Version')
+        with open(os.path.join(ROOT, 'CHANGELOG.md'), encoding='utf-8') as fh:
+            notes = short_notes(fh.read(), version)
+        print(notes or f'CHANGELOG.md has no section {version}')
+        return 0 if notes else 1
     token = read_token()
     if not token:
         print(f'no token: put it into {TOKEN_FILE}')

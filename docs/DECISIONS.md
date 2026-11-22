@@ -1378,7 +1378,7 @@ Raid-Modul aus deren TBC- bzw. Vanilla-TOC.
 CurseForge hoch (`tools/curseforge.py`). Das Projekt steht in `## X-Curse-Project-ID` von `Amisia.toc`, der Token in
 `~/.config/amisia/curseforge.token` (nie im Repository, nie im Chat). Die Spielversionen sind die Interface-Nummern
 der TOC, wie CurseForge sie nennt (16001 -> 1.60.1, 20506 -> 2.5.6, 11509 -> 1.15.9), der Changelog ist der Abschnitt
-der Version in `CHANGELOG.md`, der Dateityp "release". Ohne Projekt oder Token wird übersprungen; kennt CurseForge
+der Version in `CHANGELOG.md` (seit D-160 in Kurzform), der Dateityp "release". Ohne Projekt oder Token wird übersprungen; kennt CurseForge
 eine Spielversion nicht, wird nichts hochgeladen. Ein fehlgeschlagener Upload lässt den Release stehen (Exit 1,
 nochmal mit `python3 tools/curseforge.py upload`); `--no-upload` lässt ihn aus. Die Website bleibt mit derselben Zip.
 **Grund:** Nutzer 2026-11-04: "können wir Amisia auch bei curseforge hochladen", dann "Ja, vorbereiten". Updates
@@ -1428,7 +1428,7 @@ Notiz unter `## Unreleased`: `- type(scope): summary (F-xxx)` (feat, fix, perf, 
 eingerückter kurzer Absatz. `build.py release` macht daraus den Abschnitt der Version mit der Überschrift
 `## [vX.Y.Z](<repo>/releases/tag/vX.Y.Z) (Datum)` und der Zeile `[Full Changelog]` (Vergleich mit der Version davor)
 `[Previous Releases]`, setzt den Tag `vX.Y.Z`, schiebt ihn mit und macht daraus ein GitHub-Release; CurseForge bekommt
-denselben Abschnitt. Ohne Notiz bricht der Release ab, bevor sich etwas ändert. Andere Addons und Fan-Seiten werden
+denselben Abschnitt in Kurzform (D-160). Ohne Notiz bricht der Release ab, bevor sich etwas ändert. Andere Addons und Fan-Seiten werden
 auch hier nicht genannt (D-02, D-05).
 **Grund:** Wunsch des Nutzers 2026-11-05 ("changelog sollen so aussehen und auf englisch sein", Bildschirmfoto eines
 Changelogs mit Versions-Link, Full Changelog, Previous Releases und Einträgen `fix(scope): ...` mit Absatz); die
@@ -4673,3 +4673,20 @@ Clients tut die Taste nichts). Wer zehnmal in einer Stunde wechselt, wartet; im 
 `/reload`, `r2`, kein blindes Einladen, Ereignisfeld, Taste), `tests/test_layer_help.lua` (keine Sperre, altes
 `forced`), `tests/test_layer_change.lua` (Verlassen nach 4 s ohne Einstellung), `tests/test_layer_foreign.lua`
 (`r2`, Runden 1 und 4 s, Wort des Helfers beim Wechsel).
+
+## D-160 CurseForge bekommt den Changelog in Kurzform
+
+**Datum:** 2026-11-22
+**Entscheidung:** Ändert D-58 und D-60 für CurseForge. `tools/curseforge.py` schickt nicht mehr den ganzen Abschnitt
+der Version, sondern `# Amisia`, die Überschrift `## [vX.Y.Z](...) (Datum)`, die Zeile `[Full Changelog]`
+`[Previous Releases]` und je Notiz eine Zeile: die Zusammenfassung ohne `type(scope):`, ohne F-/D-Nummern, mit großem
+Anfangsbuchstaben; die eingerückten Absätze bleiben weg. `CHANGELOG.md` und das GitHub-Release behalten alles, die
+Notizen werden weiter wie in D-60 geschrieben. `python3 tools/curseforge.py notes [X.Y.Z]` zeigt die Kurzform,
+`upload --dry-run` auch.
+**Grund:** Nutzer 2026-11-22 mit einem Bildschirmfoto des Änderungsprotokolls eines anderen Addons auf CurseForge (nur
+Name, Version mit Datum, die zwei Links und kurze Punkte): "können wir die änderungsprotokoll ... übersichtlicher und
+kürzer und genauer machen so wie im bild", "für curseforge".
+**Folge:** Die Zusammenfassung einer Notiz muss allein verständlich sein, denn auf CurseForge steht nur sie. Schon
+hochgeladene Versionen behalten ihren langen Text.
+**Durchgesetzt durch:** `tools/tests/test_curseforge.py::test_curseforge_gets_the_short_notes`,
+`tools/tests/test_curseforge.py::test_upload_sends_the_zip_with_the_versions_and_the_changelog`.
