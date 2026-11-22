@@ -38,6 +38,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Andere Zeilen innerhalb eines Eintrags sind ein Fehler (der Test nennt die Zeile).
 
 ## Addon: Grundlagen
+### F-230 Eigene Gewichte, Einfügen und Vorlagen aus der Simulation
+- Version: -
+- Status: geplant
+- Prüfung: Wenn du im Planer unter Optionen > Gewichte "Vorlage" > "Schatten" wählst, dann steht die Gewichtung auf "Eigene: Schatten (Sim)", die Felder zeigen Zaubermacht 1, Schaden (Schatten) 1, Intelligenz 0,24, Trefferwertung 1,14, und die Reihenfolge der Vorschläge ändert sich.
+- Prüfung: Wenn du dort Intelligenz auf 2 setzt, dann rücken Teile mit viel Intelligenz in den Vorschlägen nach oben, ohne `/reload`.
+- Prüfung: Wenn du `Intellect=0.5, SpellDamage=1, HitRating=1.2, Foo=3` einfügst, dann nennt die Vorschau drei erkannte Werte und "unbekannt: Foo", und nach "Übernehmen" steht der neue Satz in der Auswahl.
+- Prüfung: Wenn du "Kopieren" klickst und die Zeile in ein neues "Einfügen" gibst, dann entsteht ein Satz mit denselben Zahlen.
+- Prüfung: Wenn du auf "Raid" zurückschaltest, dann stehen die Vorschläge wie vorher, und mit einem anderen Charakter derselben Klasse findest du deine Sätze wieder.
+- Notiz: Spec `docs/specs/2026-11-22-eigene-gewichte.md` (freigegeben 2026-11-22).
+
 ### F-229 Layer nach Spiel-Build 71037: eigene Nummern, Stunden-Limit, keine Wechsel im Kampf
 - Version: 2.105.0
 - Status: gebaut

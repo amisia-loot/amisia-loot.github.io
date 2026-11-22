@@ -1,6 +1,6 @@
 # Spec: Eigene Gewichte, Einfügen und Vorlagen aus der Simulation
 
-Stand: 2026-11-22 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-22 · Status: freigegeben ·
 Feature: F-230
 
 ## Ziel
@@ -159,3 +159,11 @@ Spezialisierung. Sonst lokal: keine Nachricht, keine Aktion für andere.
 - 2026-11-22: Spec gewünscht ("Ja, Spec schreiben") nach dem Vorschlag: eigene Gewichte je Spezialisierung, Einfügen per
   Text, Vorlagen aus WoWSims (MIT); Wowhead (gesperrt) und Icy Veins (Abruf abgewiesen) nicht als Quelle. Die offenen
   Fragen sind noch nicht beantwortet.
+- 2026-11-22: "Passt, bauen" auf den Entwurf mit seinen sechs Fragen -> jede Frage wie vorgeschlagen:
+  - Frage 1: der Editor steht im Reiter "Optionen" des Planers.
+  - Frage 2: die Prozente mit "Eigene" sind der Zuwachs der eigenen Wertung gegen das angelegte Teil des Platzes, im
+    Tooltip "nach deinen Gewichten".
+  - Frage 3: Amisia liest die Klammer-Zeile, nennt den Namen des Formats nicht (D-05).
+  - Frage 4: Vorlagen heißen "<Name> (Sim)", der Tooltip nennt WoWSims (MIT), ohne Link.
+  - Frage 5: `build.py wowsims` von Hand vor einem Release, nicht im automatischen Lauf.
+  - Frage 6: kein Teilen per Nachricht in dieser Spec.
