@@ -1679,8 +1679,8 @@ local function fillTabs(f, v, m, onRoute)
     if (type(v) == "number" and Route.Has(v)) or onRoute then f.tabRoute:Enable() else f.tabRoute:Disable() end
 end
 
--- The member mode's parts: the chip "Von: Name" beside the filter button and "Zurück zu Mitglieder"
--- at the right of the tabs; ends the mode when the page shows another view.
+-- The member mode's parts: the chip "Von: Name" beside the filter button and the link "< Gildenmitglieder"
+-- first in the tabs' row, where the eye starts; ends the mode when the page shows another view.
 local function placeMember(f, v)
     if member and (v ~= member.skill or mode() ~= RECIPES) then member = nil end
     f.memberChip:SetShown(member ~= nil)
@@ -1716,7 +1716,7 @@ local function refresh(f)
     if m == ROUTE and not onRoute then m = RECIPES end
     for _, t in ipairs(f.tabs) do t:Show() end
     fillTabs(f, v, m, onRoute)
-    f:Place(1, f.tabs, member and { f.back } or nil)
+    f:Place(1, member and f.backTabs or f.tabs)
     f.routeView:SetShown(onRoute)
     f.queueView:SetShown(m == QUEUE and not onRoute)
     local listed = not onRoute and m ~= QUEUE
@@ -1943,11 +1943,15 @@ local function create(parent)
         return member and L["Nur die Rezepte, die %s mit der Gilde teilt. Klick: wieder alle Rezepte."]:format(member.name) or ""
     end)
     f.memberChip:Hide()
-    f.back = W.Link(f, L["Zurück zu %s"]:format(L["Mitglieder"]), function()
+    f.back = W.Link(f, L["< Gildenmitglieder"], function()
         if ns.ShowPage then ns.ShowPage("members") end
     end)
     W.FitChip(f.back)
+    W.Tooltip(f.back, L["Gildenmitglieder"], L["Zurück zur Liste der Gildenmitglieder (Gilde > Mitglieder)."])
     f.back:Hide()
+    -- set apart from the tabs: a way out, not one more view
+    f.backTabs = { f.back, { f.tabs[1], gap = P.BACK_GAP } }
+    for i = 2, #f.tabs do f.backTabs[#f.backTabs + 1] = f.tabs[i] end
     f.counts = W.Text(f, T.FONT.hint)
     f.clearQueue = W.Link(f, L["Liste leeren"], function()
         Pr.QueueRemove(nil)

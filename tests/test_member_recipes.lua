@@ -77,7 +77,7 @@ assert(f.rank:GetText() == "Skill: 300/300 · 3 Rezepte · Stand heute", f.rank:
 assert(has(f.note:GetText(), "deinen eigenen Stand"), f.note:GetText())
 assert(f.counts:GetText() == "3 von 3 Rezepten", f.counts:GetText())
 assert(f.memberChip:IsShown() and f.memberChip.on and f.memberChip.label:GetText() == "Von: Anna Amboss", "the chip")
-assert(f.back:IsShown() and f.back.label:GetText() == "Zurück zu Mitglieder", "the link back")
+assert(f.back:IsShown() and f.back.label:GetText() == "< Gildenmitglieder", "the link back")
 assert(not f.tabAll.on and not f.filterBtn.dot:IsShown(), "no tab on, the menu's dot off")
 assert(has(f.hint:GetText(), "Die Rezepte, die Anna Amboss mit der Gilde teilt."), f.hint:GetText())
 -- the own known mark stays the player's: the bracers are his
