@@ -4,7 +4,7 @@
 ## Notes: Amisia's talent module, WoW Forever only: plan talents and compare them with yours, the talent calculator, build codes and talent links. Needs Amisia.
 ## Notes-deDE: Talent-Modul von Amisia, nur WoW Forever: Talente planen und mit deinen vergleichen, der Talentrechner, Build-Codes und Talent-Links. Braucht Amisia.
 ## Author: mrvulo
-## Version: 2.105.1
+## Version: 2.106.0
 ## Category: VuloUI
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia_Talents
 ## Dependencies: Amisia

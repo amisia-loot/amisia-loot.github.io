@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.106.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.106.0) (2026-11-22)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.105.1...v2.106.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(gear): own stat weights per spec: type them, paste them or start from the simulation's templates (F-230)
 
     The gear planner's "Options" menu opens the new window "Weights": per specialization any number of named sets
