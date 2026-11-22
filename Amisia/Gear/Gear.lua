@@ -1167,12 +1167,136 @@ function Gear.RaidOn(class, specKey, kind, level)
     return r ~= nil and type(sp) == "table" and type(sp.Raid) == "table" and (tonumber(level) or 0) >= (r.level or 60)
 end
 
+---------------------------------------------------------------------------
+-- Own weights (F-230, D-161): a set of the player's, per point of a stat as the item shows it, for the
+-- weighting "Eigene". Amisia_Gear/Gear/OwnWeights.lua keeps the sets (AmisiaDB.weights) and sets
+-- Gear.OwnSource(class, specKey) -> name, { [key] = weight per point } of the spec's chosen set (nil: none);
+-- Gear.OwnChanged() after every change. Scored linearly: no upgrade model, the hit cap still counts.
+---------------------------------------------------------------------------
+
+-- The keys of an own set: spell power and healing apart as in terms, one rating each for weapons and spells
+-- (in Forever a rating point counts for both), weapon damage per second for melee and ranged.
+Gear.OWN_KEYS = { "SP", "HEAL", "SP_ARCANE", "SP_FIRE", "SP_FROST", "SP_HOLY", "SP_NATURE", "SP_SHADOW", "STR", "AGI",
+    "STA", "INT", "SPI", "MP5", "HP5", "AP", "RAP", "HIT", "CRIT", "HASTE", "EXP", "DEF", "DODGE", "PARRY", "BLOCK",
+    "BLOCKVAL", "ARMOR", "SPEN", "RES", "DPS", "RDPS" }
+Gear.OWN_KEY = {}
+for _, k in ipairs(Gear.OWN_KEYS) do Gear.OWN_KEY[k] = true end
+-- the German names of the own keys (what the fields and the paste preview show)
+Gear.OWN_LABELS = {
+    SP = L["Zaubermacht"], HEAL = L["Heilung"], SP_ARCANE = L["Schaden (Arkan)"], SP_FIRE = L["Schaden (Feuer)"],
+    SP_FROST = L["Schaden (Frost)"], SP_HOLY = L["Schaden (Heilig)"], SP_NATURE = L["Schaden (Natur)"],
+    SP_SHADOW = L["Schaden (Schatten)"], STR = L["Stärke"], AGI = L["Beweglichkeit"], STA = L["Ausdauer"],
+    INT = L["Intelligenz"], SPI = L["Willenskraft"], MP5 = L["Mana alle 5 Sek."], HP5 = L["Gesundheit alle 5 Sek."],
+    AP = L["Angriffskraft"], RAP = L["Distanzangriffskraft"], HIT = L["Trefferwertung"], CRIT = L["kritische Trefferwertung"],
+    HASTE = L["Tempowertung"], EXP = L["Waffenkundewertung"], DEF = L["Verteidigungswertung"], DODGE = L["Ausweichwertung"],
+    PARRY = L["Parierwertung"], BLOCK = L["Blockwertung"], BLOCKVAL = L["Blockwert"], ARMOR = L["Rüstung"],
+    SPEN = L["Zauberdurchschlag"], RES = L["Abhärtungswertung"], DPS = L["Waffenschaden pro Sekunde"],
+    RDPS = L["Distanzwaffe: Schaden pro Sekunde"],
+}
+-- the ratings among them (their internal weight is per percent, D-150's ratings; DEF per skill point)
+local OWN_RATED = { HASTE = true, EXP = true, DEF = true, DODGE = true, PARRY = true, BLOCK = true }
+
+-- Whether a spec's hit and crit are the spells' (casters and healers) or the weapons'.
+local function spellSide(model) return model == "caster" or model == "heal" end
+Gear.OwnSpellSide = spellSide
+
+-- An own set (per point) as Gear.Score's weights at a level: the ratings per percent at that level (hit and
+-- crit on the spec's side), everything else as it is. Haste and expertise always stand (0 when empty), so an
+-- empty field never takes terms' fallback from crit and hit. tools/build_bis.py point_weights is the same.
+function Gear.PointWeights(pp, model, level)
+    local spell = spellSide(model)
+    local w = { HASTE = 0, EXP = 0 }
+    for k, v in pairs(pp) do
+        if type(v) == "number" and Gear.OWN_KEY[k] then
+            if k == "HIT" then
+                local r = spell and "SHIT" or "HIT"
+                w[r] = v / ratingPerPoint(r, level)
+            elseif k == "CRIT" then
+                w[spell and "SCRIT" or "CRIT"] = v / ratingPerPoint("CRIT", level)
+            elseif OWN_RATED[k] then
+                w[k] = v / ratingPerPoint(k, level)
+            else
+                w[k] = v
+            end
+        end
+    end
+    return w
+end
+
+-- Amisia's weights w at a level as an own set per point ("Amisias Zahlen übernehmen"): what one point of each
+-- stat is worth (a generic hit point the melee and the spell part together), rounded to 3 decimals, held to
+-- -10 .. 100; zeros left out.
+local function round3(v) return math.floor(v * 1000 + 0.5) / 1000 end
+function Gear.ToPoints(w, level)
+    local out = {}
+    local function put(k, v)
+        v = round3(math.max(-10, math.min(100, v or 0)))
+        if v ~= 0 then out[k] = v end
+    end
+    for _, k in ipairs({ "SP", "HEAL", "SP_ARCANE", "SP_FIRE", "SP_FROST", "SP_HOLY", "SP_NATURE", "SP_SHADOW", "STR",
+        "AGI", "STA", "INT", "SPI", "MP5", "HP5", "AP", "RAP", "BLOCKVAL", "ARMOR", "SPEN", "RES", "DPS", "RDPS" }) do
+        put(k, w[k])
+    end
+    local critW = (w.CRIT or 0) + (w.SCRIT or 0)
+    put("HIT", (w.HIT or 0) * ratingPerPoint("HIT", level) + (w.SHIT or 0) * ratingPerPoint("SHIT", level))
+    put("CRIT", critW * ratingPerPoint("CRIT", level))
+    put("HASTE", (w.HASTE or 0.8 * critW) * ratingPerPoint("HASTE", level))
+    put("EXP", (w.EXP or 0.8 * (w.HIT or 0)) * ratingPerPoint("EXP", level))
+    for _, k in ipairs({ "DEF", "DODGE", "PARRY", "BLOCK" }) do put(k, (w[k] or 0) * ratingPerPoint(k, level)) end
+    return out
+end
+
+Gear.ownRev = 0           -- bumped by every change of the own sets: part of the scores' memo key
+local ownCache = {}       -- "class|spec|level" -> the converted weights of the chosen set
+function Gear.OwnChanged()
+    Gear.ownRev = Gear.ownRev + 1
+    ownCache = {}
+end
+
+-- The chosen own set of a spec: name, { [key] = weight per point }; nil when it has none (or the module is off).
+function Gear.OwnPick(class, specKey)
+    local src = Gear.OwnSource
+    if type(src) ~= "function" then return nil end
+    return src(class, specKey)
+end
+
+-- Whether "Eigene" is in force for a spec: the weighting is "Eigene" and the spec has a chosen set.
+function Gear.OwnOn(class, specKey, kind)
+    return kind == "Eigene" and Gear.OwnPick(class, specKey) ~= nil
+end
+
+-- The weighting as the switches show it: "Speedrun", "Raid", "Eigene: Schatten (Sim)"; "Eigene" without a
+-- chosen set of the spec reads Speedrun.
+function Gear.KindText(class, specKey, kind)
+    if kind == "Eigene" then
+        local name = Gear.OwnPick(class, specKey)
+        if name then return L["Eigene: %s"]:format(name) end
+        return "Speedrun"
+    end
+    return tostring(kind or "Speedrun")
+end
+
 -- The weight set of a spec for a level. A weighting without a set of its own for the bracket ("Raid"
--- below the level cap and for healers) reads Speedrun's.
+-- below the level cap and for healers) reads Speedrun's; "Eigene" the spec's chosen own set, without one
+-- Speedrun.
 function Gear.Weights(class, specKey, kind, level)
     local sp = Gear.SpecInfo(class, specKey)
     if not sp then return nil end
     if sp.all then return sp.all end
+    if kind == "Eigene" then
+        local name, pp = Gear.OwnPick(class, specKey)
+        if pp then
+            local key = class .. "|" .. tostring(specKey) .. "|" .. tostring(level)
+            local w = ownCache[key]
+            if not w then
+                w = Gear.PointWeights(pp, sp.model, level)
+                w.own = name
+                ownCache[key] = w
+            end
+            return w
+        end
+        kind = "Speedrun"
+    end
     local sets = sp[kind] or sp.Speedrun
     local brackets = ns.GEAR_WEIGHTS.brackets
     for i, upper in ipairs(brackets) do
@@ -1439,7 +1563,7 @@ function Gear.PicksFor(class, spec, level, plan, exclude)
 end
 
 -- Best items per slot for one level range.
--- opts: class, spec, kind ("Speedrun"/"Hardcore"/"Raid"), faction ("Alliance"/"Horde" short A/H or nil),
+-- opts: class, spec, kind ("Speedrun"/"Hardcore"/"Raid"/"Eigene"), faction ("Alliance"/"Horde" short A/H or nil),
 -- sources (set of filter keys), level (upper end of the range); optional
 -- exclude ({ item = {[id] = true}, boss = {[name] = true}, place = {[Gear.PlaceOf key] = true} }),
 -- plan ("auto", "2H", "DW", "SHIELD"; auto picks the larger sum), suffix ("best": an item's best
@@ -1462,6 +1586,7 @@ function Gear.Best(opts)
     local dual = Gear.CanDualWield(class, level, opts.spec)
     local lists = { ["2H"] = {}, MH = {}, OH = {}, FINGER = {}, TRINKET = {} }
     local key = class .. "/" .. tostring(opts.spec) .. "/" .. tostring(opts.kind)
+        .. (opts.kind == "Eigene" and ("/" .. Gear.ownRev) or "")
     if key ~= memoKey then memo, memoKey = {}, key end
     local caps = opts.cap
     local useSuffix = opts.suffix ~= "base"

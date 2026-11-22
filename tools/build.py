@@ -3,6 +3,7 @@
     python3 tools/build.py data [--sv FILE] [--wago DIR] [--att DIR] [--refresh-att]
     python3 tools/build.py tables [--version V] [--tables T ...]
     python3 tools/build.py questie
+    python3 tools/build.py wowsims
     python3 tools/build.py web [--site SITE] [--limit N] [--parse]
     python3 tools/build.py diff [OLD NEW] [--out FILE]
     python3 tools/build.py check
@@ -28,6 +29,10 @@ questie  downloads QuestieDB's WoW Forever data (data/Forever/*.lua, LICENSE.md,
          QuestieDB's GitHub repository, GPL-3.0, D-157) through the GitHub API into ~/addons/_cache/questiedb
          (tools/questie_data.py), one request at a time. data reads that cache only and never downloads it;
          without it the gear build has no QuestieDB sources.
+wowsims  downloads the WoWSims presets for WoW Forever (ui/specs/*/*/presets.ts, the classes' *_ep.ts, LICENSE of
+         github.com/wowsims/forever, MIT, F-230, D-161) through the GitHub API into ~/addons/_cache/wowsims
+         (tools/wowsims_weights.py), one request at a time; by hand before a release. data reads that cache only
+         (the weight templates SIM of GearWeights.lua) and never downloads it; without it there are no templates.
 web      fetches the item pages of the fan sites (tools/web_sources.py, D-157 step 2) for the items no other
          source explains (Amisia_Gear/Data/GearNoSource.lua) into ~/addons/_cache/web/<site>, within their
          robots.txt and terms: one request at a time, 3 s apart, a cached page never again, a stop on 403/429;
@@ -378,6 +383,12 @@ def cmd_tables(args):
 def cmd_questie(args):
     """QuestieDB's Forever data into its cache (tools/questie_data.py, D-157); data never downloads it."""
     rc, _ = run([sys.executable, os.path.join(ROOT, 'tools', 'questie_data.py')])
+    return rc
+
+
+def cmd_wowsims(args):
+    """The WoWSims presets into their cache (tools/wowsims_weights.py, F-230, D-161); data never downloads them."""
+    rc, _ = run([sys.executable, os.path.join(ROOT, 'tools', 'wowsims_weights.py')])
     return rc
 
 
@@ -940,6 +951,7 @@ def main(argv=None):
     tb.add_argument('--locale', default=None, choices=('enUS', 'deDE'),
                     help='string columns in this language (deDE: DungeonEncounter for the boss matching of the NPC scan, D-104)')
     sub.add_parser('questie', help='download QuestieDB\'s Forever data into ~/addons/_cache/questiedb (tools/questie_data.py, D-157)')
+    sub.add_parser('wowsims', help='download the WoWSims Forever presets into ~/addons/_cache/wowsims (tools/wowsims_weights.py, D-161)')
     wb = sub.add_parser('web', help='fetch and parse the fan sites\' item pages for the items without a source '
                                     '(tools/web_sources.py, D-157 step 2)')
     wb.add_argument('--site', action='append', default=None, help='only this site (a name of web_sources.SITES)')
@@ -985,7 +997,7 @@ def main(argv=None):
         os.environ['AMISIA_BUILD_VENV'] = '1'
         rest = sys.argv[1:] if argv is None else list(argv)
         os.execv(VENV_PY, [VENV_PY, os.path.abspath(__file__)] + rest)
-    return {'data': cmd_data, 'tables': cmd_tables, 'questie': cmd_questie, 'web': cmd_web, 'diff': cmd_diff, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release,
+    return {'data': cmd_data, 'tables': cmd_tables, 'questie': cmd_questie, 'wowsims': cmd_wowsims, 'web': cmd_web, 'diff': cmd_diff, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release,
             'github-release': cmd_github_release,
             'testlist': cmd_testlist, 'tested': cmd_tested, 'errors': cmd_errors, 'perf': cmd_perf, 'tocs': cmd_tocs}[args.cmd](args)
 

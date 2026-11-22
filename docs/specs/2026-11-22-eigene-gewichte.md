@@ -167,3 +167,19 @@ Spezialisierung. Sonst lokal: keine Nachricht, keine Aktion für andere.
   - Frage 4: Vorlagen heißen "<Name> (Sim)", der Tooltip nennt WoWSims (MIT), ohne Link.
   - Frage 5: `build.py wowsims` von Hand vor einem Release, nicht im automatischen Lauf.
   - Frage 6: kein Teilen per Nachricht in dieser Spec.
+- 2026-11-22, beim Bauen:
+  - "Optionen" ist im Planer ein Menü, kein Reiter. Der Abschnitt "Gewichte" ist darum ein eigenes Fenster
+    ("Gewichte", geöffnet über Optionen > "Gewichte ..."), das neben dem Planer steht: so bleiben Vorschläge und Ziele
+    beim Ändern sichtbar (Abläufe 3 und 4). Der Umschalter der Gewichtung steht im Ausrüstungsfenster und als Link im
+    Fenster "Gewichte"; beide gehen reihum Speedrun, Hardcore, Raid, Eigene (nur mit einem gewählten Satz).
+  - Treffer- und Kritwertung eines Satzes zählen auf der Seite der Spezialisierung: bei Zauberern und Heilern als
+    Zauberwertung, sonst als Waffenwertung (so zählt ein Punkt einmal und die passende Trefferkappe greift). Tempo und
+    Waffenkunde stehen immer (leer ist 0), damit kein Ersatz aus Krit und Treffer greift.
+  - Die kopierte Zeile beginnt mit `( Amisia: v1: "Name": Class=...`; gelesen wird jedes Wort an dieser Stelle. Eine
+    eingefügte Liste ohne Namen heißt "Eingefügt" (danach "Eingefügt 2" ...) und ersetzt nie einen Satz; eine Zeile mit
+    Namen ersetzt den Satz gleichen Namens (die Vorschau sagt es). Eine Vorlage ersetzt ihren Satz "<Name> (Sim)".
+  - Jeder neu angelegte oder gewählte Satz wird der gewählte, und die eigene Gewichtung springt auf "Eigene"
+    (Ablauf 2 für Vorlage, Einfügen, Neu und die Auswahl gleich).
+  - Vorlagen: die Namen der Simulation von Hand ins Deutsche (z. B. "Disc Raid Healing" -> "Disziplin Raid"); ein
+    Satz der Simulation, der berechnet statt als Zahlen steht (die Hybrid-Werte von Katze und Bär), und Werte wie
+    `2.32 * Mechanics...` fehlen mit einer Zeile im Bau. Stand 3289d8314f: 26 Vorlagen.

@@ -5,6 +5,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(gear): own stat weights per spec: type them, paste them or start from the simulation's templates (F-230)
+
+    The gear planner's "Options" menu opens the new window "Weights": per specialization any number of named sets
+    of weights per point (as the item shows the stat), shared by every character of the class on the account. The
+    weighting gets a fourth value "Own" that scores suggestions, targets, the gear page and "Upgrade for you" with
+    the chosen set, linearly and without Amisia's upgrade model (the hit cap still counts). A set comes from typing,
+    from pasting a "Name=Number" list or the weights line simulations and guides offer for copying (with a preview),
+    from the WoWSims Forever simulation's weights ("<Name> (Sim)", MIT) or from Amisia's own numbers; "Copy" gives a
+    line to share.
+
 ## [v2.105.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.105.1) (2026-11-22)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.105.0...v2.105.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

@@ -10,6 +10,9 @@ local _, ns = ...
 -- unit: what one point of score is worth; ref: the reference character per bracket; why: the reason in short.
 -- Raid: the weighting "Raid" (F-225), only its own set for the last bracket (the level cap); below it and for a
 -- spec without one (healers) Raid reads Speedrun. rref: its reference character. model.raid: its constants.
+-- SIM: templates for the own weights (F-230), per point, from WoWSims for WoW Forever (github.com/wowsims/forever, MIT; see LICENSES/THIRD-PARTY.md), commit 3289d8314f.
+-- { [class] = { { name, spec = Amisia's spec key or none, w = { [key] = weight per point } } } }; the licence
+-- text is LICENSES/WoWSims-MIT.txt.
 ns.LazyData("GEAR_WEIGHTS", [=[
 return {
 brackets={9,14,19,24,29,34,39,44,49,54,59,60},
@@ -1061,6 +1064,48 @@ ref={
 {HEAL=431,crit=7.7,mana=5632,spell=1250},
 {HEAL=567,crit=8,mana=5970,spell=1300},
 },},
+},
+},
+SIM={
+WARRIOR={
+{name="Furor Pre-BiS",spec="dps",w={AGI=1.7,AP=1,CRIT=2.26,DPS=12.59,EXP=2.35,HASTE=1.76,HIT=1.69,STR=2.2}},
+{name="Waffen Pre-BiS",spec="dps",w={AGI=1.76,AP=1,CRIT=2.32,DPS=16.71,EXP=1.57,HASTE=1.29,HIT=5.03,STR=2.2}},
+{name="Furor Zweihand Pre-BiS",spec="dps",w={AGI=1.94,AP=1,CRIT=2.55,DPS=13.89,EXP=2.26,HASTE=2.06,HIT=5.17,STR=2.2}},
+{name="Schutz offensiv",spec="tank",w={AGI=0.56,AP=0.27,ARMOR=0.05,BLOCKVAL=0.63,CRIT=0.43,DEF=0.45,DODGE=0.23,DPS=1.45,EXP=3.07,HASTE=0.29,HIT=0.06,PARRY=0.22,STA=1.15,STR=0.62}},
+{name="Schutz ausgewogen",spec="tank",w={AGI=0.66,AP=0.27,ARMOR=0.06,BLOCKVAL=0.76,CRIT=0.43,DEF=0.53,DODGE=0.29,DPS=1.42,EXP=2.35,HASTE=0.17,HIT=0.04,PARRY=0.26,STA=1.15,STR=0.62}},
+},
+PALADIN={
+{name="Vergeltung Heiliger Schock",spec="ret",w={AGI=3.11,AP=1,CRIT=4.66,DPS=13.04,EXP=6.2,HASTE=4.06,HIT=10.25,INT=4.53,MP5=0.01,SP=5.78,SPEN=0.01,SP_HOLY=4.98,STR=2.5}},
+{name="Vergeltung ohne Siegel",spec="ret",w={AGI=2.23,AP=1,CRIT=3.08,DPS=13.85,EXP=5.1,HASTE=22.87,HIT=6.83,INT=2.06,MP5=0.23,SP=2.36,SPEN=0.01,SP_HOLY=1.95,STR=2.4}},
+},
+HUNTER={
+{name="Jäger Weben",spec="dps",w={AGI=1,AP=0.2,CRIT=0.83,DPS=2.93,HASTE=0.82,HIT=1.43,INT=0.44,MP5=0.12,RAP=0.2,RDPS=1.69,STR=0.22}},
+{name="Jäger stationär",spec="dps",w={AGI=1,CRIT=0.87,HASTE=0.75,HIT=1.26,INT=0.64,MP5=0.41,RAP=0.34,RDPS=3.29}},
+{name="Jäger Nahkampf",spec="dps",w={AGI=1,AP=0.37,CRIT=1,DPS=4.86,HASTE=0.91,HIT=2.48,INT=0.7,MP5=0.23,RAP=0.15,RDPS=0.27,STR=0.41}},
+},
+ROGUE={
+{name="Kampf Finsterer Stoß",spec="dps",w={AGI=1.96,AP=1,CRIT=1.7,DPS=10.57,EXP=2.55,HASTE=1.72,HIT=2.42,SPEN=0.19,STA=0.01,STR=1.1}},
+{name="Kampf Dolche",spec="dps",w={AGI=1.95,AP=1,CRIT=1.68,DPS=10.18,EXP=2.21,HASTE=1.7,HIT=2.35,SPEN=0.21,STA=0.01,STR=1.1}},
+{name="Täuschung",spec="dps",w={AGI=1.93,AP=1,CRIT=1.63,DPS=10.47,EXP=2.42,HASTE=1.43,HIT=2.12,SPEN=0.16,STA=0.01,STR=1.1}},
+{name="Meucheln",spec="dps",w={AGI=2.06,AP=1,CRIT=2.02,DPS=8.44,EXP=2.77,HASTE=1.93,HIT=2.8,SPEN=0.65,STA=0.01,STR=1.1}},
+},
+PRIEST={
+{name="Schatten",spec="shadow",w={CRIT=0.84,HASTE=0.73,HIT=1.14,INT=0.24,SP=1,SPI=0.01,SP_SHADOW=1}},
+{name="Schmettern",w={CRIT=0.32,HASTE=0.43,HIT=0.37,INT=0.58,MP5=1.46,SP=1,SPI=0.57,SP_HOLY=0.81,SP_SHADOW=0.19}},
+{name="Disziplin Einzelziel",w={CRIT=0.7,HASTE=0.15,HEAL=1,INT=0.2,MP5=0.4,SPI=0.15}},
+{name="Disziplin Raid",w={CRIT=0.48,HASTE=0.1,HEAL=1,INT=0.2,MP5=0.19,SPI=0.1}},
+{name="Heilig Einzelziel",spec="holy",w={CRIT=0.3,HASTE=0.5,HEAL=1,INT=0.35,MP5=0.6,SPI=0.3}},
+{name="Heilig Raid",spec="holy",w={CRIT=0.23,HASTE=0.48,HEAL=1,INT=0.3,MP5=0.6,SPI=0.25}},
+},
+SHAMAN={
+{name="Elementar",spec="ele",w={CRIT=0.61,HASTE=1.23,HIT=1.18,INT=0.19,MP5=0.04,SP=1,SPEN=1.81,SPI=0.02,SP_FIRE=0.31,SP_NATURE=0.69}},
+{name="Verstärkung Pre-BiS",spec="enh",w={AGI=1.32,AP=1,CRIT=2.42,DPS=14.18,EXP=3.5,HASTE=2.81,HIT=5.2,INT=1.99,SP=1.27,SPEN=2.52,SP_NATURE=0.72,STR=2.2}},
+},
+DRUID={
+{name="Gleichgewicht P1",spec="balance",w={CRIT=0.76,HASTE=0.99,HIT=1.48,INT=0.28,MP5=0.15,SP=1,SP_ARCANE=0.68,SP_NATURE=0.32}},
+{name="Gleichgewicht Pre-BiS",spec="balance",w={CRIT=0.76,HASTE=0.95,HIT=1.45,INT=0.2,SP=1,SP_ARCANE=0.68,SP_NATURE=0.32}},
+{name="Katze",spec="feral",w={AGI=0.6547,AP=0.2438,CRIT=0.5057,DPS=2.142,EXP=0.4904,HASTE=0.3931,HIT=0.5212,STR=0.5942}},
+{name="Bär",spec="bear",w={AGI=0.4335,AP=0.2209,ARMOR=0.1744,CRIT=0.3633,DEF=0.8758,DODGE=0.1074,DPS=3.0931,EXP=1.776,HASTE=0.3581,HIT=0.6879,STA=1.0029,STR=0.4861}},
 },
 },
 }

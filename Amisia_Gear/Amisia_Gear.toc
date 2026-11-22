@@ -19,6 +19,8 @@ Gear\PlayStyle.lua
 Gear\Model.lua
 Gear\GearFrame.lua
 Gear\Bis.lua
+Gear\OwnWeights.lua
+Gear\WeightsFrame.lua
 Gear\NoSource.lua
 Gear\GuildWishes.lua
 Gear\Compare.lua

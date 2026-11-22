@@ -647,6 +647,15 @@ local HIT_CAP, SPELL_HIT_CAP = 6, 6
 local CR_HIT_MELEE, CR_HIT_SPELL = 6, 8
 ns.BIS_HIT_CAP = HIT_CAP
 
+-- The weighting after now in the switches' round: Speedrun, Hardcore, Raid, Eigene (only with an own set,
+-- withOwn), Speedrun again (F-225, F-230).
+function ns.NextKind(now, withOwn)
+    if now == "Speedrun" then return "Hardcore" end   -- l10n-ok: setting key
+    if now == "Hardcore" then return "Raid" end   -- l10n-ok: setting key
+    if now == "Raid" and withOwn then return "Eigene" end   -- l10n-ok: setting key
+    return "Speedrun"   -- l10n-ok: setting key
+end
+
 -- The caps of the options (weapons, spells): with the weighting "Raid" in force (Gear.RaidOn) what a
 -- raid boss lets miss (F-225), else the two above.
 function ns.BisHitCap(o)
@@ -991,6 +1000,8 @@ end
 local function ownOf(o, specKey)
     local Model = ns.Model
     if not (Model and Model.Available()) or not o.class or not specKey then return nil end
+    -- own weights (F-230, D-161) count linearly: no model, the gain against the worn item's score
+    if Gear.OwnOn(o.class, specKey, o.kind) then return nil end
     local p = Model.Params(o.class, specKey)
     if not p then return nil end
     Model.Sheet()   -- reads the sheet when it is due (and bumps the stamp then)
@@ -1129,6 +1140,8 @@ function ns.UpgradeOf(item, opts)
         weaker = (ev.group == "FINGER" or ev.group == "TRINKET") or nil, class = o.class, spec = o.spec,
         guessed = o.guessed or nil }
     if mine > 0 then u.pct = math.floor(ev.gain / mine * 100 + 0.5) end
+    -- own weights in force: the name of the set (the tooltip says "nach deinen Gewichten")
+    if Gear.OwnOn(o.class, o.spec, o.kind) then u.own = Gear.OwnPick(o.class, o.spec) end
     local mc, own = modelChange(ev, o, o.spec)
     if mc then
         u.total, u.main, u.surv, u.threat, u.approx = mc.total, mc.main, mc.surv, mc.threat, own.approx or nil
@@ -1319,6 +1332,15 @@ function ns.BisWhy(o)
     local sp = Gear.SpecInfo(o.class, o.spec)
     if not sp then return {} end
     local lines = {}
+    -- own weights (F-230): the set's name and its weights per point, nothing of Amisia's reasons
+    if Gear.OwnOn(o.class, o.spec, o.kind) then
+        local name, pp = Gear.OwnPick(o.class, o.spec)
+        lines[#lines + 1] = L["Eigene Gewichte: %s"]:format(name)
+        lines[#lines + 1] = L["Gerechnet wird die Summe Wert mal Gewicht, ohne Amisias Modell; Treffer über der Grenze zählt nicht."]
+        local parts = ns.OwnWeightParts and ns.OwnWeightParts(pp) or {}
+        lines[#lines + 1] = #parts > 0 and L["Je Punkt: %s"]:format(table.concat(parts, ", ")) or L["Alle Gewichte sind 0."]
+        return lines
+    end
     if sp.why then lines[#lines + 1] = L[sp.why] end
     local w = Gear.Weights(o.class, o.spec, o.kind, o.level)
     local unit = Gear.Unit(w)
@@ -2183,6 +2205,7 @@ local function tipLines(link, id, shift)
     end
     if not text and u.pick then text, color = L["BiS-Empfehlung für dich (%s)"]:format(slotName), TIP_GREEN end
     if not text then return {}, noTargets, true end
+    if u.own and not u.total then text = text .. L[" · nach deinen Gewichten"] end
     if c and c.wish[id] then text = text .. L[" · auf deiner Wunschliste"] end
     local out = { { text, color } }
     if u.pick then out[#out + 1] = { ns.BisPickText(u.pick), TIP_GREEN } end
@@ -2811,8 +2834,9 @@ ns.RegisterSettings{ key = "bis", label = L["Ausrüstung und Wünsche"], order =
     { key = "bis.prof", type = "choice", label = L["Hergestellte Items"], default = "all",   -- l10n-ok: setting key
       values = { { "all", L["alle"] }, { "mine", L["nur meine Berufe"] } }, tip = L["Welche hergestellten Items als Ziel in Frage kommen: alle oder nur die deiner eigenen Berufe."] },
     { key = "bis.kind", type = "choice", label = L["Gewichtung"], default = "Speedrun",   -- l10n-ok: setting key
-      values = { { "Speedrun", "Speedrun" }, { "Hardcore", "Hardcore" }, { "Raid", "Raid" } },
-      tip = L["Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung."] .. " " .. L["Raid rechnet einen Bosskampf auf Stufe 60: Ziel drei Stufen höher, Mana kaum knapp."] },
+      values = { { "Speedrun", "Speedrun" }, { "Hardcore", "Hardcore" }, { "Raid", "Raid" }, { "Eigene", L["Eigene"] } },
+      tip = L["Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung."] .. " " .. L["Raid rechnet einen Bosskampf auf Stufe 60: Ziel drei Stufen höher, Mana kaum knapp."]
+          .. " " .. L["Eigene rechnet mit deinem gewählten Satz (Ausrüstungsplaner > Optionen > Gewichte); ohne Satz wie Speedrun."] },
     { key = "bis.upgradeDot", type = "toggle", label = L["Upgrade-Punkt in der Tabelle"], default = true,   -- l10n-ok: setting key
       tip = L["Grüner Punkt an Items, die besser sind als das, was du trägst."] },
     { key = "bis.noSource", type = "toggle", label = L["Items ohne bekannte Quelle vorschlagen"], default = false,   -- l10n-ok: setting key
@@ -2911,6 +2935,8 @@ function ns.BisWeightsReport()
     end
     for _, line in ipairs(ns.BisWhy(o)) do ns.msg(line) end
     local parts = {}
+    -- own weights: BisWhy named them per point already
+    if w.own then w = {} end
     for k, v in pairs(w) do
         if type(v) == "number" and v ~= 0 and not k:find("^SPDREF_") and k ~= "OHDPS" then
             parts[#parts + 1] = { k = k, v = v }
@@ -2924,7 +2950,7 @@ function ns.BisWeightsReport()
     for _, p in ipairs(parts) do
         out[#out + 1] = ("%s %s"):format(Gear.STAT_LABELS[p.k] or p.k, Gear.Num(p.v, p.v < 1 and 2 or 1))
     end
-    ns.msg(L["Gewichte (%s, Level %d): %s"]:format(o.kind, o.level, table.concat(out, ", ")))
+    if #out > 0 then ns.msg(L["Gewichte (%s, Level %d): %s"]:format(o.kind, o.level, table.concat(out, ", "))) end
     local melee, spell = ns.BisOwnHit()
     if melee or spell then
         local hitCap, spellCap = ns.BisHitCap(o)

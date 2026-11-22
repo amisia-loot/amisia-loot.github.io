@@ -582,7 +582,8 @@ local function updateControls()
     end
     W.Row(F, row, T.CHIP_GAP, SPEC_X, -46)
     local sp = Gear.SpecInfo(g.class, cur)
-    kindButton.label:SetText(sp and sp.all and L["Gewichtung: eigene"] or L["Gewichtung: %s"]:format(ns.Get("bis.kind")))   -- l10n-ok: setting key
+    kindButton.label:SetText(sp and sp.all and L["Gewichtung: eigene"]
+        or L["Gewichtung: %s"]:format(Gear.KindText(g.class, cur, ns.Get("bis.kind"))))   -- l10n-ok: setting key
     kindButton:SetOn(true)
     -- a character at the raid's level still on Speedrun is offered "Raid", once a session
     local raid = Gear.RaidModel()
@@ -695,9 +696,10 @@ local function build()
     -- second row: weighting, faction, sources
     -- weighting and faction switch on a click: quiet links naming the value (D-67)
     kindButton = W.Link(F, "", function()
-        -- round through the three weightings
-        local now = ns.Get("bis.kind")   -- l10n-ok: setting key
-        ns.Set("bis.kind", now == "Speedrun" and "Hardcore" or now == "Hardcore" and "Raid" or "Speedrun")   -- l10n-ok: setting key
+        -- round through the weightings; "Eigene" only where the shown spec has a chosen own set (F-230)
+        local g = settings()
+        local spec = g.specs[g.class] or (Gear.Specs(g.class)[1] or {}).key
+        ns.Set("bis.kind", ns.NextKind(ns.Get("bis.kind"), Gear.OwnPick(g.class, spec) ~= nil))   -- l10n-ok: setting key
         ns.GearRefresh(true)
     end)
     kindButton:SetPoint("TOPLEFT", 14, -82)
@@ -708,6 +710,7 @@ local function build()
         GameTooltip:AddLine(L["Gewichtung"], 1, 0.82, 0)
         GameTooltip:AddLine(L["Speedrun bewertet Schaden höher, Hardcore Ausdauer und Rüstung. Heiler und Tanks haben eigene Gewichte."], 0.8, 0.8, 0.8, true)
         GameTooltip:AddLine(L["Raid rechnet einen Bosskampf auf Stufe 60: Ziel drei Stufen höher, Mana kaum knapp."], 0.8, 0.8, 0.8, true)
+        GameTooltip:AddLine(L["Eigene rechnet mit deinem gewählten Satz (Ausrüstungsplaner > Optionen > Gewichte); ohne Satz wie Speedrun."], 0.8, 0.8, 0.8, true)
         -- the shown range is below the raid's level: say what counts there
         local r, o = Gear.RaidModel(), opts(settings().col)
         if r and o.kind == "Raid" and o.level < (r.level or 60) then

@@ -109,6 +109,11 @@ diesem Vorbehalt, neben AllTheThings (MIT). Daten anderer Addons nur unter einer
 Hinweis in `Amisia/LICENSES/`; Code anderer Addons nie, außer GPL-verträglich und dort vermerkt. Der Satz "QuestieDB
 hat keine Lizenz und ist entfernt" oben gilt seitdem nicht mehr. OneForAll und AtlasLoot sind noch nicht wieder
 in den Builds (der Test verbietet sie im Kopf der Daten weiter, bis sie jemand mit Lizenzhinweis einbaut).
+**Nachtrag 2026-11-22 (D-161, F-230):** Die Gewichte der WoWSims-Simulation für Forever (github.com/wowsims/forever,
+MIT, Copyright (c) 2022 wowsims team) sind als Datenquelle erlaubt, nur für die Vorlagen der eigenen Gewichte (`SIM`
+in `Amisia/Data/GearWeights.lua`, "<Name> (Sim)"). Lizenztext in `Amisia/LICENSES/WoWSims-MIT.txt`, die Quelle in
+`THIRD-PARTY.md` und im Kopf von `GearWeights.lua`. Geladen nur von `tools/wowsims_weights.py` (`build.py wowsims`)
+über die GitHub-API, als Text gelesen, nie ausgeführt. Amisias eigene Gewichte nehmen keine Zahl daraus.
 
 ## D-05 Keine anderen Addons nennen
 
@@ -4702,3 +4707,55 @@ kürzer und genauer machen so wie im bild", "für curseforge".
 hochgeladene Versionen behalten ihren langen Text.
 **Durchgesetzt durch:** `tools/tests/test_curseforge.py::test_curseforge_gets_the_short_notes`,
 `tools/tests/test_curseforge.py::test_upload_sends_the_zip_with_the_versions_and_the_changelog`.
+
+## D-161 Eigene Gewichte: je Punkt, linear ohne Modell; Vorlagen aus WoWSims getrennt von Amisias Gewichten
+
+**Datum:** 2026-11-22
+**Entscheidung:** Die Gewichtung (`bis.kind`) hat einen vierten Wert "Eigene" (F-230, Spec
+`docs/specs/2026-11-22-eigene-gewichte.md`). Regeln:
+- **Je Punkt, je Spezialisierung, für den Account.** `AmisiaDB.weights[class][specKey] = { pick, sets }`, höchstens 20
+  Sätze, Namen ohne Farbcodes und Steuerzeichen, höchstens 32 Zeichen, Werte -10 bis 100 je Punkt, so wie der Wert auf
+  dem Item steht (`Gear.OWN_KEYS`). Jeder Charakter der Klasse sieht dieselben Sätze; ein Satz gilt für jede Stufe
+  gleich (keine Gewichte je Stufe). `Gear.PointWeights` rechnet ihn auf Amisias Gewichte je Prozent der Stufe um
+  (`ratings` aus `GearWeights.lua`); Treffer- und Kritwertung zählen auf der Seite der Spezialisierung (Zauberer und
+  Heiler: Zauber, sonst Waffen), damit ein Punkt einmal zählt und die passende Trefferkappe greift; Tempo und
+  Waffenkunde stehen immer (leer ist 0). `tools/build_bis.py` `point_weights` rechnet gleich.
+- **Linear, ohne Modell.** Mit "Eigene" zählt nur die Summe Wert mal Gewicht; das Upgrade-Modell (D-54) rechnet
+  nicht (`ownOf` gibt nichts), die Prozente sind der Zuwachs gegen das angelegte Teil des Platzes, der Tooltip sagt
+  "nach deinen Gewichten". Die Trefferkappe gilt weiter (6 %, wie Speedrun).
+- **Ohne Satz Speedrun.** Hat die Spezialisierung keinen gewählten Satz, rechnet "Eigene" wie "Speedrun"; die
+  Umschalter überspringen "Eigene" dann. Wird der gewählte Satz gelöscht, fällt die eigene Gewichtung auf "Speedrun"
+  zurück, eine Chatzeile sagt es.
+- **Eingefügter Text ist unvertraut (D-26):** höchstens 4000 Zeichen gelesen, höchstens 40 Werte, Zahlen nur als
+  Ziffern mit höchstens einem Dezimalzeichen (Komma oder Punkt), nichts wird ausgeführt. Gelesen werden die Liste
+  `Name=Zahl` (Namen deutsch oder englisch, unabhängig von der Spielsprache) und die Gewichte-Zeile in Klammern, die
+  Simulationen und Guides zum Kopieren anbieten; das andere Addon, von dem dieses Format stammt, wird nicht genannt
+  (D-05), die kopierte Zeile beginnt mit `( Amisia: v1: ...`. Kein Senden: geteilt wird per Kopieren und Einfügen.
+- **Vorlagen aus WoWSims (D-04 Nachtrag):** `tools/wowsims_weights.py` (`python3 tools/build.py wowsims`, von Hand vor
+  einem Release, nicht im automatischen Lauf) lädt über die GitHub-API `ui/specs/*/*/presets.ts`, die gemeinsamen
+  `*_ep.ts` einer Klasse und `LICENSE` von `wowsims/forever` nach `~/addons/_cache/wowsims`, eine Anfrage nach der
+  anderen, und liest die Aufrufe `makePresetEpWeights` als Text; die Zuordnung der Spezialisierungen und die
+  deutschen Namen stehen von Hand im Werkzeug. `build.py data` liest nur den Cache und schreibt `SIM` in
+  `GearWeights.lua`; ohne Cache keine Vorlagen.
+- **Getrennt von Amisias Zahlen.** Der Satz der Spec F-225 "keine Zahlen aus fremden Simulationen" gilt für Amisias
+  eigene Gewichte (Speedrun, Hardcore, Raid) weiter; die Vorlagen stehen getrennt (`SIM`) und heißen "<Name> (Sim)".
+  Keine Vorlagen von Wowhead (robots.txt sperrt KI-Agenten, D-03) oder Icy Veins (Abruf abgewiesen); Zahlen von dort
+  tippt oder fügt der Spieler selbst ein.
+
+**Grund:** Nutzer 2026-11-22 mit einem Bild des Ausrüstungsplaners: "können wir bei amisia die gewichtung der stats
+selbst verändern und danach werden einem die items vorgeschlagen und paar vorgefertigte set von icy veins shadow
+forever wowhead und discord shadow server". Auf den Entwurf der Spec: "Passt, bauen" (alle sechs Fragen wie
+vorgeschlagen).
+
+**Folge:** Neuer gespeicherter Schlüssel `weights`; ein vierter Wert der Einstellung, kein neuer Abschnitt (der
+Editor ist das Fenster "Gewichte" am Planer). Erster Bau 2026-11-22 (WoWSims 3289d8314f): 26 Vorlagen für 12 der 18
+Spezialisierungen der Simulation; Magier, Hexenmeister, Heilig- und Schutz-Paladin, Wiederherstellungs-Schamane und
+-Druide haben dort noch keine Gewichte.
+
+**Durchgesetzt durch:** `tests/test_own_weights.lua` (beide Einfüge-Formen, Grenzen, Namen, Kopieren und Einfügen,
+Punkt und Prozent, "Eigene" ohne Modell mit Trefferkappe, Rückfall auf Speedrun, Vorlagen, Prüfung der Daten, die
+Umschalter, das Fenster), `tools/tests/test_score_parity.py::test_an_own_set_scores_alike`,
+`tools/tests/test_wowsims_weights.py` (Parser gegen einen Ausschnitt von `presets.ts`, Zuordnung, Download ohne Netz),
+`tools/tests/test_contracts.py::test_no_tool_fetches_from_the_forbidden_sites` (WoWSims nur über
+`tools/wowsims_weights.py`, kein Icy Veins), `tools/tests/test_contracts.py::test_every_generated_file_names_its_generator_and_sources`
+(WoWSims im Kopf nur mit MIT und `LICENSES/WoWSims-MIT.txt`).

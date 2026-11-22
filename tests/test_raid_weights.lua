@@ -120,7 +120,8 @@ assert(not has(why("shadow", "Speedrun", 60), "Raid"), "nothing of it on Speedru
 -- the setting's third value; the gear window's switch round all three; the link once a session
 ---------------------------------------------------------------------------
 local row = NS.SettingItem("bis.kind")
-assert(row and #row.values == 3 and row.values[3][1] == "Raid" and has(row.tip, "Raid rechnet einen Bosskampf"), "the choice has Raid")
+-- (a fourth value "Eigene" since F-230: tests/test_own_weights.lua)
+assert(row and #row.values == 4 and row.values[3][1] == "Raid" and has(row.tip, "Raid rechnet einen Bosskampf"), "the choice has Raid")
 assert(has(NS.SettingItem("bis.hitCap").tip, "Gewichtung Raid auf Stufe 60: 9 % für Waffen, 16 % für Zauber"))
 
 NS.Set("bis.kind", "Speedrun")

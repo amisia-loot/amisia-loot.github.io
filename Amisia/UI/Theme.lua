@@ -746,6 +746,21 @@ T.SRIMPORT = {
     HARD = { 0.8, 0.22, 0.18, 0.9 },             -- the frame of the hard-reserve row
 }
 
+-- the window "Gewichte" (F-230, Amisia_Gear/Gear/WeightsFrame.lua): from the top the line of the spec, the set row
+-- (the set's menu, Neu, Umbenennen, Löschen; the name box in its place while renaming, NAME_W), the actions
+-- (Vorlage, Einfügen, Kopieren, Amisias Zahlen übernehmen), the weighting; the list of the weights (ROWS rows of
+-- ROW_H: the name LABEL_X in, the number box BOX_W wide at the right; "Weitere Werte" folds the rest), the help
+-- (TEXT_H, two lines) and the result line at the bottom. Content T.WINDOW_PAD from both edges.
+-- PASTE_*: the window "Gewichte einfügen" / "kopieren": the hint, the text, the preview, the buttons.
+T.WEIGHTS = {
+    W = 440, H = 580,
+    INFO_Y = -32, SET_Y = -54, ACT_Y = -80, KIND_Y = -106, LIST_Y = -132, ROWS = 15, ROW_H = 22,
+    LABEL_X = 8, LABEL_W = 260, BOX_W = 70, BOX_X = 6, NAME_W = 200, SET_MAX_W = 200,
+    HELP_Y = 40, RESULT_Y = 12, TEXT_H = 26,
+    PASTE_W = 460, PASTE_H = 350, HINT_Y = -30, HINT_H = 28, BOX_Y = -62, BOX_H = 120, PREVIEW_Y = -190, PREVIEW_H = 92,
+    BUTTON_Y = 12, BUTTON_W = 110,
+}
+
 -- an overview card
 T.CARD = { PAD = 10, TITLE_Y = 8, LINE1_Y = 28, LINE2_Y = 48, BUTTON_Y = 8,
     HOVER_ALPHA = 0.05 }   -- the card under the mouse lights up faintly (a click runs its first action, D-67)

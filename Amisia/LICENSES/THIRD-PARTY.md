@@ -23,6 +23,14 @@ Amisia: Gear & Dungeons are built in part from the data below.
   doubt ... all rights reserved"). Amisia uses the data under the GPL-3.0 on that basis.
 - The Questie name and logo are not used by Amisia.
 
+## WoWSims (MIT)
+
+- Source: https://github.com/wowsims/forever, the stat weights of the files `ui/specs/<class>/<spec>/presets.ts` (the
+  WoW Forever simulation of the wowsims team), read as text by Amisia's build tool, never run.
+- Used for: the templates of the own weights (the table `SIM` in `Amisia/Data/GearWeights.lua`, shown as "<Name> (Sim)").
+  Amisia's own weights do not use these numbers.
+- Licence: MIT, Copyright (c) 2022 wowsims team. The licence text is in `WoWSims-MIT.txt` next to this file.
+
 ## foreverchanges.pro (item pages)
 
 - Source: the item pages of the fan site foreverchanges.pro (Waypoint Digital SL), fetched on 2026-11-20 by

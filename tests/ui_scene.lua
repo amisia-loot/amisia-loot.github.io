@@ -1255,6 +1255,22 @@ S.WINDOWS = {
     { key = "linkwindow", view = "raider", open = function()
         return NS.W.ShowLink(NS.Theme.LINKS[2].name, NS.Theme.LINKS[2].url)
     end },
+    -- the own weights (F-230): the window with a set of the simulation's shadow numbers, then the paste window
+    -- with a list and its preview (the weighting stays Speedrun for the shots after them)
+    { key = "weightsframe", view = "raider", open = function()
+        local o = NS.BisOpts()
+        NS.OwnWeights.Save(o.class, o.spec, "Schatten (Sim)", { INT = 0.24, SP = 1, SP_SHADOW = 1, SPI = 0.01, HIT = 1.14,
+            CRIT = 0.84, HASTE = 0.73 }, { pick = true, replace = true })
+        NS.Set("bis.kind", "Speedrun")
+        return NS.ShowWeights()
+    end },
+    { key = "weightspaste", view = "raider", open = function()
+        local P = NS.WeightsOpenPaste("paste")
+        P.area.box:SetText("Intellect=0.5, SpellDamage=1, HitRating=1.2, Foo=3")
+        P.area.box:GetScript("OnTextChanged")(P.area.box, true)
+        STUB.tick(0.4)
+        return P
+    end },
     -- the dungeon bar (F-168), last (it stands in a dungeon): every segment, then each list open
     { key = "dungeonbar", view = "raider", open = function() return S.dungeonBar() end },
     { key = "dungeonbar-bosses", view = "raider", open = function() return S.dungeonBar("bosses") end },
@@ -1265,7 +1281,7 @@ S.WINDOWS = {
 -- The module of each side window (F-202, D-130; F-228, D-158): by the start of its key; the others are
 -- the core's. A run without the module (tests/test_without_*.lua) leaves its windows out.
 local WINDOW_MODULE = {
-    gearframe = "gear", talentframe = "talents", runtimer = "dungeons", routebar = "dungeons",
+    gearframe = "gear", weightsframe = "gear", weightspaste = "gear", talentframe = "talents", runtimer = "dungeons", routebar = "dungeons",
     questitems = "dungeons", queststart = "dungeons", targetwin = "dungeons", dungeonbar = "dungeons",
 }
 for _, w in ipairs(S.WINDOWS) do

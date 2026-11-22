@@ -37,6 +37,9 @@ python3 tools/build.py perf [--sv FILE] [--rows N]
   from what is on disk, so the same files give the same data.
 - `questie` downloads QuestieDB's Forever data into `~/addons/_cache/questiedb` (`questie_data.py`, below;
   D-157). `data` only reads that cache.
+- `wowsims` downloads the WoWSims presets for WoW Forever into `~/addons/_cache/wowsims` (`wowsims_weights.py`,
+  below; F-230, D-161). By hand before a release when the templates should change, not in the automatic run;
+  `data` only reads that cache.
 - `web [--site SITE] [--limit N] [--parse]` fetches the fan sites' item pages for the items no other source
   explains into `~/addons/_cache/web/<site>` and parses them into `~/addons/_cache/web/<site>.json`
   (`web_sources.py`, below; D-157 step 2). `data` only reads the parsed files.
@@ -663,6 +666,34 @@ python3 tools/build.py questie      # = tools/questie_data.py [--dest DIR] [--re
 Tests: `tools/tests/test_questie_data.py` (a cut of the files in their format under
 `tools/tests/fixtures/questiedb`, the sandbox, the download without network).
 
+## wowsims_weights.py: templates of the own weights from the WoWSims simulation (F-230, D-161)
+
+```
+python3 tools/build.py wowsims      # = tools/wowsims_weights.py [--dest DIR] [--ref master]
+```
+
+- Downloads from `github.com/wowsims/forever` (branch `master`, MIT) through the GitHub API (the token of `gh`), one
+  request after the other with a pause of a second, only `ui/specs/<class>/<spec>/presets.ts`, the weights a class
+  shares (`ui/specs/<class>/*_ep.ts`, e.g. `druid/feral_ep.ts` for the bear and the cat) and `LICENSE`, into
+  `~/addons/_cache/wowsims` (`$AMISIA_WOWSIMS_CACHE`) with the commit in `COMMIT`; files an older download had and
+  the repository no longer has are removed. Never committed, never fetched by `build.py data`.
+- `parse_presets()` reads the TypeScript as text, never runs it: each `makePresetEpWeights('<name>', ...)` with a
+  `Stats.fromMap({ [Stat.X]: n, ... }, { [PseudoStat.Y]: n })` (or a name that leads to one through
+  `const A = B;` in the file or the class's `*_ep.ts`), every pair whose value is a plain number. `STAT_KEY` maps
+  the simulation's stats to Amisia's keys per point (`Gear.OWN_KEYS`; MainHandDps -> DPS, RangedDps -> RDPS, one
+  hit, crit and haste for weapons and spells); `SKIPPED` names those Amisia does not score (FeralAttackPower,
+  BonusArmor, ArmorPenetration, ...); any other stat, a computed value (`2.32 * Mechanics...`) or a computed preset
+  (`CatEp.scale(...)`) is left out with a log line. `SPECS` maps the simulation's spec folders to Amisia's class
+  and spec and names each preset in German by hand (its English name in `Amisia/Locales/enUS_forever.lua`); a
+  preset not named there is left out with a log line.
+- `load()` gives `{class: [{name, spec, w}]}` in the classes' order; `build_bis.py` writes it as `SIM` into
+  `Amisia/Data/GearWeights.lua` (header: the source, the commit, `LICENSES/WoWSims-MIT.txt`). A missing download
+  prints a note and writes no `SIM`. The 2026-11-22 download (3289d8314f): 26 templates for 12 of the 18 specs of
+  the simulation (no mage, warlock, holy and protection paladin, restoration shaman and druid yet).
+
+Tests: `tools/tests/test_wowsims_weights.py` (a cut of the files under `tools/tests/fixtures/wowsims`, the mapping
+against Amisia's specs and keys, the download without network, the header).
+
 ## web_sources.py: item sources from fan sites (D-157, step 2)
 
 ```
@@ -953,7 +984,7 @@ install, no network:
 python tools/build_bis.py [--wago DIR] [--measured tools/bis_measured.json]
                           [--werte "AMISIA-WERTE level=60 class=ROGUE agi=300 crit=10.3 cr_CRIT=28:2"]
                           [--sv ~/addons/_SavedVariables/Amisia.lua] [--att DIR] [--no-att]
-                          [--picks tools/bis_picks.json]
+                          [--picks tools/bis_picks.json] [--wowsims ~/addons/_cache/wowsims]
 ```
 
 Inputs:
@@ -977,6 +1008,10 @@ Inputs:
   (`tools/att_data.py`, MIT) for the bosses' NPC ids per dungeon, `tools/drop_obs.json` for the drop
   base stock, and the SavedVariables: the random suffixes the collector saw (`scan.suffix`) and the
   item scan (`scan.items`) of planner items and picks GearData.lua has no `ST` for (the check below).
+- The WoWSims download (`wowsims_weights.py`, `--wowsims DIR`): its weight templates go into `GearWeights.lua` as
+  `SIM` (F-230, D-161), apart from Amisia's own weights, which never read them. `point_weights` turns an own set
+  per point into the weights per percent at a level as `Gear.PointWeights` does
+  (`tools/tests/test_score_parity.py::test_an_own_set_scores_alike`).
 - **Conversions** (agility and intellect per percent crit, rating per percent, mana per spirit) are
   documented defaults in the script (Classic's values; the level curve of ratings is TBC's). In-game
   measurements correct them: `tools/bis_measured.json` holds `samples` (raw values, e.g. from the

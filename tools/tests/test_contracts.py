@@ -392,6 +392,8 @@ WOWHEAD_FETCH_KNOWN = {'build_scan.py'}
 WAGO_FETCHER = 'fetch_tables.py'
 # the one tool that downloads QuestieDB, through the GitHub API (DECISIONS.md D-157)
 QUESTIE_FETCHER = 'questie_data.py'
+# the one tool that downloads the WoWSims presets, through the GitHub API (DECISIONS.md D-161)
+WOWSIMS_FETCHER = 'wowsims_weights.py'
 # the one tool that may ask foreverchanges.pro (and name metaforge.app), only for item pages and the item sitemap
 # within the sites' robots.txt (DECISIONS.md D-157, step 2); Wowhead stays forbidden everywhere
 WEB_FETCHER = 'web_sources.py'
@@ -413,6 +415,10 @@ def test_no_tool_fetches_from_the_forbidden_sites():
             assert 'questie/questiedb' not in text.lower(), \
                 f'tools/{name} names the QuestieDB repository (only tools/{QUESTIE_FETCHER} downloads it, D-157)'
             assert 'questie_data.refresh(' not in text, f'tools/{name} downloads QuestieDB (build.py questie does)'
+        if name != WOWSIMS_FETCHER:
+            assert 'wowsims_weights.refresh(' not in text, f'tools/{name} downloads WoWSims (build.py wowsims does)'
+            for site in ('icy-veins', 'icyveins'):
+                assert site not in text.lower(), f'tools/{name} names {site} (never a source, F-230)'
         if name not in WOWHEAD_FETCH_KNOWN:
             assert not re.search(r'https?://[^\s\'"]*wowhead\.com', text), f'tools/{name} fetches from Wowhead'
     # the fetcher: every wago.tools URL it names is one of the two allowed routes, it asks nothing else
@@ -432,6 +438,15 @@ def test_no_tool_fetches_from_the_forbidden_sites():
                         url), f'tools/{QUESTIE_FETCHER} names {url}'
     assert "QUESTIE_REPO = 'Questie/questiedb'" in text
     assert text.count('urlopen(') == 1, f'tools/{QUESTIE_FETCHER}: one place that asks the network'
+    # the WoWSims fetcher: the GitHub API of that one repository, one place that asks the network, nothing it reads runs
+    text = read(os.path.join(TOOLS, WOWSIMS_FETCHER))
+    for url in re.findall(r'https?://[^\s\'"\)\]]+', text):
+        assert re.match(r'^https://(api\.github\.com/repos/\{WOWSIMS_REPO\}|github\.com/wowsims/forever\b|amisia-loot\.github\.io)',
+                        url), f'tools/{WOWSIMS_FETCHER} names {url}'
+    assert "WOWSIMS_REPO = 'wowsims/forever'" in text
+    assert text.count('urlopen(') == 1, f'tools/{WOWSIMS_FETCHER}: one place that asks the network'
+    assert not re.search(r'\b(eval|exec|subprocess|lupa|node)\b\s*\(', text.replace('_token()', '')), \
+        f'tools/{WOWSIMS_FETCHER} runs nothing it downloads'
     # the fan-site fetcher: only the item pages and the item sitemap of the two sites' hosts, one place that asks
     # the network, behind check_url, GET only, never Wowhead
     text = read(os.path.join(TOOLS, WEB_FETCHER))
@@ -475,6 +490,7 @@ def header(text):
 
 def test_every_generated_file_names_its_generator_and_sources():
     licence = read(os.path.join(ADDON, 'LICENSES', 'AllTheThings-MIT.txt'))
+    wowsims = read(os.path.join(ADDON, 'LICENSES', 'WoWSims-MIT.txt'))
     third = read(os.path.join(ADDON, 'LICENSES', 'THIRD-PARTY.md'))
     data = addon_files(skip=('Core/', 'Raid/', 'Gear/', 'Collect/', 'UI/', 'Locales/'))
     data = [(rel, text) for rel, text in data if rel.startswith('Data/')]
@@ -493,6 +509,9 @@ def test_every_generated_file_names_its_generator_and_sources():
             assert rel in FAN_SITE_CREDITS, f'{rel}: fan-site data outside the gear data (D-157 step 2)'
             assert 'LICENSES/THIRD-PARTY.md' in head and rel in third, f'{rel}: fan-site data without its credit'
             assert not re.search(r'https?://', head), f'{rel}: a fan site as a link (D-02)'
+        if 'WoWSims' in head:
+            assert 'MIT' in head and 'LICENSES/WoWSims-MIT.txt' in head, f'{rel}: WoWSims data without its MIT credit'
+            assert rel in wowsims and rel in third.replace('`Amisia/', '`'), f'{rel} uses WoWSims data but LICENSES does not name it'
         if 'QuestieDB' in head:
             assert 'GPL-3.0' in head and 'LICENSES/THIRD-PARTY.md' in head, f'{rel}: QuestieDB data without its credit'
             assert rel in third, f'{rel} uses QuestieDB data but LICENSES/THIRD-PARTY.md does not name it'
@@ -500,8 +519,10 @@ def test_every_generated_file_names_its_generator_and_sources():
         assert not re.search(r'OneForAll|AtlasLoot', head), f'{rel}: data of another addon nobody decided on (D-04)'
     for rel in re.findall(r'Data/\w+\.lua', licence):
         assert os.path.exists(modules.path_of(rel)), f'LICENSES names {rel}, which does not exist'
-    assert sorted(os.listdir(os.path.join(ADDON, 'LICENSES'))) == ['AllTheThings-MIT.txt', 'THIRD-PARTY.md'], \
-        'a new licence file: decide it with the user first (D-04, D-157)'
+    # WoWSims-MIT.txt: decided with the spec F-230 (D-161)
+    assert sorted(os.listdir(os.path.join(ADDON, 'LICENSES'))) == ['AllTheThings-MIT.txt', 'THIRD-PARTY.md', 'WoWSims-MIT.txt'], \
+        'a new licence file: decide it with the user first (D-04, D-157, D-161)'
+    assert wowsims.count('MIT License') == 1 and 'wowsims team' in wowsims and 'github.com/wowsims/forever' in wowsims
 
 
 def test_amisia_ships_the_gpl_in_every_folder():
@@ -515,7 +536,8 @@ def test_amisia_ships_the_gpl_in_every_folder():
         for toc in sorted(f for f in os.listdir(base) if f.endswith('.toc')):
             assert '\n## X-License: GPL-3.0\n' in read(os.path.join(base, toc)), f'{toc} has no ## X-License: GPL-3.0'
     third = read(os.path.join(ADDON, 'LICENSES', 'THIRD-PARTY.md'))
-    for word in ('AllTheThings', 'MIT', 'QuestieDB', 'GPL-3.0', 'github.com/Questie/questiedb', 'all rights reserved'):
+    for word in ('AllTheThings', 'MIT', 'QuestieDB', 'GPL-3.0', 'github.com/Questie/questiedb', 'all rights reserved',
+                 'WoWSims', 'github.com/wowsims/forever', 'WoWSims-MIT.txt'):
         assert word in third, f'LICENSES/THIRD-PARTY.md does not say {word}'
 
 

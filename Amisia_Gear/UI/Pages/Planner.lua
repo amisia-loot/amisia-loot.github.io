@@ -263,6 +263,9 @@ local function listRows(res, o, chosen, lo, hi)
         -- while the setting is on, else only counted in the last line (D-107)
         local extra = NSR and NSR.For(chosen, o, res, lo, hi, tostring(res)) or {}
         local shown = suggestions(res, o, chosen, lo, hi)
+        -- an own set with every weight 0 (F-230) ranks nothing: say so instead of a list of zeros
+        local ownSet = Gear.OwnOn(o.class, o.spec, o.kind) and select(2, Gear.OwnPick(o.class, o.spec))
+        if ownSet and ns.OwnWeights and ns.OwnWeights.AllZero(ownSet) then shown, extra = { { note = L["Alle Gewichte sind 0."] } }, {} end
         if #extra > 0 and NSR.On() then shown = NSR.Merge(shown, extra) end
         for _, e in ipairs(shown) do rows[#rows + 1] = e end
         title = ns.BIS_SLOT_NAME[chosen] or chosen
@@ -981,6 +984,11 @@ local function optionsMenu(self)
     end }
     local n = ns.PlayStyle.Count()
     out[#out + 1] = { n > 0 and L["Spielstil (%d) ..."]:format(n) or L["Spielstil ..."], function() W.Menu(self, K.styleEntries(self)) end }
+    -- the own weights (F-230): their window beside the planner, the suggestions stay in sight
+    if ns.ShowWeights then
+        out[#out + 1] = { (Gear.OwnOn(o.class, o.spec, o.kind) and CHECK or "") .. L["Gewichte ..."], function() ns.ShowWeights() end,
+            tipTitle = L["Gewichte"], tip = L["Eigene Gewichte je Spezialisierung: eintippen, einfügen oder aus einer Vorlage der Simulation übernehmen."] }
+    end
     W.Menu(self, out)
 end
 
@@ -994,7 +1002,7 @@ local function optionsTip(self)
     GameTooltip:AddLine(L["Spielstil: %s"]:format(names or L["aus"]), 1, 1, 1, true)
     GameTooltip:AddLine(L["Warum diese Gewichte"], 1, 0.82, 0)
     for _, line in ipairs(ns.BisWhy()) do GameTooltip:AddLine(line, 0.85, 0.85, 0.85, true) end
-    GameTooltip:AddLine(L["Klick: Waffenplan, Quellen und Spielstil."], 0.6, 0.6, 0.6, true)
+    GameTooltip:AddLine(L["Klick: Waffenplan, Quellen, Spielstil und Gewichte."], 0.6, 0.6, 0.6, true)
     GameTooltip:Show()
 end
 
