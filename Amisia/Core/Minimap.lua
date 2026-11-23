@@ -104,6 +104,9 @@ local function tooltip(owner, anchor)
     end
     local layer = ns.Layer and ns.Layer.TooltipLine()
     if layer then GameTooltip:AddLine(layer, 0.8, 0.8, 0.8) end
+    -- the guild's orders an own character can craft (F-231)
+    local orders = ns.GuildOrders and ns.GuildOrders.TooltipLine()
+    if orders then GameTooltip:AddLine(orders, 0.8, 0.8, 0.8) end
     GameTooltip:AddLine(" ")
     GameTooltip:AddDoubleLine(L["Linksklick"], L["Amisia-Fenster"], 1, 1, 1, 0.8, 0.8, 0.8)
     GameTooltip:AddDoubleLine(L["Rechtsklick"], L["Schnellmenü"], 1, 1, 1, 0.8, 0.8, 0.8)

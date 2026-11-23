@@ -36,12 +36,13 @@ local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart, and a guild
 -- queue state with a battleground that popped, was joined or declined (QW with a P, J or L entry: QWP, F-227) apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, ZQ = 30, NV = 8, AC = 300, PC = 60, EA = 10, EQ = 300, TQ = 30, QW = 10, QWP = 1 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, ZQ = 30, NV = 8, AC = 300, PC = 60, OQ = 300, EA = 10, EQ = 300, TQ = 30, QW = 10, QWP = 1 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
 -- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
--- a feedback answer per report id; the group quest state per dungeon; a raid note question per note
-local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10, IV = 60, SQ = 5, FA = 5, QS = 3, NQ = 5, EJ = 5, ZA = 5 }
+-- a feedback answer per report id; the group quest state per dungeon; a raid note question per note; a guild
+-- order's state and a crafter's step per order id
+local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10, IV = 60, SQ = 5, FA = 5, QS = 3, NQ = 5, EJ = 5, ZA = 5, OA = 2, OT = 3 }
 local KEYED_MAX = 64        -- keyed gaps remembered per sender before the old ones are cleared
 
 -- PARTY only in an own home party (D-97: the routes and points shared with a group of five; D-110: the
@@ -377,6 +378,7 @@ end
 -- counts of 0-40 each
 local CALL_ART = { D = true, Q = true, H = true, S = true }
 local CALL_ROLE = { T = true, H = true, S = true }
+local ORDER_MAT = { B = true, H = true, A = true }
 local function callText(v, max) return type(v) == "string" and v ~= "" and #v <= max and not v:find("[%c|]") end
 local function roleTriple(v)
     local t, h, s = (type(v) == "string" and v or ""):match("^(%d%d?)/(%d%d?)/(%d%d?)$")
@@ -583,6 +585,25 @@ local VALID = {
         end
         return true
     end,
+    -- the guild orders (Gear/GuildOrders.lua, F-231, D-164): OA <order id> <rev> <spell> <count 1-20> <B|H|A>
+    -- <O|T|D|X> <crafter|-> <age in seconds> <note|-> [<item>]: O without a crafter, T and D with one; OT <order id>
+    -- <T|R|D>; OQ <nonce>; a field out of its bounds drops the whole message
+    OA = function(f)
+        if #f < 9 or not isHex(f[1], 4) or not isNum(f[2], 1, 999999) or not isNum(f[3], 1, 99999999) then return false end
+        if not isNum(f[4], 1, 20) or not ORDER_MAT[f[5]] or not isNum(f[8], 0, 99999999) then return false end
+        local st, by = f[6], f[7]
+        if st == "O" then
+            if by ~= "-" then return false end
+        elseif st == "T" or st == "D" then
+            if not charName(by) then return false end
+        elseif st ~= "X" or not (by == "-" or charName(by)) then
+            return false
+        end
+        if not (f[9] == "-" or callText(f[9], 60)) then return false end
+        return f[10] == nil or isNum(f[10], 0, 99999999)
+    end,
+    OT = function(f) return #f >= 2 and isHex(f[1], 4) and (f[2] == "T" or f[2] == "R" or f[2] == "D") end,
+    OQ = function(f) return #f >= 1 and isHex(f[1], 4) end,
     -- the guild calls (Raid/GuildCalls.lua, F-211, D-136): EA <call id> <rev> <D|Q|H|S> <dungeon key|-> <title>
     -- <level from> <epoch|0> <wanted T/H/S> <signed T/H/S> <in group T/H/S> <O|F> <note|->; EJ <call id> <T|H|S>
     -- <level> or <call id> -; EX <call id>; EQ <nonce>; a field out of its bounds drops the whole message

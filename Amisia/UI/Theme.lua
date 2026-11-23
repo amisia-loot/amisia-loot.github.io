@@ -678,6 +678,13 @@ T.PROFPAGE = {
     -- the tab Abklingzeiten (F-232): character, cooldown, ready or time left, the recipe that started it
     CD_ROWS = 15, CD_H = 22,
     CD_COLS = { { "name", 4, 190 }, { "what", 198, 130 }, { "state", 332, 120 }, { "recipe", 456, 122 } },
+    -- the tab Aufträge (F-231): rows ORDER_H high (at least ORDER_ROWS): the item's icon in the rounded ring, "4x
+    -- [Item]" and under it the order's line from ROW_TEXT_X; at the right up to two red buttons ORDER_ACT_GAP apart
+    ORDER_ROWS = 9, ORDER_H = 34, ORDER_ACT_GAP = 4, ORDER_ACT_W = 190,
+    -- "Auftrag stellen" beside "Fragen" in the recipe's guild box, ORDER_BTN_GAP after it
+    ORDER_BTN_GAP = 4,
+    -- the head row's seven tabs (F-231) TAB_ROW_GAP apart (T.TAB_GAP elsewhere), so they fit the page's width
+    TAB_ROW_GAP = 7,
     -- the list LIST_W wide, rows ROW_H high (at least ROWS): the thin frame ROW_EDGE (gold when chosen),
     -- the difficulty bar ROW_BAR_W at the left edge, the item's icon ROW_ICON square at ROW_ICON_X in
     -- the rounded ring, the name from ROW_TEXT_X; at the right the skill (ROW_RANK_W), the dots "kann
@@ -1127,6 +1134,17 @@ T.TOOLS = { NAME_W = 64 }
 
 -- the question window (W.Confirm, AmisiaConfirmFrame): the text under the title bar, wrapped, the
 -- two red buttons at the bottom right; its height follows the text.
+-- the window "Auftrag stellen" (F-231, AmisiaOrderDialog): the recipe under the title bar, then one row each for
+-- count, material and note (labels LABEL_W wide), the guild chat switch, the two red buttons at the bottom right.
+T.ORDERDLG = {
+    W = 360, H = 244,
+    TITLE_Y = 34,         -- the recipe line below the window's top
+    ROW1_Y = 62, ROW_GAP = 28,   -- the first row of fields and the step between rows
+    LABEL_W = 90,         -- the labels left of the fields
+    COUNT_W = 80, MATS_W = 160, NOTE_W = 214,
+    BUTTON_W = 110, BOTTOM = 14,
+}
+
 T.CONFIRM = {
     W = 440, H = 140,     -- the window (H before the text is set)
     TEXT_Y = 34,          -- the text below the window's top, under the title bar

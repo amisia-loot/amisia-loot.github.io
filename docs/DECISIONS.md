@@ -4827,3 +4827,41 @@ Abschnitt `prof`; `CD` ist kein Satz mehr (`[spell] = 1`), die Route fragt weite
 **Durchgesetzt durch:** `tests/test_prof_cooldowns.lua` (Lesen -> Zeitpunkt, Kategorie als eine Zeile, 20 Stunden,
 verlernt, Login-Zeile, `PC` mit allen Grenzen, Roster, eigener Bericht zuerst, Abstand, Instanz, Prüfung beim Laden,
 Tooltip), `tests/test_prof_cooldowns_page.lua`, `tools/tests/test_build_professions.py`.
+
+## D-164 Gildenaufträge: der Client des Auftraggebers ist die Quelle, der erste Hersteller gewinnt
+
+**Datum:** 2026-11-23
+**Entscheidung:** Für die Gildenaufträge (F-231, Spec `docs/specs/2026-11-23-gildenauftraege.md`; dort als D-162
+vorgemerkt, die Nummer war schon vergeben) gilt:
+- **Eine Quelle je Auftrag:** der Client des Auftraggebers hält seine Aufträge (`AmisiaDB.orders.own`, höchstens 5
+  offen) und sagt jeden Stand der Gilde (`OA`, neue Revision). Ein Hersteller schickt seinen Schritt nur dem
+  Auftraggeber (`OT` geflüstert: annehmen, abgeben, fertig); dessen Client nimmt die erste Annahme eines offenen
+  Auftrags, der Hersteller ist der Absender. Darum geht ein Schritt nur, solange das Roster den Auftraggeber online
+  nennt (der Knopf ist sonst grau); schließen und zurückziehen kann der Auftraggeber allein.
+- **Vertrauen:** nur GUILD und WHISPER, nur Mitglieder nach dem Roster; der Auftraggeber ist der Absender des
+  Servers, ein `OA` ändert nur dessen Aufträge, ein `OT` nur einen eigenen Auftrag des Empfängers. Ob der Hersteller
+  das Rezept wirklich kann, prüft niemand (es geht kein Gold). Ein Feld außerhalb seiner Grenzen (Anzahl 1-20,
+  Material B/H/A, Zustand mit oder ohne Hersteller, Notiz 60 Bytes ohne Balken und Steuerzeichen, Alter, Revision)
+  verwirft die ganze Nachricht. Deckel: 5 offene je Auftraggeber, 100 gehörte (die ältesten fallen); ohne Änderung
+  schließt ein eigener Auftrag nach 14 Tagen, ein gehörter fällt nach 14 Tagen ohne neues `OA`.
+- **Die Berufsdaten werden für keine Nachricht gebaut (D-28):** ob ein Rezept in den Daten steht, prüft Amisia beim
+  Empfang nur, wenn sie schon gebaut sind, sonst beim Öffnen des Reiters (`GO.Check`). Dafür trägt `OA` hinten
+  freiwillig die Item-Nummer (für die Chatzeile ohne Daten); ob eigene Charaktere das Rezept können, kommt aus deren
+  Berufsfenster (`prof.chars`).
+- **Geschlossene Aufträge** (`X`) bleiben 3 Tage beim Auftraggeber und gehen mit der Antwort auf `OQ` und nach dem
+  Login noch einmal hinaus, damit ein Hersteller, der beim "Erhalten" offline war, es erfährt.
+- **Wege wie der Rezept-Austausch (D-12):** nichts in der Sperre oder im Schlachtfeld; in einer Instanz wartet es
+  bis 5-15 s nach dem Verlassen; Kampf hält nichts auf. Die Zeile im Gildenchat geht nur vom eigenen Klick aus
+  (`ns.Say` kennt dafür jetzt "GUILD").
+
+**Grund:** Spec F-231, vom Nutzer am 2026-11-23 freigegeben ("Passt, alle drei": Annahme nur mit dem Auftraggeber
+online, Chatzeile nur für Hersteller, Gildenchat als Schalter aus, 14 Tage, Abschnitt im Reiter Gilde). Ein Stand an
+einer Stelle vermeidet Streit über zwei Annahmen ohne Server.
+
+**Folge:** Drei neue Nachrichtenarten `OA`, `OT`, `OQ`, ein neuer gespeicherter Schlüssel `orders`, ein neuer
+Einstellungsabschnitt `orders` (Reiter Gilde), ein Reiter "Aufträge" auf der Seite Berufe, `/amisia auftraege`.
+
+**Durchgesetzt durch:** `tests/test_guild_orders.lua` (Grenzen beider Seiten, Vertrauen, erster gewinnt, Deckel,
+14 Tage, Chatzeile 6 je Stunde, offline, `OQ`, Instanz, Sperre, Prüfung beim Laden),
+`tests/test_guild_orders_flow.lua` (der Ablauf zwischen fünf Clients), `tests/test_guild_orders_page.lua`,
+`tools/tests/test_contracts.py`.

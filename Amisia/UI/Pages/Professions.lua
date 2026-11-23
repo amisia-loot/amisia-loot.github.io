@@ -14,6 +14,8 @@
 -- with its icon, Lager, Händlergunst with the own favor).
 -- The tab "Abklingzeiten" (F-232, Gear/ProfCooldowns.lua): the own characters' and the guild's recipes with a long
 -- cooldown, ready or the time left; a click on a guild member opens the members page's menu (Flüstern).
+-- The tab "Aufträge" (F-231, Gear/GuildOrders.lua): the own guild orders, those an own character can craft and the
+-- guild's others, with their buttons; "Auftrag stellen" in a recipe's guild box opens the small window for one.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -32,6 +34,7 @@ local KNOWN = { { value = "all", text = L["Alle"] }, { value = "known", text = L
 local SHORT = { all = L["Alle"] }
 local CAMP, FAVOR, OVERVIEW = "camp", "favor", "overview"
 local COOLDOWNS = "cooldowns"   -- the tab Abklingzeiten (F-232), a view like FAVOR
+local ORDERS = "orders"         -- the tab Aufträge (F-231), a view like FAVOR
 local MARKS = P.MARK_ICONS
 local RECIPES, ROUTE = "recipes", "route"   -- settings.professions.mode
 local ROW_HINT = L["Klick: Details. Shift-Klick: Link in den Chat."]
@@ -89,7 +92,7 @@ local toGuild = false     -- /amisia berufe gilde: the overview scrolls to the g
 local function view()
     if atStart then return OVERVIEW end
     local v = state().view
-    if v == CAMP or v == FAVOR or v == OVERVIEW or v == COOLDOWNS then return v end
+    if v == CAMP or v == FAVOR or v == OVERVIEW or v == COOLDOWNS or v == ORDERS then return v end
     v = tonumber(v)
     if v and Pr.Key(v) then return v end
     return OVERVIEW
@@ -768,7 +771,94 @@ local function showRecipe(f, e)
     rd.guild.ground:SetColorTexture(unpack(any and P.RD_GUILD_BG or P.RD_BOX_BG))
     rd.askWho = Cr.AskWhom(r.spell)
     rd.ask:SetShown(rd.askWho ~= nil)
+    -- "Auftrag stellen" (F-231): beside "Fragen", in a guild with the guild orders on
+    rd.order:SetShown(ns.GuildOrders ~= nil and inGuild() and ns.Get("orders.on") ~= false)
+    rd.order:ClearAllPoints()
+    if rd.askWho then
+        rd.order:SetPoint("LEFT", rd.ask, "RIGHT", P.ORDER_BTN_GAP, 0)
+    else
+        rd.order:SetPoint("BOTTOMLEFT", P.RD_BOX_PAD - T.TAB_PAD, P.RD_BOX_PAD)
+    end
     layoutRecipe(rd)
+end
+
+---------------------------------------------------------------------------
+-- "Auftrag stellen" (F-231): the small window for a guild order of a recipe: count 1-20, who brings the
+-- material, a note of 60 bytes, the guild chat line (its default the setting orders.announce)
+---------------------------------------------------------------------------
+local orderDlg
+local function orderDialog()
+    if orderDlg then return orderDlg end
+    local GO, D = ns.GuildOrders, T.ORDERDLG
+    local d = W.Window("AmisiaOrderDialog", D.W, D.H, { title = L["Gildenauftrag"], strata = "FULLSCREEN_DIALOG" })
+    d:SetPoint("CENTER", UIParent, "CENTER", 0, 120)
+    d.what = W.Text(d, T.FONT.body, D.W - 2 * T.WINDOW_PAD)
+    d.what:SetPoint("TOPLEFT", T.WINDOW_PAD, -D.TITLE_Y)
+    local function y(i) return -(D.ROW1_Y + (i - 1) * D.ROW_GAP) end
+    local function label(i, text)
+        local fs = W.Text(d, T.FONT.text, D.LABEL_W)
+        fs:SetPoint("TOPLEFT", T.WINDOW_PAD, y(i) - 3)
+        fs:SetText(text)
+        return fs
+    end
+    d.countLabel = label(1, L["Anzahl"])
+    d.count = W.NumberStepper(d, D.COUNT_W)
+    d.count:Configure(1, GO.LIM.nMax, 1)
+    d.count:SetValue(1)
+    d.count:SetPoint("TOPLEFT", T.WINDOW_PAD + D.LABEL_W, y(1))
+    d.matsLabel = label(2, L["Material"])
+    d.mats = W.Choice(d, D.MATS_W)
+    local values = {}
+    for _, k in ipairs(GO.MATS) do values[#values + 1] = { k, GO.MAT_NAMES[k] } end
+    d.mats:SetValues(values)
+    d.mats:SetValue("B")
+    d.mats:SetPoint("TOPLEFT", T.WINDOW_PAD + D.LABEL_W, y(2))
+    d.noteLabel = label(3, L["Notiz"])
+    d.note = W.LineEdit(d, D.NOTE_W, function() end)
+    d.note:SetMaxLetters(GO.LIM.noteBytes)
+    d.note:SetPoint("TOPLEFT", T.WINDOW_PAD + D.LABEL_W, y(3))
+    W.Tooltip(d.note, L["Notiz"], L["Höchstens 60 Zeichen, z. B. \"zahle 5g\" oder \"Stoff hab ich\"."])
+    d.announce = W.Toggle(d)
+    d.announce:SetPoint("TOPLEFT", T.WINDOW_PAD, y(4))
+    d.announceLabel = W.Text(d, T.FONT.text)
+    d.announceLabel:SetPoint("LEFT", d.announce, "RIGHT", 4, 0)
+    d.announceLabel:SetText(L["Im Gildenchat ankündigen"])
+    W.Tooltip(d.announce, L["Im Gildenchat ankündigen"], L["Eine Zeile \"Suche Hersteller\" im Gildenchat für Mitglieder ohne Amisia."])
+    d.hint = W.Text(d, T.FONT.hint, D.W - 2 * T.WINDOW_PAD, true)
+    d.hint:SetPoint("TOPLEFT", T.WINDOW_PAD, y(5))
+    d.ok = W.Button(d, L["Auftrag stellen"], D.BUTTON_W, function()
+        local id, why = GO.Create(d.spell, d.count.current, d.mats.current, d.note:GetText(), d.announce:GetChecked() and true or false)
+        if not id then
+            d.hint:SetText(T.RED .. (why or "") .. "|r")
+            return
+        end
+        d:Hide()
+        local e = GO._store(false).own[id]
+        ns.msg(L["Gildenauftrag gestellt: %s. Er steht unter Berufe > Aufträge."]:format(GO.What(e)))
+        ns.Refresh()
+    end)
+    d.cancel = W.Button(d, L["Abbrechen"], D.BUTTON_W, function() d:Hide() end)
+    W.FitChip(d.ok, D.BUTTON_W)
+    W.FitChip(d.cancel, D.BUTTON_W)
+    W.Row(d, { d.ok, d.cancel }, T.LAYOUT.ITEM_GAP, T.WINDOW_PAD, D.BOTTOM, { point = "BOTTOMRIGHT", right = true })
+    orderDlg = d
+    return d
+end
+
+-- Opens the window for a recipe (the page's "Auftrag stellen"); the window, or nil without the recipe.
+function ns.ShowOrderDialog(spell, name)
+    local r = Pr.Recipe(tonumber(spell))
+    if not r or not ns.GuildOrders then return nil end
+    local d = orderDialog()
+    d.spell = r.spell
+    d.what:SetText(r.item > 0 and itemText(r.item, name) or (name or Pr.RecipeName(r)))
+    d.count:SetValue(1)
+    d.mats:SetValue("B")
+    d.note:SetText("")
+    d.announce:SetChecked(ns.Get("orders.announce") and true or false)
+    d.hint:SetText(GREY .. L["Wer das Rezept kann, sieht den Auftrag und nimmt ihn an. Übergeben wird im Spiel."] .. "|r")
+    d:Show()
+    return d
 end
 
 local function buildRecipeDetail(f, top)
@@ -891,6 +981,15 @@ local function buildRecipeDetail(f, top)
     W.FitChip(rd.ask)
     rd.ask:SetPoint("BOTTOMLEFT", P.RD_BOX_PAD - T.TAB_PAD, P.RD_BOX_PAD)
     W.Tooltip(rd.ask, L["Fragen"], L["Öffnet ein Flüstern an jemanden aus der Gilde, der das Rezept kennt (online zuerst)."])
+    -- the guild order (F-231): beside "Fragen" (placed by showRecipe)
+    rd.order = W.Link(rd.guild, L["Auftrag stellen"], function()
+        local r = entryRecipe(rd.entry)
+        if r then ns.ShowOrderDialog(r.spell, rd.entry.name) end
+    end)
+    W.FitChip(rd.order)
+    rd.order:SetPoint("BOTTOMLEFT", P.RD_BOX_PAD - T.TAB_PAD, P.RD_BOX_PAD)
+    W.Tooltip(rd.order, L["Auftrag stellen"], L["Bittet die Gilde, das herzustellen: wer das Rezept kann, sieht den Gildenauftrag und nimmt ihn an."])
+    rd.order:Hide()
     W.FollowWidth(rd, function() if rd:IsShown() and rd.entry then layoutRecipe(rd) end end)
     rd:Hide()
     return rd
@@ -2017,6 +2116,189 @@ local function buildCooldowns(f)
     return cv
 end
 
+---------------------------------------------------------------------------
+-- The tab Aufträge (F-231): "Meine Aufträge", "Für mich herstellbar", "Alle offenen"
+---------------------------------------------------------------------------
+-- The entries of the list: heads, a note under an empty block, the orders; and the three counts.
+local function orderEntries()
+    local GO = ns.GuildOrders
+    local out = {}
+    if not GO then return out, 0, 0, 0 end
+    if ns.Get("orders.on") == false then
+        out[1] = { note = L["Gildenaufträge sind aus (Einstellungen, Gilde)."] }
+        return out, 0, 0, 0
+    end
+    GO.Check()
+    local mine = GO.Mine()
+    out[#out + 1] = { head = L["Meine Aufträge"] }
+    for _, o in ipairs(mine) do out[#out + 1] = { order = o, mine = true } end
+    if #mine == 0 then out[#out + 1] = { note = L["Keine. In den Details eines Rezepts: \"Auftrag stellen\"."] } end
+    local forMe, rest = GO.Others()
+    out[#out + 1] = { head = L["Für mich herstellbar"] }
+    for _, o in ipairs(forMe) do out[#out + 1] = { order = o } end
+    if #forMe == 0 then out[#out + 1] = { note = L["Keine Aufträge, die deine Charaktere herstellen können."] } end
+    out[#out + 1] = { head = L["Alle offenen"] }
+    for _, o in ipairs(rest) do out[#out + 1] = { order = o } end
+    if #rest == 0 then
+        out[#out + 1] = { note = inGuild() and L["Keine weiteren Aufträge der Gilde."] or L["Du bist in keiner Gilde."] }
+    end
+    return out, #mine, #forMe, #rest
+end
+
+-- The buttons of an order's row: { { label, fn, tip, off } }, the rightmost last.
+local function orderActions(e)
+    local GO, o = ns.GuildOrders, e.order
+    local acts = {}
+    if e.mine then
+        if o.state == "D" then
+            acts[#acts + 1] = { L["Erhalten"], function() return GO.Received(o.id) end,
+                L["Du hast es bekommen: der Auftrag ist bei allen weg."] }
+        end
+        acts[#acts + 1] = { L["Zurückziehen"], function() return GO.Withdraw(o.id) end,
+            L["Nimmt den Auftrag zurück; er ist bei allen weg."] }
+        return acts
+    end
+    if GO.IsMine(o.by) then
+        if o.state == "T" then
+            acts[#acts + 1] = { L["Fertig"], function() return GO.Done(o.sender, o.id) end,
+                L["Sagt %s, dass es fertig ist. Übergeben (Handel oder Post) wird im Spiel."]:format(o.sender), not o.online }
+        end
+        acts[#acts + 1] = { L["Abgeben"], function() return GO.GiveBack(o.sender, o.id) end,
+            L["Gibt den Auftrag frei; ein anderer Hersteller kann ihn annehmen."], not o.online }
+    elseif o.state == "O" and o.crafter then
+        local pending = GO.Asked(o.sender, o.id) == "T"
+        acts[#acts + 1] = { pending and L["Angefragt"] or L["Annehmen"], function() return GO.Accept(o.sender, o.id) end,
+            pending and L["Wartet auf die Antwort von %s."]:format(o.sender)
+            or L["Sagt %s, dass du es herstellst (der erste gewinnt)."]:format(o.sender), pending or not o.online }
+    end
+    for _, a in ipairs(acts) do
+        if a[4] and not o.online then a[3] = L["%s ist offline."]:format(o.sender) end
+    end
+    return acts
+end
+
+-- The second line of an order: state (own) or requester, age, material, note, which own character can.
+local function orderLine(e)
+    local GO, o = ns.GuildOrders, e.order
+    local parts = {}
+    if e.mine then
+        parts[#parts + 1] = GO.StateText(o)
+    else
+        local who = L["von %s"]:format(ns.ClassColored(o.sender, o.class) .. GREY)
+        if not o.online then who = who .. " " .. L["(offline, zuletzt gehört %s)"]:format(GO.AgeText(o.seen)) end
+        parts[#parts + 1] = who
+        if o.state ~= "O" then
+            local taken = GO.Asked(o.sender, o.id) == "T" and not GO.IsMine(o.by)
+            parts[#parts + 1] = taken and L["schon angenommen von %s"]:format(o.by or "?") or GO.StateText(o)
+        end
+    end
+    parts[#parts + 1] = GO.AgeText(o.at)
+    parts[#parts + 1] = GO.MAT_NAMES[o.mats] or ""
+    if o.note then parts[#parts + 1] = o.note end
+    if not e.mine and o.crafter and not ns.SameName(o.crafter, ns.UnitFullName("player") or "") then
+        parts[#parts + 1] = L["kann: %s"]:format(o.crafter)
+    end
+    return GREY .. table.concat(parts, " · ") .. "|r"
+end
+
+local function orderClick(row, i)
+    local acts = row.acts
+    local a = acts and acts[i]
+    if not a or a[4] then return end
+    local ok, why = a[2]()
+    if not ok and why then ns.msg(why) end
+    ns.Refresh()
+end
+
+local function fillOrder(r, e)
+    r.acts = nil
+    local plain = e.head or e.note
+    r.head:SetShown(plain ~= nil)
+    r.iconFrame:SetShown(not plain)
+    r.what:SetShown(not plain)
+    r.line:SetShown(not plain)
+    r.a1:Hide()
+    r.a2:Hide()
+    if plain then
+        r.head:SetText(e.head and (T.LABEL .. e.head .. "|r") or (GREY .. e.note .. "|r"))
+        return
+    end
+    local GO, o = ns.GuildOrders, e.order
+    local item = GO.ItemOf(o)
+    r.iconFrame.icon:SetTexture(entryIcon(item, o.spell))
+    ringColor(r.iconFrame, item)
+    r.what:SetText(("%dx %s"):format(o.n, item > 0 and itemText(item, Pr.SpellName(o.spell)) or (Pr.SpellName(o.spell) or ("#" .. o.spell))))
+    r.line:SetText(orderLine(e))
+    local acts = orderActions(e)
+    r.acts = acts
+    -- the rightmost button is a2; with two, a1 left of it
+    local btns = #acts == 2 and { r.a1, r.a2 } or { r.a2 }
+    for i, a in ipairs(acts) do
+        local b = btns[i]
+        b.index = i
+        b:SetText(a[1])
+        W.FitChip(b)
+        if a[4] then b:Disable() else b:Enable() end
+        b:Show()
+    end
+end
+
+local function orderTooltip(owner, e)
+    if not e or not e.order or not GameTooltip then return end
+    local GO, o = ns.GuildOrders, e.order
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    GameTooltip:SetText(GO.What(o))
+    GameTooltip:AddLine(orderLine(e), 1, 1, 1, true)
+    GameTooltip:AddLine(L["Klick: das Rezept mit seinen Reagenzien."], 0.6, 0.6, 0.6, true)
+    GameTooltip:Show()
+end
+
+local function refreshOrders(f)
+    local list, mine, forMe, rest = orderEntries()
+    f.orList:SetItems(list)
+    f.orCounts:SetText(L["%d eigene · %d für dich · %d weitere"]:format(mine, forMe, rest))
+end
+
+local function buildOrders(f)
+    local ov = W.Page(f, { view = true, top = -(T.LAYOUT.ROW_H + T.LAYOUT.GAP) })
+    f.orView = ov
+    ov:Bands({ "line" })
+    f.orCounts = ov:Line(1)
+    f.orList = ov:List(P.ORDER_ROWS, P.ORDER_H, function(r)
+        r.iconFrame = roundFrame(r, P.ROW_ICON, P.ROW_ICON_X)
+        r.a2 = W.Link(r, "", function(self) orderClick(self:GetParent(), self.index) end)
+        r.a2:SetPoint("RIGHT", -T.LAYOUT.TEXT_X + T.TAB_PAD, 0)
+        r.a1 = W.Link(r, "", function(self) orderClick(self:GetParent(), self.index) end)
+        r.a1:SetPoint("RIGHT", r.a2, "LEFT", -P.ORDER_ACT_GAP, 0)
+        for _, b in ipairs({ r.a1, r.a2 }) do
+            W.Tooltip(b, L["Gildenauftrag"], function()
+                local a = r.acts and r.acts[b.index]
+                return a and a[3] or ""
+            end)
+            b:Hide()
+        end
+        r.what = W.Text(r, T.FONT.text)
+        r.what:SetPoint("TOPLEFT", P.ROW_TEXT_X, P.ROW_LINE1_Y)
+        r.what:SetPoint("RIGHT", -P.ORDER_ACT_W, 0)
+        r.line = W.Text(r, T.FONT.hint)
+        r.line:SetPoint("TOPLEFT", P.ROW_TEXT_X, P.ROW_LINE2_Y)
+        r.line:SetPoint("RIGHT", -P.ORDER_ACT_W, 0)
+        r.head = W.Text(r, T.FONT.text)
+        r.head:SetPoint("LEFT", T.LAYOUT.TEXT_X, 0)
+        r.head:SetPoint("RIGHT", -T.LAYOUT.TEXT_X, 0)
+        r:RegisterForClicks("LeftButtonUp")
+        r:SetScript("OnClick", function(self)
+            local o = self.item and self.item.order
+            local rec = o and Pr.Recipe(o.spell)
+            if rec and ns.ShowRecipe then ns.ShowRecipe(rec.skill, rec.spell) end
+        end)
+        r:SetScript("OnEnter", function(self) orderTooltip(self, self.item) end)
+        r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    end, fillOrder, { fill = true })
+    ov:Hide()
+    return ov
+end
+
 -- The tabs of the head row (D-82): which is on, the route only where the profession has one.
 local function fillTabs(f, v, m, onRoute)
     -- the member mode is no tab: "Alle Rezepte" shows the whole list again
@@ -2027,6 +2309,7 @@ local function fillTabs(f, v, m, onRoute)
     f.tabRoute:SetOn(onRoute)
     if (type(v) == "number" and Route.Has(v)) or onRoute then f.tabRoute:Enable() else f.tabRoute:Disable() end
     f.tabCd:SetOn(v == COOLDOWNS)
+    f.tabOrders:SetOn(v == ORDERS)
 end
 
 -- The member mode's parts: the chip "Von: Name" beside the filter button and the link "< Gildenmitglieder"
@@ -2050,6 +2333,7 @@ local function refresh(f)
     local over = v == OVERVIEW
     f.ovView:SetShown(over)
     f.cdView:SetShown(v == COOLDOWNS)
+    f.orView:SetShown(v == ORDERS)
     if over then
         for _, w in ipairs(f.chrome) do w:Hide() end
         f.filters:Hide()
@@ -2073,10 +2357,23 @@ local function refresh(f)
         f.filters:Hide()
         for _, t in ipairs(f.tabs) do t:Show() end
         fillTabs(f, v, nil, false)
-        f:Place(1, f.tabs)
+        f:Place(1, f.tabRow)
         f.shownView = v
         refreshCooldowns(f)
         f.hint:SetText(L["Abklingzeiten ab 20 Stunden. Amisia liest sie beim Einloggen, beim Öffnen des Berufsfensters und nach dem Herstellen. Klick auf ein Gildenmitglied: Flüstern oder Einladen."])
+        dataLine(f)
+        return
+    end
+    -- the tab Aufträge (F-231): the tabs and its list
+    if v == ORDERS then
+        for _, w in ipairs(f.chrome) do w:Hide() end
+        f.filters:Hide()
+        for _, t in ipairs(f.tabs) do t:Show() end
+        fillTabs(f, v, nil, false)
+        f:Place(1, f.tabRow)
+        f.shownView = v
+        refreshOrders(f)
+        f.hint:SetText(L["Gildenaufträge: in den Details eines Rezepts \"Auftrag stellen\". Übergeben wird im Spiel. Klick auf einen Auftrag: das Rezept."])
         dataLine(f)
         return
     end
@@ -2087,7 +2384,7 @@ local function refresh(f)
     if m == ROUTE and not onRoute then m = RECIPES end
     for _, t in ipairs(f.tabs) do t:Show() end
     fillTabs(f, v, m, onRoute)
-    f:Place(1, member and f.backTabs or f.tabs)
+    f:Place(1, member and f.backTabs or f.tabRow)
     f.routeView:SetShown(onRoute)
     f.queueView:SetShown(m == QUEUE and not onRoute)
     local listed = not onRoute and m ~= QUEUE
@@ -2099,7 +2396,7 @@ local function refresh(f)
         local rank, max = Pr.Rank(v)
         f.routeRank:SetText(rank and L["Dein Rang: %d / %d"]:format(rank, max or 0) or (GREY .. L["Beruf nicht erlernt"] .. "|r"))
         f.routeRank:Show()
-        f:Place(1, f.tabs, { f.routeRank })
+        f:Place(1, f.tabRow, { f.routeRank })
         f.shownView = v
         refreshRoute(f, v)
         f.hint:SetText(L["Klick auf einen Schritt: die Rezept-Details oder der Wegpunkt zum Händler. Kosten nur aus Händlerpreisen."])
@@ -2228,7 +2525,7 @@ local function create(parent)
                 or Pr.Ordered()[1]
             chosen()
             member = nil
-            if tabKey == "favor" or tabKey == COOLDOWNS then
+            if tabKey == "favor" or tabKey == COOLDOWNS or tabKey == ORDERS then
                 s.skill, s.view = skill, tabKey
             else
                 s.view, s.mode = skill, tabKey
@@ -2243,14 +2540,18 @@ local function create(parent)
     f.tabFav = newTab(L["Favoriten"], L["Die Rezepte, die du mit dem Stern gemerkt hast, aus allen Berufen."], FAV)
     f.tabFavor = newTab(L["Händlergunst"], L["Die Rezepte für Händlergunst, ihre Händler und wie du Gunst bekommst."], "favor")
     f.tabQueue = newTab(L["Herstellliste"], L["Was du herstellen willst, mit allen Reagenzien zusammen: was du hast und wo du den Rest kaufst."], QUEUE)
+    f.tabOrders = newTab(L["Aufträge"], L["Gildenaufträge: was du bei der Gilde bestellt hast, was deine Charaktere für andere herstellen können, und alle offenen."], ORDERS)
     f.tabRoute = newTab(L["Route"], L["Der günstigste Weg von deinem Rang bis zum Höchstrang: Schritte, Lehrer und Einkaufsliste. Nicht für Sammelberufe, Angeln, Lager und Händlergunst."], ROUTE)
     f.tabCd = newTab(L["Abklingzeiten"], L["Transmutation, Mondstoff und andere Rezepte mit langer Abklingzeit: wann deine Charaktere und die Gilde sie wieder nutzen können."], COOLDOWNS)
-    f.tabs = { f.tabAll, f.tabFav, f.tabFavor, f.tabQueue, f.tabRoute, f.tabCd }
+    f.tabs = { f.tabAll, f.tabFav, f.tabFavor, f.tabQueue, f.tabOrders, f.tabRoute, f.tabCd }
     f.modeRecipes, f.modeRoute = f.tabAll, f.tabRoute
+    -- the row of the tabs: seven since F-231, TAB_ROW_GAP apart so they fit the page's 590 px
+    f.tabRow = { f.tabs[1] }
+    for i = 2, #f.tabs do f.tabRow[i] = { f.tabs[i], gap = P.TAB_ROW_GAP } end
     f.routeRank = W.Text(f, T.FONT.head, P.RANK_W)
     f.routeRank:SetJustifyH("RIGHT")
     f.routeRank:Hide()
-    f:Place(1, f.tabs)
+    f:Place(1, f.tabRow)
 
     -- the head band
     local hb = CreateFrame("Frame", nil, f)
@@ -2375,7 +2676,7 @@ local function create(parent)
     f.back:Hide()
     -- set apart from the tabs: a way out, not one more view
     f.backTabs = { f.back, { f.tabs[1], gap = P.BACK_GAP } }
-    for i = 2, #f.tabs do f.backTabs[#f.backTabs + 1] = f.tabs[i] end
+    for i = 2, #f.tabs do f.backTabs[#f.backTabs + 1] = f.tabRow[i] end
     f.counts = W.Text(f, T.FONT.hint)
     f.clearQueue = W.Link(f, L["Liste leeren"], function()
         Pr.QueueRemove(nil)
@@ -2494,7 +2795,8 @@ local function create(parent)
     rv:Hide()
     f.ovView = buildOverview(f)
     buildCooldowns(f)
-    f.chrome = { f.tabAll, f.tabFav, f.tabFavor, f.tabQueue, f.tabRoute, f.tabCd, f.routeRank, f.headBlock, f.search, f.filterBtn,
+    buildOrders(f)
+    f.chrome = { f.tabAll, f.tabFav, f.tabFavor, f.tabQueue, f.tabOrders, f.tabRoute, f.tabCd, f.routeRank, f.headBlock, f.search, f.filterBtn,
         f.counts, f.clearQueue, f.list, f.rd, f.empty, f.reset, f.routeView, f.queueView, f.memberChip, f.back, f.findRec, f.findMat }
     return f
 end
@@ -2533,6 +2835,8 @@ function ns.ShowProfessions(what)
             state().mode = ROUTE
         elseif w:find("^abklingzeit") or w:find("^cooldown") then   -- l10n-ok: command words
             state().view = COOLDOWNS
+        elseif w:find("^auftr") or w:find("^order") then   -- l10n-ok: command words
+            state().view = ORDERS
         elseif w:find("^übersicht") or w:find("^ubersicht") or w:find("^overview") then   -- l10n-ok: command words
             state().view = OVERVIEW
         elseif w:find("^gilde") or w:find("^guild") then   -- l10n-ok: command words
@@ -2585,7 +2889,7 @@ function ns.ShowMemberRecipes(name, skill)
     if ns.ShowPage then ns.ShowPage("professions") end
 end
 
-ns.RegisterSlash("berufe", { en = "professions", aliases = { "beruf", "profession" }, args = L["[Beruf|lager|gunst|route|gilde|abklingzeiten]"],
+ns.RegisterSlash("berufe", { en = "professions", aliases = { "beruf", "profession" }, args = L["[Beruf|lager|gunst|route|gilde|abklingzeiten|auftraege]"],
     desc = L["Rezepte, Lager und Händlergunst"], run = function(rest) ns.ShowProfessions(rest) end })
 
 ---------------------------------------------------------------------------
@@ -2610,6 +2914,7 @@ ns.Listen("BIS_CHANGED", schedule)
 ns.Listen("CRAFTERS_CHANGED", schedule)
 ns.Listen("PROF_LISTS_CHANGED", schedule)
 ns.Listen("PROF_COOLDOWNS", schedule)
+ns.Listen("GUILD_ORDERS", schedule)
 ns.OnEvent("BAG_UPDATE_DELAYED", schedule)
 -- the route waits in combat and the lockdown (ProfRoute.lua): computed again after them
 ns.OnEvent("PLAYER_REGEN_ENABLED", schedule)

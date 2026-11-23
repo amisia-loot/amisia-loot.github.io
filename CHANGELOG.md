@@ -29,6 +29,17 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
     Mooncloth says who in the guild is ready to make it. Three new settings under Professions (all on): the login
     line, sharing with the guild and the tooltip line. `/amisia cooldowns` opens the tab.
 
+- feat(professions): guild orders, crafting requests to the guild (F-231)
+
+    "Place order" beside "Ask" in a recipe's details opens a small window: count (1-20), who brings the material and
+    a note; the order goes to the guild members with Amisia. A new tab "Orders" after "Crafting list" on the
+    Professions page shows your orders (open, accepted by, done; "Withdraw", "Received"), the ones your characters of
+    this guild can craft ("Accept", grey while the requester is offline; "Done", "Give back") and all other open ones.
+    The first crafter to accept wins; the requester reads who accepted and when it is done, and the handover happens
+    in the game. Crafters get one chat line per new order they can craft (at most 6 an hour), a line at login and a
+    count in the minimap button's tooltip. Optionally a line "Looking for a crafter" in the guild chat for members
+    without Amisia. New settings section "Guild orders" in the Guild tab; `/amisia orders` opens the tab.
+
 ## [v2.106.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.106.1) (2026-11-22)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.106.0...v2.106.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

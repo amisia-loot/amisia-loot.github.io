@@ -790,6 +790,27 @@ S.STATES = {
         AmisiaDB.prof.watch[r[#r - 1].spell].hit = "Bob Eisherz"
         NS.ShowProfessions("tailoring")
     end },
+    -- the guild orders (F-231): an own order accepted by Fraktur, two the own character can craft (Kimtaro offline),
+    -- one of Chorf accepted by Fraktur; written into the store, so nothing is sent
+    { page = "professions", name = "professions-orders", open = function()
+        local t, me, r = math.floor(time()), NS.UnitFullName("player"), NS.Prof.Recipes(197)
+        AmisiaDB.prof = AmisiaDB.prof or {}
+        AmisiaDB.prof.chars = AmisiaDB.prof.chars or {}
+        local c = AmisiaDB.prof.chars[me] or {}
+        AmisiaDB.prof.chars[me] = c
+        c[197] = c[197] or { rank = 150, max = 225, day = NS.DropsToday(), known = {} }
+        c[197].known = c[197].known or {}
+        c[197].known[r[2].spell], c[197].known[r[3].spell] = true, true
+        local function o(spell, n, mats, state, by, ago, note)
+            return { rev = 1, spell = spell, n = n, mats = mats, state = state, by = by, at = t - ago, changed = t - ago,
+                seen = t - 60, note = note }
+        end
+        AmisiaDB.orders = { v = 1, own = { ["a001"] = o(r[1].spell, 4, "B", "T", "Fraktur", 7200, "Stoff hab ich") },
+            heard = { ["Fraktur"] = { ["f001"] = o(r[2].spell, 2, "H", "O", nil, 3600, "zahle 5g") },
+                      ["Kimtaro"] = { ["k001"] = o(r[3].spell, 1, "A", "O", nil, 2 * 86400) },
+                      ["Chorf"] = { ["c001"] = o(r[4].spell, 10, "B", "T", "Fraktur", 600) } } }
+        NS.ShowProfessions("auftraege")
+    end },
     -- the priest build of S.priestPlan (every talent state)
     { page = "talents", name = "talents-plan", open = function() NS.ShowTalents(NS.Talents.Encode(S.priestPlan())) end },
     { page = "bank", name = "bank-stock", open = function() NS.ShowBank("bestand") end },
@@ -1035,6 +1056,10 @@ S.WINDOWS = {
     { key = "awarddialog", view = "officer", open = function()
         NS.ShowAwardDialog(LINK)
         return AmisiaAwardDialog
+    end },
+    -- the window "Auftrag stellen" (F-231) for a tailoring recipe
+    { key = "orderdialog", view = "raider", open = function()
+        return NS.ShowOrderDialog(NS.Prof.Recipes(197)[2].spell)
     end },
     { key = "priodialog", view = "officer", open = function()
         NS.ShowPrioDialog(LINK2)

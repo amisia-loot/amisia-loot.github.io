@@ -71,6 +71,8 @@ end
 -- party needs a group. nil when there is nobody to talk to.
 local function resolveChannel(chan)
     if chan == "WHISPER" then return chan end
+    -- the guild chat only from a click of the player (the guild order's line, F-231)
+    if chan == "GUILD" then return ns.InGuild() and chan or nil end
     if chan == "RAID_WARNING" and not (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")) then chan = "RAID" end
     if (chan == "RAID" or chan == "RAID_WARNING") and not IsInRaid() then chan = "PARTY" end
     if not IsInGroup() then return nil end
@@ -173,7 +175,7 @@ pump = function(force)
     if #queue == 0 then stopTicker() end
 end
 
--- Says a line in chan ("RAID", "RAID_WARNING", "PARTY", "WHISPER" with target). opts.ttl: seconds
+-- Says a line in chan ("RAID", "RAID_WARNING", "PARTY", "GUILD", "WHISPER" with target). opts.ttl: seconds
 -- a waiting line stays valid (default 600); opts.key: a waiting line with the same key is replaced.
 -- Returns "sent", "queued", or nil and the reason.
 function ns.Say(text, chan, target, opts)
