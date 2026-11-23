@@ -7,7 +7,7 @@ local _, ns = ...
 
 ns.LazyData("RAIDBUFFS", [=[
 return {
-build="1.60.1.71037",built="2026-11-22",
+build="1.60.1.71037",built="2026-11-23",
 entries={
 {"int","buff","raid",10157,135932,"",{"MAGE",0}},
 {"sta","buff","raid",10938,135987,"",{"PRIEST",0}},

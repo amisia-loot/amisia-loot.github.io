@@ -54,8 +54,8 @@ ICONS = {
     'settings': 'settings', 'about': 'info', 'feedback': 'message-square',
     # the side windows
     'win_talents': 'network', 'win_rolls': 'dice-5', 'win_softres': 'clipboard-list', 'win_layer': 'layers',
-    # the professions page (D-82): the filter menu's button and the favourite star
-    'prof_filter': 'filter', 'prof_star': 'star',
+    # the professions page (D-82): the filter menu's button and the favourite star; the recipe wish's bell (F-233)
+    'prof_filter': 'filter', 'prof_star': 'star', 'prof_bell': 'bell',
 }
 
 
