@@ -732,13 +732,13 @@ S.STATES = {
     -- three filters at once leave no recipe: the empty state names what each removal gives back
     { page = "professions", name = "professions-empty", open = function()
         local p = AmisiaDB.settings.professions
-        p.known, p.source, p.guild = "known", "F", true
+        p.known, p.source, p.guildFilter = "known", "F", "has"
         NS.ShowProfessions("schneiderei")
     end },
     -- the route (F-137): the steps of tailoring, then the shopping list with vendor recipes
     { page = "professions", name = "professions-route", open = function()
         local p = AmisiaDB.settings.professions
-        p.known, p.source, p.guild, p.mode, p.routeTab, p.routeVendor = nil, nil, nil, "route", "steps", nil
+        p.known, p.source, p.guildFilter, p.mode, p.routeTab, p.routeVendor = nil, nil, nil, "route", "steps", nil
         NS.ShowProfessions("schneiderei")
     end },
     { page = "professions", name = "professions-shop", open = function()
@@ -768,6 +768,27 @@ S.STATES = {
             [197] = { r = 165, m = 225, l = table.concat(ids, ",") } } }
         NS.Crafters.Changed()
         NS.ShowMemberRecipes("Mira Nadel", 197)
+    end },
+    -- the guild's professions (F-233): the overview scrolled to the cards with the guild's lines (the guild
+    -- as the other scenes have it; no members added, so the page Mitglieder stays as it is)
+    { page = "professions", name = "professions-guild", open = function() NS.ShowProfessions("gilde") end },
+    -- "Aus Material" (F-233): every recipe that needs linen cloth, shift-clicked in
+    { page = "professions", name = "professions-material", open = function()
+        STUB.item(2589, "Leinenstoff", 1)
+        local p = AmisiaDB.settings.professions
+        p.mode, p.find, p.matSearch = "recipes", "mat", STUB.items[2589].link
+        NS.ShowProfessions("tailoring")   -- the key: the same in both locales
+    end },
+    -- the recipe wish (F-233): two wished tailoring recipes in "Gesucht" under the favourites, one fulfilled
+    { page = "professions", name = "professions-wish", open = function()
+        local p = AmisiaDB.settings.professions
+        p.mode, p.find = "fav", nil
+        local r = NS.Prof.Recipes(197)
+        NS.Prof.SetFav(r[1].spell, true)
+        NS.Prof.SetWatch(r[#r].spell, true)
+        NS.Prof.SetWatch(r[#r - 1].spell, true)
+        AmisiaDB.prof.watch[r[#r - 1].spell].hit = "Bob Eisherz"
+        NS.ShowProfessions("tailoring")
     end },
     -- the priest build of S.priestPlan (every talent state)
     { page = "talents", name = "talents-plan", open = function() NS.ShowTalents(NS.Talents.Encode(S.priestPlan())) end },

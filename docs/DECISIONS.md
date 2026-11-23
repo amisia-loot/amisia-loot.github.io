@@ -4759,3 +4759,39 @@ Umschalter, das Fenster), `tools/tests/test_score_parity.py::test_an_own_set_sco
 `tools/tests/test_contracts.py::test_no_tool_fetches_from_the_forbidden_sites` (WoWSims nur über
 `tools/wowsims_weights.py`, kein Icy Veins), `tools/tests/test_contracts.py::test_every_generated_file_names_its_generator_and_sources`
 (WoWSims im Kopf nur mit MIT und `LICENSES/WoWSims-MIT.txt`).
+
+## D-162 Berufe der Gilde: Zählung wie "Hergestellt von", Rezept-Wunsch privat, Rückwärtsindex erst bei Bedarf
+
+**Datum:** 2026-11-23
+**Entscheidung:** Für die Berufe der Gilde (F-233, Spec `docs/specs/2026-11-23-gilde-berufe-uebersicht.md`) gilt:
+- **Gezählt wie "Hergestellt von".** Ein Mitglied zählt je Charakter (eigene Twinks dieser Gilde mit, wie im
+  Rezept-Austausch); ein gehörter Hersteller nur, solange der Roster ihn nennt (kann der Roster nicht gelesen
+  werden, alle). "Rezepte in der Gilde", der Filter "Gilde: Kann jemand / Kann niemand" und die Glocke nehmen
+  dieselben Hersteller wie `Cr.ForSpell` (`Cr.Has` lässt seitdem einen Hersteller aus, der die Gilde verlassen hat).
+  Ein Beruf aus der Gildennotiz zählt bei Mitgliedern und Rängen, nie bei Rezepten, und nur, wo der Austausch für
+  diesen Charakter den Beruf nicht hat. Der Höchstrang ist der höchste Lernrang der Berufsdaten (`Pr.TopRank`).
+- **Der Rezept-Wunsch ist privat.** `AmisiaDB.prof.watch` je Account, höchstens 50, wird nie gesendet; keine neue
+  Nachricht. Abgeglichen wird gegen den Zustand, nicht gegen ein Ereignis: bei `CRAFTERS_CHANGED` (eine Sekunde
+  später) und bei jedem Zeichnen der Seite Berufe, aber nur, wenn die Berufsdaten ohnehin gebaut sind (D-28); was
+  dazwischen ankam, findet der nächste Abgleich. Der erste Hersteller in der Reihenfolge von "Hergestellt von", der
+  kein eigener Charakter ist, wird der Treffer; die Chatzeile (`prof.watchChat`) höchstens einmal je Rezept und Name
+  und höchstens 10 je Stunde, der Treffer bleibt gespeichert, bis man den Wunsch herausnimmt. Kennt ein eigener
+  Charakter das Rezept, fällt der Wunsch still heraus; ein Spell, den die Daten nicht (mehr) haben, ebenso.
+- **Der Rückwärtsindex Material -> Rezepte** entsteht beim ersten Gebrauch aus den Reagenzien der Berufsdaten (`G`)
+  und lebt mit ihnen; kein Datenbau, keine neue Tabelle. Reagenzien, die nur der Client kennt, stehen nicht darin.
+  Die Tooltip-Zeile auf Materialien (`prof.reagentTooltip`, aus) baut die Daten nur außerhalb des Kampfes.
+
+**Grund:** Spec F-233, vom Nutzer am 2026-11-23 freigegeben ("Passt, alle drei": Tooltip-Zeile aus, Filter als
+Dropdown, Material-Suche als Schalter, Glocke nur bei "kann niemand"). Ein gesonderter Ereignistyp "neuer Hersteller"
+wäre nötig gewesen, um Listen zu sehen, die ankamen, während die Daten nicht gebaut waren; der Abgleich gegen den
+gespeicherten Wunsch (Treffer leer) findet sie ohne zweiten Weg.
+
+**Folge:** Neuer gespeicherter Schlüssel `prof.watch`, neuer Einstellungsabschnitt `prof` ("Berufe"), Fensterstand
+`settings.professions.guildFilter` (Schritt 8 von `Core/Migrate.lua`: der alte Chip `guild = true` wird "has") und
+`settings.professions.find`/`matSearch`. Das Glockensymbol ist Amisias eigenes (`tools/make_ui_icons.py`,
+`prof_bell`); ein neues Bild braucht einen Neustart des Clients.
+
+**Durchgesetzt durch:** `tests/test_guild_professions.lua` (Zählung je Beruf mit Notizen und ausgetretenem Hersteller,
+Kacheln und ihr Klick, Filter has/none, Rückwärtsindex und "Aus Material" mit Text und Link, Tooltip-Zeile, Glocke,
+Treffer einmal, 10 je Stunde, eigener Charakter still, Deckel 50, Prüfung beim Laden, Migration),
+`tests/test_professions_filters.lua`, `tests/test_crafters_page.lua`.

@@ -479,8 +479,11 @@ def _widget_of(tree, i):
 
 def in_list_row(tree, i):
     """A cell of a W.List row: data that may end in the client's ellipsis (the tooltip or the detail
-    shows it whole), unlike a label. A chip or button in the row is still a label."""
+    shows it whole), unlike a label. A chip or button in the row is still a label. Also the text of a plain
+    frame inside the row (a cell of a table row, the trainers of the professions overview, D-78)."""
     p = tree.nodes.get(tree.nodes[i].get('parent'))
+    if p is not None and p.get('role') != 'plain' and p.get('kind') == 'Frame':
+        p = tree.nodes.get(p.get('parent'))
     if p is None or p.get('role') != 'plain':
         return False
     return any(tree.nodes[a].get('role') == 'list' for a in tree.ancestors(i))

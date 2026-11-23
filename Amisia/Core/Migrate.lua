@@ -174,6 +174,14 @@ ns.MIGRATIONS = {
         local m = type(db.settings) == "table" and db.settings.map
         if type(m) == "table" and m.arrow == "auto" then m.arrow = nil end
     end,
+    -- 8 (F-233): the professions page's chip "Gilde" is the dropdown "Gilde" with three steps: a chip that
+    -- was on is "Kann jemand" (settings.professions.guildFilter = "has")
+    function(db)
+        local p = type(db.settings) == "table" and db.settings.professions
+        if type(p) ~= "table" then return end
+        if p.guild == true and p.guildFilter == nil then p.guildFilter = "has" end
+        p.guild = nil
+    end,
 }
 
 local newer   -- the schema of a file a newer Amisia saved, for the one chat line

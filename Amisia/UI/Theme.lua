@@ -653,6 +653,12 @@ T.PROFPAGE = {
     CARD_H = 44, CARD_MIN_W = 140, CARD_COLS_MIN = 4, CARD_COLS_MAX = 6, CARD_GAP = 6, WIDE_COLS = 2,
     CARD_ICON = 26, CARD_PAD = 6, CARD_TEXT_X = 38, CARD_NAME_Y = -9, CARD_SUB_Y = -24,
     CARD_NAME_FONT = "GameFontNormalSmall", CARD_SUB_FONT = "GameFontHighlightSmall",
+    -- the cards of "Alle Berufe" in a guild (F-233): CARD_GUILD_H high, at least CARD_GUILD_MIN_W wide (at
+    -- least CARD_GUILD_COLS_MIN columns); under the name and its line three lines of the guild from
+    -- CARD_GUILD_LINE_Y, CARD_GUILD_LINE_H apart (the last in CARD_NOTE_FONT), a part of their own from
+    -- CARD_GUILD_Y down that opens "Gilde: Kann niemand"
+    CARD_GUILD_H = 80, CARD_GUILD_MIN_W = 180, CARD_GUILD_COLS_MIN = 2, CARD_GUILD_Y = -35, CARD_GUILD_LINE_Y = -39,
+    CARD_GUILD_LINE_H = 13, CARD_NOTE_FONT = "GameFontDisableSmall",
     -- "Nächste Lehrer" (D-78): a framed table of TRAINER_COLS cells a row, TRAINER_H high: the icon
     -- TRAINER_ICON square at TRAINER_PAD, the name (gold) and "Name, Zone" from TRAINER_TEXT_X, the map
     -- button TRAINER_BTN square TRAINER_PAD from the cell's right; the frame TRAINER_EDGE
@@ -677,12 +683,16 @@ T.PROFPAGE = {
     LIST_W = 318, DETAIL_X = 334, ROW_H = 34, ROWS = 8, ROW_EDGE = { 0.4, 0.36, 0.28, 0.55 }, ROW_BAR_W = 3,
     ROW_ICON = 24, ROW_ICON_X = 8, ROW_TEXT_X = 38, ROW_RANK_W = 30, DOT_ME_R = 52, DOT_GUILD_R = 40,
     ROW_MARK_W = 50, ROW_MARK_R = 64,
+    -- a row of two lines ("Aus Material", "Gesucht", F-233): the name at ROW_LINE1_Y, the second line at ROW_LINE2_Y
+    ROW_LINE1_Y = -4, ROW_LINE2_Y = -19,
     -- the recipe's detail: the icon RD_ICON at RD_PAD, title and quiet line from RD_TITLE_X, the star
     -- (Amisia's own, STAR square, STAR_OFF alpha while off) at the top right; the boxes from RD_BODY_Y in
     -- a scroll frame, RD_BOX_GAP apart (RD_BOX_PAD inside, head RD_HEAD_H, controls RD_CTRL_H, reagent
     -- rows RD_REAG_H with their icon RD_REAG_ICON; the guild's box tinted RD_GUILD_BG)
     RD_PAD = 8, RD_ICON = 32, RD_TITLE_X = 46, RD_TITLE_Y = -9, RD_SUB_Y = -28, RD_BODY_Y = 46,
     STAR = 18, STAR_ICON = "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\prof_star", STAR_OFF = 0.3,
+    -- the recipe wish's bell (F-233, Amisia's own like the star, STAR square, STAR_OFF while off) BELL_GAP left of the star
+    BELL_ICON = "Interface\\AddOns\\Amisia\\Media\\Icons\\ui\\prof_bell", BELL_GAP = 4,
     RD_BOX_GAP = 6, RD_BOX_PAD = 6, RD_HEAD_H = 16, RD_LINE_H = 12, RD_CTRL_H = 22, RD_REAG_H = 18, RD_REAG_ICON = 16,
     RD_COUNT_W = 70, RD_HAVE_W = 64, RD_BOX_BG = { 0, 0, 0, 0.3 }, RD_GUILD_BG = { 0.25, 0.75, 0.25, 0.1 },
     -- the crafting list: its list LIST_W wide (QUEUE_DEL_W for "Entfernen"), the reagents beside it

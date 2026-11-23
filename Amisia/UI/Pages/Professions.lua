@@ -41,6 +41,11 @@ local function state()
     s.professions = type(s.professions) == "table" and s.professions or {}
     local t = s.professions
     t.sel = type(t.sel) == "table" and t.sel or {}
+    -- the dropdown Gilde (F-233): nil all, "has" someone of the guild knows it, "none" nobody does
+    if t.guildFilter ~= "has" and t.guildFilter ~= "none" then t.guildFilter = nil end
+    -- the switch "Rezepte | Aus Material" (F-233): "mat" searches materials, with its own text
+    if t.find ~= "mat" then t.find = nil end
+    if type(t.matSearch) ~= "string" or t.matSearch == "" then t.matSearch = nil end
     return t
 end
 
@@ -75,6 +80,7 @@ end
 -- (chosen()) and end it. Only in memory.
 local atStart = true
 local function chosen() atStart = false end
+local toGuild = false     -- /amisia berufe gilde: the overview scrolls to the guild's cards once (F-233)
 
 -- The shown view: OVERVIEW, a skill line, CAMP or FAVOR (D-78). Default: the overview.
 local function view()
@@ -141,7 +147,7 @@ local function listOf(v)
         return out
     end
     return Pr.List(v, { search = s.search, known = s.known ~= "all" and s.known or nil, learnable = s.learnable,
-        source = s.source ~= "all" and s.source or nil, guild = s.guild, of = (memberKnown(v)) })
+        source = s.source ~= "all" and s.source or nil, guild = s.guildFilter, of = (memberKnown(v)) })
 end
 
 -- The filters that are on, each with its name as the head row shows it and the field it clears.
@@ -158,7 +164,9 @@ local function activeFilters()
         out[#out + 1] = { key = "source", name = L["Quelle: %s"]:format(entryText(SOURCES, s.source)) }
     end
     if s.learnable then out[#out + 1] = { key = "learnable", name = L["Lernbar"] } end
-    if s.guild then out[#out + 1] = { key = "guild", name = L["Gilde"] } end
+    if s.guildFilter then
+        out[#out + 1] = { key = "guildFilter", name = s.guildFilter == "none" and L["Gilde: Kann niemand"] or L["Gilde: Kann jemand"] }
+    end
     if member and member.skill == view() then out[#out + 1] = { key = "member", name = L["Von: %s"]:format(member.name) } end
     return out
 end
@@ -213,7 +221,7 @@ end
 
 local function resetFilters()
     local s = state()
-    s.known, s.source, s.learnable, s.guild, s.search = nil, nil, nil, nil, nil
+    s.known, s.source, s.learnable, s.guildFilter, s.search = nil, nil, nil, nil, nil
     member = nil
     if page and page.search then
         page.search:SetText("")
@@ -294,8 +302,51 @@ local function guildKnows(spell)
     return false
 end
 
+local function inGuild() return type(IsInGuild) == "function" and ns.Plain(IsInGuild()) == true end
+
+-- The second line of a row of "Aus Material" (F-233): the profession and who of the guild makes it
+-- (the names as "Hergestellt von" gives them); of a wish in "Gesucht": nobody yet or who can now.
+local function subLine(e)
+    if e.mats then
+        local makers = Cr.ForSpell(e.recipe.spell)
+        local who = #makers > 0 and Cr.Text(makers, 3, true) or L["niemand"]
+        return GREY .. Pr.Name(e.recipe.skill) .. " · |r" .. GREY .. L["Gilde: %s"]:format(who) .. "|r"
+    elseif e.wish then
+        if e.wish.hit then return GREEN .. L["kann jetzt: %s"]:format(e.wish.hit) .. "|r" end
+        return GREY .. L["noch niemand"] .. "|r"
+    end
+    return nil
+end
+
+-- A row of one line (the name in the middle) or two (the name, the second line under it).
+local function placeName(r, sub)
+    r.name:ClearAllPoints()
+    if sub then
+        r.name:SetPoint("TOPLEFT", P.ROW_TEXT_X, P.ROW_LINE1_Y)
+        r.sub:SetText(sub)
+        r.sub:Show()
+    else
+        r.name:SetPoint("LEFT", P.ROW_TEXT_X, 0)
+        r.sub:Hide()
+    end
+end
+
 local function fillRow(r, e)
     r.sel:SetShown(page and page.selected == e)
+    -- a block's head in the list (Favoriten: "Gesucht", F-233): the gold word alone
+    if e.head then
+        placeName(r, nil)
+        r.name:SetText(color("ffffd100", e.head))
+        r.mark:SetText("")
+        r.rank:SetText("")
+        r.dotMe:Hide()
+        r.dotGuild:Hide()
+        r.iconFrame:Hide()
+        r.bar:SetColorTexture(0, 0, 0, 0)
+        return
+    end
+    r.iconFrame:Show()
+    placeName(r, subLine(e))
     local item, spell, col
     if e.camp then
         local c = e.camp
@@ -320,7 +371,12 @@ local function fillRow(r, e)
             end
         end
         r.name:SetText(color(col, name))
-        r.mark:SetText(upgradeMark(rec.item) or (GREY .. sourceTag(rec) .. "|r"))
+        -- "Aus Material": how many of the material one craft takes
+        if e.mats then
+            r.mark:SetText(GREY .. ("%dx"):format(e.mats[1][2]) .. "|r")
+        else
+            r.mark:SetText(upgradeMark(rec.item) or (GREY .. sourceTag(rec) .. "|r"))
+        end
         if e.price then
             r.rank:SetText(GREY .. e.price .. "|r")
         else
@@ -352,6 +408,9 @@ local function buildRow(r)
     r.iconFrame = roundFrame(r, P.ROW_ICON, P.ROW_ICON_X)
     r.name = W.Text(r, T.FONT.text, P.LIST_W - P.ROW_TEXT_X - P.ROW_MARK_R - P.ROW_MARK_W - 4)
     r.name:SetPoint("LEFT", P.ROW_TEXT_X, 0)
+    r.sub = W.Text(r, T.FONT.hint, P.LIST_W - P.ROW_TEXT_X - P.ROW_MARK_R - P.ROW_MARK_W - 4)
+    r.sub:SetPoint("TOPLEFT", P.ROW_TEXT_X, P.ROW_LINE2_Y)
+    r.sub:Hide()
     r.mark = W.Text(r, T.FONT.hint, P.ROW_MARK_W)
     r.mark:SetJustifyH("RIGHT")
     r.mark:SetPoint("RIGHT", -P.ROW_MARK_R, 0)
@@ -628,6 +687,7 @@ local function showRecipe(f, e)
         rd.sub:SetText(GREY .. L["Ein Rezept wählen."] .. "|r")
         rd.scroll:Hide()
         rd.star:Hide()
+        rd.bell:Hide()
         return
     end
     rd.scroll:Show()
@@ -641,6 +701,11 @@ local function showRecipe(f, e)
         rd.title:SetText(r.item > 0 and itemText(r.item, e.name) or color(Pr.COLORS.none, e.name))
     end
     if r then rd.star.icon:SetAlpha(Pr.IsFav(r.spell) and 1 or P.STAR_OFF) end
+    -- the bell (F-233): on a recipe that is wished, or that nobody of the guild (and no own character) knows
+    local bell = r ~= nil and (Pr.IsWatched(r.spell) or (inGuild() and not Cr.Has(r.spell) and not Pr.OwnKnows(r.spell)))
+    rd.bell:SetShown(bell)
+    if bell then rd.bell.icon:SetAlpha(Pr.IsWatched(r.spell) and 1 or P.STAR_OFF) end
+    rd.title:SetPoint("RIGHT", bell and rd.bell or rd.star, "LEFT", -4, 0)
     -- the quiet line: the upgrade, the profession (camp: Lager), the guild
     local parts = {}
     local mark = upgradeMark(item)
@@ -725,6 +790,28 @@ local function buildRecipeDetail(f, top)
     end, "*")
     rd.star:SetPoint("TOPRIGHT", -P.RD_PAD, -P.RD_PAD)
     W.Tooltip(rd.star, L["Favorit"], L["Merkt das Rezept unter Favoriten (für diesen Charakter)."])
+    -- the recipe wish (F-233): the bell left of the star, on a recipe nobody of the guild knows
+    rd.bell = W.IconButton(rd, P.STAR, { file = P.BELL_ICON }, function()
+        local r = entryRecipe(rd.entry)
+        if not r then return end
+        local on = not Pr.IsWatched(r.spell)
+        if not Pr.SetWatch(r.spell, on) then
+            ns.msg(L["Du suchst schon %d Rezepte; nimm erst eins heraus."]:format(Pr.WATCH_MAX))
+        elseif on then
+            ns.msg(L["Gemerkt: Lernt jemand aus der Gilde %s, sagt Amisia es dir. Die Liste steht unter Favoriten, \"Gesucht\"."]:format(
+                rd.entry.name or Pr.RecipeName(r)))
+        end
+        ns.Refresh()
+    end, "!")
+    rd.bell:SetPoint("RIGHT", rd.star, "LEFT", -P.BELL_GAP, 0)
+    W.Tooltip(rd.bell, L["Melden, wenn es jemand lernt"], function()
+        local r = entryRecipe(rd.entry)
+        if r and Pr.IsWatched(r.spell) then
+            return L["Du suchst dieses Rezept. Lernt es jemand aus der Gilde mit Amisia, sagt der Chat es einmal. Klick: nicht mehr suchen."]
+        end
+        return L["Niemand aus der Gilde mit Amisia kann dieses Rezept. Klick: Amisia sagt es dir einmal im Chat, sobald es jemand lernt (nur für dich, nichts wird gesendet)."]
+    end)
+    rd.bell:Hide()
     rd.title = W.Text(rd, T.FONT.title)
     rd.title:SetPoint("TOPLEFT", P.RD_TITLE_X, P.RD_TITLE_Y)
     rd.title:SetPoint("RIGHT", rd.star, "LEFT", -4, 0)
@@ -810,6 +897,7 @@ end
 -- The route (F-137): steps and shopping list
 ---------------------------------------------------------------------------
 local FAV, QUEUE = "fav", "queue"   -- settings.professions.mode besides RECIPES and ROUTE (D-82)
+local MAT = "mat"                   -- settings.professions.find: the switch "Aus Material" (F-233)
 local function mode()
     local m = state().mode
     if m == ROUTE or m == FAV or m == QUEUE then return m end
@@ -1113,6 +1201,7 @@ local function openView(v, recipes)
     s.view = v
     chosen()
     member = nil
+    s.find = nil
     if recipes then s.mode = RECIPES end
     ns.Refresh()
 end
@@ -1144,7 +1233,48 @@ local function setArt(tex, art)
     end
 end
 
--- The sections: { title, cards = { { icon, name, sub, open, tip } }, wide, none }.
+-- The guild's lines of a card under "Alle Berufe" (F-233): members (with Amisia), how many on the highest
+-- rank, the recipes the guild knows of all, where it comes from; each with a short form for a narrow card,
+-- the tooltip's lines, and the click: the profession with "Gilde: Kann niemand".
+local function guildCard(skill, e, others)
+    e = e or { members = 0, amisia = 0, note = 0, top = 0, best = 0 }
+    local top = Pr.TopRank()
+    local g = {}
+    if e.members == 0 then
+        g[1], g[2] = L["Gilde: niemand"], nil
+    else
+        local rank = e.top > 0 and L["%d auf %d"]:format(e.top, top or 0) or e.best > 0 and L["höchster Rang %d"]:format(e.best) or nil
+        g[1] = L["Gilde: %d (%d mit Amisia)"]:format(e.members, e.amisia) .. (rank and (", " .. rank) or "")
+        g[2] = L["Gilde: %d (%d)"]:format(e.members, e.amisia) .. (e.top > 0 and (" · " .. L["%d auf %d"]:format(e.top, top or 0)) or "")
+    end
+    local n, has = #Pr.Recipes(skill), guildCount(skill)
+    if others then
+        g[3], g[4] = L["Rezepte in der Gilde: %d von %d"]:format(has, n), L["Rezepte: %d/%d"]:format(has, n)
+    else
+        g[3], g[4] = L["Rezepte: nur deine eigenen"], nil
+    end
+    local from = {}
+    if e.amisia > 0 then
+        from[#from + 1] = e.amisia == 1 and L["Rezepte von 1 Mitglied mit Amisia"] or L["Rezepte von %d Mitgliedern mit Amisia"]:format(e.amisia)
+    end
+    if e.note > 0 then from[#from + 1] = L["%d weitere laut Gildennotiz (ohne Rezepte)"]:format(e.note) end
+    -- where it comes from (nothing on the card while nobody has it: its first line says so)
+    g[5] = #from > 0 and table.concat(from, "; ") or ""
+    g[6] = #from > 0 and L["%d mit Amisia, %d laut Notiz"]:format(e.amisia, e.note) or nil
+    local tip = { g[1], g[3], #from > 0 and g[5] or L["Niemand aus der Gilde nennt den Beruf."] }
+    if e.oldest and e.oldest > 0 then tip[#tip + 1] = L["Älteste verwendete Liste: vor %d Tagen"]:format(e.oldest) end
+    if not others then
+        tip[#tip + 1] = L["Außer dir teilt noch niemand aus der Gilde Rezepte: \"Kann niemand\" heißt hier niemand mit Amisia."]
+    end
+    tip[#tip + 1] = L["Klick: die Rezepte, die niemand aus der Gilde kann."]
+    return { lines = { { g[1], g[2] }, { g[3], g[4] }, { g[5], g[6] } }, tip = tip,
+        open = function()
+            state().guildFilter = "none"
+            openView(skill, true)
+        end }
+end
+
+-- The sections: { title, cards = { { icon, name, sub, open, tip, guild } }, wide, none, guild }.
 local function overviewSections()
     local own = {}
     for _, p in ipairs(Pr.Own()) do
@@ -1159,12 +1289,16 @@ local function overviewSections()
         end
     end
     local all = {}
+    -- in a guild each card has the guild's lines (F-233)
+    local gp, others
+    if inGuild() then gp, others = Cr.GuildProfs() end
     for _, skill in ipairs(Pr.Skills()) do
         local n, known = #Pr.Recipes(skill), Pr.KnownCount(skill)
         all[#all + 1] = { icon = profIcon(skill), name = Pr.Name(skill),
             sub = known and L["%s · %d bekannt"]:format(recipesText(n), known) or recipesText(n),
             short = known and L["%d/%d bekannt"]:format(known, n) or nil,
-            open = function() openView(skill, true) end, tip = L["Klick: die Rezepte des Berufs."] }
+            open = function() openView(skill, true) end, tip = L["Klick: die Rezepte des Berufs."],
+            guild = gp and guildCard(skill, gp[skill], others) or nil }
     end
     local more = {}
     if hasCamp() then
@@ -1179,7 +1313,7 @@ local function overviewSections()
             tip = L["Klick: die Rezepte für Händlergunst, ihre Händler und wie du Gunst bekommst."] }
     end
     local secs = { { title = L["Deine Berufe"], cards = own, none = L["Noch kein Beruf erlernt."] },
-        { title = L["Alle Berufe"], cards = all } }
+        { title = L["Alle Berufe"], cards = all, guild = gp ~= nil } }
     if #more > 0 then secs[#secs + 1] = { title = L["Weiteres"], cards = more, wide = true } end
     -- the nearest trainer of each profession the own faction may use (the data's order: crafting,
     -- cooking, first aid, fishing, then gathering); a profession without one is left out
@@ -1214,11 +1348,46 @@ local function newCard(ov)
     c.hover:SetColorTexture(1, 1, 1, P.CARD_HOVER)
     c.icon = c:CreateTexture(nil, "ARTWORK")
     c.icon:SetSize(P.CARD_ICON, P.CARD_ICON)
-    c.icon:SetPoint("LEFT", P.CARD_PAD, 0)
+    -- at the height of the name and its line, also on a card with the guild's lines (F-233)
+    c.icon:SetPoint("TOPLEFT", P.CARD_PAD, -math.floor((P.CARD_H - P.CARD_ICON) / 2))
     c.name = W.Text(c, P.CARD_NAME_FONT, 10)
     c.name:SetPoint("TOPLEFT", P.CARD_TEXT_X, P.CARD_NAME_Y)
     c.sub = W.Text(c, P.CARD_SUB_FONT, 10)
     c.sub:SetPoint("TOPLEFT", P.CARD_TEXT_X, P.CARD_SUB_Y)
+    -- the guild's lines (F-233): a part of the card of its own that opens "Gilde: Kann niemand"
+    c.gbtn = CreateFrame("Button", nil, c)
+    c.gbtn:SetPoint("TOPLEFT", 1, P.CARD_GUILD_Y)
+    c.gbtn:SetPoint("BOTTOMRIGHT", -1, 1)
+    c.gbtn.hover = c.gbtn:CreateTexture(nil, "HIGHLIGHT")
+    c.gbtn.hover:SetAllPoints()
+    c.gbtn.hover:SetColorTexture(1, 1, 1, P.CARD_HOVER)
+    c.gbtn:RegisterForClicks("LeftButtonUp")
+    c.gbtn:SetScript("OnClick", function(self)
+        local g = self:GetParent().entry and self:GetParent().entry.guild
+        if g then g.open() end
+    end)
+    c.gbtn:SetScript("OnEnter", function(self)
+        local entry = self:GetParent().entry
+        if not (GameTooltip and entry and entry.guild) then return end
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(L["%s in der Gilde"]:format(entry.name), 1, 0.82, 0)
+        for i, line in ipairs(entry.guild.tip) do
+            if i == #entry.guild.tip then
+                GameTooltip:AddLine(line, 0.6, 0.6, 0.6, true)
+            else
+                GameTooltip:AddLine(line, 1, 1, 1, true)
+            end
+        end
+        GameTooltip:Show()
+    end)
+    c.gbtn:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    c.glines = {}
+    for i, font in ipairs({ P.CARD_SUB_FONT, P.CARD_SUB_FONT, P.CARD_NOTE_FONT }) do
+        local fs = W.Text(c.gbtn, font, 10)
+        fs:SetPoint("TOPLEFT", c, "TOPLEFT", P.CARD_TEXT_X, P.CARD_GUILD_LINE_Y - (i - 1) * P.CARD_GUILD_LINE_H)
+        c.glines[i] = fs
+    end
+    c.gbtn:Hide()
     c:RegisterForClicks("LeftButtonUp")
     c:SetScript("OnClick", function(self) if self.entry and self.entry.open then self.entry.open() end end)
     c:SetScript("OnEnter", cardTooltip)
@@ -1255,6 +1424,7 @@ local function layoutOverview(ov)
     local y, nCards, nHeads = 0, 0, 0
     local shownTrainers = false
     ov.none:Hide()
+    ov.guildY = nil
     for si, sec in ipairs(ov.secs or {}) do
         if si > 1 then y = y - P.SEC_GAP end
         nHeads = nHeads + 1
@@ -1272,8 +1442,11 @@ local function layoutOverview(ov)
             ov.none:Show()
             y = y - T.LAYOUT.LINE_H
         end
-        local cols = sec.wide and P.WIDE_COLS or math.max(P.CARD_COLS_MIN,
-            math.min(P.CARD_COLS_MAX, math.floor((width + P.CARD_GAP) / (P.CARD_MIN_W + P.CARD_GAP))))
+        if sec.guild then ov.guildY = -(y + P.SEC_H) end
+        -- cards with the guild's lines (F-233) are wider: fewer columns
+        local minW = sec.guild and P.CARD_GUILD_MIN_W or P.CARD_MIN_W
+        local cols = sec.wide and P.WIDE_COLS or math.max(sec.guild and P.CARD_GUILD_COLS_MIN or P.CARD_COLS_MIN,
+            math.min(P.CARD_COLS_MAX, math.floor((width + P.CARD_GAP) / (minW + P.CARD_GAP))))
         local cw = math.floor((width - (cols - 1) * P.CARD_GAP) / cols)
         local items = {}
         for _, e in ipairs(sec.cards) do
@@ -1289,6 +1462,14 @@ local function layoutOverview(ov)
             c.sub:SetText(e.sub)
             -- a narrow card: the short form ("12/564 bekannt"), the whole line in the tooltip
             if e.short and (c.sub:GetStringWidth() or 0) > tw then c.sub:SetText(e.short) end
+            c:SetHeight(e.guild and P.CARD_GUILD_H or P.CARD_H)
+            c.gbtn:SetShown(e.guild ~= nil)
+            for i, fs in ipairs(c.glines) do
+                local pair = e.guild and e.guild.lines[i]
+                fs:SetWidth(tw)
+                fs:SetText(pair and pair[1] or "")
+                if pair and pair[2] and (fs:GetStringWidth() or 0) > tw then fs:SetText(pair[2]) end
+            end
             c:Show()
             items[#items + 1] = c
         end
@@ -1421,7 +1602,7 @@ local function dataLine(f)
 end
 
 local function choose(e)
-    if not e or not page then return end
+    if not e or e.head or not page then return end
     local k = e.camp and e.camp.item or e.recipe.spell
     state().sel[page.shownKey or tostring(page.shownView)] = k
     page.selected = e
@@ -1444,7 +1625,7 @@ end
 
 -- The tooltip of an entry: the item it makes (or the camp object), else the recipe spell.
 local function entryTooltip(owner, e)
-    if not e or not GameTooltip then return end
+    if not e or e.head or not GameTooltip then return end
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     local item = e.camp and e.camp.item or (e.recipe.item > 0 and e.recipe.item) or nil
     if item and GameTooltip.SetItemByID then
@@ -1455,6 +1636,16 @@ local function entryTooltip(owner, e)
         GameTooltip:SetSpellByID(e.recipe.spell)
     else
         GameTooltip:SetText(e.name or "")
+    end
+    -- "Aus Material" (F-233): what one craft takes and who of the guild makes it
+    if e.mats then
+        GameTooltip:AddLine(" ")
+        for _, m in ipairs(e.mats) do
+            GameTooltip:AddLine(L["Je Herstellung: %dx %s"]:format(m[2], itemName(m[1])), 1, 0.82, 0)
+        end
+        local makers = Cr.ForSpell(e.recipe.spell)
+        GameTooltip:AddLine(#makers > 0 and L["Hergestellt von: %s"]:format(Cr.Text(makers, 8))
+            or L["Hergestellt von: niemand aus der Gilde bekannt"], 0.85, 0.85, 0.85, true)
     end
     GameTooltip:Show()
 end
@@ -1472,20 +1663,39 @@ end
 -- entry needs.
 local function filterPicker(parent, fmt, values, onPick)
     local p = W.Picker(parent, nil, onPick)
-    p:SetValues(values)
     local set = p.SetValue
     function p:SetValue(v)
         set(self, v)
-        self.label:SetText(fmt:format(SHORT[v] or entryText(values, v)))
+        self.label:SetText(fmt:format(SHORT[v] or entryText(self.values, v)))
     end
-    local widest = 0
-    for _, e in ipairs(values) do
-        p.label:SetText(fmt:format(SHORT[e.value] or e.text))
-        widest = math.max(widest, p.label:GetStringWidth() or 0)
+    -- new entries (the dropdown Gilde counts its entries, F-233): the width follows the widest
+    function p:Fit(list)
+        self:SetValues(list)
+        local widest = 0
+        for _, e in ipairs(list) do
+            self.label:SetText(fmt:format(SHORT[e.value] or e.text))
+            widest = math.max(widest, self.label:GetStringWidth() or 0)
+        end
+        self:SetWidth(math.ceil(widest) + T.TEXT_INSET + T.PICKER.ARROW_ROOM)
+        self:SetValue(self.current or list[1].value)
     end
-    p:SetWidth(math.ceil(widest) + T.TEXT_INSET + T.PICKER.ARROW_ROOM)
+    p:Fit(values)
     p:SetValue(values[1].value)
     return p
+end
+
+-- The entries of the dropdown Gilde (F-233) with the counts of the profession.
+local function guildValues(has, none)
+    return { { value = "all", text = L["Alle"] }, { value = "has", text = L["Kann jemand (%d)"]:format(has) },
+        { value = "none", text = L["Kann niemand (%d)"]:format(none) } }
+end
+
+-- The filter menu's flyout: Bekannt and Quelle in the first row, Gilde and Lernbar in the second (F-233:
+-- the dropdown Gilde with its counts does not fit beside the others), as wide as they are now.
+local function layoutFilters(f)
+    local w1 = W.Row(f.filters, { f.known, f.source }, T.LAYOUT.ITEM_GAP, P.FLY_PAD, -P.FLY_PAD)
+    local w2 = W.Row(f.filters, { f.guild, f.learn }, T.LAYOUT.ITEM_GAP, P.FLY_PAD, -(P.FLY_PAD + T.LAYOUT.ROW_H + T.LAYOUT.GAP))
+    f.filters:SetSize(math.max(w1, w2) + P.FLY_PAD, 2 * T.LAYOUT.ROW_H + T.LAYOUT.GAP + 2 * P.FLY_PAD)
 end
 
 ---------------------------------------------------------------------------
@@ -1583,16 +1793,28 @@ local function buildQueue(f, top)
     return qv
 end
 
--- The favourites as list entries (all professions, D-82).
+-- The favourites as list entries (all professions, D-82), then the block "Gesucht" (F-233): its head
+-- and the wished recipes with who can make them now. Second value: the favourites, third: the wishes.
 local function favList()
     local ranks = {}
     for _, p in ipairs(Pr.Own()) do ranks[p.skill] = p.rank end
     local out = {}
-    for _, r in ipairs(Pr.Favs()) do
+    local function entry(r)
         local known = Pr.Known(r.spell, r.skill)
-        out[#out + 1] = { recipe = r, name = Pr.RecipeName(r), known = known, color = Pr.Difficulty(r, ranks[r.skill], known) }
+        return { recipe = r, name = Pr.RecipeName(r), known = known, color = Pr.Difficulty(r, ranks[r.skill], known) }
     end
-    return out
+    for _, r in ipairs(Pr.Favs()) do out[#out + 1] = entry(r) end
+    local favs = #out
+    local wishes = Pr.Watches()
+    if #wishes > 0 then
+        out[#out + 1] = { head = L["Gesucht"] }
+        for _, w in ipairs(wishes) do
+            local e = entry(w.recipe)
+            e.wish = w
+            out[#out + 1] = e
+        end
+    end
+    return out, favs, #wishes
 end
 
 -- Why a member's list cannot be shown (Crafters.KnownOf's reason), as the page says it; nil when it can.
@@ -1623,9 +1845,21 @@ local function memberHead(v, name)
         memberWhy(v) or L["Farben, \"(bekannt)\" und \"Kann ich\" zeigen deinen eigenen Stand."]
 end
 
+-- The text of an empty "Aus Material": what to type, or that no recipe needs what was searched.
+local function matEmpty(text, mats)
+    if not text then
+        return L["Tippe den Namen eines Materials oder füge es mit Shift-Klick ein: hier stehen dann alle Rezepte aller Berufe, die es brauchen."]
+    end
+    local id = ns.ItemID(text)
+    local what = id and itemName(id) or ("\"" .. text .. "\"")
+    if not id and #mats == 0 and #(text:gsub("%s", "")) < 2 then return L["Mindestens zwei Buchstaben."] end
+    return L["Kein Rezept braucht %s."]:format(what)
+end
+
 -- The head band (D-82): the icon, "Schneiderei - Alle Rezepte", the skill and the recipes, the
--- legend, and the hint while the profession window was never read.
-local function fillHead(f, v, m, n)
+-- legend, and the hint while the profession window was never read; "Aus Material" (F-233) with the
+-- materials found (mats).
+local function fillHead(f, v, m, n, mats)
     local icon, title, line, note, legend = nil, "", "", "", false
     if type(v) == "number" then
         local name = Pr.Name(v)
@@ -1634,7 +1868,17 @@ local function fillHead(f, v, m, n)
         local known = Pr.KnownCount(v)
         local skill = rank and L["Dein Skill: %d/%d"]:format(rank, max or 0) or L["Nicht erlernt"]
         local recipes = known and L["%d Rezepte, %d bekannt"]:format(all, known) or recipesText(all)
-        if m == FAV then
+        if m == MAT then
+            icon, title = { file = mats and mats[1] and entryIcon(mats[1]) or Pr.ICON_UNKNOWN }, L["Aus Material"]
+            if mats and #mats == 1 then
+                line = L["Alle Rezepte aller Berufe, die %s brauchen"]:format(itemText(mats[1]))
+            elseif mats and #mats > 1 then
+                line = L["Alle Rezepte aller Berufe zu %d Materialien, deren Name passt"]:format(#mats)
+            else
+                line = L["Alle Rezepte aller Berufe, die ein Material brauchen"]
+            end
+            note = L["Je Zeile: Beruf, Menge je Herstellung und wer in der Gilde es kann; der gelbe Punkt: du kannst es."]
+        elseif m == FAV then
             icon, title = { file = P.STAR_ICON }, L["Favoriten"]
             line = L["%d Favoriten aus allen Berufen · der Stern im Rezept merkt eins vor"]:format(n)
         elseif m == QUEUE then
@@ -1705,6 +1949,13 @@ local function refresh(f)
         f.shownView = v
         f.ovView.secs = overviewSections()
         layoutOverview(f.ovView)
+        -- /amisia berufe gilde (F-233): scrolled to "Alle Berufe" with the guild's lines
+        local ov = f.ovView
+        if toGuild then
+            toGuild = false
+            local room = math.max(0, (ov.child:GetHeight() or 0) - (ov.scroll:GetHeight() or 0))
+            ov.scroll:SetVerticalScroll(math.min(ov.guildY or 0, room))
+        end
         f.hint:SetText(L["Klick auf eine Kachel: die Rezepte des Berufs, das Lager oder die Händlergunst; links in der Leiste dasselbe."])
         dataLine(f)
         return
@@ -1723,7 +1974,7 @@ local function refresh(f)
     f.list:SetShown(listed)
     f.headBlock:SetShown(not onRoute)
     if onRoute then
-        for _, w in ipairs({ f.search, f.filterBtn, f.counts, f.empty, f.reset, f.rd, f.clearQueue }) do w:Hide() end
+        for _, w in ipairs({ f.search, f.filterBtn, f.findRec, f.findMat, f.counts, f.empty, f.reset, f.rd, f.clearQueue }) do w:Hide() end
         f.filters:Hide()
         local rank, max = Pr.Rank(v)
         f.routeRank:SetText(rank and L["Dein Rang: %d / %d"]:format(rank, max or 0) or (GREY .. L["Beruf nicht erlernt"] .. "|r"))
@@ -1738,7 +1989,7 @@ local function refresh(f)
     f.routeRank:Hide()
     f.counts:Show()
     if m == QUEUE then
-        for _, w in ipairs({ f.search, f.filterBtn, f.empty, f.reset, f.rd }) do w:Hide() end
+        for _, w in ipairs({ f.search, f.filterBtn, f.findRec, f.findMat, f.empty, f.reset, f.rd }) do w:Hide() end
         f.filters:Hide()
         fillHead(f, v, m, 0)
         f:Place(3, { { f.counts, fill = true } }, { f.clearQueue }, { shown = true })
@@ -1754,43 +2005,65 @@ local function refresh(f)
     f.known:SetValue(s.known or "all")
     f.source:SetValue(s.source or "all")
     f.learn:SetOn(s.learnable and true or false)
-    -- Gilde with its count; greyed at 0, then it can only be turned off
+    -- Gilde with its counts (F-233): the recipes someone of the guild knows and those nobody does
     local guildN = isRecipes and guildCount(v) or 0
     f.guildCount = guildN
-    f.guild.label:SetText(L["Gilde (%d)"]:format(guildN))
-    W.FitChip(f.guild)
-    f.guild.dim = guildN == 0
-    if guildN > 0 or s.guild then f.guild:Enable() else f.guild:Disable() end
-    f.guild:SetOn(s.guild and true or false)
+    f.guildOthers = select(2, Cr.GuildProfs())
+    f.guild:Fit(guildValues(guildN, isRecipes and (#Pr.Recipes(v) - guildN) or 0))
+    f.guild:SetValue(s.guildFilter or "all")
+    layoutFilters(f)
+    -- "Aus Material" (F-233): the search names materials, the list holds the recipes of every profession
+    -- that need them; the filters and the member mode rest meanwhile
+    local isMat = isRecipes and s.find == MAT
+    if isMat then member = nil end
+    f.findRec:SetOn(isRecipes and not isMat)
+    f.findMat:SetOn(isMat)
     -- the dot: a filter of the menu is on (the member mode has its own chip)
     f.filterBtn.dot:SetShown(#activeFilters() > (member and 1 or 0))
-    local text = s.search or ""
+    local text = (isMat and s.matSearch or s.search) or ""
     if not f.search:HasFocus() and f.search:GetText() ~= text then f.search:SetText(text) end
-    for _, w in ipairs({ f.known, f.source, f.learn, f.guild, f.search, f.filterBtn }) do
+    if f.search.Instructions then f.search.Instructions:SetText(isMat and L["Material suchen"] or L["Rezept suchen"]) end
+    for _, w in ipairs({ f.known, f.source, f.learn, f.guild, f.search, f.findRec, f.findMat }) do
         if isRecipes then w:Show() else w:Hide() end
     end
-    if not isRecipes then f.filters:Hide() end
+    f.filterBtn:SetShown(isRecipes and not isMat)
+    f.memberChip:SetShown(member ~= nil and not isMat)
+    if not isRecipes or isMat then f.filters:Hide() end
     -- without the search and the filters (favourites, camp, favor) the counts take the whole band
-    f:Place(3, { f.search, f.filterBtn, f.memberChip, { f.counts, fill = true } }, nil, { shown = true })
-    local key = isFav and FAV or tostring(v)
+    f:Place(3, { f.findRec, f.findMat, f.search, f.filterBtn, f.memberChip, { f.counts, fill = true } }, nil, { shown = true })
+    local key = isFav and FAV or isMat and MAT or tostring(v)
     if f.shownView ~= v or f.shownKey ~= key or f.shownMember ~= member then f.list.offset = 0 end
     f.shownView, f.shownKey, f.shownMember = v, key, member
     nameMissing = false
-    local list = isFav and favList() or listOf(v)
-    fillHead(f, v, m, #list)
+    local list, favs, wishes, mats
+    if isFav then
+        list, favs, wishes = favList()
+    elseif isMat then
+        local missing
+        mats, missing = Pr.Materials(s.matSearch)
+        if missing then nameMissing = true end
+        list = Pr.MaterialList(mats)
+    else
+        list = listOf(v)
+    end
+    fillHead(f, v, isMat and MAT or m, isFav and favs or #list, mats)
     -- the chosen entry: kept by its spell (or camp item) per view
     local chosenKey = s.sel[key]
     f.selected = nil
+    local first
     for _, e in ipairs(list) do
-        local k = e.camp and e.camp.item or e.recipe.spell
-        if k == chosenKey then f.selected = e end
+        local k = e.camp and e.camp.item or (e.recipe and e.recipe.spell)
+        if k and k == chosenKey and not f.selected then f.selected = e end
+        if k and not first then first = e end
     end
-    f.selected = f.selected or list[1]
+    f.selected = f.selected or first
     f.list:SetItems(list)
     local canReset = false
     if #list == 0 then
         if isFav then
             f.empty:Set(L["Noch keine Favoriten"], L["Der Stern oben rechts im Rezept merkt es hier vor."])
+        elseif isMat then
+            f.empty:Set(L["Aus Material"], matEmpty(s.matSearch, mats))
         else
             local help = L["Für diesen Client gibt es keine Berufsdaten."]
             if Pr.Available() then help, canReset = emptyHelp(v) end
@@ -1807,9 +2080,18 @@ local function refresh(f)
     -- every view's entry in the detail with the boxes (D-82): recipes, favourites, favor, camp
     f.rd:Show()
     showRecipe(f, f.selected)
-    f.counts:SetText(isFav and L["%d Favoriten"]:format(#list) or statusText(v, #list))
-    f.hint:SetText(hintText(v))
+    if isFav then
+        f.counts:SetText(L["%d Favoriten"]:format(favs) .. (wishes > 0 and (" · " .. L["%d gesucht"]:format(wishes)) or ""))
+    elseif isMat then
+        f.counts:SetText(recipesText(#list) .. (#mats > 1 and (" · " .. L["%d Materialien"]:format(#mats)) or ""))
+    else
+        f.counts:SetText(statusText(v, #list))
+    end
+    f.hint:SetText(isMat and L["Klick: Details. Shift-Klick auf ein Item in der Tasche, während die Suche den Cursor hat, sucht genau dieses Material."]
+        or hintText(v))
     dataLine(f)
+    -- the wishes against who knows their recipes now (the data is built here, D-28)
+    Pr.WatchCheck()
 end
 
 local function create(parent)
@@ -1882,10 +2164,30 @@ local function create(parent)
     f:Place(2, { { hb, fill = true } })
 
     f.search = W.SearchBox(f, P.SEARCH_W, function(text)
-        state().search = text ~= "" and text or nil
+        local s = state()
+        if s.find == MAT then
+            s.matSearch = text ~= "" and text or nil
+            ns.Refresh()
+            return
+        end
+        s.search = text ~= "" and text or nil
         ns.Refresh()
         askSoon()
     end, L["Rezept suchen"])
+    -- the switch "Rezepte | Aus Material" before the search (F-233)
+    f.findRec = W.Tab(f, L["Rezepte"], function()
+        state().find = nil
+        ns.Refresh()
+    end)
+    W.FitChip(f.findRec)
+    W.Tooltip(f.findRec, L["Rezepte"], L["Die Suche findet Rezepte des Berufs nach ihrem Namen."])
+    f.findMat = W.Tab(f, L["Aus Material"], function()
+        state().find = MAT
+        member = nil
+        ns.Refresh()
+    end)
+    W.FitChip(f.findMat)
+    W.Tooltip(f.findMat, L["Aus Material"], L["Die Suche findet Materialien: alle Rezepte aller Berufe, die sie brauchen, mit Menge und wer in der Gilde sie kann. Shift-Klick auf ein Item fügt es ein."])
     -- the filter menu: Amisia's funnel opens a small panel with the filters under it
     f.filterBtn = W.IconButton(f, P.FILTER_BTN, { file = P.FILTER_ICON }, function()
         f.filters:SetShown(not f.filters:IsShown())
@@ -1919,21 +2221,22 @@ local function create(parent)
         ns.Refresh()
     end)
     W.Tooltip(f.learn, L["Lernbar"], L["Nur unbekannte Rezepte, die dein Rang schon erlaubt."])
-    f.guild = W.TabCheck(f.filters, L["Gilde (%d)"]:format(0), function()
-        local s = state()
-        s.guild = not s.guild or nil
+    -- Gilde (F-233): all, what someone of the guild knows, what nobody does; the entries count
+    f.guild = filterPicker(f.filters, L["Gilde: %s"], guildValues(0, 0), function(v)
+        state().guildFilter = (v == "has" or v == "none") and v or nil
         ns.Refresh()
         askSoon()
     end)
-    W.FitChip(f.guild)
     W.Tooltip(f.guild, L["Gilde"], function()
+        local text = L["Alle Rezepte, nur die, die jemand aus der Gilde kann, oder nur die, die niemand kann. Es zählen alle mit Amisia, die ihre Rezepte teilen, und deine Charaktere."]
         if (f.guildCount or 0) == 0 then
-            return L["Noch teilt niemand aus der Gilde Rezepte. Die Liste füllt sich, sobald Gildenmitglieder mit Amisia ihr Berufsfenster öffnen."]
+            text = text .. " " .. L["Noch teilt niemand aus der Gilde Rezepte. Die Liste füllt sich, sobald Gildenmitglieder mit Amisia ihr Berufsfenster öffnen."]
+        elseif not f.guildOthers then
+            text = text .. " " .. L["Außer dir teilt noch niemand aus der Gilde Rezepte: \"Kann niemand\" heißt hier niemand mit Amisia."]
         end
-        return L["Nur Rezepte, die jemand aus der Gilde kennt (von Amisia-Nutzern geteilt)."]
+        return text
     end)
-    local flyW = W.Row(f.filters, { f.known, f.source, f.learn, f.guild }, T.LAYOUT.ITEM_GAP, P.FLY_PAD, -P.FLY_PAD)
-    f.filters:SetSize(flyW + P.FLY_PAD, T.LAYOUT.ROW_H + 2 * P.FLY_PAD)
+    layoutFilters(f)
     -- the member mode (F-182): its chip beside the filter button ends it, the link goes back
     f.memberChip = W.TabCheck(f, L["Von: %s"]:format(""), function()
         member = nil
@@ -1960,7 +2263,7 @@ local function create(parent)
     W.FitChip(f.clearQueue)
     W.Tooltip(f.clearQueue, L["Liste leeren"], L["Nimmt alle Rezepte von der Herstellliste."])
     f.clearQueue:Hide()
-    f:Place(3, { f.search, f.filterBtn, { f.counts, fill = true } })
+    f:Place(3, { f.findRec, f.findMat, f.search, f.filterBtn, { f.counts, fill = true } })
     -- the hint takes two lines when it needs them (the favor vendors), the data line under it
     f:Footer({ { "hint", lines = 2, help = true }, { "data", help = true } })
 
@@ -1969,7 +2272,7 @@ local function create(parent)
         r:RegisterForClicks("LeftButtonUp")
         r:SetScript("OnClick", function(self)
             local e = self.item
-            if not e then return end
+            if not e or e.head then return end
             if IsShiftKeyDown and IsShiftKeyDown() then
                 insertLink(linkOf(e))
                 return
@@ -1986,7 +2289,7 @@ local function create(parent)
     f.reset:SetPoint("TOP", f.empty.text, "BOTTOM", 0, -T.EMPTY.BUTTON_GAP)
     f.reset:Hide()
     W.Tooltip(f.reset, L["Filter zurücksetzen"], function()
-        local text = L["Stellt Bekannt und Quelle auf Alle, schaltet Lernbar und Gilde aus und leert die Suche."]
+        local text = L["Stellt Bekannt, Quelle und Gilde auf Alle, schaltet Lernbar aus und leert die Suche."]
         if member then text = text .. " " .. L["Zeigt wieder alle Rezepte, nicht nur die von %s."]:format(member.name) end
         return text
     end)
@@ -2070,8 +2373,26 @@ local function create(parent)
     rv:Hide()
     f.ovView = buildOverview(f)
     f.chrome = { f.tabAll, f.tabFav, f.tabFavor, f.tabQueue, f.tabRoute, f.routeRank, f.headBlock, f.search, f.filterBtn,
-        f.counts, f.clearQueue, f.list, f.rd, f.empty, f.reset, f.routeView, f.queueView, f.memberChip, f.back }
+        f.counts, f.clearQueue, f.list, f.rd, f.empty, f.reset, f.routeView, f.queueView, f.memberChip, f.back, f.findRec, f.findMat }
     return f
+end
+
+-- A link shift-clicked into the chat lands in the search while it has the focus and "Aus Material" is
+-- on (F-233): that item is the material searched. The client calls ChatFrameUtil.InsertLink;
+-- ChatEdit_InsertLink is its deprecated alias with a hook of its own.
+local function onInsertLink(link)
+    if not (page and page.search and page.search:HasFocus() and ns.ItemID(link)) then return end
+    local s = state()
+    if s.find ~= MAT then return end
+    page.search:SetText(link)
+    s.matSearch = link
+    ns.Refresh()
+end
+if type(ChatFrameUtil) == "table" and type(ChatFrameUtil.InsertLink) == "function" then
+    hooksecurefunc(ChatFrameUtil, "InsertLink", ns.Perf.Wrap("Hook InsertLink Professions", onInsertLink))
+end
+if type(ChatEdit_InsertLink) == "function" then
+    hooksecurefunc("ChatEdit_InsertLink", ns.Perf.Wrap("Hook ChatEdit_InsertLink Professions", onInsertLink))
 end
 
 ns.RegisterPanel{ key = "professions", label = L["Berufe"], sub = L["Rezepte, der Weg zum nächsten Skill und die Hersteller der Gilde."], icon = ICON, order = 57, group = "prof",
@@ -2090,6 +2411,10 @@ function ns.ShowProfessions(what)
             state().mode = ROUTE
         elseif w:find("^übersicht") or w:find("^ubersicht") or w:find("^overview") then   -- l10n-ok: command words
             state().view = OVERVIEW
+        elseif w:find("^gilde") or w:find("^guild") then   -- l10n-ok: command words
+            -- the overview at the cards with the guild's lines (F-233)
+            state().view = OVERVIEW
+            toGuild = true
         elseif w:find("^lager") or w:find("^camp") then
             state().view = CAMP
         elseif w:find("^gunst") or w:find("^händler") or w:find("^favor") then   -- l10n-ok: German command words
@@ -2116,7 +2441,7 @@ function ns.ShowRecipe(skill, spell, name)
         chosen()
         member = nil
         s.search = type(name) == "string" and name ~= "" and name or nil
-        s.known, s.learnable, s.source, s.guild, s.mode = nil, nil, nil, nil, nil
+        s.known, s.learnable, s.source, s.guildFilter, s.mode, s.find = nil, nil, nil, nil, nil, nil
         if type(spell) == "number" then s.sel[tostring(skill)] = spell end
     end
     if ns.ShowPage then ns.ShowPage("professions") end
@@ -2130,13 +2455,13 @@ function ns.ShowMemberRecipes(name, skill)
         local s = state()
         s.view, s.mode = skill, RECIPES
         chosen()
-        s.search, s.known, s.learnable, s.source, s.guild = nil, nil, nil, nil, nil
+        s.search, s.known, s.learnable, s.source, s.guildFilter, s.find = nil, nil, nil, nil, nil, nil
         member = { name = name, skill = skill }
     end
     if ns.ShowPage then ns.ShowPage("professions") end
 end
 
-ns.RegisterSlash("berufe", { en = "professions", aliases = { "beruf", "profession" }, args = L["[Beruf|lager|gunst|route]"],
+ns.RegisterSlash("berufe", { en = "professions", aliases = { "beruf", "profession" }, args = L["[Beruf|lager|gunst|route|gilde]"],
     desc = L["Rezepte, Lager und Händlergunst"], run = function(rest) ns.ShowProfessions(rest) end })
 
 ---------------------------------------------------------------------------

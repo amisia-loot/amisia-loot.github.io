@@ -1087,10 +1087,17 @@ function Cr.ForSpell(spell)
     return sorted(build().bySpell[tonumber(spell)])
 end
 
--- Whether anyone of the guild knows the recipe (the page's filter).
+-- Whether anyone of the guild knows the recipe (the page's filter): the same crafters as Cr.ForSpell,
+-- so a heard crafter who left the guild counts as little there as here (F-233).
 function Cr.Has(spell)
     local e = build().bySpell[tonumber(spell)]
-    return e ~= nil and next(e) ~= nil
+    if e == nil or next(e) == nil then return false end
+    local r = roster()
+    if not r then return true end
+    for name, x in pairs(e) do
+        if x.own or r[name:lower()] then return true end
+    end
+    return false
 end
 
 -- Who can make an item: the crafters of every recipe that makes it (the highest rank per name).
@@ -1409,6 +1416,70 @@ function Cr.KnownOf(name, skill)
     end
     knownCache.map[key] = { set = set, n = n, why = why }
     return set, n, why
+end
+
+---------------------------------------------------------------------------
+-- The guild's professions (F-233): per profession who has it, from the recipe exchange and the notes
+---------------------------------------------------------------------------
+local guildCache          -- { roster list, profs map, top, map }
+
+-- Per skill line { members, amisia, note, top = how many stand on the data's highest rank, best = the
+-- highest rank known, oldest = days since the oldest list used }, and whether anyone but the own
+-- characters shares recipes (others). A member counts once per character (an own alt too, as in
+-- "Hergestellt von"): with the profession from the recipe exchange (Cr.Professions: the own characters
+-- of this guild, the heard crafters that stand in the roster, all of them while it cannot be read) or,
+-- when that has none, from its public or officer note (Prof.FromNote; such a member counts for members
+-- and ranks, never for recipes). Built again when the roster, the crafters or the data change.
+function Cr.GuildProfs()
+    local list = ns.GuildRoster and ns.GuildRoster() or nil
+    local profs = Cr.Professions()
+    local Pr = ns.Prof
+    local top = Pr and Pr.TopRank and Pr.TopRank() or nil
+    local c = guildCache
+    if c and c.roster == list and c.profs == profs and c.top == top then return c.map, c.others end
+    local map, others = {}, false
+    local function at(skill)
+        local e = map[skill]
+        if not e then
+            e = { members = 0, amisia = 0, note = 0, top = 0, best = 0 }
+            map[skill] = e
+        end
+        return e
+    end
+    local function rank(e, r)
+        r = tonumber(r) or 0
+        if r > e.best then e.best = r end
+        if top and r >= top then e.top = e.top + 1 end
+    end
+    local r = roster()
+    for low, plist in pairs(profs) do
+        local own = plist[1] and plist[1].own
+        if own or not r or r[low] then
+            for _, p in ipairs(plist) do
+                local e = at(p.skill)
+                e.members, e.amisia = e.members + 1, e.amisia + 1
+                rank(e, p.rank)
+                if p.age and (not e.oldest or p.age > e.oldest) then e.oldest = p.age end
+                if not p.own then others = true end
+            end
+        end
+    end
+    for _, m in ipairs(Pr and Pr.FromNote and list or {}) do
+        local have = {}
+        for _, p in ipairs(profs[m.name:lower()] or {}) do have[p.skill] = true end
+        for _, text in ipairs({ m.note or "", m.officerNote or "" }) do
+            for _, n in ipairs(Pr.FromNote(text)) do
+                if not have[n.skill] then
+                    have[n.skill] = true
+                    local e = at(n.skill)
+                    e.members, e.note = e.members + 1, e.note + 1
+                    rank(e, n.rank)
+                end
+            end
+        end
+    end
+    guildCache = { roster = list, profs = profs, top = top, map = map, others = others }
+    return map, others
 end
 
 ---------------------------------------------------------------------------

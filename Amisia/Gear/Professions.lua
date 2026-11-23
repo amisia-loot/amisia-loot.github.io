@@ -1254,4 +1254,335 @@ function Pr.HasWrit(r)
     local d = data()
     return r.item > 0 and d and d.FAVOR and d.FAVOR.writ and d.FAVOR.writ[r.item] ~= nil or false
 end
+
+---------------------------------------------------------------------------
+-- The guild's professions (F-233, spec docs/specs/2026-11-23-gilde-berufe-uebersicht.md): the highest
+-- rank, the materials and the recipe wish
+---------------------------------------------------------------------------
+-- The highest rank the profession data knows: the highest learn rank of its recipes (today 300), not
+-- a trainer's limit; nil without data.
+function Pr.TopRank()
+    fresh()
+    if cache.top == nil then
+        local top = 0
+        for _, skill in ipairs(Pr.Skills()) do
+            for _, r in ipairs(Pr.Recipes(skill)) do
+                if r.learn > top then top = r.learn end
+            end
+        end
+        cache.top = top > 0 and top or false
+    end
+    return cache.top or nil
+end
+
+-- The reverse index material -> recipes, built at its first use from the data's reagents (G) and kept
+-- with the data (lazy, D-28, D-162): [item] = { { spell, n per craft } } in the data's order, each
+-- recipe once. Reagents only the client knows (no G) are not in it.
+local function usedIndex()
+    fresh()
+    if cache.used then return cache.used end
+    local used, d = {}, data()
+    local g = d and d.G or {}
+    for _, skill in ipairs(Pr.Skills()) do
+        for _, r in ipairs(Pr.Recipes(skill)) do
+            local s = g[r.spell]
+            if type(s) == "string" then
+                for item, n in s:gmatch("(%d+):(%d+)") do
+                    item = num(item)
+                    local list = used[item]
+                    if not list then
+                        list = { seen = {} }
+                        used[item] = list
+                    end
+                    if not list.seen[r.spell] then
+                        list.seen[r.spell] = true
+                        list[#list + 1] = { r.spell, num(n) }
+                    end
+                end
+            end
+        end
+    end
+    cache.used = used
+    return used
+end
+
+-- The recipes that need item: { { recipe, n per craft } }; {} when none does.
+function Pr.UsedIn(item)
+    local out = {}
+    for _, e in ipairs(usedIndex()[tonumber(item) or 0] or {}) do
+        local r = Pr.Recipe(e[1])
+        if r then out[#out + 1] = { recipe = r, n = e[2] } end
+    end
+    return out
+end
+
+-- The materials a search of "Aus Material" names: the item of an item link (shift-clicked in), else
+-- every material of the index whose client name holds the text (any case, at least two letters), by
+-- id. Second value: a name was not loaded yet (GET_ITEM_INFO_RECEIVED brings it).
+function Pr.Materials(text)
+    if type(text) ~= "string" then return {}, false end
+    local id = ns.ItemID(text)
+    if id then return { id }, false end
+    local q = lower((text:gsub("^%s+", ""):gsub("%s+$", "")))
+    if #q < 2 then return {}, false end
+    local out, missing = {}, false
+    for item in pairs(usedIndex()) do
+        local name = Pr.ItemInfo(item)
+        if not name then
+            missing = true
+        elseif lower(name):find(q, 1, true) then
+            out[#out + 1] = item
+        end
+    end
+    table.sort(out)
+    return out, missing
+end
+
+-- The list of "Aus Material": every recipe of every profession that needs one of items, once:
+-- { recipe, name, known, color, mats = { { item, n } } }, by the data's profession order, then the learn
+-- rank, then the name.
+function Pr.MaterialList(items)
+    local ranks, order = {}, {}
+    for _, p in ipairs(Pr.Own()) do ranks[p.skill] = p.rank end
+    for i, skill in ipairs(Pr.Skills()) do order[skill] = i end
+    local by, out = {}, {}
+    for _, item in ipairs(items or {}) do
+        for _, u in ipairs(Pr.UsedIn(item)) do
+            local r = u.recipe
+            local e = by[r.spell]
+            if not e then
+                local known = Pr.Known(r.spell, r.skill)
+                e = { recipe = r, name = Pr.RecipeName(r), known = known, color = Pr.Difficulty(r, ranks[r.skill], known), mats = {} }
+                by[r.spell] = e
+                out[#out + 1] = e
+            end
+            e.mats[#e.mats + 1] = { item, u.n }
+        end
+    end
+    table.sort(out, function(a, b)
+        local ra, rb = a.recipe, b.recipe
+        if ra.skill ~= rb.skill then return (order[ra.skill] or 99) < (order[rb.skill] or 99) end
+        if ra.learn ~= rb.learn then return ra.learn < rb.learn end
+        if a.name ~= b.name then return tostring(a.name) < tostring(b.name) end
+        return ra.spell < rb.spell
+    end)
+    return out
+end
+
+-- The item tooltip's line on a material (prof.reagentTooltip, off by default): "Material für 12 Rezepte
+-- (Gilde kann 5)", the guild part only in a guild; nil for an item no recipe needs. Builds the profession
+-- data only out of combat (as the crafters' line).
+function Pr.ReagentLine(item)
+    item = tonumber(item)
+    if not item or not ns.HasData("PROFESSIONS") then return nil end
+    if not ns.DataLoaded("PROFESSIONS") and type(InCombatLockdown) == "function" and InCombatLockdown() then return nil end
+    local list = Pr.UsedIn(item)
+    if #list == 0 then return nil end
+    local line = #list == 1 and L["Material für 1 Rezept"] or L["Material für %d Rezepte"]:format(#list)
+    local Cr = ns.Crafters
+    if type(IsInGuild) == "function" and ns.Plain(IsInGuild()) == true and Cr and Cr.Has then
+        local n = 0
+        for _, u in ipairs(list) do
+            if Cr.Has(u.recipe.spell) then n = n + 1 end
+        end
+        line = line .. L[" (Gilde kann %d)"]:format(n)
+    end
+    return line
+end
+
+local TIP_GREY = { 0.56, 0.53, 0.64 }
+local tipHooked = false
+ns.OnEvent("ADDON_LOADED", function(name)
+    if name ~= ns.ADDON or tipHooked or not ns.OnItemTooltip then return end
+    tipHooked = true
+    ns.OnItemTooltip("reagents", function(tip, _, id)
+        if not ns.Get("prof.reagentTooltip") then return false end
+        local line = Pr.ReagentLine(id)
+        if not line then return false end
+        tip:AddLine(line, TIP_GREY[1], TIP_GREY[2], TIP_GREY[3])
+        return true
+    end)
+end)
+
+---------------------------------------------------------------------------
+-- The recipe wish (F-233, D-162): "Melden, wenn es jemand lernt" on a recipe nobody of the guild knows.
+-- AmisiaDB.prof.watch = { [spell] = { at = epoch of the wish, hit = name, hitAt = epoch } } per account,
+-- at most WATCH_MAX, private: never sent.
+---------------------------------------------------------------------------
+local WATCH_MAX, WATCH_CHAT_HOUR = 50, 10
+Pr.WATCH_MAX = WATCH_MAX
+
+local function watchStore(create)
+    if not AmisiaDB then return nil end
+    local p = AmisiaDB.prof
+    if type(p) ~= "table" then
+        if not create then return nil end
+        p = { chars = {} }
+        AmisiaDB.prof = p
+    end
+    if type(p.watch) ~= "table" then
+        if not create then return nil end
+        p.watch = {}
+    end
+    return p.watch
+end
+
+local function epoch() return type(time) == "function" and time() or 0 end
+
+-- Whether an own character of the account knows the recipe (from its profession window).
+function Pr.OwnKnows(spell)
+    local p = AmisiaDB and AmisiaDB.prof
+    for _, c in pairs(type(p) == "table" and type(p.chars) == "table" and p.chars or {}) do
+        if type(c) == "table" then
+            for _, s in pairs(c) do
+                if type(s) == "table" and type(s.known) == "table" and s.known[spell] == true then return true end
+            end
+        end
+    end
+    return false
+end
+
+function Pr.IsWatched(spell)
+    local w = watchStore(false)
+    return w ~= nil and type(w[tonumber(spell)]) == "table"
+end
+
+-- Turns a recipe wish on or off; false when the list is full or the data lacks the recipe.
+function Pr.SetWatch(spell, on)
+    spell = tonumber(spell)
+    if not spell then return false end
+    if on then
+        if not Pr.Recipe(spell) then return false end
+        local w = watchStore(true)
+        if w[spell] then return true end
+        if ns.Count(w) >= WATCH_MAX then return false end
+        w[spell] = { at = epoch() }
+    else
+        local w = watchStore(false)
+        if not (w and w[spell]) then return true end
+        w[spell] = nil
+    end
+    ns.Fire("PROF_LISTS_CHANGED")
+    return true
+end
+
+-- The wishes the data knows: { { recipe, at, hit, hitAt } } by profession (data order) and name.
+function Pr.Watches()
+    local out = {}
+    for spell, e in pairs(watchStore(false) or {}) do
+        local r = type(spell) == "number" and type(e) == "table" and Pr.Recipe(spell)
+        if r then out[#out + 1] = { recipe = r, at = e.at, hit = e.hit, hitAt = e.hitAt } end
+    end
+    local order = {}
+    for i, skill in ipairs(Pr.Skills()) do order[skill] = i end
+    table.sort(out, function(a, b)
+        local ra, rb = a.recipe, b.recipe
+        if ra.skill ~= rb.skill then return (order[ra.skill] or 99) < (order[rb.skill] or 99) end
+        local na, nb = Pr.RecipeName(ra), Pr.RecipeName(rb)
+        if na ~= nb then return na < nb end
+        return ra.spell < rb.spell
+    end)
+    return out
+end
+
+-- The chat line of a fulfilled wish: at most once per recipe and name in a session (the stored hit
+-- keeps it from coming again) and WATCH_CHAT_HOUR lines an hour.
+local told, chatTimes = {}, {}
+local function say(r, name)
+    if not ns.Get("prof.watchChat") then return end
+    local key = r.spell .. "#" .. name:lower()
+    if told[key] then return end
+    local t = GetTime()
+    local keep = {}
+    for _, x in ipairs(chatTimes) do
+        if t - x < 3600 then keep[#keep + 1] = x end
+    end
+    chatTimes = keep
+    if #chatTimes >= WATCH_CHAT_HOUR then return end
+    told[key] = true
+    chatTimes[#chatTimes + 1] = t
+    local link = r.item > 0 and select(3, Pr.ItemInfo(r.item)) or nil
+    link = link or (C_Spell and C_Spell.GetSpellLink and ns.Plain(C_Spell.GetSpellLink(r.spell))) or ("[" .. Pr.RecipeName(r) .. "]")
+    ns.msg(L["%s kann jetzt %s."]:format(name, link))
+end
+
+-- Compares the wishes with who knows their recipes now: a recipe the data no longer has, or one an own
+-- character learned, goes silently; the first guild member with Amisia who knows one (not an own
+-- character; Crafters.ForSpell, the order of "Hergestellt von") becomes its hit, said once in the chat
+-- (prof.watchChat). Only while the profession data is built (D-28): an event never builds it, the page
+-- Berufe and the crafters' tooltip do, and the next check finds what came meanwhile.
+function Pr.WatchCheck()
+    local w = watchStore(false)
+    if not w or next(w) == nil or not ns.DataLoaded("PROFESSIONS") then return end
+    local Cr, changed = ns.Crafters, false
+    for spell, e in pairs(w) do
+        local r = type(spell) == "number" and type(e) == "table" and Pr.Recipe(spell)
+        if not r or Pr.OwnKnows(spell) then
+            w[spell] = nil
+            changed = true
+        elseif not e.hit and Cr and Cr.ForSpell then
+            for _, c in ipairs(Cr.ForSpell(spell)) do
+                if not c.own then
+                    e.hit, e.hitAt = c.name, epoch()
+                    changed = true
+                    say(r, c.name)
+                    break
+                end
+            end
+        end
+    end
+    if changed then ns.Fire("PROF_LISTS_CHANGED") end
+end
+
+-- A heard crafter's list (or an own one) changed: the wishes are compared a second later.
+local watchDue = false
+ns.Listen("CRAFTERS_CHANGED", function()
+    if watchDue then return end
+    watchDue = true
+    C_Timer.After(1, function()
+        watchDue = false
+        Pr.WatchCheck()
+    end)
+end)
+
+-- Called on ADDON_LOADED: AmisiaDB.prof.watch checked (spells and epochs whole positive numbers, a
+-- hit a name without codes, the newest WATCH_MAX wishes); whether the data has the spell is checked
+-- when it is built (Pr.WatchCheck).
+function ns.ProfWatchLoaded(root)
+    local p = type(root) == "table" and root.prof
+    if type(p) ~= "table" or p.watch == nil then return end
+    if type(p.watch) ~= "table" then
+        p.watch = nil
+        return
+    end
+    local function whole(v) return type(v) == "number" and v >= 0 and v == math.floor(v) and v < 1e10 end
+    local list = {}
+    for spell, e in pairs(p.watch) do
+        if whole(spell) and spell > 0 and type(e) == "table" and whole(e.at) then
+            local hit = type(e.hit) == "string" and e.hit ~= "" and #e.hit <= 48 and not e.hit:find("|", 1, true) and e.hit or nil
+            list[#list + 1] = { spell = spell, e = { at = e.at, hit = hit, hitAt = hit and whole(e.hitAt) and e.hitAt or nil } }
+        end
+    end
+    table.sort(list, function(a, b)
+        if a.e.at ~= b.e.at then return a.e.at > b.e.at end
+        return a.spell < b.spell
+    end)
+    local out = {}
+    for i = 1, math.min(#list, WATCH_MAX) do out[list[i].spell] = list[i].e end
+    p.watch = out
+end
+
+ns.OnEvent("ADDON_LOADED", function(name)
+    if name == ns.ADDON and AmisiaDB then ns.ProfWatchLoaded(AmisiaDB) end
+end)
+
+---------------------------------------------------------------------------
+-- Settings (F-233): the section Berufe
+---------------------------------------------------------------------------
+ns.RegisterSettings{ key = "prof", label = L["Berufe"], order = 55, group = "prof", pages = { "professions" }, forever = true, items = {
+    { key = "prof.reagentTooltip", type = "toggle", label = L["Materialien im Item-Tooltip"], default = false,
+      tip = L["Eine graue Zeile an Materialien: für wie viele Rezepte sie gebraucht werden und wie viele davon die Gilde kann."] },
+    { key = "prof.watchChat", type = "toggle", label = L["Chatzeile bei gesuchten Rezepten"], default = true,
+      tip = L["Sagt einmal im Chat, wenn jemand aus der Gilde ein Rezept lernt, das du mit der Glocke gesucht hast."] },
+} }
 end)

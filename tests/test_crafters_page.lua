@@ -48,15 +48,17 @@ f.list.rows[3]:Click()
 assert(has(d.who:GetText(), "Hergestellt von: niemand aus der Gilde bekannt") and not d.ask:IsShown())
 assert(not f.list.rows[3].dotGuild:IsShown(), "no green dot")
 
--- only what the guild knows
-assert(f.guild.label:GetText() == "Gilde (2)" and f.guild:IsEnabled() and not f.guild.dim, f.guild.label:GetText())
-f.guild:Click()
-assert(AmisiaDB.settings.professions.guild == true and f.guild.on and #f.list.items == 2, #f.list.items)
+-- only what the guild knows: the dropdown Gilde counts both sides (F-233)
+assert(f.guild.label:GetText() == "Gilde: Alle" and f.guild:IsEnabled(), f.guild.label:GetText())
+assert(f.guild.values[2].text == "Kann jemand (2)" and f.guild.values[3].text == "Kann niemand (3)", f.guild.values[2].text)
+f.guild.onPick("has")
+assert(AmisiaDB.settings.professions.guildFilter == "has" and f.guild.label:GetText() == "Gilde: Kann jemand (2)" and #f.list.items == 2,
+    #f.list.items)
 f.known.onPick("unknown")            -- unknown to me, known in the guild: the vest
 assert(#f.list.items == 1 and f.list.items[1].recipe.spell == 3321, #f.list.items)
 f.known.onPick("all")
-f.guild:Click()
-assert(not AmisiaDB.settings.professions.guild and #f.list.items == 5)
+f.guild.onPick("all")
+assert(not AmisiaDB.settings.professions.guildFilter and #f.list.items == 5)
 
 -- Bob shares what he knows: the page follows
 AmisiaDB.crafters.c["Bob Hammer"] = { via = "Bob Hammer", self = true, seen = D, p = { [164] = { r = 120, m = 150, h = ix.hash,

@@ -148,7 +148,9 @@ local order = {}
 for i, it in ipairs(f.list.items) do order[i] = it.recipe.spell end
 assert(table.concat(order, ",") == "2663,9999,1252229,3321,1301421", table.concat(order, ","))
 assert(not has(f.hint:GetText(), "Berufsfenster"), f.hint:GetText())
--- the overview counts what the window showed as known
+-- the overview counts what the window showed as known (without a guild: the cards without the guild's
+-- lines, those in tests/test_guild_professions.lua, F-233)
+STUB.inGuild = false
 NS.ShowProfessions("übersicht")
 -- (narrow cards: the short form, the whole line in the tooltip)
 assert(f.ovView:IsShown() and f.ovView.cards[1].sub:GetText() == "45/150 · 2 bekannt", f.ovView.cards[1].sub:GetText())
@@ -158,6 +160,7 @@ GameTooltip.AddLine = function(_, t) tipLines[#tipLines + 1] = t end
 f.ovView.cards[4].scripts.OnEnter(f.ovView.cards[4])
 GameTooltip.AddLine = keepAdd
 assert(tipLines[2] == "5 Rezepte · 2 bekannt", tostring(tipLines[2]))
+STUB.inGuild = nil
 NS.ShowProfessions("schmied")
 
 -- the detail of the first row is shown; a click chooses another

@@ -1,6 +1,6 @@
 -- The professions page's filters (shared by test_professions_filters.lua and its English twin; the
 -- caller sets PROF_FILTER_TEXTS, the texts of its locale): the two dropdowns that name their filter
--- in the field, the chip Gilde with its count (greyed at 0, the tooltip that says why), the count
+-- in the field, the dropdown Gilde with its counts (F-233; the tooltip says why it finds nothing), the count
 -- "N von M Rezepten", the empty state that names what each filter holds back, and "Filter
 -- zurücksetzen".
 local X = assert(PROF_FILTER_TEXTS, "the caller's texts")
@@ -52,9 +52,9 @@ f.known.onPick("known")
 assert(f.counts:GetText() == X.count2of5, f.counts:GetText())
 f.known.onPick("all")
 
--- 3. Gilde (0): greyed and off it can't be turned on; the tooltip says why
-assert(f.guild.label:GetText() == X.guild0, f.guild.label:GetText())
-assert(f.guild.dim and not f.guild:IsEnabled(), "greyed while nobody shares")
+-- 3. Gilde: a dropdown like Bekannt (F-233); while nobody shares, "Kann jemand (0)" and the tooltip says why
+assert(f.guild.arrow and f.guild.label:GetText() == X.guildAll, f.guild.label:GetText())
+assert(f.guild.values[2].text == X.guildHas0 and f.guild.values[3].text == X.guildNone5, f.guild.values[3].text)
 local lines = {}
 local realAdd = GameTooltip.AddLine
 GameTooltip.AddLine = function(_, text) lines[#lines + 1] = text end
@@ -64,19 +64,23 @@ local function tip(frame)
     return table.concat(lines, "\n")
 end
 assert(has(tip(f.guild), X.guildNobody), tip(f.guild))
--- someone shares two recipes: the count, the chip works
+-- someone shares two recipes: the counts, "Kann jemand" and "Kann niemand" (the counts match the list)
 shared[2663], shared[1252229] = true, true
 NS.Refresh()
-assert(f.guild.label:GetText() == X.guild2 and f.guild:IsEnabled() and not f.guild.dim, f.guild.label:GetText())
+assert(f.guild.values[2].text == X.guildHas2 and f.guild.values[3].text == X.guildNone3, f.guild.values[2].text)
 assert(not has(tip(f.guild), X.guildNobody), "the usual tooltip")
-f.guild:Click()
-assert(AmisiaDB.settings.professions.guild and #f.list.items == 2, #f.list.items)
-assert(f.counts:GetText() == X.count2of5, f.counts:GetText())
--- on with nobody sharing: greyed, still clickable to turn it off
+f.guild.onPick("has")
+assert(AmisiaDB.settings.professions.guildFilter == "has" and #f.list.items == 2, #f.list.items)
+assert(f.counts:GetText() == X.count2of5 and f.guild.label:GetText() == X.guildHasField, f.guild.label:GetText())
+f.guild.onPick("none")
+assert(AmisiaDB.settings.professions.guildFilter == "none" and #f.list.items == 3, #f.list.items)
+for _, e in ipairs(f.list.items) do assert(not shared[e.recipe.spell], "nobody knows it") end
+assert(f.counts:GetText() == X.count3of5, f.counts:GetText())
+f.guild.onPick("has")
+-- "Kann jemand" with nobody sharing: nothing, the filter stays
 shared = {}
 NS.Refresh()
-assert(f.guild.label:GetText() == X.guild0 and f.guild.dim and f.guild:IsEnabled() and f.guild.on, "on, greyed, clickable")
-assert(#f.list.items == 0)
+assert(f.guild.label:GetText() == X.guildHas0Field and #f.list.items == 0, f.guild.label:GetText())
 
 -- 2. the empty state names the filters that are on and what each removal gives back
 f.known.onPick("known")
@@ -102,15 +106,16 @@ assert(not has(f.empty:GetText(), X.withoutSearch) and has(f.empty:GetText(), X.
 f.learn:Click()
 f.reset:Click()
 local s = AmisiaDB.settings.professions
-assert(not s.known and not s.source and not s.learnable and not s.guild and not s.search, "all filters off")
+assert(not s.known and not s.source and not s.learnable and not s.guildFilter and not s.search, "all filters off")
 assert(#f.list.items == 5 and not f.empty:IsShown() and not f.reset:IsShown(), #f.list.items)
 assert(f.search:GetText() == "" and f.known.label:GetText() == X.knownAll and f.source.label:GetText() == X.sourceAll)
-assert(not f.guild.on and not f.learn.on, "the chips off")
+assert(f.guild.label:GetText() == X.guildAll and not f.learn.on, "the dropdown at Alle, the chip off")
 
 -- the layout holds with the counts and the reset button
 local Lay = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
--- (the filters in the menu under the search, D-82)
-Lay.row("filters", f.known, f.source, f.learn, f.guild)
+-- (the filters in the menu under the search, D-82; in two rows since the dropdown Gilde, F-233)
+Lay.row("filters", f.known, f.source)
+Lay.row("filters 2", f.guild, f.learn)
 Lay.row("search", f.search, f.filterBtn, f.counts)
 Lay.fits(f.counts)
 -- each dropdown is as wide as its widest entry needs: every entry fits the field
@@ -122,8 +127,15 @@ for _, p in ipairs({ f.known, f.source }) do
     end
     p:SetValue("all")
 end
-assert(f.guild.label:GetStringWidth() + 2 * NS.Theme.CHIP_PAD <= f.guild:GetWidth(), "the guild chip fits its count")
-f.known.onPick("known"); f.source.onPick("F"); f.guild:Click()
+do
+    local l, r = Lay.span(f.guild.label)
+    for _, e in ipairs(f.guild.values) do
+        f.guild:SetValue(e.value)
+        assert(f.guild.label:GetStringWidth() <= r - l, ("'%s' fits"):format(f.guild.label:GetText()))
+    end
+    f.guild:SetValue("all")
+end
+f.known.onPick("known"); f.source.onPick("F"); f.guild.onPick("has")
 assert(f.reset:IsShown())
 Lay.inside("reset", f.reset)
 Lay.column("empty", f.empty.title, f.empty.text, f.reset)

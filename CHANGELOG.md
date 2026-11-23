@@ -5,6 +5,19 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(professions): the guild's professions at a glance, recipes from a material, and a bell for a wanted recipe (F-233)
+
+    In a guild every card under "All professions" on the Professions overview shows the guild: members with the
+    profession (how many with Amisia), how many stand at the highest rank, and "Recipes in the guild: 88 of 141",
+    with where it comes from (members with Amisia, more by guild note); a click there opens the profession with
+    "Guild: Nobody can". The guild filter is a dropdown "All | Someone can (N) | Nobody can (N)". A switch
+    "Recipes | From material" beside the search lists every recipe of every profession that needs a material
+    (type its name or shift-click it in), with the profession, the amount and who of the guild can make it. On a
+    recipe nobody of the guild knows, a bell remembers it privately: when a guild member with Amisia learns it, the
+    chat says so once, and Favorites lists the wanted recipes under "Wanted". New settings under Professions: a
+    tooltip line on materials (off) and the chat line for wanted recipes (on). `/amisia professions guild` opens
+    the cards.
+
 ## [v2.106.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.106.1) (2026-11-22)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.106.0...v2.106.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
