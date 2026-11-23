@@ -1,6 +1,6 @@
 # Spec: Berufe der Gilde: Übersicht, Material-Suche und Rezept-Wunsch
 
-Stand: 2026-11-23 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-23 · Status: freigegeben ·
 Feature: F-233
 
 ## Ziel
@@ -106,4 +106,8 @@ viele Rezepte meldet, flutet nicht).
 
 ## Entscheidungen
 
-Noch keine.
+2026-11-23, Nutzer: "Passt, alle drei" zu den Vorschlägen:
+1. Tooltip-Zeile auf Materialien: aus als Vorgabe.
+2. Filter "Gilde" als Dropdown mit drei Stufen statt des Chips.
+3. Material-Suche als Schalter "Rezepte | Aus Material" auf der Seite Berufe.
+4. Glocke nur bei Rezepten, die niemand in der Gilde kann.

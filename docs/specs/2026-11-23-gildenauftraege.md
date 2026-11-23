@@ -1,6 +1,6 @@
 # Spec: Gildenaufträge (Herstellwünsche an die Gilde)
 
-Stand: 2026-11-23 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-23 · Status: freigegeben ·
 Feature: F-231
 
 ## Ziel
@@ -127,4 +127,9 @@ Name: "Gildenauftrag", nie "Handwerksauftrag" (so heißen im Spiel schon die Auf
 
 ## Entscheidungen
 
-Noch keine.
+2026-11-23, Nutzer: "Passt, alle drei" zu den Vorschlägen:
+1. Annehmen nur, wenn der Auftraggeber online ist: ja.
+2. Chatzeile nur für Hersteller, die das Rezept können.
+3. Gildenchat-Ankündigung als Schalter, aus als Vorgabe.
+4. Ablauf nach 14 Tagen.
+5. Einstellungsabschnitt im Reiter Gilde.

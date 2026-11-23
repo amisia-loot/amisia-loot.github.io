@@ -1,6 +1,6 @@
 # Spec: Berufs-Abklingzeiten (eigene Charaktere und Gilde)
 
-Stand: 2026-11-23 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-23 · Status: freigegeben ·
 Feature: F-232
 
 ## Ziel
@@ -107,4 +107,8 @@ Elementtransmutationen: 23-47 Std., Mondstoff 95 Std.); kürzere (Eisen zu Gold 
 
 ## Entscheidungen
 
-Noch keine.
+2026-11-23, Nutzer: "Passt, alle drei" zu den Vorschlägen:
+1. Angezeigt ab 20 Stunden Abklingzeit.
+2. Mit der Gilde teilen: an als Vorgabe, abschaltbar.
+3. Twinks derselben Gilde werden mitgesendet (wie `AC`).
+4. Ort: Reiter "Abklingzeiten" auf der Seite Berufe.

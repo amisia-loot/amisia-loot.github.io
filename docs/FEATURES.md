@@ -1400,6 +1400,39 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-10-12-raid-check.md, Teil C; DECISIONS D-46. Nachrichten IV/IQ, gespeichert in AmisiaDB.raidcheck. Einstellung "Raid-IDs der Gilde mitteilen" (an); nur Offiziere sehen die Raid-IDs anderer, jeder seine eigenen (`/amisia raidcheck`). Die Reset-Zeit ist die, die das Spiel pro ID nennt (Forevers Regeln sind vor 2026-12-09 unbekannt, Prüfung 17 der Spec).
 
 ## Addon: Gilde
+### F-233 Berufe der Gilde: Übersicht, Material-Suche, Rezept-Wunsch
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du Berufe öffnest und kein Beruf gewählt ist, dann zeigt jede Kachel unter "Alle Berufe" die Zeile der Gilde mit Mitgliedern, Höchstrang und "Rezepte in der Gilde: N von M".
+- Prüfung: Wenn du einen Beruf mit "Gilde: Kann niemand" filterst, dann bleiben nur Rezepte, die kein Gildenmitglied mit Amisia kann, und "N von M Rezepten" stimmt mit der Kachel überein.
+- Prüfung: Wenn du auf "Aus Material" schaltest und "Thorium" suchst, dann stehen alle Rezepte, die einen Thoriumbarren brauchen, mit Beruf und Menge.
+- Prüfung: Wenn du bei einem Rezept die Glocke klickst und ein Gildenmitglied mit Amisia es später lernt, dann meldet der Chat "<Name> kann jetzt [Rezept]." einmal, und der Block "Gesucht" nennt den Namen.
+- Prüfung: Wenn du mit der Maus auf ein Material gehst und die Tooltip-Zeile an ist, dann steht dort "Material für N Rezepte".
+- Notiz: Spec docs/specs/2026-11-23-gilde-berufe-uebersicht.md (freigegeben 2026-11-23).
+
+### F-232 Berufs-Abklingzeiten (eigene Charaktere und Gilde)
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du ein Rezept mit Abklingzeit herstellst (z. B. eine Transmutation), dann zeigt Berufe > Abklingzeiten bei deinem Charakter "Transmutation" mit der Restzeit des Spiels (auf eine Minute genau).
+- Prüfung: Wenn du dich mit einem Twink einloggst, dann steht unter "Deine Charaktere" auch dein anderer Charakter mit seinem gespeicherten Stand, und ist er bereit, nennt ihn die Login-Zeile.
+- Prüfung: Wenn ein Gildenmitglied mit Amisia ein Rezept mit Abklingzeit kann, dann steht es binnen etwa 4 Minuten nach seinem Login unter "Gilde" mit "bereit" oder der Restzeit.
+- Prüfung: Wenn du mit der Maus auf einen Arkanitbarren gehst und jemand in der Gilde bereit ist, dann nennt der Tooltip "Bereit in der Gilde: <Namen>".
+- Prüfung: Wenn du `/amisia selbsttest` öffnest, dann sagt die Zeile "Abklingzeit eines Rezepts", ob das Spiel die Restzeit auch bei geschlossenem Berufsfenster liefert.
+- Notiz: Spec docs/specs/2026-11-23-berufs-abklingzeiten.md (freigegeben 2026-11-23).
+
+### F-231 Gildenaufträge
+- Version: -
+- Status: geplant
+- Braucht: Gilde
+- Prüfung: Wenn du auf Berufe bei einem Rezept "Auftrag stellen" klickst und den Auftrag stellst, dann steht er im Reiter "Aufträge" unter "Meine Aufträge" als "offen".
+- Prüfung: Wenn ein Gildenmitglied mit Amisia einen Auftrag für ein Rezept stellt, das du kannst, dann steht im Chat "Gildenauftrag von <Name>: ..." und der Auftrag unter "Für mich herstellbar".
+- Prüfung: Wenn du "Annehmen" klickst, dann steht beim Auftraggeber "angenommen von <dir>", und ein zweiter Hersteller kann ihn nicht mehr annehmen.
+- Prüfung: Wenn du "Fertig" klickst und der Auftraggeber "Erhalten", dann ist der Auftrag bei allen weg.
+- Prüfung: Wenn du dich einloggst, während ein Gildenmitglied einen offenen Auftrag hat, dann steht er binnen etwa einer Minute in "Alle offenen".
+- Notiz: Spec docs/specs/2026-11-23-gildenauftraege.md (freigegeben 2026-11-23).
+
 ### F-227 Gilden-Warteschlange für Schlachtfelder
 - Version: 2.102.0
 - Status: gebaut
