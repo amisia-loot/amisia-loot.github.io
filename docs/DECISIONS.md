@@ -4795,3 +4795,35 @@ gespeicherten Wunsch (Treffer leer) findet sie ohne zweiten Weg.
 Kacheln und ihr Klick, Filter has/none, Rückwärtsindex und "Aus Material" mit Text und Link, Tooltip-Zeile, Glocke,
 Treffer einmal, 10 je Stunde, eigener Charakter still, Deckel 50, Prüfung beim Laden, Migration),
 `tests/test_professions_filters.lua`, `tests/test_crafters_page.lua`.
+
+## D-163 Berufs-Abklingzeiten: Restzeit aus dem Spiel, als Sekunden gesendet, eigener Bericht zuerst
+
+**Datum:** 2026-11-23
+**Entscheidung:** Für die Berufs-Abklingzeiten (F-232, Spec `docs/specs/2026-11-23-berufs-abklingzeiten.md`) gilt:
+- **Welche Rezepte, sagt der Datenbau; wie lange noch, das Spiel.** `ProfessionData` `CD` trägt je Rezept
+  `"<Kategorie>:<Stunden>"` (`SpellCategories.Category`, `max(RecoveryTime, CategoryRecoveryTime)` von
+  `SpellCooldowns`; ohne die Tabelle `tools/prof_cooldowns.json` in derselben Form). Dieselbe Liste steht ein
+  zweites Mal außerhalb der Lazy-Tabelle (`ns.PROF_COOLDOWNS`), damit Login, Nachricht und Prüfung beim Laden die
+  Berufsdaten nicht bauen (D-28). Angezeigt und gesendet wird ab 20 Stunden; Rezepte einer Kategorie (310: alle
+  Transmutationen) sind eine Zeile, die das zuletzt hergestellte Rezept nennt (sonst das erste bekannte). Die
+  Restzeit liest Amisia beim Login, beim Öffnen des Berufsfensters und nach dem Herstellen (`C_Spell.GetSpellCooldown`,
+  dann `GetSpellCooldown`, bei offenem Fenster `C_TradeSkillUI.GetRecipeCooldown`); antwortet nichts, bleibt der
+  letzte Stand, nach dem Herstellen gelten die Stunden der Daten. Gespeichert wird ein Zeitpunkt "bereit ab".
+- **Gesendet werden Sekunden, nie Uhrzeiten** (`PC`): der Empfänger rechnet mit seiner Uhr. Mitgesendet werden die
+  eigenen Charaktere dieser Gilde wie bei `AC` (D-135); wer das nicht will, schaltet `prof.cdShare` aus. Der Weg
+  wie beim Rezept-Austausch (F-035): nie in der Sperre oder im Schlachtfeld, aus einer Instanz 5-15 s danach.
+- **Vertrauen wie `AC`:** nur GUILD, nur Mitglieder; ein Name außerhalb des Rosters fällt allein heraus, ein Feld
+  außerhalb seiner Grenzen (Spell nicht in `CD` oder unter 20 Stunden, 0-400000 s, 4 Zeilen je Charakter, eine Zeile
+  zweimal, 10 Charaktere) verwirft die ganze Nachricht; der eigene Bericht eines Charakters gilt vor dem eines
+  anderen Absenders; eigene Charaktere nimmt Amisia nie aus einer Nachricht. Höchstens 300 gehörte Namen, 7 Tage.
+
+**Grund:** Spec F-232, vom Nutzer am 2026-11-23 freigegeben ("Passt, alle drei": ab 20 Stunden, Teilen an, Twinks
+derselben Gilde mit, Reiter auf Berufe). Uhren der Spieler gehen verschieden; eine Restzeit ist von ihnen unabhängig.
+Die Länge allein aus den Tabellen würde Talente und Abweichungen des Servers übersehen.
+
+**Folge:** Neue Nachrichtenart `PC`, neue gespeicherte Schlüssel `prof.cd` und `prof.cdHeard`, drei Einstellungen im
+Abschnitt `prof`; `CD` ist kein Satz mehr (`[spell] = 1`), die Route fragt weiter nur "hat eine Abklingzeit".
+
+**Durchgesetzt durch:** `tests/test_prof_cooldowns.lua` (Lesen -> Zeitpunkt, Kategorie als eine Zeile, 20 Stunden,
+verlernt, Login-Zeile, `PC` mit allen Grenzen, Roster, eigener Bericht zuerst, Abstand, Instanz, Prüfung beim Laden,
+Tooltip), `tests/test_prof_cooldowns_page.lua`, `tools/tests/test_build_professions.py`.

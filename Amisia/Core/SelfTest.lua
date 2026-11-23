@@ -1336,6 +1336,29 @@ local function sectionProfessions(R)
         end
         return "WERT", table.concat(parts, ", ") .. spellText
     end)
+    -- F-232: does the client give a recipe's remaining cooldown with the profession window closed
+    check(R, L["Abklingzeit eines Rezepts"], function()
+        local PCd = ns.ProfCooldowns
+        local ways = ("C_Spell.GetSpellCooldown %s, GetSpellCooldown %s, GetRecipeCooldown %s"):format(
+            fn("C_Spell.GetSpellCooldown") and L["da"] or L["fehlt"], fn("GetSpellCooldown") and L["da"] or L["fehlt"],
+            fn("C_TradeSkillUI.GetRecipeCooldown") and L["da"] or L["fehlt"])
+        if not PCd then return "WERT", ways end
+        local spell
+        for _, spells in pairs(PCd._groups()) do
+            for _, sp in ipairs(spells) do
+                if not spell and PCd._knows(sp) then spell = sp end
+            end
+        end
+        if not spell then return "WERT", L["kein Rezept mit Abklingzeit bekannt"] .. "; " .. ways end
+        local left, way = PCd.Remaining(spell)
+        local open = PCd._windowOwn()
+        if left == nil then
+            return open and FEHLT or "WERT", L["%s: keine Antwort (Berufsfenster %s)"]:format(PCd.SpellName(spell),
+                open and L["offen"] or L["zu"]) .. "; " .. ways
+        end
+        return "OK", L["%s: %d s über %s (Berufsfenster %s)"]:format(PCd.SpellName(spell), left, way,
+            open and L["offen"] or L["zu"])
+    end)
     if Pr and Pr.Available() then
         local d = ns.Data("PROFESSIONS")
         add(R, "WERT", L["Daten"], L["%d Berufe, Client %s, gebaut %s"]:format(#d.P, show(d.client), show(d.built)))

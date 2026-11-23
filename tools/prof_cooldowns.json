@@ -1,7 +1,20 @@
 {
-  "_comment": "Recipe spells with a cooldown (F-137): the profession route never makes them a step, because a cooldown recipe cannot be repeated for skill points. Hand-kept fallback for tools/build_professions.py while the client table SpellCooldowns is not exported (tools/export_db2.ps1 lists it; once it is in ~/addons/_wago the generator takes the table and ignores this file). Picked by name and description from the client's SpellName and Spell tables and the recipe lists: every alchemy 'Transmute:' recipe (they share a daily cooldown) and Mooncloth (moonwell, days). Add a spell id here only when the game shows a cooldown on the recipe.",
-  "spells": [
-    11479, 11480, 17187, 17559, 17560, 17561, 17562, 17563, 17564, 17565, 17566, 25146, 1317279,
-    18560
-  ]
+  "_comment": "Recipe spells with a cooldown (F-137): the profession route never makes them a step, because a cooldown recipe cannot be repeated for skill points. Hand-kept fallback for tools/build_professions.py while the client table SpellCooldowns is not exported (tools/export_db2.ps1 lists it; once it is in ~/addons/_wago the generator takes the table and ignores this file). Picked by name and description from the client's SpellName and Spell tables and the recipe lists: every alchemy 'Transmute:' recipe (they share a daily cooldown) and Mooncloth (moonwell, days). Each spell maps to \"<category>:<hours>\" like ProfessionData CD (F-232): the shared cooldown category of SpellCategories (310 all transmutes, 0 none) and the cooldown in hours (taken from build 1.60.1.71037). Add a spell id here only when the game shows a cooldown on the recipe.",
+  "spells": {
+    "11479": "0:1",
+    "11480": "0:1",
+    "17187": "310:47",
+    "17559": "310:23",
+    "17560": "310:23",
+    "17561": "310:23",
+    "17562": "310:23",
+    "17563": "310:23",
+    "17564": "310:23",
+    "17565": "310:23",
+    "17566": "310:23",
+    "18560": "0:95",
+    "22430": "310:2",
+    "25146": "310:0",
+    "1317279": "310:47"
+  }
 }

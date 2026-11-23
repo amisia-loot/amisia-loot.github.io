@@ -1271,10 +1271,14 @@ python tools/build_professions.py [--wago DIR] [--att ~/addons/_cache/att] [--sc
 - `S = { [item] = copper }`: every reagent of `G` that is not in `V` and has a `SellPrice` in
   `ItemSparse` above 0: what a vendor pays for one. The route weighs such a material by it (times
   4, at least 20 copper; `Gear/ProfRoute.lua`), it is never shown as a cost.
-- `CD = { [spell] = 1 }`: the listed recipes with a cooldown (a transmute, Mooncloth): the route never
-  makes them a step. From the client table `SpellCooldowns` (`RecoveryTime` or
-  `CategoryRecoveryTime` of 10 minutes and more) when it is exported, else from the hand-kept
-  `tools/prof_cooldowns.json` (`spells`, with a comment why; the file is only that fallback).
+- `CD = { [spell] = "category:hours" }`: the listed recipes with a cooldown (a transmute, Mooncloth): the
+  route never makes them a step; the cooldown tab (F-232, `Gear/ProfCooldowns.lua`) shows those of 20 hours
+  and more, one line per category (`SpellCategories.Category`, 0 none). From the client table
+  `SpellCooldowns` (the larger of `RecoveryTime` and `CategoryRecoveryTime`, 10 minutes and more; hours
+  rounded) when it is exported, else from the hand-kept `tools/prof_cooldowns.json` (`spells`: spell ->
+  "category:hours", with a comment why; the file is only that fallback; an old plain list counts as "0:0").
+  The same map stands once more before the lazy table as `ns.PROF_COOLDOWNS`, so the addon reads it at
+  login without building the data (D-28, D-163).
   `export_db2.ps1` lists `SpellCooldowns`, `SpellCategories` and `SkillTiers` for this.
 - The recipe source `S`: a specialisation's list of the structures files (Weaponsmithing,
   Armorsmithing, Gnomish and Goblin Engineering, Dragonscale, Elemental and Tribal Leatherworking):

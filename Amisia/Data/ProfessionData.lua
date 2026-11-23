@@ -17,13 +17,16 @@ local _, ns = ...
 -- (herbalism, mining, skinning, fishing; the zones), D<npc> drop (in N), Z<uiMapID> zone drop, W world drop,
 -- Q<quest> quest reward.
 -- S: [item] = copper a vendor pays for one (SellPrice) of a reagent not in V (the route's estimate).
--- CD: [spell] = 1 a recipe with a cooldown (SpellCooldowns, else tools/prof_cooldowns.json): no route step.
+-- CD: [spell] = "category:hours" a recipe with a cooldown (SpellCooldowns, SpellCategories, else
+-- tools/prof_cooldowns.json): no route step; the cooldown tab groups by category (0 none) from 20 hours on.
 -- N: [npc] = "Name|uiMapID:x:y|A/H/" (English).
 -- Q: [quest] = "name|level|faction|giver|point": English name, quest level (0 unknown), A/H/empty, the giver
 -- (in N, 0 none), the quest's own start "uiMapID:x:y" or empty.
 -- CAMP: "item:skillLine:rank:useSpell:recipeSpell:slots:overItem".
 -- TR: [skill line] = { npc, ... } the trainers with a place (AllTheThings' zone files), each in N.
 -- L: [spell] = copper a trainer read in the game asks. TD: [npc] = the time of its reading the data holds.
+-- PROF_COOLDOWNS: CD again, read without building PROFESSIONS (Gear/ProfCooldowns.lua).
+ns.PROF_COOLDOWNS = {[11479]="0:1",[11480]="0:1",[17187]="310:47",[17559]="310:23",[17560]="310:23",[17561]="310:23",[17562]="310:23",[17563]="310:23",[17564]="310:23",[17565]="310:23",[17566]="310:23",[18560]="0:95",[22430]="310:2",[25146]="310:0",[1317279]="310:47"}
 ns.LazyData("PROFESSIONS", [=[
 return {
 built="2026-11-23",client="1.60.1.71037",source="007a0073a4",
@@ -1926,8 +1929,9 @@ S={
 [273129]=25000,[273130]=25000,[273131]=25000,[273295]=7,
 },
 CD={
-[11479]=1,[11480]=1,[17187]=1,[17559]=1,[17560]=1,[17561]=1,[17562]=1,[17563]=1,[17564]=1,[17565]=1,
-[17566]=1,[18560]=1,[22430]=1,[25146]=1,[1317279]=1,
+[11479]="0:1",[11480]="0:1",[17187]="310:47",[17559]="310:23",[17560]="310:23",[17561]="310:23",
+[17562]="310:23",[17563]="310:23",[17564]="310:23",[17565]="310:23",[17566]="310:23",[18560]="0:95",
+[22430]="310:2",[25146]="310:0",[1317279]="310:47",
 },
 N={
 [36]="Harvest Golem|1420:5400:5740|",[66]="Tharynn Bouden|1429:4180:6700|A",[114]="Harvest Watcher|1420:5400:5740|",

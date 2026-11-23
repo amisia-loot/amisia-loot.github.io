@@ -597,4 +597,9 @@ L["Wechsel in dieser Stunde"] = "Swaps this hour"
 L["andere Zone"] = "another zone"
 L["bei dir"] = "with you"
 L["nicht in einer Gruppe"] = "not in a group"
+-- F-232
+L["Abklingzeit eines Rezepts"] = "A recipe's cooldown"
+L["kein Rezept mit Abklingzeit bekannt"] = "no recipe with a cooldown known"
+L["%s: keine Antwort (Berufsfenster %s)"] = "%s: no answer (profession window %s)"
+L["%s: %d s über %s (Berufsfenster %s)"] = "%s: %d s via %s (profession window %s)"
 end)

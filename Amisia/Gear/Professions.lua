@@ -1584,5 +1584,12 @@ ns.RegisterSettings{ key = "prof", label = L["Berufe"], order = 55, group = "pro
       tip = L["Eine graue Zeile an Materialien: für wie viele Rezepte sie gebraucht werden und wie viele davon die Gilde kann."] },
     { key = "prof.watchChat", type = "toggle", label = L["Chatzeile bei gesuchten Rezepten"], default = true,
       tip = L["Sagt einmal im Chat, wenn jemand aus der Gilde ein Rezept lernt, das du mit der Glocke gesucht hast."] },
+    -- the profession cooldowns (F-232, Gear/ProfCooldowns.lua)
+    { key = "prof.cdLogin", type = "toggle", label = L["Bereite Abklingzeiten beim Einloggen"], default = true,
+      tip = L["Sagt beim Einloggen einmal im Chat, welche deiner Charaktere eine Transmutation oder Mondstoff herstellen können."] },
+    { key = "prof.cdShare", type = "toggle", label = L["Abklingzeiten mit der Gilde teilen"], default = true,
+      tip = L["Sagt der Gilde, wann deine Charaktere dieser Gilde ihre Abklingzeiten wieder nutzen können. Ohne das sieht dich niemand unter Berufe > Abklingzeiten."] },
+    { key = "prof.cdTooltip", type = "toggle", label = L["Abklingzeiten im Item-Tooltip"], default = true,
+      tip = L["Eine graue Zeile an Items wie Arkanitbarren oder Mondstoff: wer aus der Gilde es gerade herstellen kann."] },
 } }
 end)

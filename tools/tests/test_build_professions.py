@@ -115,20 +115,31 @@ def test_sell_prices_for_the_route_estimate(data, plain):
 
 
 def test_cooldown_recipes(data, plain):
-    assert data['CD'] == [3321], 'SpellCooldowns: a day on Copper Chain Vest; 1.5 s on Copper Bracers is no cooldown'
+    assert data['CD'] == {3321: '310:24'}, ('SpellCooldowns: a day on Copper Chain Vest (category 310 from '
+                                           'SpellCategories); 1.5 s on Copper Bracers is no cooldown')
     assert data['report']['cooldowns'] == {'from': 'table', 'recipes': 1}
-    assert plain['CD'] == [], 'without the table and without a hand-kept list: none'
-    fallback = bp.combine(bp.read_client(WAGO), bp.read_att(ATT), cooldowns={2663, 999999})
-    assert fallback['CD'] == [2663], 'the hand-kept list serves without the table, only for listed recipes'
+    assert plain['CD'] == {}, 'without the table and without a hand-kept list: none'
+    fallback = bp.combine(bp.read_client(WAGO), bp.read_att(ATT), cooldowns={2663: '0:95', 999999: '310:23'})
+    assert fallback['CD'] == {2663: '0:95'}, 'the hand-kept list serves without the table, only for listed recipes'
     assert fallback['report']['cooldowns']['from'] == 'file'
-    table = bp.combine(bp.read_client(REAGENTS, WAGO), bp.read_att(ATT), cooldowns={2663})
-    assert table['CD'] == [3321], 'with the table the hand-kept list is not used'
+    table = bp.combine(bp.read_client(REAGENTS, WAGO), bp.read_att(ATT), cooldowns={2663: '0:1'})
+    assert table['CD'] == {3321: '310:24'}, 'with the table the hand-kept list is not used'
 
 
-def test_the_shipped_cooldown_list():
+def test_cooldown_value():
+    assert bp.cooldown_value(310, 169200000) == '310:47', 'Arcanite: category 310, 47 hours'
+    assert bp.cooldown_value(None, 342000000) == '0:95', 'Mooncloth: no category'
+    assert bp.cooldown_value(310, 600000) == '310:0', 'ten minutes round to 0 hours'
+
+
+def test_the_shipped_cooldown_list(tmp_path):
     spells = bp.read_cooldown_file()
-    assert {11479, 17187, 17562, 18560} <= spells, 'Iron to Gold, Arcanite, Water to Air, Mooncloth'
-    assert bp.read_cooldown_file(os.path.join(HERE, 'no such file.json')) == set()
+    assert {11479, 17187, 17562, 18560} <= set(spells), 'Iron to Gold, Arcanite, Water to Air, Mooncloth'
+    assert spells[17187] == '310:47' and spells[18560] == '0:95' and spells[11479] == '0:1'
+    assert bp.read_cooldown_file(os.path.join(HERE, 'no such file.json')) == {}
+    old = tmp_path / 'old.json'
+    old.write_text('{"spells": [17187]}', encoding='utf-8')
+    assert bp.read_cooldown_file(str(old)) == {17187: '0:0'}, 'the old plain list: a cooldown of unknown length'
 
 
 def test_favor(data):
@@ -166,7 +177,9 @@ def test_render_is_valid_deterministic_lua(data):
     assert P.G[3321] == '2840:4,2880:1,3371:1'
     assert P.V[2880] == '100:80100' and P.V[3371] == '4:80600'
     assert P.S[2840] == 15 and P.S[2880] is None, 'S: the sell price of a reagent without a vendor price'
-    assert P.CD[3321] == 1 and P.CD[2663] is None, 'CD: the cooldown recipes as a set'
+    assert P.CD[3321] == '310:24' and P.CD[2663] is None, 'CD: the cooldown recipes with category and hours'
+    ns = lua_data.load(text, 'ProfessionData.lua')
+    assert ns.PROF_COOLDOWNS[3321] == '310:24' and ns.PROF_COOLDOWNS[2663] is None, 'CD once more outside the lazy table'
 
 
 def test_trainers(data):
@@ -266,7 +279,11 @@ def test_shipped_estimates_and_cooldowns():
         n += 1
     assert n > 200, 'most reagents without a vendor price have a sell price'
     assert P.S[14047] and P.S[2840], 'Runecloth and Copper Bar: estimated'
-    assert P.CD[11479] == 1 and P.CD[18560] == 1, 'Transmute: Iron to Gold and Mooncloth have a cooldown'
+    assert P.CD[11479] == '0:1' and P.CD[18560] == '0:95', 'Transmute: Iron to Gold (an hour) and Mooncloth (95 hours)'
+    assert P.CD[17187] == '310:47' and P.CD[17559] == '310:23', 'Arcanite and the element transmutes share category 310'
+    with open(path, encoding='utf-8') as fh:
+        eager = lua_data.load(fh.read(), 'ProfessionData.lua').PROF_COOLDOWNS
+    assert dict(eager.items()) == dict(P.CD.items()), 'PROF_COOLDOWNS is CD'
     assert P.CD[2963] is None, 'Bolt of Linen Cloth has none'
 
 

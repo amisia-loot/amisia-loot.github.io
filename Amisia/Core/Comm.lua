@@ -36,7 +36,7 @@ local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart, and a guild
 -- queue state with a battleground that popped, was joined or declined (QW with a P, J or L entry: QWP, F-227) apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, ZQ = 30, NV = 8, AC = 300, EA = 10, EQ = 300, TQ = 30, QW = 10, QWP = 1 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, ZQ = 30, NV = 8, AC = 300, PC = 60, EA = 10, EQ = 300, TQ = 30, QW = 10, QWP = 1 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
 -- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
@@ -563,6 +563,23 @@ local VALID = {
         for i = 2, #f do
             local n, il = f[i]:match("^(.+):([^:]+)$")
             if not n or not charName(n) or not (il == "-" or isNum(il, 1, 999)) then return false end
+        end
+        return true
+    end,
+    -- the profession cooldowns (Gear/ProfCooldowns.lua, F-232, D-163): PC 1 <name:spell=seconds,...>... (1 to 10
+    -- characters, 1 to 4 cooldowns each, seconds 0-400000); whether a spell has a cooldown the receiver checks; a
+    -- field out of its bounds drops the whole message
+    PC = function(f)
+        if #f < 2 or #f > 11 or f[1] ~= "1" then return false end
+        for i = 2, #f do
+            local n, rest = f[i]:match("^([^:]+):(.+)$")
+            if not n or not charName(n) then return false end
+            local k = 0
+            for part in (rest .. ","):gmatch("([^,]*),") do
+                local sp, sec = part:match("^(%d+)=(%d+)$")
+                k = k + 1
+                if not sp or k > 4 or not isNum(sp, 1, 99999999) or not isNum(sec, 0, 400000) then return false end
+            end
         end
         return true
     end,

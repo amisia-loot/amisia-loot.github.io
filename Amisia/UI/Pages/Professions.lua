@@ -12,6 +12,8 @@
 -- The overview (F-151, D-78), the view when none is chosen: the own professions, all professions,
 -- camp and favor as cards; the side bar lists the same views as marks (Übersicht, each profession
 -- with its icon, Lager, Händlergunst with the own favor).
+-- The tab "Abklingzeiten" (F-232, Gear/ProfCooldowns.lua): the own characters' and the guild's recipes with a long
+-- cooldown, ready or the time left; a click on a guild member opens the members page's menu (Flüstern).
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -29,6 +31,7 @@ local KNOWN = { { value = "all", text = L["Alle"] }, { value = "known", text = L
     { value = "unknown", text = L["Unbekannt"] } }
 local SHORT = { all = L["Alle"] }
 local CAMP, FAVOR, OVERVIEW = "camp", "favor", "overview"
+local COOLDOWNS = "cooldowns"   -- the tab Abklingzeiten (F-232), a view like FAVOR
 local MARKS = P.MARK_ICONS
 local RECIPES, ROUTE = "recipes", "route"   -- settings.professions.mode
 local ROW_HINT = L["Klick: Details. Shift-Klick: Link in den Chat."]
@@ -86,7 +89,7 @@ local toGuild = false     -- /amisia berufe gilde: the overview scrolls to the g
 local function view()
     if atStart then return OVERVIEW end
     local v = state().view
-    if v == CAMP or v == FAVOR or v == OVERVIEW then return v end
+    if v == CAMP or v == FAVOR or v == OVERVIEW or v == COOLDOWNS then return v end
     v = tonumber(v)
     if v and Pr.Key(v) then return v end
     return OVERVIEW
@@ -1912,6 +1915,108 @@ local function fillHead(f, v, m, n, mats)
     f.legend:SetShown(legend)
 end
 
+---------------------------------------------------------------------------
+-- The tab Abklingzeiten (F-232): "Deine Charaktere", then per cooldown the guild's members
+---------------------------------------------------------------------------
+local function ownClass(name)
+    local a = AmisiaDB and type(AmisiaDB.account) == "table" and type(AmisiaDB.account.chars) == "table" and AmisiaDB.account.chars[name]
+    return type(a) == "table" and a.class or nil
+end
+
+-- The entries of the list: heads, a note under an empty block, the rows.
+local function cooldownEntries()
+    local PCd = ns.ProfCooldowns
+    local out = {}
+    if not PCd then return out, 0, 0 end
+    out[#out + 1] = { head = L["Deine Charaktere"] }
+    local own = PCd.Own()
+    for _, c in ipairs(own) do
+        for _, l in ipairs(c.lines) do
+            out[#out + 1] = { name = c.name, class = ownClass(c.name), own = true, current = c.current, label = l.label,
+                spell = l.spell, at = l.at }
+        end
+    end
+    if #own == 0 then out[#out + 1] = { note = L["Noch keine. Öffne einmal das Berufsfenster eines Charakters mit Transmutation oder Mondstoff."] } end
+    local guild, n = PCd.Guild(), 0
+    for _, line in ipairs(guild) do
+        out[#out + 1] = { head = L["Gilde: %s"]:format(line.label) }
+        for _, r in ipairs(line.rows) do
+            out[#out + 1] = { name = r.name, class = r.class, online = r.online, label = line.label, spell = r.spell, at = r.at }
+            n = n + 1
+        end
+    end
+    if #guild == 0 then
+        out[#out + 1] = { head = L["Gilde"] }
+        out[#out + 1] = { note = ns.InGuild() and L["Noch hat niemand aus der Gilde mit Amisia eine Abklingzeit geteilt."]
+            or L["Du bist in keiner Gilde."] }
+    end
+    return out, #own, n
+end
+
+local function fillCooldown(r, e)
+    local PCd = ns.ProfCooldowns
+    if e.head or e.note then
+        r.name:SetText(e.head and (T.LABEL .. e.head .. "|r") or (GREY .. e.note .. "|r"))
+        r.name:SetWidth(e.note and (P.CD_COLS[#P.CD_COLS][2] + P.CD_COLS[#P.CD_COLS][3]) or P.CD_COLS[1][3])
+        r.what:SetText("")
+        r.state:SetText("")
+        r.recipe:SetText("")
+        return
+    end
+    r.name:SetWidth(P.CD_COLS[1][3])
+    local name = ns.ClassColored(e.name, e.class)
+    if e.current then name = name .. " " .. GREY .. L["(du)"] .. "|r" end
+    if not e.own and not e.online then name = name .. " " .. GREY .. L["(offline)"] .. "|r" end
+    r.name:SetText(name)
+    r.what:SetText(e.label)
+    r.state:SetText(PCd and PCd.TimeText(e.at) or "")
+    r.recipe:SetText(GREY .. (PCd and PCd.SpellName(e.spell) or "") .. "|r")
+end
+
+local function cooldownTooltip(owner, e)
+    if not e or e.head or e.note or not GameTooltip then return end
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    GameTooltip:SetText(e.name)
+    GameTooltip:AddLine(("%s: %s"):format(e.label, ns.ProfCooldowns.TimeText(e.at)), 1, 1, 1)
+    GameTooltip:AddLine(L["Zuletzt: %s"]:format(ns.ProfCooldowns.SpellName(e.spell)), 1, 1, 1)
+    if not e.own then GameTooltip:AddLine(L["Klick: Flüstern oder Einladen"], 0.6, 0.6, 0.6, true) end
+    GameTooltip:Show()
+end
+
+local function cooldownClick(row)
+    local e = row and row.item
+    if not e or e.head or e.note or e.own or not ns.MembersMenuEntries then return end
+    local entries = ns.MembersMenuEntries({ name = e.name, online = e.online })
+    if #entries > 0 then W.Menu(row, entries) end
+end
+
+local function refreshCooldowns(f)
+    local list, own, guild = cooldownEntries()
+    f.cdList:SetItems(list)
+    f.cdCounts:SetText(L["%d eigene Charaktere · %d Einträge aus der Gilde"]:format(own, guild))
+end
+
+local function buildCooldowns(f)
+    local cv = W.Page(f, { view = true, top = -(T.LAYOUT.ROW_H + T.LAYOUT.GAP) })
+    f.cdView = cv
+    cv:Bands({ "line" })
+    f.cdCounts = cv:Line(1)
+    local _, h = cv:Columns(P.CD_COLS)
+    h.name:SetText(L["Charakter"])
+    h.what:SetText(L["Abklingzeit"])
+    h.state:SetText(L["Wieder bereit"])
+    h.recipe:SetText(L["Zuletzt hergestellt"])
+    f.cdList = cv:List(P.CD_ROWS, P.CD_H, function(r)
+        W.Cells(r, P.CD_COLS)
+        r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        r:SetScript("OnClick", function(self) cooldownClick(self) end)
+        r:SetScript("OnEnter", function(self) cooldownTooltip(self, self.item) end)
+        r:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
+    end, fillCooldown, { fill = true })
+    cv:Hide()
+    return cv
+end
+
 -- The tabs of the head row (D-82): which is on, the route only where the profession has one.
 local function fillTabs(f, v, m, onRoute)
     -- the member mode is no tab: "Alle Rezepte" shows the whole list again
@@ -1921,6 +2026,7 @@ local function fillTabs(f, v, m, onRoute)
     f.tabQueue:SetOn(type(v) == "number" and m == QUEUE)
     f.tabRoute:SetOn(onRoute)
     if (type(v) == "number" and Route.Has(v)) or onRoute then f.tabRoute:Enable() else f.tabRoute:Disable() end
+    f.tabCd:SetOn(v == COOLDOWNS)
 end
 
 -- The member mode's parts: the chip "Von: Name" beside the filter button and the link "< Gildenmitglieder"
@@ -1943,6 +2049,7 @@ local function refresh(f)
     -- the overview (D-78): its cards instead of the head row, the filters, the list and the route
     local over = v == OVERVIEW
     f.ovView:SetShown(over)
+    f.cdView:SetShown(v == COOLDOWNS)
     if over then
         for _, w in ipairs(f.chrome) do w:Hide() end
         f.filters:Hide()
@@ -1957,6 +2064,19 @@ local function refresh(f)
             ov.scroll:SetVerticalScroll(math.min(ov.guildY or 0, room))
         end
         f.hint:SetText(L["Klick auf eine Kachel: die Rezepte des Berufs, das Lager oder die Händlergunst; links in der Leiste dasselbe."])
+        dataLine(f)
+        return
+    end
+    -- the tab Abklingzeiten (F-232): the tabs and its list, nothing of a profession's view
+    if v == COOLDOWNS then
+        for _, w in ipairs(f.chrome) do w:Hide() end
+        f.filters:Hide()
+        for _, t in ipairs(f.tabs) do t:Show() end
+        fillTabs(f, v, nil, false)
+        f:Place(1, f.tabs)
+        f.shownView = v
+        refreshCooldowns(f)
+        f.hint:SetText(L["Abklingzeiten ab 20 Stunden. Amisia liest sie beim Einloggen, beim Öffnen des Berufsfensters und nach dem Herstellen. Klick auf ein Gildenmitglied: Flüstern oder Einladen."])
         dataLine(f)
         return
     end
@@ -2108,8 +2228,8 @@ local function create(parent)
                 or Pr.Ordered()[1]
             chosen()
             member = nil
-            if tabKey == "favor" then
-                s.skill, s.view = skill, FAVOR
+            if tabKey == "favor" or tabKey == COOLDOWNS then
+                s.skill, s.view = skill, tabKey
             else
                 s.view, s.mode = skill, tabKey
             end
@@ -2124,7 +2244,8 @@ local function create(parent)
     f.tabFavor = newTab(L["Händlergunst"], L["Die Rezepte für Händlergunst, ihre Händler und wie du Gunst bekommst."], "favor")
     f.tabQueue = newTab(L["Herstellliste"], L["Was du herstellen willst, mit allen Reagenzien zusammen: was du hast und wo du den Rest kaufst."], QUEUE)
     f.tabRoute = newTab(L["Route"], L["Der günstigste Weg von deinem Rang bis zum Höchstrang: Schritte, Lehrer und Einkaufsliste. Nicht für Sammelberufe, Angeln, Lager und Händlergunst."], ROUTE)
-    f.tabs = { f.tabAll, f.tabFav, f.tabFavor, f.tabQueue, f.tabRoute }
+    f.tabCd = newTab(L["Abklingzeiten"], L["Transmutation, Mondstoff und andere Rezepte mit langer Abklingzeit: wann deine Charaktere und die Gilde sie wieder nutzen können."], COOLDOWNS)
+    f.tabs = { f.tabAll, f.tabFav, f.tabFavor, f.tabQueue, f.tabRoute, f.tabCd }
     f.modeRecipes, f.modeRoute = f.tabAll, f.tabRoute
     f.routeRank = W.Text(f, T.FONT.head, P.RANK_W)
     f.routeRank:SetJustifyH("RIGHT")
@@ -2372,7 +2493,8 @@ local function create(parent)
     end, fillShop, { fill = true })
     rv:Hide()
     f.ovView = buildOverview(f)
-    f.chrome = { f.tabAll, f.tabFav, f.tabFavor, f.tabQueue, f.tabRoute, f.routeRank, f.headBlock, f.search, f.filterBtn,
+    buildCooldowns(f)
+    f.chrome = { f.tabAll, f.tabFav, f.tabFavor, f.tabQueue, f.tabRoute, f.tabCd, f.routeRank, f.headBlock, f.search, f.filterBtn,
         f.counts, f.clearQueue, f.list, f.rd, f.empty, f.reset, f.routeView, f.queueView, f.memberChip, f.back, f.findRec, f.findMat }
     return f
 end
@@ -2409,6 +2531,8 @@ function ns.ShowProfessions(what)
         member = nil
         if w == "route" then
             state().mode = ROUTE
+        elseif w:find("^abklingzeit") or w:find("^cooldown") then   -- l10n-ok: command words
+            state().view = COOLDOWNS
         elseif w:find("^übersicht") or w:find("^ubersicht") or w:find("^overview") then   -- l10n-ok: command words
             state().view = OVERVIEW
         elseif w:find("^gilde") or w:find("^guild") then   -- l10n-ok: command words
@@ -2461,7 +2585,7 @@ function ns.ShowMemberRecipes(name, skill)
     if ns.ShowPage then ns.ShowPage("professions") end
 end
 
-ns.RegisterSlash("berufe", { en = "professions", aliases = { "beruf", "profession" }, args = L["[Beruf|lager|gunst|route|gilde]"],
+ns.RegisterSlash("berufe", { en = "professions", aliases = { "beruf", "profession" }, args = L["[Beruf|lager|gunst|route|gilde|abklingzeiten]"],
     desc = L["Rezepte, Lager und Händlergunst"], run = function(rest) ns.ShowProfessions(rest) end })
 
 ---------------------------------------------------------------------------
@@ -2485,6 +2609,7 @@ ns.Listen("PROF_SPELL_LOADED", schedule)
 ns.Listen("BIS_CHANGED", schedule)
 ns.Listen("CRAFTERS_CHANGED", schedule)
 ns.Listen("PROF_LISTS_CHANGED", schedule)
+ns.Listen("PROF_COOLDOWNS", schedule)
 ns.OnEvent("BAG_UPDATE_DELAYED", schedule)
 -- the route waits in combat and the lockdown (ProfRoute.lua): computed again after them
 ns.OnEvent("PLAYER_REGEN_ENABLED", schedule)

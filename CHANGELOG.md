@@ -18,6 +18,17 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
     tooltip line on materials (off) and the chat line for wanted recipes (on). `/amisia professions guild` opens
     the cards.
 
+- feat(professions): profession cooldowns of your characters and the guild (F-232)
+
+    A new tab "Cooldowns" after "Route" on the Professions page lists recipes with a cooldown of 20 hours or more
+    (all transmutes as one line, Mooncloth): first your characters of this realm and faction with "ready" or the
+    time left and the recipe that last started it, then per cooldown the guild members with Amisia, the ready ones
+    first; a click on a member opens the whisper menu. Amisia reads the time left from the game at login, when the
+    profession window opens and after crafting, and shares the state of your characters of this guild with the
+    guild. At login one chat line names your ready cooldowns, and the tooltip of an item such as Arcanite Bar or
+    Mooncloth says who in the guild is ready to make it. Three new settings under Professions (all on): the login
+    line, sharing with the guild and the tooltip line. `/amisia cooldowns` opens the tab.
+
 ## [v2.106.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.106.1) (2026-11-22)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.106.0...v2.106.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

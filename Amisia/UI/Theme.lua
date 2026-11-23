@@ -675,6 +675,9 @@ T.PROFPAGE = {
     -- the chip "Von: <Name>" of the member mode (F-182) beside the filter button, at most MEMBER_CHIP_W;
     -- the link "< Gildenmitglieder" first in the tabs' row, BACK_GAP before the first tab
     MEMBER_CHIP_W = 150, BACK_GAP = 32,
+    -- the tab Abklingzeiten (F-232): character, cooldown, ready or time left, the recipe that started it
+    CD_ROWS = 15, CD_H = 22,
+    CD_COLS = { { "name", 4, 190 }, { "what", 198, 130 }, { "state", 332, 120 }, { "recipe", 456, 122 } },
     -- the list LIST_W wide, rows ROW_H high (at least ROWS): the thin frame ROW_EDGE (gold when chosen),
     -- the difficulty bar ROW_BAR_W at the left edge, the item's icon ROW_ICON square at ROW_ICON_X in
     -- the rounded ring, the name from ROW_TEXT_X; at the right the skill (ROW_RANK_W), the dots "kann

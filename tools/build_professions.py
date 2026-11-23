@@ -15,7 +15,8 @@ Inputs:
   ItemXItemEffect and ItemEffect (recipe item -> recipe, required rank and reputation, camp objects,
   certifications, writs), SpellName and Spell (only to recognise camp objects and writs; no text
   goes into the file), SpellReagents (optional: reagents; without it the addon asks the client),
-  SpellCooldowns (optional: the recipes with a cooldown, CD; without it tools/prof_cooldowns.json).
+  SpellCooldowns (optional: the recipes with a cooldown, CD; without it tools/prof_cooldowns.json),
+  SpellCategories (optional: the cooldown category of CD, F-232).
   SkillLineAbility falls back to the copy AllTheThings ships (.config/.wago).
 - AllTheThings' Forever data (MIT, see tools/att_data.py and Amisia/LICENSES/):
   .config/structures/*.lua (trainer recipes per tier, the specialisations' recipes, Merchant's Favor
@@ -80,6 +81,7 @@ SPEC_BLOCKS = {'WEAPONSMITHING', 'ARMORSMITHING', 'GNOMISH_ENGINEERING', 'GOBLIN
 # a spell cooldown from this long on (SpellCooldowns, milliseconds) marks a recipe that cannot be
 # repeated for skill points (transmutes, Mooncloth): CD
 COOLDOWN_MIN_MS = 10 * 60 * 1000
+HOUR_MS = 3600 * 1000
 COOLDOWNS = os.path.join(HERE, 'prof_cooldowns.json')
 STANDING = {'Hated': 1, 'Hostile': 2, 'Unfriendly': 3, 'Neutral': 4, 'Friendly': 5, 'Honored': 6,
             'Revered': 7, 'Exalted': 8}
@@ -132,7 +134,7 @@ def read_client(*dirs, att=None):
     sla_dirs = dirs + ([os.path.join(att, '.config', '.wago')] if att else [])
     out = {'client': _build_of(dirs), 'sla': {}, 'create': {}, 'enchant': set(), 'teach': {}, 'use': {},
            'items': {}, 'names': {}, 'desc': {}, 'reagents': {}, 'spellEffects': {}, 'reagentTable': False,
-           'cooldowns': set(), 'cooldownTable': False}
+           'cooldowns': {}, 'cooldownTable': False, 'categories': {}}
     for r in _rows('SkillLineAbility', sla_dirs):
         sl, sp = _int(r.get('SkillLine')), _int(r.get('Spell'))
         if sl and sp and (sl, sp) not in out['sla']:
@@ -179,18 +181,34 @@ def read_client(*dirs, att=None):
             out['reagents'][sp] = got
     for r in _rows('SpellCooldowns', dirs):
         out['cooldownTable'] = True
-        if max(_int(r.get('RecoveryTime')), _int(r.get('CategoryRecoveryTime'))) >= COOLDOWN_MIN_MS:
-            out['cooldowns'].add(_int(r.get('SpellID')))
+        ms, sp = max(_int(r.get('RecoveryTime')), _int(r.get('CategoryRecoveryTime'))), _int(r.get('SpellID'))
+        if ms >= COOLDOWN_MIN_MS and ms > out['cooldowns'].get(sp, 0):
+            out['cooldowns'][sp] = ms
+    # the cooldown category a recipe shares with others (all transmutes: 310; 0 none)
+    for r in _rows('SpellCategories', dirs):
+        sp, cat = _int(r.get('SpellID')), _int(r.get('Category'))
+        if sp and cat and sp not in out['categories']:
+            out['categories'][sp] = cat
     return out
 
 
+def cooldown_value(category, ms):
+    """CD's value of a recipe: "<category>:<hours>" (category 0 none; hours rounded, 0 under half an hour)."""
+    return f'{int(category or 0)}:{int(round((ms or 0) / HOUR_MS))}'
+
+
 def read_cooldown_file(path=COOLDOWNS):
-    """The hand-kept recipe spells with a cooldown (tools/prof_cooldowns.json, "spells"): the fallback
-    while the client table SpellCooldowns is not exported."""
+    """The hand-kept recipe spells with a cooldown (tools/prof_cooldowns.json, "spells": {spell:
+    "<category>:<hours>"}, CD's form): the fallback while the client table SpellCooldowns is not
+    exported. A plain list of spells counts as "0:0" (a cooldown of unknown length: no route step,
+    not on the cooldown tab)."""
     if not path or not os.path.exists(path):
-        return set()
+        return {}
     with open(path, encoding='utf-8') as fh:
-        return {int(x) for x in json.load(fh).get('spells', [])}
+        spells = json.load(fh).get('spells', {})
+    if isinstance(spells, list):
+        return {int(x): '0:0' for x in spells}
+    return {int(k): str(v) for k, v in spells.items()}
 
 
 # ---------------------------------------------------------------- AllTheThings
@@ -717,10 +735,15 @@ def combine(client, att, seen=None, cooldowns=None, trainers=None, known=None):
         sell = client['items'].get(item, {}).get('sell', 0)
         if sell > 0:
             S[item] = sell
-    # the recipes with a cooldown: the client's table, else the hand-kept list
+    # the recipes with a cooldown: the client's table, else the hand-kept list; each with its category
+    # and length (F-232)
     listed = {int(l.split(':')[0]) for lst in R.values() for l in lst}
-    cd_all = client['cooldowns'] if client['cooldownTable'] else set(cooldowns or ())
-    CD = sorted(cd_all & listed)
+    if client['cooldownTable']:
+        cats = client.get('categories') or {}
+        cd_all = {sp: cooldown_value(cats.get(sp), ms) for sp, ms in client['cooldowns'].items()}
+    else:
+        cd_all = dict(cooldowns or {})
+    CD = {sp: v for sp, v in sorted(cd_all.items()) if sp in listed}
     report['cooldowns'] = {'from': 'table' if client['cooldownTable'] else 'file', 'recipes': len(CD)}
     # the trainers of each skill line of P (their NPCs go into N)
     TR = {}
@@ -829,7 +852,7 @@ def favor_info(client, att, R):
 
 
 def empty():
-    return {'P': [], 'R': {}, 'I': {}, 'G': {}, 'V': {}, 'RS': {}, 'S': {}, 'CD': [], 'N': {}, 'Q': {}, 'TR': {}, 'CAMP': [],
+    return {'P': [], 'R': {}, 'I': {}, 'G': {}, 'V': {}, 'RS': {}, 'S': {}, 'CD': {}, 'N': {}, 'Q': {}, 'TR': {}, 'CAMP': [],
             'FAVOR': {'currency': FAVOR_CURRENCY, 'cert': {}, 'writ': {}, 'vendor': {'A': [], 'H': []}},
             'L': {}, 'TD': {}, 'client': '', 'source': '', 'report': {}}
 
@@ -889,13 +912,18 @@ def render(data, built):
            '-- (herbalism, mining, skinning, fishing; the zones), D<npc> drop (in N), Z<uiMapID> zone drop, W world drop,',
            '-- Q<quest> quest reward.',
            '-- S: [item] = copper a vendor pays for one (SellPrice) of a reagent not in V (the route\'s estimate).',
-           '-- CD: [spell] = 1 a recipe with a cooldown (SpellCooldowns, else tools/prof_cooldowns.json): no route step.',
+           '-- CD: [spell] = "category:hours" a recipe with a cooldown (SpellCooldowns, SpellCategories, else',
+           '-- tools/prof_cooldowns.json): no route step; the cooldown tab groups by category (0 none) from 20 hours on.',
            '-- N: [npc] = "Name|uiMapID:x:y|A/H/" (English).',
            '-- Q: [quest] = "name|level|faction|giver|point": English name, quest level (0 unknown), A/H/empty, the giver',
            '-- (in N, 0 none), the quest\'s own start "uiMapID:x:y" or empty.',
            '-- CAMP: "item:skillLine:rank:useSpell:recipeSpell:slots:overItem".',
            '-- TR: [skill line] = { npc, ... } the trainers with a place (AllTheThings\' zone files), each in N.',
            '-- L: [spell] = copper a trainer read in the game asks. TD: [npc] = the time of its reading the data holds.',
+           # the cooldown recipes once more, outside the lazy table: the cooldown exchange (F-232, D-163)
+           # checks and reads them at login and on every message without building the data (D-28)
+           '-- PROF_COOLDOWNS: CD again, read without building PROFESSIONS (Gear/ProfCooldowns.lua).',
+           'ns.PROF_COOLDOWNS = {' + ','.join(f'[{k}]={lua_str(v)}' for k, v in sorted(data['CD'].items())) + '}',
            'ns.PROFESSIONS = {',
            f'    built = {lua_str(built)}, client = {lua_str(data.get("client") or "")}, source = {lua_str(data.get("source") or "")},',
            '    P = { ' + ', '.join(f'{{ {s}, {lua_str(k)} }}' for s, k in data['P']) + ' },',
@@ -908,7 +936,7 @@ def render(data, built):
     out.append('    V = ' + _str_map(data['V']) + ',')
     out.append('    RS = ' + _str_map(data.get('RS') or {}) + ',')
     out.append('    S = ' + _num_map(data['S'], per_line=10) + ',')
-    out.append('    CD = ' + _num_map({sp: 1 for sp in data['CD']}, per_line=10) + ',')
+    out.append('    CD = ' + _str_map(data['CD'], per_line=6) + ',')
     out.append('    N = ' + _str_map(data['N'], 3) + ',')
     out.append('    Q = ' + _str_map(data['Q'], 3) + ',')
     out.append('    TR = ' + _num_map({sl: '{ ' + ', '.join(str(n) for n in ids) + ' }' for sl, ids in (data.get('TR') or {}).items()},
