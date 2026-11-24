@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.108.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.108.0) (2026-11-24)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.107.1...v2.108.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(settings): switches are easier to find (F-200)
 
     The tabs under Settings follow the main window's tabs (Gear, Dungeons & Raids, Professions, Talents, Raid,
