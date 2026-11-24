@@ -49,8 +49,20 @@ local function secTitles()
     for _, s in ipairs(ov.secs) do out[#out + 1] = s.title .. "=" .. #s.cards end
     return table.concat(out, ",")
 end
--- own: blacksmithing and cooking (in the data); all: the data's three; more: camp and favor
-assert(secTitles() == "Deine Berufe=2,Alle Berufe=3,Weiteres=2,Nächste Lehrer=0", secTitles())
+-- own: blacksmithing and cooking (in the data); all: the data's three; more: camp, favor, guild orders, cooldowns
+assert(secTitles() == "Deine Berufe=2,Alle Berufe=3,Weiteres=4,Nächste Lehrer=0", secTitles())
+-- the guild orders and the cooldowns are found from the overview: a card each under "Weiteres"
+do
+    local more = ov.secs[3].cards
+    assert(more[3].name == "Gildenaufträge" and more[4].name == "Abklingzeiten", tostring(more[3].name))
+    more[3].open()
+    assert(AmisiaDB.settings.professions.view == "orders" and f.orView:IsShown(), "the card opens the orders")
+    more[4].open()
+    assert(AmisiaDB.settings.professions.view == "cooldowns" and f.cdView:IsShown(), "the card opens the cooldowns")
+    AmisiaDB.settings.professions.view = "overview"
+    NS.Refresh()
+    assert(ov:IsShown(), "back to the overview")
+end
 -- the nearest trainers: the own faction's or a neutral one (the Horde's alchemist is left out), cooking
 -- has none; a cell: icon, name, "Name, Zone", the map button sets the waypoint
 local tl = ov.trainers

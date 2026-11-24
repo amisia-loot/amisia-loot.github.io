@@ -489,13 +489,13 @@ assert(MF.navHead.name:GetText() == "Raid" and MF.navHead.icon:IsShown() and MF.
 local tabsOf = {}
 for _, g in ipairs({ "gear", "dungeons", "prof", "talents", "guild", "amisia" }) do NS.ShowTab(g); tabsOf[#tabsOf + 1] = navAll() end
 -- (Dungeons: its level ranges as marks under the pages, D-74; the planner its set categories, D-77;
--- Berufe: the overview, the professions by their skill lines, camp and favor, D-78; Talente: the
+-- Berufe: the overview, the professions by their skill lines, camp, favor, orders and cooldowns, D-78; Talente: the
 -- classes, the plans and the actions, D-76)
 local talentMarks = table.concat(tabsOf, " | "):match("| talents talents( [^|]*) |")
 assert(talentMarks == " class:WARRIOR class:PALADIN class:HUNTER class:ROGUE class:PRIEST class:SHAMAN class:MAGE class:WARLOCK"
     .. " class:DRUID slot:1 slot:2 live reset import export", tostring(talentMarks))
 assert(table.concat(tabsOf, " | "):gsub(talentMarks, "", 1):gsub(" L%d+", ""):gsub(" %d+", "") == "planner gear raid dungeon pvp craft world rep"
-    .. " | dungeons raidjournal quests map | professions overview camp favor | talents talents"
+    .. " | dungeons raidjournal quests map | professions overview camp favor orders cooldowns | talents talents"
     .. " | members calls calendar bank duels" .. (NS.LayerWindow and " layer" or "")
     -- (the settings' tabs in the main window's order, "Allgemein" last; the first one open, D-166)
     .. " | settings gear bis dungeons prof talents raid guild amisia about feedback", table.concat(tabsOf, " | "))

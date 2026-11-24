@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(professions): guild orders and cooldowns in the side bar and the overview (F-231)
+
+    The page Professions lists "Orders" (with the open orders you can craft) and "Cooldowns" in its side bar
+    under Camp and Merchant's Favor, and the overview has a card for each under "More". Before, both were only
+    tabs inside a profession's view or a slash command.
+
 ## [v2.108.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.108.0) (2026-11-24)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.107.1...v2.108.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

@@ -720,7 +720,9 @@ T.PROFPAGE = {
     -- the marks of the side bar besides the professions (their own client icons, D-75): the overview,
     -- the camp objects and the Merchant's Favor; the same art on the cards of "Weiteres"
     MARK_ICONS = { overview = { file = "Interface\\GossipFrame\\TrainerGossipIcon" },
-        camp = { file = "Interface\\GossipFrame\\BinderGossipIcon" }, favor = { atlas = "coin-gold" } },
+        camp = { file = "Interface\\GossipFrame\\BinderGossipIcon" }, favor = { atlas = "coin-gold" },
+        orders = { file = "Interface\\GossipFrame\\PetitionGossipIcon" },
+        cooldowns = { file = "Interface\\Icons\\INV_Misc_PocketWatch_01" } },
 }
 
 -- the page Duelle (tab PvP, F-106): three lists on the page's 590 px. The history: two lines per row

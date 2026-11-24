@@ -1308,8 +1308,14 @@ local function openView(v, recipes)
     ns.Refresh()
 end
 
+-- The guild orders (F-231) and the cooldowns (F-232) as views of their own: shown where their part runs
+-- (Forever) and, for the orders, in a guild with the orders on
+local function hasOrders() return ns.GuildOrders ~= nil and inGuild() and ns.Get("orders.on") ~= false end
+local function hasCooldowns() return ns.ProfCooldowns ~= nil end
+
 -- The marks of the side bar (D-75): Übersicht, each profession of the data with its icon, then a
--- block with Lager and Händlergunst (the own favor at the right); the shown view is chosen.
+-- block with Lager and Händlergunst (the own favor at the right), Aufträge (the open ones an own
+-- character can craft at the right) and Abklingzeiten; the shown view is chosen.
 local function marks()
     if not Pr.Available() then return {} end
     local v = view()
@@ -1322,6 +1328,17 @@ local function marks()
     if hasFavor() then
         out[#out + 1] = { key = FAVOR, label = L["Händlergunst"], icon = MARKS.favor, on = v == FAVOR, rule = not camp,
             count = Pr.FavorAmount() }
+    end
+    -- a rule above the first of the block when Lager and Händlergunst left none
+    local block = (hasCamp() or hasFavor()) and -1 or #out
+    if hasOrders() then
+        local n = ns.GuildOrders.ForMeCount()
+        out[#out + 1] = { key = ORDERS, label = L["Aufträge"], icon = MARKS.orders, on = v == ORDERS,
+            rule = #out == block, count = n > 0 and n or nil }
+    end
+    if hasCooldowns() then
+        out[#out + 1] = { key = COOLDOWNS, label = L["Abklingzeiten"], icon = MARKS.cooldowns, on = v == COOLDOWNS,
+            rule = #out == block }
     end
     return out
 end
@@ -1413,6 +1430,19 @@ local function overviewSections()
             sub = amount and L["Du hast %d Gunst · wie du sie bekommst"]:format(amount) or L["Rezepte für Gunst und wie du sie bekommst"],
             open = function() openView(FAVOR) end,
             tip = L["Klick: die Rezepte für Händlergunst, ihre Händler und wie du Gunst bekommst."] }
+    end
+    if hasOrders() then
+        local n = ns.GuildOrders.ForMeCount()
+        more[#more + 1] = { icon = MARKS.orders, name = L["Gildenaufträge"],
+            sub = n > 0 and L["%d offene für dich · bestellen und herstellen"]:format(n) or L["Bei der Gilde bestellen und für sie herstellen"],
+            open = function() openView(ORDERS) end,
+            tip = L["Klick: deine Aufträge, was du für andere herstellen kannst, und alle offenen der Gilde."] }
+    end
+    if hasCooldowns() then
+        more[#more + 1] = { icon = MARKS.cooldowns, name = L["Abklingzeiten"],
+            sub = L["Transmutation, Mondstoff und mehr: wann sie wieder bereit sind"],
+            open = function() openView(COOLDOWNS) end,
+            tip = L["Klick: die Abklingzeiten deiner Charaktere und der Gilde."] }
     end
     local secs = { { title = L["Deine Berufe"], cards = own, none = L["Noch kein Beruf erlernt."] },
         { title = L["Alle Berufe"], cards = all, guild = gp ~= nil } }
@@ -2347,7 +2377,7 @@ local function refresh(f)
             local room = math.max(0, (ov.child:GetHeight() or 0) - (ov.scroll:GetHeight() or 0))
             ov.scroll:SetVerticalScroll(math.min(ov.guildY or 0, room))
         end
-        f.hint:SetText(L["Klick auf eine Kachel: die Rezepte des Berufs, das Lager oder die Händlergunst; links in der Leiste dasselbe."])
+        f.hint:SetText(L["Klick auf eine Kachel: die Rezepte des Berufs; unter \"Weiteres\" Lager, Händlergunst, Gildenaufträge und Abklingzeiten. Links in der Leiste dasselbe."])
         dataLine(f)
         return
     end
