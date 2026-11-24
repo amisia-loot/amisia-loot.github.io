@@ -2684,21 +2684,29 @@ local function sayQuests(word)
         if not missing then ns.msg(L["Für diesen Dungeon kennt Amisia keine Quests."]) end
         return
     end
+    -- "Erledigte Dungeon-Quests ausblenden" (quests.hideDone, F-134): the done ones left out, the
+    -- gone ones stay
+    local hide = ns.Get("quests.hideDone") == true
+    local said = 0
     for _, q in ipairs(list) do
-        local mark = q.done and L["[erledigt] "] or q.active and L["[im Log] "] or q.gone and L["[nicht mehr möglich] "] or ""
-        local start = D.QuestStartText(q)
-        local path = D.QuestPath(q, e.key)
-        local way = D.QuestPathShort(path)
-        local line = ("%s%s · Level %s%s%s"):format(mark, q.title, D.QuestLevelText(q), way ~= "" and L[" · Weg %s"]:format(way) or "",
-            start ~= "" and L[" · Start: %s"]:format(start) or "")
-        if q.best then
-            line = line .. (" · Upgrade %s (%+d)"):format(ns.ItemName and ns.ItemName(q.best.id) or ("Item " .. q.best.id),
-                math.floor(q.best.gain + 0.5))
+        if not (hide and q.done) then
+            said = said + 1
+            local mark = q.done and L["[erledigt] "] or q.active and L["[im Log] "] or q.gone and L["[nicht mehr möglich] "] or ""
+            local start = D.QuestStartText(q)
+            local path = D.QuestPath(q, e.key)
+            local way = D.QuestPathShort(path)
+            local line = ("%s%s · Level %s%s%s"):format(mark, q.title, D.QuestLevelText(q), way ~= "" and L[" · Weg %s"]:format(way) or "",
+                start ~= "" and L[" · Start: %s"]:format(start) or "")
+            if q.best then
+                line = line .. (" · Upgrade %s (%+d)"):format(ns.ItemName and ns.ItemName(q.best.id) or ("Item " .. q.best.id),
+                    math.floor(q.best.gain + 0.5))
+            end
+            ns.msg(line)
+            -- the next step of its quest path (F-135), for a quest still to do
+            if path.next and not q.done and not q.gone then ns.msg(L["  Nächster Schritt: %s"]:format(D.QuestPathNextText(path))) end
         end
-        ns.msg(line)
-        -- the next step of its quest path (F-135), for a quest still to do
-        if path.next and not q.done and not q.gone then ns.msg(L["  Nächster Schritt: %s"]:format(D.QuestPathNextText(path))) end
     end
+    if said == 0 then ns.msg(L["Alle Quests erledigt (ausgeblendet)."]) end
 end
 
 ns.RegisterSlash("dungeon", { aliases = { "dungeons", "journal" }, args = L["[naechster|kette|quests <Dungeon>]"],

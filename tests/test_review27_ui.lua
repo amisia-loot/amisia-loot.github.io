@@ -1,5 +1,5 @@
 --[[preload
-AmisiaDB = { settings = { quests = { enabled = true, search = "Echo", zone = 1429, mine = false,
+AmisiaDB = { settings = { quests = { enabled = true, hideDone = true, groupShare = false, search = "Echo", zone = 1429, mine = false,
     show = { open = true, active = true, locked = true, done = false }, expanded = { [21] = true } } } }
 ]]
 -- Review 27, pages: the quest page's state lives in settings.questsPage, apart from the switch
@@ -36,6 +36,8 @@ check("the page state moves out of the switch's section", function()
         and p.expanded[21], "moved")
     assert(s.quests.enabled == true and s.quests.search == nil and s.quests.show == nil and s.quests.expanded == nil,
         "the switch's section keeps the switch only")
+    assert(s.quests.hideDone == true and s.quests.groupShare == false and p.hideDone == nil,
+        "the section's other switches stay too")
     assert(f.search:GetText() == "Echo", tostring(f.search:GetText()))
     NS.Dispatch("quests Kobold")
     assert(p.search == "Kobold" and s.quests.search == nil, "the command writes the page state")

@@ -360,6 +360,17 @@ local function questItems(key)
     return out, status
 end
 
+-- The quest rows the quest part shows: with "Erledigte ausblenden" (quests.hideDone, F-134) without
+-- the done ones; the gone ones stay (they are not done). The counts go on over all of them.
+local function shownQuests(rows)
+    if ns.Get("quests.hideDone") ~= true then return rows end
+    local out = {}
+    for _, row in ipairs(rows) do
+        if not row.q.done then out[#out + 1] = row end
+    end
+    return out
+end
+
 -- The dungeon mark of the world map in front of a start inside the dungeon (the user's wish: a quest
 -- that starts in the dungeon shows the dungeon symbol)
 local DUNGEON_MARK = "|A:Dungeon:14:14|a "
@@ -2547,13 +2558,23 @@ local function create(parent)
     JP.BuildRun(B)
     -- the times (F-166): the list where the others are, "Zeiten löschen" in the header's line
     JP.BuildTimes(B, headerTop - T.HEADER_H - G.GAP)
-    B.partRow = { B.runBar, { B.resetRun, gap = G.ITEM_GAP }, { B.clearTimes, gap = G.ITEM_GAP } }
+    -- the quest part (F-134): "Erledigte ausblenden" leaves the done quests out (quests.hideDone)
+    B.hideDone = W.TabCheck(B, L["Erledigte ausblenden"], function()
+        ns.Set("quests.hideDone", not ns.Get("quests.hideDone"))
+        ns.Refresh()
+    end)
+    W.FitChip(B.hideDone)
+    W.Tooltip(B.hideDone, L["Erledigte ausblenden"], L["Lässt erledigte Quests aus der Liste weg (Einstellung \"Erledigte Dungeon-Quests ausblenden\"). Gezählt werden weiter alle; Quests, die nicht mehr möglich sind, bleiben sichtbar."])
+    B.hideDone:Hide()
+    B.partRow = { B.runBar, { B.resetRun, gap = G.ITEM_GAP }, { B.clearTimes, gap = G.ITEM_GAP }, { B.hideDone, gap = G.ITEM_GAP } }
     function B:PlaceParts() placeParts(self, headerTop) end
     W.Row(B, { B.way }, 0, 0, tabTop - 1, { right = true })
     B:PlaceParts()
     B.detail = buildDetail(B, DETAIL_ROWS, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPLEFT", 0, headerTop - T.HEADER_H - G.GAP)
     B.detail:SetPoint("TOPRIGHT", -T.SCROLL_ROOM, headerTop - T.HEADER_H - G.GAP)
+    -- every quest done and hidden: one line where the list is
+    B.doneEmpty = B:Empty(nil, B.detail)
     -- the bosses and the chosen one's loot (F-154), the instance map and the keys (D-72), where the list is
     buildBossView(B, headerTop - T.HEADER_H - G.GAP)
     JP.BuildMap(B, headerTop - T.HEADER_H - G.GAP)
@@ -2583,7 +2604,8 @@ local function create(parent)
     B.detailParts = { B.back, B.art, B.header, B.way, B.detail }
     for _, k in ipairs(B.partKeys) do B.detailParts[#B.detailParts + 1] = B.parts[k] end
     -- shown by the part (refresh): the run's parts, the bosses, the map and the keys
-    B.planParts = { B.emptyGrid, B.runBar, B.resetRun, B.bossView, B.mapView, B.accessView, B.timesView, B.clearTimes, B.noteView }
+    B.planParts = { B.emptyGrid, B.runBar, B.resetRun, B.bossView, B.mapView, B.accessView, B.timesView, B.clearTimes, B.noteView,
+        B.hideDone, B.doneEmpty }
     for _, f in ipairs(B.startParts) do B.planParts[#B.planParts + 1] = f end
     for _, f in ipairs(B.detailParts) do B.planParts[#B.planParts + 1] = f end
     for _, chip in ipairs(sortRow) do B.planParts[#B.planParts + 1] = chip end
@@ -2711,6 +2733,8 @@ local function refresh(B)
             B.accessView:SetShown(part == "access")
             B.timesView:SetShown(part == "times")
             B.noteView:SetShown(part == "note")
+            B.hideDone:SetShown(part == "quests")
+            B.hideDone:SetOn(ns.Get("quests.hideDone") == true)
         end
         JP.FillRun(B, detail and e or nil, part == "bosses")
         JP.FillTimes(B, detail and e or nil, detail and part == "times")
@@ -2734,13 +2758,17 @@ local function refresh(B)
         return
     end
     B.pathView:Hide()
+    local allHidden = false
     if e and part == "quests" then
         local rows
         -- the party's state of these quests: asked for while a member's is missing (F-178)
         if ns.GroupQuests then ns.GroupQuests.Look(e.key) end
         rows, status = questItems(e.key)
         B.header:SetHeaderText("Quests")
-        B.detail:SetItems(rows)
+        B.detail:SetItems(shownQuests(rows))
+        allHidden = #rows > 0 and #B.detail.items == 0
+        if allHidden then B.doneEmpty:Set(L["Alle Quests erledigt (ausgeblendet)."], "") end
+        B.doneEmpty:SetShown(allHidden)
         B.way:SetEnabled(ns.DungeonEntrance(e.key) ~= nil)
     elseif e and part == "wish" then
         B.header:SetHeaderText(L["Wunschliste"])
@@ -2772,7 +2800,7 @@ local function refresh(B)
     local hint
     if part == "quests" then
         hint = Dn.QuestStatusText(status) or ""
-        if e and #B.detail.items == 0 and hint == "" then hint = L["Für diesen Dungeon kennt Amisia keine Quests."] end
+        if e and #B.detail.items == 0 and not allHidden and hint == "" then hint = L["Für diesen Dungeon kennt Amisia keine Quests."] end
         local xp = e and Dn.XPSumText(Dn.XPSum((ns.DungeonQuests(e.key)))) or ""
         local parts = {}
         local grp = ns.GroupQuests and #ns.GroupQuests.Members() > 0

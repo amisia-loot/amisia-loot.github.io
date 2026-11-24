@@ -901,11 +901,17 @@ ns.RegisterSettings{ key = "quests", label = "Quests", order = 49, group = "dung
     -- F-178: the group's quest state of a dungeon (Gear/GroupQuests.lua, D-110)
     { key = "quests.groupShare", type = "toggle", label = L["Meinen Dungeon-Queststand mit der Gruppe teilen"], default = true,
       tip = L["In einer Gruppe (nicht im Raid) sehen die anderen mit Amisia, welche Quests eines Dungeons du hast, abgeben kannst, erledigt hast oder noch brauchst. Aus: Amisia schickt nichts davon; was die anderen schicken, siehst du weiter."] },
+    -- F-134: the quest part of the page Dungeons and /amisia dungeon quests leave the done quests out
+    { key = "quests.hideDone", type = "toggle", label = L["Erledigte Dungeon-Quests ausblenden"], default = false,
+      onChange = function() if ns.Refresh then ns.Refresh() end end,
+      tip = L["Die Quest-Liste eines Dungeons (Seite Dungeons, Reiter Quests, und /amisia dungeon quests) lässt erledigte Quests weg. Gezählt werden weiter alle; Quests, die nicht mehr möglich sind, bleiben sichtbar. Auch als \"Erledigte ausblenden\" über der Liste."] },
 } }
 
 -- The page's window state: settings.questsPage (search, zone, show, chains, upgrades, mine,
 -- collapsed, expanded). Until 2.5 it shared settings.quests with the switch quests.enabled; the
--- first call moves it out once, the switch stays.
+-- first call moves it out once; only those keys, the switches of the section stay.
+local PAGE_KEYS = { search = true, zone = true, show = true, chains = true, upgrades = true, mine = true,
+    collapsed = true, expanded = true }
 function Q.PageState()
     local s = AmisiaDB.settings
     if type(s.questsPage) ~= "table" then
@@ -913,7 +919,7 @@ function Q.PageState()
         local old = s.quests
         if type(old) == "table" then
             for k, v in pairs(old) do
-                if k ~= "enabled" then
+                if PAGE_KEYS[k] then
                     p[k] = v
                     old[k] = nil
                 end

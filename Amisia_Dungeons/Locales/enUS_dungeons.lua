@@ -326,6 +326,12 @@ L["Ist ein anderes Addon geladen, das die Bosse und die Zeit eines Dungeons selb
 -- F-178: the group's quest state of a dungeon (Gear/GroupQuests.lua)
 L["Meinen Dungeon-Queststand mit der Gruppe teilen"] = "Share my dungeon quest state with the party"
 L["In einer Gruppe (nicht im Raid) sehen die anderen mit Amisia, welche Quests eines Dungeons du hast, abgeben kannst, erledigt hast oder noch brauchst. Aus: Amisia schickt nichts davon; was die anderen schicken, siehst du weiter."] = "In a party (not in a raid) the others with Amisia see which quests of a dungeon you have, can turn in, have done or still need. Off: Amisia sends none of it; what the others send you still see."
+-- F-134: hide completed dungeon quests (Gear/Quests.lua, UI/Pages/Dungeons.lua)
+L["Erledigte Dungeon-Quests ausblenden"] = "Hide completed dungeon quests"
+L["Die Quest-Liste eines Dungeons (Seite Dungeons, Reiter Quests, und /amisia dungeon quests) lässt erledigte Quests weg. Gezählt werden weiter alle; Quests, die nicht mehr möglich sind, bleiben sichtbar. Auch als \"Erledigte ausblenden\" über der Liste."] = "A dungeon's quest list (page Dungeons, tab Quests, and /amisia dungeon quests) leaves completed quests out. All quests still count; quests no longer possible stay visible. Also as \"Hide completed\" above the list."
+L["Erledigte ausblenden"] = "Hide completed"
+L["Lässt erledigte Quests aus der Liste weg (Einstellung \"Erledigte Dungeon-Quests ausblenden\"). Gezählt werden weiter alle; Quests, die nicht mehr möglich sind, bleiben sichtbar."] = "Leaves completed quests out of the list (setting \"Hide completed dungeon quests\"). All quests still count; quests no longer possible stay visible."
+L["Alle Quests erledigt (ausgeblendet)."] = "All quests completed (hidden)."
 L["Fertig zum Abgeben: %s"] = "Ready to turn in: %s"
 L["Im Log: %s"] = "In the log: %s"
 L["Erledigt: %s"] = "Done: %s"

@@ -144,6 +144,57 @@ local hasHelm = false
 for _, it in ipairs(grudgeRow.q.rewards) do if it.id == 505 then hasHelm = true end end
 assert(hasHelm and grudgeRow.path, "the reward stays with the quest")
 assert(not has(D.hint:GetText(), "fehlen"), "the quest data knows the thanes: " .. D.hint:GetText())
+-- "Erledigte ausblenden" (F-134, quests.hideDone): off at first, the chip in the header's line
+assert(NS.Get("quests.hideDone") == false and D.hideDone:IsShown() and not D.hideDone.on and not D.doneEmpty:IsShown(), "off at first")
+local function questTexts()
+    local out = {}
+    for _, e in ipairs(D.detail.items) do out[#out + 1] = e.text end
+    return table.concat(out, ",")
+end
+local allBefore, hintBefore = #(NS.DungeonQuests("thanes")), D.hint:GetText()
+D.hideDone:Click()
+assert(AmisiaDB.settings.quests.hideDone == true and D.hideDone.on, "the setting is saved")
+assert(has(questTexts(), "An Ancient Grudge") and not has(questTexts(), "Done Already"), questTexts())
+-- the counts stay over all quests
+assert(#(NS.DungeonQuests("thanes")) == allBefore and D.hint:GetText() == hintBefore, D.hint:GetText())
+assert(not D.doneEmpty:IsShown(), "an open quest is left")
+-- the chat list leaves it out too
+STUB.messages = {}
+NS.Dispatch("dungeon quests thanes")
+local said = table.concat(STUB.messages, "\n")
+assert(has(said, "An Ancient Grudge") and not has(said, "Done Already"), said)
+-- every quest done: one line where the list was, no "no quests"
+local doneNow = {}
+for _, q in ipairs(NS.DungeonQuests("thanes")) do
+    if q.qid and not STUB.questsDone[q.qid] then
+        doneNow[#doneNow + 1] = q.qid
+        STUB.questsDone[q.qid] = true
+    end
+end
+STUB.fire("QUEST_TURNED_IN", 96395)
+NS.Refresh()
+assert(#D.detail.items == 0 and D.doneEmpty:IsShown() and D.doneEmpty.title:GetText() == "Alle Quests erledigt (ausgeblendet).",
+    tostring(D.doneEmpty.title:GetText()) .. "|" .. questTexts())
+assert(not has(D.hint:GetText(), "keine Quests") and #(NS.DungeonQuests("thanes")) == allBefore, D.hint:GetText())
+-- a quest that is no longer possible is not done: it stays
+local goneQ = NS.DungeonQuests("thanes")[1]
+goneQ.done, goneQ.gone = false, true
+NS.Refresh()
+assert(#D.detail.items == 1 and D.detail.items[1].q == goneQ and not D.doneEmpty:IsShown(), questTexts())
+goneQ.done, goneQ.gone = true, nil
+NS.Refresh()
+assert(#D.detail.items == 0 and D.doneEmpty:IsShown(), questTexts())
+-- another part: chip and line go
+D.parts.bosses:Click()
+assert(not D.hideDone:IsShown() and not D.doneEmpty:IsShown(), "only in the quest part")
+D.parts.quests:Click()
+-- off again: the done ones show again, marked
+D.hideDone:Click()
+assert(AmisiaDB.settings.quests.hideDone == false and not D.hideDone.on and not D.doneEmpty:IsShown())
+assert(has(questTexts(), "Done Already (erledigt)") and has(questTexts(), "An Ancient Grudge (erledigt)"), questTexts())
+for _, id in ipairs(doneNow) do STUB.questsDone[id] = nil end
+STUB.fire("QUEST_REMOVED", 96395)
+NS.Refresh()
 D.parts.bosses:Click()
 -- the wished legs carry the star
 local legs

@@ -5,6 +5,20 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): hide completed dungeon quests (F-134)
+
+    The quest part of a dungeon on the Dungeons page has a check tab "Hide completed" in its header line: on, the
+    completed quests leave the list (quests no longer possible stay, they are not done), and when every quest is
+    done the list says "All quests completed (hidden)." The counts and the XP still go over all quests.
+    `/amisia dungeon quests` follows the same switch. It is saved as the setting "Hide completed dungeon quests"
+    under Quests (off by default).
+
+- fix(quests): quest switches set before the first visit of the Quests page are kept (F-134)
+
+    Opening the Quests page for the first time moved every key of the Quests settings except the page switch into
+    the page's own state, so a switch turned off before that visit (group sharing, the quest item tooltip, hiding
+    completed dungeon quests) came back on. Only the page's own keys (search, zone, filters, open entries) move now.
+
 ## [v2.107.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.107.0) (2026-11-24)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.106.1...v2.107.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
