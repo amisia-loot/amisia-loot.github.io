@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.107.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.107.1) (2026-11-24)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.107.0...v2.107.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(dungeons): hide completed dungeon quests (F-134)
 
     The quest part of a dungeon on the Dungeons page has a check tab "Hide completed" in its header line: on, the
