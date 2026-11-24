@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.109.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.109.0) (2026-11-24)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.108.0...v2.109.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(ui): every feature can be reached by clicks, commands are shortcuts (F-234)
 
     "Still to hand over" comes back with the link "1 to hand over" on the Awards page and its overview card. The
