@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.107.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.107.0) (2026-11-24)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.106.1...v2.107.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(professions): the guild's professions at a glance, recipes from a material, and a bell for a wanted recipe (F-233)
 
     In a guild every card under "All professions" on the Professions overview shows the guild: members with the
