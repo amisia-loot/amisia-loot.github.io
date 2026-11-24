@@ -45,7 +45,8 @@ assert(NS.DataBuilt().GEAR == nil and rawget(NS, "GEAR") == nil, "two characters
 assert(#group(g, "settings").hits <= 8)
 -- settings by label, tip and choice: "Expertenmodus" by its name, the view's choice "Raider" by its value
 g = NS.Search("experten")
-assert(texts(group(g, "settings")) == "Expertenmodus", texts(group(g, "settings")))
+-- (an item hit names its section first, D-166: a sub-switch keeps its context)
+assert(texts(group(g, "settings")) == "Expertenmodus · Oberfläche", texts(group(g, "settings")))
 g = NS.Search("automatisch")
 assert(has(texts(group(g, "settings")), "Ansicht"), "by a choice's name: " .. texts(group(g, "settings")))
 -- hidden pages are not found: the raider view has no officers' Raid-Archiv (the journal "Raids"
@@ -101,7 +102,7 @@ assert(not F.nav:IsShown() and not F.results:IsShown() and F.searchHint:IsShown(
 type_("experten")
 assert(not F.nav:IsShown() and F.results:IsShown(), "the results in place of the list")
 local items = F.results.items
-assert(items[1].head == "Einstellungen" and items[1].count == 1 and items[2].text == "Expertenmodus", tostring(items[1].head))
+assert(items[1].head == "Einstellungen" and items[1].count == 1 and items[2].text == "Expertenmodus · Oberfläche", tostring(items[1].head))
 -- a group as the auction house's category bar (gold, the count white), a hit as its indented
 -- sub-category bar (white); no icons, no list shade
 local row, hitRow = F.results.rows[1], F.results.rows[2]
@@ -111,7 +112,7 @@ assert(has(row.label:GetText(), "Einstellungen") and row.label.font == "GameFont
 assert(hitRow.hitArt.normal.atlas == "auctionhouse-nav-button-secondary" and hitRow.hitArt.normal:IsShown()
     and not hitRow.headArt.normal:IsShown() and hitRow.hitArt.hover:IsShown(), "a hit's bar")
 assert(hitRow.hitArt.hover.atlas == nil and hitRow.hitArt.hover.texture == nil, "no blue glow on hover")
-assert(hitRow.label:GetText() == "Expertenmodus" and hitRow.label.font == "GameFontHighlightSmall" and hitRow.label.points.LEFT.x == 18)
+assert(hitRow.label:GetText() == "Expertenmodus · Oberfläche" and hitRow.label.font == "GameFontHighlightSmall" and hitRow.label.points.LEFT.x == 18)
 assert(hitRow.icon == nil and not row.bg:IsShown() and row.hover.alpha == 0, "no icon, no shade, the bars' own glow")
 assert(F.results.rowCount == 22 and F.results._h == 22 * 21 and hitRow._h == 20, "22 rows of 21 under the head")
 F.results.rows[2]:Click()

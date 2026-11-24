@@ -70,4 +70,7 @@ L["Build importieren"] = "Import build"
 L["Build exportieren"] = "Export build"
 L["Einen Code oder einen Build-Link von talentsforever.com oder wowforevertalents.com ins Feld Code einfügen und Enter drücken."] = "Paste a code or a build link of talentsforever.com or wowforevertalents.com into the Code box and press Enter."
 L["Markiert den Code des Plans im Feld Code: Strg+C kopiert ihn zum Teilen."] = "Marks the plan's code in the Code box: Ctrl+C copies it to share."
+-- UI/Pages/Talents.lua: the settings section "Talente" (D-166)
+L["Größe des Talentfensters (%)"] = "Talent window size (%)"
+L["Das große Talentfenster (Talentrechner). Strg + Mausrad über dem Fenster ändert die Größe auch."] = "The big talent window (talent calculator). Ctrl + mouse wheel over the window changes the size too."
 end)

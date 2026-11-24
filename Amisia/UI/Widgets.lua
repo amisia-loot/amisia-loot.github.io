@@ -361,6 +361,20 @@ function W.Link(parent, label, onClick)
     return b
 end
 
+-- The quiet link "Einstellungen" of a floating window (D-123, D-166): opens the settings at its section
+-- (ns.ShowSettingsSection); the tooltip names the section, read when shown (the language may change).
+function W.SettingsLink(parent, section)
+    local b = W.Link(parent, L["Einstellungen"], function()
+        if ns.ShowSettingsSection then ns.ShowSettingsSection(section) end
+    end)
+    W.Tooltip(b, L["Einstellungen"], function()
+        for _, sec in ipairs(ns.schema) do
+            if sec.key == section then return L["Öffnet den Abschnitt \"%s\" der Einstellungen."]:format(sec.label) end
+        end
+    end)
+    return b
+end
+
 -- An on/off filter as a text tab with the client's small check box before its word (D-67).
 function W.TabCheck(parent, label, onClick)
     return W.Tab(parent, label, onClick, { check = true })

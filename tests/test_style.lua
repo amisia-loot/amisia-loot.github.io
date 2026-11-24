@@ -497,7 +497,8 @@ assert(talentMarks == " class:WARRIOR class:PALADIN class:HUNTER class:ROGUE cla
 assert(table.concat(tabsOf, " | "):gsub(talentMarks, "", 1):gsub(" L%d+", ""):gsub(" %d+", "") == "planner gear raid dungeon pvp craft world rep"
     .. " | dungeons raidjournal quests map | professions overview camp favor | talents talents"
     .. " | members calls calendar bank duels" .. (NS.LayerWindow and " layer" or "")
-    .. " | settings amisia sync modules toast ui gear prof dungeons guild raid about feedback", table.concat(tabsOf, " | "))
+    -- (the settings' tabs in the main window's order, "Allgemein" last; the first one open, D-166)
+    .. " | settings gear bis dungeons prof talents raid guild amisia about feedback", table.concat(tabsOf, " | "))
 NS.Set("ui.view", "officer")
 NS.ShowPage("overview")
 -- (DKP/EPGP: the page Punkte for officers; the roll window and the soft-reserve import under their pages)

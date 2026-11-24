@@ -335,7 +335,7 @@ end
 
 function ns.SettingItem(path) return items[path] end
 
--- The visible sections, by their tab (its shown name, A to Z), then their order: { { key, label,
+-- The visible sections, by their tab (in the order of ns.PANEL_GROUPS, "Allgemein" last), then their order: { { key, label,
 -- sections = { section, ... } }, ... }; a tab without a visible section is left out. Kept while every
 -- section stays as visible as before (the view, expert mode, data there) and none is registered;
 -- the list is shared, callers only read it.
@@ -368,12 +368,7 @@ function ns.SettingsGroups()
             shown[#shown + 1] = e
         end
     end
-    -- the tabs by their shown name, A to Z, in either language
-    table.sort(shown, function(a, b)
-        local la, lb = tostring(a.label):lower(), tostring(b.label):lower()
-        if la ~= lb then return la < lb end
-        return a.key < b.key
-    end)
+    -- the tabs in the main window's order (ns.PANEL_GROUPS), "Allgemein" (the Amisia tab) last (D-166)
     groupsKept, keptN = shown, #ns.schema
     return shown
 end
@@ -645,9 +640,7 @@ ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, group = "
     { key = "ui.alpha", type = "slider", label = L["Deckkraft des Hauptfensters (%)"], default = 100, min = 30, max = 100, step = 5,
       onChange = function(v) if ns.ApplyAlpha then ns.ApplyAlpha(v) end end,
       tip = L["Wie durchsichtig das Amisia-Fenster ist: 100 ist ganz deckend, weniger lässt die Spielwelt durchscheinen."] },
-    { key = "ui.talentScale", forever = true, available = function() return ns.HasModule("talents") end, type = "slider", label = L["Größe des Talentfensters (%)"], default = 100, min = 70, max = 150, step = 5,
-      tip = L["Das große Talentfenster (Talentrechner). Strg + Mausrad über dem Fenster ändert die Größe auch."],
-      onChange = function(v) if ns.ApplyTalentScale then ns.ApplyTalentScale(v) end end },
+    -- ui.talentScale: the section "Talente" of Amisia_Talents (UI/Pages/Talents.lua, D-166)
     -- F-169: the player tooltip's lines (UI/UnitInfo.lua)
     { key = "ui.unitGear", type = "toggle", label = L["Gearscore und Itemstufe im Spieler-Tooltip"], default = true,
       tip = L["Eine Zeile im Tooltip jedes Spielers: Gearscore und durchschnittliche Itemstufe der angelegten Ausrüstung. Gearscore ist die Summe aus Itemstufe mal Gewicht des Platzes; eigene Rechnung von Amisia, nicht vergleichbar mit anderen Addons."] },

@@ -1361,7 +1361,7 @@ L["Lädt alle Gildenmitglieder bis zum gewählten Rang ein, die online und noch 
 L["Ohne Aufstellung: \"Gilde einladen\" lädt die Gilde bis zu einem Rang ein."] = "Without a lineup: \"Invite guild\" invites the guild down to a rank."
 L["Niemand eingeladen"] = "Nobody invited"
 L["\"Gilde einladen\" lädt alle Gildenmitglieder bis zum gewählten Rang ein, die online und noch nicht in der Gruppe sind. Wer eingeladen ist, steht hier mit seinem Status."] = "\"Invite guild\" invites every guild member down to the chosen rank who is online and not in the group yet. Whoever is invited shows here with their status."
-L["Gruppeneinladungen"] = "Group invites"
+L["Einladungen und Online-Meldung"] = "Invites and online notices"
 L["Einladungen von Gilde und Freunden annehmen"] = "Accept invites from guild and friends"
 L["Lädt dich ein Mitglied deiner Gilde oder jemand von deiner Freundesliste in eine Gruppe ein, nimmt Amisia sofort an und sagt es in deinem Chat. Einladungen von anderen fragt das Spiel wie immer."] = "When a member of your guild or someone on your friend list invites you to a group, Amisia accepts at once and says so in your chat. The game asks about invites from anyone else as always."
 L["Einladung von %s angenommen (Gilde)."] = "Accepted the invite from %s (guild)."

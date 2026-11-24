@@ -25,13 +25,14 @@ local function invite(name)
     STUB.tick(1)
 end
 
--- a raider sees the section in the raid tab
+-- a raider sees the section in the guild tab
 NS.Set("ui.view", "raider")
 local sec
 for _, g in ipairs(NS.SettingsGroups()) do
     for _, s in ipairs(g.sections) do if s.key == "invites" then sec = { group = g.key, s = s } end end
 end
-assert(sec and sec.group == "raid", "the section in the tab Raid, also for raiders")
+assert(sec and sec.group == "guild" and sec.s.label == "Einladungen und Online-Meldung",
+    "the section in the tab Gilde, also for raiders (D-166)")
 
 -- off by default
 assert(NS.Get("invites.accept") == false)

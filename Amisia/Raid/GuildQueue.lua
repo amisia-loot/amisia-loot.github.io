@@ -585,6 +585,7 @@ local function refresh()
     readOwn()
     if F.SetTitle then F:SetTitle(GQ.Title()) end
     F.minBtn.tipFolded = folded()
+    F.settings:SetShown(not folded())
     if folded() then
         for _, r in ipairs(F.rows) do r:Hide() end
         F:SetHeight(S.FOLD_H)
@@ -609,7 +610,7 @@ local function refresh()
         r.right:SetText("")
     end
     local bottom = W.Column(F, items, 0, S.PAD, -S.TOP, { right = S.PAD })
-    F:SetHeight(S.TOP - bottom + S.BOTTOM)
+    F:SetHeight(S.TOP - bottom + S.LINK_GAP + T.CHIP_H + S.BOTTOM)
 end
 GQ.Refresh = refresh
 
@@ -653,6 +654,9 @@ local function build()
         onDragStop = function(f) W.SaveWindowPlace(f, state()) end })
     F.rows = {}
     F.minBtn = buildMinButton()
+    -- the way to its switches (D-166): the section "Gilden-Warteschlange", under the rows
+    F.settings = W.SettingsLink(F, "bgqueue")
+    F.settings:SetPoint("BOTTOMRIGHT", -S.PAD, S.BOTTOM)
     F:HookScript("OnHide", function()
         -- closed by the player (the x, Escape): it stays closed while these own queues run
         if not hiding then
@@ -783,7 +787,7 @@ end
 ns.RegisterSlash("warteschlange", { en = "queue", desc = L["Gilden-Warteschlange für Schlachtfelder: das Fenster zeigen oder schließen"],
     run = function() GQ.Toggle() end })
 
-ns.RegisterSettings{ key = "bgqueue", label = L["Gilden-Warteschlange"], order = 64, group = "guild", items = {
+ns.RegisterSettings{ key = "bgqueue", label = L["Gilden-Warteschlange"], order = 68, group = "guild", items = {
     { key = "bgqueue.share", type = "toggle", label = L["Eigene Warteschlange mit der Gilde teilen"], default = true,
       tip = L["Sagt den Gildenmitgliedern mit Amisia, für welches Schlachtfeld du wartest, wie lange schon und wann deine Warteschlange aufgeht. Nur an die eigene Gilde, nie im Schlachtfeld. Aus: die anderen sehen dich nicht mehr, du siehst sie weiter."] },
     { key = "bgqueue.window", type = "toggle", label = L["Fenster zeigen"], default = true,

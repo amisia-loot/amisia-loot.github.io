@@ -396,6 +396,9 @@ local function build()
     end)
     for i = 1, MAX_ROWS do rows[i] = buildRow(i) end
     F.rows = rows
+    -- the way to its switches (D-166): the section "Würfel-Fenster", under the rounds
+    F.settings = W.SettingsLink(F, "rollwin")
+    F.settings:SetPoint("BOTTOMRIGHT", -PAD, 4)
     place()
     applyScale()
 end
@@ -514,7 +517,7 @@ refresh = function()
             row:Hide()
         end
     end
-    F:SetHeight(y + 4)
+    F:SetHeight(y + T.CHIP_H + 4)
 end
 
 local function show()
@@ -944,8 +947,8 @@ ns.RegisterSlash("wuerfeln", { en = "rolltest", args = L["[test [Item-Link] [dkp
             if not ns.Get("rollwin.enabled") then ns.msg(L["Das Würfel-Fenster ist aus (Einstellungen, Würfel-Fenster); die Probe zeigt es trotzdem."]) end
             ns.RollWindowTest(tail, art)
             ns.msg(L["Probe-Runde nur bei dir: nichts wird gesendet. Mainspec und Offspec würfeln wirklich (allein sieht das nur dein Chat)."])
-        elseif ns.ShowSettings then
-            ns.ShowSettings(L["Würfel-Fenster"])
+        elseif ns.ShowSettingsSection then
+            ns.ShowSettingsSection("rollwin")
         end
     end })
 end)

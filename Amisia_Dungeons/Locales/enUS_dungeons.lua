@@ -297,7 +297,7 @@ L["Die Uhr dieses Laufs; ein Klick zeigt oder verbirgt das Fenster \"Lauf-Zeiten
 L["Route##Leiste"] = "Route"
 L["Die Route, der du folgst: Stopp und Anzahl. Rechtsklick: weiter zum nächsten Stopp."] = "The route you follow: stop and count. Right click: on to the next stop."
 L["Dungeon-Leiste"] = "Dungeon bar"
-L["Ziehen: verschieben. Das x verbirgt die Leiste bis zum nächsten Dungeon oder \"/amisia leiste\"."] = "Drag: move. The x hides the bar until the next dungeon or \"/amisia bar\"."
+L["Ziehen: verschieben. Rechtsklick: Einstellungen. Das x verbirgt die Leiste bis zum nächsten Dungeon oder \"/amisia leiste\"."] = "Drag: move. Right-click: settings. The x hides the bar until the next dungeon or \"/amisia bar\"."
 L["Leiste schließen"] = "Close the bar"
 L["Bis zum nächsten Dungeon oder \"/amisia leiste\"."] = "Until the next dungeon or \"/amisia bar\"."
 L["Zeit %s"] = "Time %s"

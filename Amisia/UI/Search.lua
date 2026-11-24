@@ -343,7 +343,10 @@ local function settingHits(q)
             for _, it in ipairs(section.items) do
                 if #out >= M.RES_MAX then return out end
                 if it.key and it.label and it.type ~= "desc" and ns.Visible(it) and ns.SettingHits(it, q) then
-                    out[#out + 1] = { text = it.label, tip = section.label .. (it.tip and ("\n" .. it.tip) or ""),
+                    -- "label · Section": a sub-switch ("Ton", "Fenster zeigen") keeps its context (D-166); the
+                    -- label first, so a narrow row cuts the section, not the switch
+                    out[#out + 1] = { text = it.label .. " · " .. section.label,
+                        tip = it.tip,
                         run = function() if ns.ShowSettings then ns.ShowSettings(it.label) end end }
                 end
             end

@@ -73,8 +73,6 @@ L["Deckkraft"] = "Opacity"
 L["Deckkraft des Hauptfensters"] = "Main window opacity"
 L["Nach links ziehen lässt die Spielwelt durchscheinen, ganz rechts ist das Fenster deckend. Auch unter Einstellungen, Oberfläche."] = "Drag left to let the game world show through; all the way right the window is opaque. Also under Settings, Interface."
 L["Wie durchsichtig das Amisia-Fenster ist: 100 ist ganz deckend, weniger lässt die Spielwelt durchscheinen."] = "How see-through the Amisia window is: 100 is fully opaque, less lets the game world show through."
-L["Größe des Talentfensters (%)"] = "Talent window size (%)"
-L["Das große Talentfenster (Talentrechner). Strg + Mausrad über dem Fenster ändert die Größe auch."] = "The big talent window (talent calculator). Ctrl + mouse wheel over the window changes the size too."
 L["Fensterposition zurücksetzen"] = "Reset window position"
 L["Ansicht"] = "View"
 L["Offizier"] = "Officer"
@@ -239,6 +237,7 @@ L["Frage den Raid nach Amisia-Versionen. Die Liste folgt in 10 Sekunden."] = "As
 L["Frage die Gilde nach Amisia-Versionen. Die Liste folgt in 10 Sekunden."] = "Asking the guild for Amisia versions. The list follows in 10 seconds."
 
 -- UI/Widgets.lua
+L["Öffnet den Abschnitt \"%s\" der Einstellungen."] = "Opens the section \"%s\" of the settings."
 L["Suchen"] = "Search"
 
 -- UI/MainFrame.lua

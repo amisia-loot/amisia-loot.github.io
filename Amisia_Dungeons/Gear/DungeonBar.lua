@@ -522,7 +522,11 @@ local function build()
         bar:StopMovingOrSizing()
         W.SaveWindowPlace(bar, windowState())
     end)
-    W.Tooltip(h, L["Dungeon-Leiste"], L["Ziehen: verschieben. Das x verbirgt die Leiste bis zum nächsten Dungeon oder \"/amisia leiste\"."])
+    -- the way to its switches (D-166): a right-click on the name opens the section "Dungeon-Leiste"
+    h:SetScript("OnMouseUp", function(_, button)
+        if button == "RightButton" and ns.ShowSettingsSection then ns.ShowSettingsSection("dungeonbar") end
+    end)
+    W.Tooltip(h, L["Dungeon-Leiste"], L["Ziehen: verschieben. Rechtsklick: Einstellungen. Das x verbirgt die Leiste bis zum nächsten Dungeon oder \"/amisia leiste\"."])
     h:Show()
     bar.handle = h
     bar.seg = {}

@@ -1583,7 +1583,7 @@ end)
 ---------------------------------------------------------------------------
 -- Settings (F-233): the section Berufe
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "prof", label = L["Berufe"], order = 55, group = "prof", pages = { "professions" }, forever = true, items = {
+ns.RegisterSettings{ key = "prof", label = L["Berufe"], order = 56, group = "prof", pages = { "professions" }, forever = true, items = {
     { key = "prof.reagentTooltip", type = "toggle", label = L["Materialien im Item-Tooltip"], default = false,
       tip = L["Eine graue Zeile an Materialien: für wie viele Rezepte sie gebraucht werden und wie viele davon die Gilde kann."] },
     { key = "prof.watchChat", type = "toggle", label = L["Chatzeile bei gesuchten Rezepten"], default = true,

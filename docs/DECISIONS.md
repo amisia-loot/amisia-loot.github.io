@@ -4898,3 +4898,43 @@ Schalter haben.
 **Durchgesetzt durch:** `tests/test_comm.lua`, `tests/test_signup_comm.lua`, `tests/test_layer_change.lua`,
 `tests/test_bank_needs.lua` (Sync aus, die Nachricht geht), `tests/test_sync_raid.lua`, `tests/test_sync_ops.lua`
 (Sync aus, kein Raid-Abgleich), `tests/test_drop_sync.lua`.
+
+## D-166 Einstellungen in der Reihenfolge des Hauptfensters, Abschnitte dort, wo man sie sucht
+
+**Datum:** 2026-11-24
+**Entscheidung:** Ändert F-200 (Reiter A bis Z) und ergänzt D-49 und D-123. Die Reiter unter "Einstellungen" stehen
+in der Reihenfolge der Reiter oben im Hauptfenster (`ns.PANEL_GROUPS`): Ausrüstung, Dungeons & Raids, Berufe, Talente,
+Raid, Gilde, "Allgemein" (der Reiter Amisia) zuletzt. Ganze Abschnitte ziehen in den Reiter, in dem man sie sucht
+(nur `group` und `order`; kein Schlüssel ändert sich, kein Schritt in `Core/Migrate.lua`, denn der gespeicherte Pfad
+ist der Schlüssel der Einstellung, nicht ihr Abschnitt, D-123):
+- Gildenaufträge (`orders`) nach Berufe, neben Hersteller der Gilde und Berufe;
+- Werkzeuge (`tools`) nach Gilde, wo die Seite Werkzeuge steht;
+- die Gruppeneinladungen (`invites`) als "Einladungen und Online-Meldung" nach Gilde;
+- Gilden-Warteschlange (`bgqueue`) und Duelle (`duels`) zusammen am Ende von Gilde (der PvP-Teil);
+- Drop-Daten (`drops`) und Quellen-Sammler (`collect`) als Block des Sammelns nach Allgemein (beide gehören dem
+  Kern und hingen ohne das Modul Dungeons & Raids in dessen Reiter); ihre Seiten behalten den Knopf.
+Der Abschnitt Layer zerfällt in "Layer: Helfen" (`layer`: Antworten, Einladen, Fragen, Verlassen, Grenzen) und
+"Layer: Anzeige" (`layerview`: Chip und Leiste). `ui.talentScale` steht im neuen Abschnitt "Talente" (`talents`,
+Reiter Talente, Seite Talente), den das Modul Talente selbst registriert; ohne das Modul fehlt er ganz. Neue
+Zahnrad-Verweise (`pages`): Ausrüstung und Wünsche auch auf dem Ausrüstungsplaner, Raid-Anmeldung auch auf der Übersicht
+(ihre Karte), Drop-Daten auch auf Werkzeuge. In langen Abschnitten steht der Hauptschalter zuerst, seine Unterschalter
+gleich danach, dann das Aussehen, Knöpfe zuletzt (Ausrüstung und Wünsche: Gewichtung, Wertung, Tooltip, Drop-Hinweis,
+Planer; Item-Anzeige: Verschieben und Position vor "Anzeige ausprobieren" ans Ende). Die schwebenden Fenster haben den
+Link "Einstellungen" zu ihrem Abschnitt (`W.SettingsLink`, wie "Questgegenstände aufräumen" seit D-123): Layer,
+Gilden-Warteschlange, Würfeln (auch `/amisia wuerfeln` ohne Wort), Raid-Notiz, Lauf-Zeiten; die Dungeon-Leiste
+öffnet ihren Abschnitt mit Rechtsklick auf den Namen; die Item-Anzeige bekommt keinen (ihr einziger Rahmen ist das
+Verschieben, das aus den Einstellungen kommt). Die Suche im Hauptfenster zeigt einen Treffer einer Einstellung als
+"Einstellung · Abschnitt" (die Einstellung vorn: eine schmale Zeile kürzt den Abschnitt, nicht den Schalter).
+Die Nummern (`order`, über alle Abschnitte eindeutig): Raid 10-31, Ausrüstung 45-46, Dungeons & Raids 47-54,
+Berufe 55-57, Talente 58-59, Gilde 60-69, Allgemein 85-95 (Tabelle in ARCHITECTURE.md, "Settings registry").
+**Grund:** Nutzer 2026-11-24: Schalter sollen "besser zu finden" sein; er wählte dieses Paket aus einer Prüfung aller
+Schalter. A bis Z passte nicht zu den Reitern oben im Fenster, Abschnitte standen in Reitern, die man nicht öffnet
+(Gildenaufträge unter Gilde, Werkzeuge unter Allgemein, Drop-Daten unter einem abschaltbaren Modul), und Seiten mit
+eigenen Schaltern hatten kein Zahnrad (Talente, Ausrüstungsplaner).
+**Folge:** Ein neuer Abschnitt nimmt eine freie Nummer im Bereich seines Reiters; ein Fenster mit eigenen Schaltern
+bekommt `W.SettingsLink`. Annahmen (nicht gefragt): Werkzeuge vor dem PvP-Teil in Gilde, Allgemein: Sync, Module,
+Item-Anzeige, Oberfläche, dann das Sammeln; die Laufzeit-Verknüpfung unter "Alle Zeiten" statt daneben (zu schmal).
+**Durchgesetzt durch:** `tests/test_settings_pages.lua` (Reihenfolge, Zahnrad auf Talente, Planer, Werkzeuge,
+Übersicht), `tests/test_settings_sections.lua` (Nummern eindeutig), `tests/test_talent_window.lua`,
+`tests/test_group_accept.lua`, `tests/test_search.lua`, `tools/tests/test_contracts.py` (Abschnitte in
+ARCHITECTURE.md).

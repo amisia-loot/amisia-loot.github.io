@@ -52,6 +52,7 @@ local function applyLock()
     local locked = state().locked
     F:EnableMouse(not locked)
     F.grip:SetShown(not locked)
+    F.settings:SetShown(not locked)   -- locked, clicks go through the window
     F.lock.icon:SetTexture(locked and LOCK_TEX or OPEN_TEX)
 end
 
@@ -191,9 +192,12 @@ local function build()
         if InCombatLockdown() or state().locked then return end
         self:StartMoving()
     end)
-    F.from = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD)
+    F.from = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD - S.LINK_W)
     F.from:SetPoint("TOPLEFT", S.PAD, -S.TOP)
-    F.from:SetPoint("TOPRIGHT", -S.PAD, -S.TOP)
+    F.from:SetPoint("TOPRIGHT", -(S.PAD + S.LINK_W), -S.TOP)
+    -- the way to its switches (D-166): the section "Raid- und Gruppen-Notiz", at the end of the "from" line
+    F.settings = W.SettingsLink(F, "raidnote")
+    F.settings:SetPoint("RIGHT", F, "TOPRIGHT", -S.PAD, -(S.TOP + S.FROM_H / 2))
     F.note = W.ScrollText(F)
     F.note:SetPoint("TOPLEFT", S.PAD, -(S.TOP + S.FROM_H))
     F.note:SetPoint("BOTTOMRIGHT", -(S.PAD + S.BAR), S.PAD + S.GRIP / 2)

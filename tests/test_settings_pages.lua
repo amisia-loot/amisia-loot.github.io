@@ -31,8 +31,18 @@ GameTooltip.AddLine = function(self, t) tip[#tip + 1] = t end
 F.settingsBtn:GetScript("OnEnter")(F.settingsBtn)
 GameTooltip.AddLine = addLine
 assert(tip[1] == "Einstellungen" and tip[2] == "Karte und Wegpunkt", tostring(tip[1]) .. "/" .. tostring(tip[2]))
-NS.ShowPage("talents")
-assert(not F.settingsBtn:IsShown(), "the talents page has none")
+-- since D-166 every page with switches of its own has the gear: the talents page (its section "Talente"),
+-- the planner (Ausrüstung und Wünsche), the tools (Drop-Daten too), the overview (the sign-up's card)
+for page, sec in pairs({ talents = "talents", planner = "bis", tools = "drops", overview = "signup" }) do
+    NS.ShowPage(page)
+    assert(F.settingsBtn:IsShown(), "the gear on " .. page)
+    local found
+    for _, s in ipairs(NS.SettingsSectionsOf(page)) do found = found or s.key == sec end
+    assert(found, page .. " opens " .. sec)
+end
+-- a page without settings: no gear, the ? moves to the page head's end
+NS.ShowPage("members")
+assert(not F.settingsBtn:IsShown(), "the members page has none")
 assert(F.helpBtn.points.TOPRIGHT and F.helpBtn.points.TOPRIGHT.rel == F.pageHead and F.helpBtn.points.TOPRIGHT.x == 0,
     "without the gear the ? moves to the page head's end")
 NS.ShowPage("rolls")
@@ -43,7 +53,7 @@ local chosen, set = NS.SettingsChosen()
 assert(chosen == nil and set.rolls and set.need and set.loot and set.lootrules and set.prio and set.rollwin, "the sections of Rolls")
 assert(page.back:IsShown() and page.back:GetText() == "Zurück zu Rolls", tostring(page.back:GetText()))
 assert(NS.SettingsRows()["rolls.seconds"]:IsShown() and NS.SettingsRows()["need.share"]:IsShown())
--- (Raid is the last tab, A to Z: the side bar scrolls, "-prio" may sit below its end)
+-- (Raid is the fifth tab of seven: the side bar scrolls, "-prio" may sit below its end)
 assert(has(navShown(), "-rolls -rollwin -need -loot -lootrules"), navShown())
 page.back:Click()
 assert(NS.CurrentPage() == "rolls", "back to the page")
@@ -52,10 +62,11 @@ NS.ShowSettingsSection("map")
 assert(NS.SettingsChosen() == "map" and not page.back:IsShown())
 assert(AmisiaDB.settings.window.section == "map", "remembered")
 
--- the side bar under "Einstellungen": the tabs A to Z by name (F-200), the chosen one open (the map's
--- section in Dungeons & Raids since D-73)
+-- the side bar under "Einstellungen": the tabs in the main window's order, "Allgemein" last (D-166; A to Z
+-- by name before, F-200), the chosen one open (the map's section in Dungeons & Raids since D-73; the data
+-- collecting "Drop-Daten" and "Quellen-Sammler" in Allgemein since D-166)
 local nav = navShown()
-assert(has(nav, "settings amisia gear prof dungeons -drops -map -quests -collect -runtimes -dungeonbar -questitems guild raid"), nav)
+assert(has(nav, "settings gear dungeons -map -quests -runtimes -dungeonbar -questitems prof talents raid guild amisia"), nav)
 for _, e in ipairs(F.navOrder) do
     if e.entry.kind == "group" and e.entry.key == "guild" then e.button:Click() break end
 end
@@ -75,7 +86,7 @@ local function navRow(kind, key)
 end
 navRow("group", "guild"):Click()
 assert(NS.SettingsChosen() == "mats", "folding keeps the section")
-assert(has(navShown(), "settings amisia gear prof dungeons guild raid") and not has(navShown(), "-mats"), "the tab folded: " .. navShown())
+assert(has(navShown(), "settings gear dungeons prof talents raid guild amisia") and not has(navShown(), "-mats"), "the tab folded: " .. navShown())
 navRow("group", "guild"):Click()
 assert(has(navShown(), "guild -signup") and has(navShown(), "-mats"), "unfolded: " .. navShown())
 navRow("group", "guild"):Click()

@@ -23,5 +23,5 @@ box:SetText("experten")
 box.scripts.OnTextChanged(box, true)
 local head, hit = F.results.rows[1], F.results.rows[2]
 assert(head.headArt == nil and head.bar:IsShown() and head.bar.ButtonText:GetText():find("Einstellungen", 1, true), "a group as a section bar")
-assert(not hit.bar:IsShown() and hit.bg:IsShown() and hit.label:GetText() == "Expertenmodus" and hit.icon == nil, "a hit as a plain row")
+assert(not hit.bar:IsShown() and hit.bg:IsShown() and hit.label:GetText() == "Expertenmodus · Oberfläche" and hit.icon == nil, "a hit as a plain row")
 print("nav bars without the atlas ok")

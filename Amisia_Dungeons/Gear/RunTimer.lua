@@ -206,6 +206,8 @@ local function build()
         if shownKey then RT.ShowPart(shownKey) end
     end)
     W.Tooltip(F.all, L["Alle Zeiten##Lauf"], L["Bestzeit, Zeiten je Boss und die letzten Läufe dieser Instanz auf ihrer Seite."])
+    -- the way to its switches (D-166): the section "Lauf-Zeiten", under "Alle Zeiten"
+    F.settings = W.SettingsLink(F, "runtimes")
     F.bosses, F.rares = {}, {}
     local acc = 0
     F:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate RunTimer", function(_, elapsed)
@@ -359,7 +361,9 @@ local function refresh()
     F.result:SetPoint("TOPLEFT", S.PAD, y - S.RESULT_Y)
     F.all:ClearAllPoints()
     F.all:SetPoint("TOPRIGHT", -(S.PAD + S.GRIP_ROOM), y)   -- clear of the grip in the corner
-    F:SetHeight(-y + S.BOTTOM_H)
+    F.settings:ClearAllPoints()
+    F.settings:SetPoint("TOPRIGHT", -(S.PAD + S.GRIP_ROOM), y - T.CHIP_H)
+    F:SetHeight(-y + T.CHIP_H + S.BOTTOM_H)
     TW.mode = mode
 end
 TW.Refresh = function() refresh() end

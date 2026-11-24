@@ -914,7 +914,7 @@ end)
 ---------------------------------------------------------------------------
 -- Setting
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "guildCalls", label = L["Aufrufe"], order = 63, group = "guild", pages = { "calls" }, items = {
+ns.RegisterSettings{ key = "guildCalls", label = L["Aufrufe"], order = 61, group = "guild", pages = { "calls" }, items = {
     { key = "guildCalls.chat", type = "toggle", label = L["Neue Aufrufe der Gilde im Chat melden"], default = true,
       tip = L["Eine Zeile mit [Anmelden], wenn ein Gildenmitglied einen Aufruf einstellt; einmal je Aufruf."] },
 } }

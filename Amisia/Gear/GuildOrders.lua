@@ -962,7 +962,7 @@ end)
 ---------------------------------------------------------------------------
 -- Settings: the section Gildenaufträge (tab Gilde)
 ---------------------------------------------------------------------------
-ns.RegisterSettings{ key = "orders", label = L["Gildenaufträge"], order = 65, group = "guild", pages = { "professions" }, forever = true, items = {
+ns.RegisterSettings{ key = "orders", label = L["Gildenaufträge"], order = 57, group = "prof", pages = { "professions" }, forever = true, items = {
     { key = "orders.on", type = "toggle", label = L["Gildenaufträge"], default = true,
       tip = L["Aufträge an die Gilde stellen und annehmen (Seite Berufe, Reiter Aufträge). Aus: Amisia sendet und nimmt keine."] },
     { key = "orders.chat", type = "toggle", label = L["Chatzeile bei neuen Aufträgen"], default = true,

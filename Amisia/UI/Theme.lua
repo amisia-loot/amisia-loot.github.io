@@ -499,8 +499,8 @@ T.GIVER_PIN = {
 -- large value VALUE_H), GAP under them the best time line LINE_H high, GAP under it the gold rule and
 -- RULE_GAP under that the boss portraits (PORT square, PORT_GAP apart, COLS per row); SECTION_GAP before
 -- the heading "Rare" (HEAD_H) over the rares' portraits and before the bottom band: the result (RESULT_W
--- wide, RESULT_Y lower than the link) left, the link "Alle Zeiten" right, BOTTOM_H to the window's
--- lower edge. TICK: the live clock's refresh.
+-- wide, RESULT_Y lower than the link) left, the link "Alle Zeiten" right and under it (D-166) the link
+-- "Einstellungen", BOTTOM_H to the window's lower edge. TICK: the live clock's refresh.
 T.RUNTIMER = { W = 300, PAD = 14, TOP = 30, COL_W = { 84, 80, 108 }, LABEL_H = 14, VALUE_H = 20, GAP = 4, LINE_H = 14,
     RULE_GAP = 8, PORT = 32, PORT_GAP = 6, COLS = 7, SECTION_GAP = 8, HEAD_H = 16, RESULT_W = 170, RESULT_Y = 4,
     BOTTOM_H = 32, TICK = 0.2,
@@ -560,18 +560,20 @@ T.BEACON = { BEAM_H = 220, BEAM_W = 14, GLOW_W = 56, GLOW_ALPHA = 0.4, COLOR = {
 -- for its scroll bar; the lock LOCK square, LOCK_GAP left of the close button. The page "Raid-Notiz"
 -- (UI/Pages/RaidNote.lua): the note's field EDIT_H high, the own note's OWN_H, GAP between the parts;
 -- the template picker SET_W, the name field NAME_W, the counter COUNT_W; the row of raid marks over the
--- note's field (F-198): each MARK square, MARK_GAP apart.
+-- note's field (F-198): each MARK square, MARK_GAP apart. D-166: the link "Einstellungen" at the right end of
+-- the window's "from" line, LINK_W kept free for it.
 T.RAIDNOTE = { W = 300, H = 220, EDGE_X = 220, MIN_W = 180, MIN_H = 90, MAX_W = 900, MAX_H = 800, GRIP = 16,
-    TOP = 24, FROM_H = 16, PAD = 10, BAR = 10, LOCK = 16, LOCK_GAP = 2,
+    TOP = 24, FROM_H = 16, PAD = 10, BAR = 10, LOCK = 16, LOCK_GAP = 2, LINK_W = 90,
     EDIT_H = 174, OWN_H = 64, GAP = 6, SET_W = 150, NAME_W = 120, COUNT_W = 140, MARK = 20, MARK_GAP = 4 }
 
 -- The window "Gilden-Warteschlange" (F-227, Raid/GuildQueue.lua, AmisiaGuildQueue): W wide, at first EDGE_X left of
 -- the screen's centre; the rows TOP under its top, PAD from the sides, BOTTOM over its lower edge; a battleground's
 -- bar BAR_H high on a ground of BAR_SHADE (white, its alpha), a guild member's row ROW_H high and INDENT in, the
 -- footer FOOT_H; the right text RIGHT_W wide; at most ROWS rows. Folded only its title bar, FOLD_H high; the
--- client's "-" MIN square (MIN_OLD on a client without the template's minimize corner).
+-- client's "-" MIN square (MIN_OLD on a client without the template's minimize corner). D-166: the link
+-- "Einstellungen" at the bottom right, LINK_GAP under the rows.
 T.BGQUEUE = { W = 250, EDGE_X = -360, TOP = 30, PAD = 10, BOTTOM = 10, BAR_H = 18, BAR_SHADE = 0.08, ROW_H = 16,
-    INDENT = 12, FOOT_H = 18, RIGHT_W = 96, ROWS = 40, FOLD_H = 30, MIN = 24, MIN_OLD = 32 }
+    INDENT = 12, FOOT_H = 18, RIGHT_W = 96, ROWS = 40, FOLD_H = 30, MIN = 24, MIN_OLD = 32, LINK_GAP = 4 }
 
 -- The window of an item that starts a quest (F-181, Gear/QuestStart.lua, AmisiaQuestStart): W wide; the
 -- item's name in the title; TOP under the window's top the item's icon ICON square in the middle, in
@@ -601,6 +603,8 @@ T.LAYER = { W = 300, PAD = 14, TOP = 30, VALUE_H = 22, LINE_H = 14, GAP = 8, HEA
     MIN = 24, MIN_OLD = 20, MINI_W = 210, MINI_H = 36, MINI_ICON = 22, MINI_ICON_X = 9, MINI_TEXT_X = 38,
     MINI_NAME_Y = 7, MINI_SUB_Y = -7, MINI_TEXT_W = 142, MINI_X = 20, MINI_X_R = 6, MINI_ONE_H = 26,
     HOVER = 0.08, ASK_H = 34, ASK_ICON = 22, ASK_TEXT_X = 30, ASK_TITLE_Y = 3, ASK_LINE_GAP = 2, BTN_W = 132,
+    -- D-166: the link "Einstellungen" at the right end of the head line "Dein Layer", SET_W kept free for it
+    SET_W = 100,
     -- F-229: the event field where the numbers are private (in place of the list): a symbol EV_ICON square, the
     -- heading from EV_TEXT_X in its colour (EV_COL) with a time at the right, the lines under it, and the hour's
     -- moves as EV_PIPS squares EV_PIP wide, EV_PIP_GAP apart (used ones gold, the rest dark)

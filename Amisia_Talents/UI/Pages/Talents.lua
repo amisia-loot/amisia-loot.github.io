@@ -827,6 +827,14 @@ function ns.ApplyTalentScale(v)
     if win then win:SetScale((tonumber(v) or tonumber(ns.Get("ui.talentScale")) or 100) / 100) end
 end
 
+-- The settings section "Talente" (tab Talente, the page's gear button, D-166): the window's size. The
+-- key stays ui.talentScale (it sat in "Oberfläche" until then; nothing moves in AmisiaDB).
+ns.RegisterSettings{ key = "talents", label = L["Talente"], order = 58, group = "talents", pages = { "talents" }, items = {
+    { key = "ui.talentScale", forever = true, type = "slider", label = L["Größe des Talentfensters (%)"], default = 100, min = 70, max = 150, step = 5,
+      tip = L["Das große Talentfenster (Talentrechner). Strg + Mausrad über dem Fenster ändert die Größe auch."],
+      onChange = function(v) ns.ApplyTalentScale(v) end },
+}}
+
 -- Ctrl + mouse wheel over the window: SCALE_STEP percent bigger or smaller, within the setting's
 -- bounds, saved as the setting.
 local function wheel(_, delta)

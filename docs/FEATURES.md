@@ -163,7 +163,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Status: gebaut
 - Prüfung: Wenn ein Gildenmitglied oder Freund online kommt, dann steht hinter "<Name> ist jetzt online." ein blaues [Einladen]; ein Klick darauf lädt ihn ein und der Chat sagt "Eingeladen: <Name>".
 - Prüfung: Wenn du in einer Gruppe bist, aber nicht Gruppenleiter (im Raid auch nicht Assistent), dann steht kein [Einladen] da; für jemanden, der schon in deiner Gruppe ist, auch nicht.
-- Prüfung: Wenn du "[Einladen] bei "ist jetzt online"" (Einstellungen, Raid, Gruppeneinladungen) ausschaltest, dann steht die Zeile wieder wie vom Spiel.
+- Prüfung: Wenn du "[Einladen] bei "ist jetzt online"" (Einstellungen, Gilde, Einladungen und Online-Meldung) ausschaltest, dann steht die Zeile wieder wie vom Spiel.
 - Prüfung: Wenn ein Gildenmitglied oder Freund online kommt, dann steht sein Name in "<Name> ist jetzt online." in seiner Klassenfarbe (Nachtrag 2026-11-14, Schalter "Name bei "ist jetzt online" in Klassenfarbe").
 - Prüfung: Wenn du Amisia auf Englisch stellst (`/amisia sprache en`, dann /reload) und jemand aus der Gilde online oder offline geht, dann steht "<Name> has come online. [Invite]" und "<Name> has gone offline." da; auf Deutsch "ist jetzt online. [Einladen]" und "ist jetzt offline." (Nachtrag 2026-11-15).
 - Notiz: DECISIONS D-127. Kein gespeicherter Schlüssel außer der Einstellung, keine Nachricht; ohne Spec (kleine Erweiterung). Der Link ist ein Addon-Link des Clients (`|Haddon:...|h`), Blizzards SetItemRef wird nicht überschrieben.
@@ -188,7 +188,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Status: gebaut
 - Braucht: Gruppe
 - Prüfung: Wenn du allein im Fenster "Layer" (`/amisia layer`) "Im Kanal fragen" klickst, dann öffnet sich die Chatzeile mit "/1 inv layer" (Kanal und Text aus den Einstellungen, Layer); nach dem Abschicken steht im Fenster "Im Kanal gefragt: eine Minute lang nimmt Amisia die nächste Einladung an.", und die Einladung irgendeines Spielers nimmt Amisia von selbst an ("Einladung von ... angenommen (Layer-Wechsel).").
-- Prüfung: Wenn du "Auch Spielern außerhalb der Gilde helfen" einschaltest (Einstellungen, Gilde, Layer) und dir ein fremder Spieler "inv layer" flüstert oder es in einen Kanal schreibt, in dem du bist, dann fragt Amisia "<Name> (nicht in der Gilde) bittet im Chat um einen Layer-Wechsel. Einladen?"; nach "Einladen" ist er eingeladen. Ohne die Einstellung passiert nichts.
+- Prüfung: Wenn du "Auch Spielern außerhalb der Gilde helfen" einschaltest (Einstellungen, Gilde, Layer: Helfen) und dir ein fremder Spieler "inv layer" flüstert oder es in einen Kanal schreibt, in dem du bist, dann fragt Amisia "<Name> (nicht in der Gilde) bittet im Chat um einen Layer-Wechsel. Einladen?"; nach "Einladen" ist er eingeladen. Ohne die Einstellung passiert nichts.
 - Prüfung: Wenn zusätzlich "Fremde ohne Frage einladen" an ist und ein Fremder im Kanal Allgemein deiner Zone "inv layer" schreibt, dann lädt Amisia ihn ohne Frage ein ("... eingeladen (Layer-Wechsel)."); dieselbe Bitte per Flüstern fragt weiter.
 - Prüfung: Wenn du in keiner Gilde bist, dann steht im Fenster "Layer" statt "Du bist in keiner Gilde." der Satz "Frag im Kanal: wer dich einlädt, bringt dich auf seinen Layer."
 - Notiz: Spec `docs/specs/2026-11-13-layer-fuer-alle.md`; DECISIONS D-124 (ändert D-117: nicht mehr nur in der Gilde). Der Weg ist allein die Chat-Zeile, die Spieler mit und ohne Layer-Addon schreiben; Addons, die auf Chat-Bitten hören, laden dich damit ein und ihre Nutzer kannst du einladen. Die versteckten Nachrichten eines anderen Layer-Addons spricht Amisia nicht. Ungeprüft: ob der Forever-Client Kanalzeilen an Addons gibt und ob Kanal 1 dort Allgemein ist (`/amisia selbsttest layer` listet die Kanäle).
@@ -462,7 +462,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Braucht: Gilde
 - Prüfung: Wenn du als Offizier unter Aufstellung (auch ohne Liste) "Einladen" klickst, "bis Veteran" wählst und "Gilde einladen" klickst, dann fragt Amisia "N Gildenmitglieder bis Rang Veteran einladen?" und lädt nach "Einladen" einen nach dem anderen ein; die Liste zeigt sie mit "eingeladen" und "über Gilde einladen".
 - Prüfung: Wenn du unter Einstellungen, Raid-Aufstellung "Stichwörter zum Einladen" auf "raid, komm" setzt, "Einladen auf Flüstern" anschaltest und dir ein Gildenmitglied "komm" flüstert, dann wird es eingeladen; "inv" lädt dann nicht mehr ein.
-- Prüfung: Wenn du unter Einstellungen, Gruppeneinladungen "Einladungen von Gilde und Freunden annehmen" anschaltest und dich ein Gildenmitglied einlädt, dann bist du ohne Klick in der Gruppe, das Fenster des Spiels ist zu, und im Chat steht "Einladung von <Name> angenommen (Gilde)."; die Einladung eines Fremden fragt das Spiel wie immer.
+- Prüfung: Wenn du unter Einstellungen, Gilde, Einladungen und Online-Meldung "Einladungen von Gilde und Freunden annehmen" anschaltest und dich ein Gildenmitglied einlädt, dann bist du ohne Klick in der Gruppe, das Fenster des Spiels ist zu, und im Chat steht "Einladung von <Name> angenommen (Gilde)."; die Einladung eines Fremden fragt das Spiel wie immer.
 - Notiz: Spec docs/specs/2026-11-10-einladen-gilde.md; DECISIONS D-93. "Gilde einladen" nutzt dieselben Grenzen wie "Alle einladen": einer alle 0,5 Sekunden, Raid nach dem ersten Beitritt, 3 Einladungen pro Name und Abend, nur heute, nie im Kampf, nur als Leiter oder Assistent.
 
 ### F-213 Gruppen-Notiz im Dungeon
@@ -925,14 +925,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du auf der Seite Karte oben links neben der Ansicht "Einstellungen" klickst, dann zeigen die Einstellungen nur "Karte und Wegpunkt", oben "Zurück zu Karte"; der Knopf bringt dich zur Karte zurück.
 - Prüfung: Wenn du in einem Abschnitt etwas änderst und oben "Zurücksetzen" klickst, dann fragt Amisia nach und setzt nur diesen Abschnitt auf den Standard; der Abschnitt trägt vorher in der Liste den goldenen Punkt.
 - Prüfung: Wenn du unter Allgemein, Oberfläche "Alle Einstellungen zurücksetzen" klickst und bestätigst, dann meldet der Chat "N Einstellungen auf den Standard gesetzt.", und deine Raids und Listen sind noch da.
-- Prüfung: Wenn du als Raider (Ansicht "Raider") die Einstellungen öffnest, dann fehlen die Offiziersabschnitte, und auf einer Seite ohne eigene Einstellungen (z. B. Talente) fehlt der Knopf; die Einstellungen der Seite Rolls zeigen auch Raidern "Wer braucht das?" und "Loot-Prio".
+- Prüfung: Wenn du als Raider (Ansicht "Raider") die Einstellungen öffnest, dann fehlen die Offiziersabschnitte, und auf einer Seite ohne eigene Einstellungen (z. B. Mitglieder) fehlt der Knopf; die Einstellungen der Seite Rolls zeigen auch Raidern "Wer braucht das?" und "Loot-Prio".
 - Notiz: Spec `docs/specs/2026-10-13-dungeons-einstellungen.md`, Teil B, D-49.
 
-### F-200 Einstellungen: Reiter in der Seitenleiste alphabetisch
+### F-200 Einstellungen: Reiter in der Seitenleiste wie im Hauptfenster
 - Version: 2.85.0
 - Status: gebaut
-- Prüfung: Wenn du Einstellungen öffnest, dann stehen darunter Allgemein, Ausrüstung, Berufe, Dungeons & Raids, Gilde, Raid in dieser Reihenfolge (englischer Client: Dungeons & Raids, Gear, General, Guild, Professions, Raid), und ohne gemerkten Abschnitt ist der erste Abschnitt von Allgemein offen.
-- Notiz: Nur die Liste unter Einstellungen; die Reiter oben im Fenster bleiben, wie sie sind. Ohne Spec (kleine Änderung).
+- Prüfung: Wenn du Einstellungen öffnest, dann stehen darunter Ausrüstung, Dungeons & Raids, Berufe, Talente, Raid, Gilde, Allgemein in dieser Reihenfolge, wie die Reiter oben im Fenster (ohne ein Modul fehlt sein Reiter); Gildenaufträge stehen unter Berufe, Werkzeuge, Einladungen und Online-Meldung, Layer: Helfen und Layer: Anzeige unter Gilde, Gilden-Warteschlange und Duelle am Ende von Gilde, Drop-Daten und Quellen-Sammler unter Allgemein.
+- Prüfung: Wenn du auf den Seiten Talente, Ausrüstungsplaner, Werkzeuge oder Übersicht auf das Zahnrad oben rechts klickst, dann zeigen die Einstellungen "Talente" (Größe des Talentfensters), "Ausrüstung und Wünsche", "Drop-Daten" und "Werkzeuge" bzw. "Raid-Anmeldung" mit den anderen Abschnitten der Seite.
+- Prüfung: Wenn du in den Fenstern Layer, Gilden-Warteschlange, Würfeln, Raid-Notiz (entsperrt) oder Lauf-Zeiten auf den Link "Einstellungen" klickst oder auf der Dungeon-Leiste den Namen mit der rechten Maustaste, dann öffnet das Amisia-Fenster den Abschnitt dieses Fensters.
+- Prüfung: Wenn du im Amisia-Fenster oben "Ton" suchst, dann stehen die Treffer als "Abschnitt: Einstellung", z. B. "Gilden-Warteschlange: Ton, wenn jemand aus der Gilde in meine Warteschlange kommt".
+- Notiz: 2.85.0 sortierte die Reiter alphabetisch; seit D-166 (unveröffentlicht) in der Reihenfolge des Hauptfensters, Allgemein zuletzt, mit neu geordneten Abschnitten. Ohne Spec (Auswahl des Nutzers aus einem Paket "besser zu finden").
 
 ## Addon: Raid und Loot
 
@@ -1969,7 +1972,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Status: gebaut
 - Prüfung: Wenn du auf der Seite Talente unten rechts "Talentrechner" klickst (oder `/amisia talente gross` eingibst, oder den Reiter mit dem Bogenschützen-Symbol rechts am Amisia-Fenster), dann öffnet sich das Fenster "Talentrechner" mit denselben drei Bäumen, größer (44-px-Symbole), mit Klasse, Stufe, Talentiert, Punkten, "Eigene laden", "Alles zurücksetzen", Code und dem Hinweis "Linksklick: +1 · Rechtsklick: -1 · Shift: alle Ränge"; kein Knopf und kein Rangschild berührt den Rand seines Baums.
 - Prüfung: Wenn du im Fenster ein Talent anklickst, dann zeigt die Seite Talente denselben Rang und dieselben Punkte (und umgekehrt); der Reiter am Amisia-Fenster ist markiert, solange das Fenster offen ist.
-- Prüfung: Wenn du Strg gedrückt hältst und über dem Fenster das Mausrad drehst, dann wird es in 5-%-Schritten größer oder kleiner (zwischen 70 und 150 %), und unter Einstellungen, Oberfläche steht derselbe Wert bei "Größe des Talentfensters (%)"; der Schieber dort ändert die Größe sofort.
+- Prüfung: Wenn du Strg gedrückt hältst und über dem Fenster das Mausrad drehst, dann wird es in 5-%-Schritten größer oder kleiner (zwischen 70 und 150 %), und unter Einstellungen, Talente steht derselbe Wert bei "Größe des Talentfensters (%)"; der Schieber dort ändert die Größe sofort.
 - Prüfung: Wenn du das Fenster verschiebst und `/reload` machst, dann öffnet es sich an derselben Stelle; "Fensterposition zurücksetzen" (Einstellungen, Oberfläche) setzt es in die Bildschirmmitte, Escape schließt es.
 - Notiz: Wunsch des Nutzers 2026-10-10 ("können wir das fenster wo die talente sind größer machen oder besser skalieren") mit Bildschirmfoto von 2.19.0.
 

@@ -196,9 +196,12 @@ local function build()
         onDragStop = function(f) W.SaveWindowPlace(f, state("layerWindow")) end,
         -- its row in the side bar of the tab Gilde lights while it is open (D-68)
         onVisibility = function() if ns.UpdateSideTabs then ns.UpdateSideTabs() end end })
-    F.head = W.Text(F, T.FONT.head, S.W - 2 * S.PAD)
+    F.head = W.Text(F, T.FONT.head, S.W - 2 * S.PAD - S.SET_W)
     F.head:SetText(L["Dein Layer"])
     F.head:SetPoint("TOPLEFT", S.PAD, -S.TOP)
+    -- the way to its switches (D-166): the section "Layer: Helfen"
+    F.settings = W.SettingsLink(F, "layer")
+    F.settings:SetPoint("RIGHT", F, "TOPRIGHT", -S.PAD, -(S.TOP + S.HEAD_H / 2))
     F.value = W.Text(F, T.FONT.big, S.W - 2 * S.PAD)
     F.value:SetPoint("TOPLEFT", S.PAD, -(S.TOP + S.HEAD_H))
     F.sub = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD)
@@ -243,7 +246,7 @@ local function build()
         SW.SetHosting(not SW.Hosting())
         LW.Refresh()
     end)
-    W.Tooltip(F.host, L["Helfen"], L["An: Amisia beantwortet Layer-Fragen und lädt Fragende ein, wie unter Einstellungen, Gilde, Layer eingestellt. Aus: Amisia antwortet niemandem und lädt niemanden ein, bis du es wieder anschaltest oder dich neu einloggst; über /reload bleibt es aus."])
+    W.Tooltip(F.host, L["Helfen"], L["An: Amisia beantwortet Layer-Fragen und lädt Fragende ein, wie unter \"Einstellungen\" oben rechts eingestellt. Aus: Amisia antwortet niemandem und lädt niemanden ein, bis du es wieder anschaltest oder dich neu einloggst; über /reload bleibt es aus."])
     F.hostInfo = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD, true)
     F.hostInfo:SetJustifyV("TOP")
     F.helped = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD, true)
@@ -326,7 +329,7 @@ function LW.HostText(on, helping, pause, refresh, why)
     end
     if why then return L["Helfen pausiert: %s."]:format(why) end
     if helping == false then return L["Helfen an, gerade pausiert (im Kampf oder in der Gruppensuche)."] end
-    return L["Helfen an: Amisia lädt Fragende ein, wie unter Einstellungen, Gilde, Layer eingestellt. Aus gilt bis zum Ausloggen."]
+    return L["Helfen an: Amisia lädt Fragende ein, wie unter \"Einstellungen\" oben rechts eingestellt. Aus gilt bis zum Ausloggen."]
 end
 
 -- The grey line of the zone search, nil without one.
@@ -603,7 +606,7 @@ local function hideBar()
     if mini then mini:Hide() end
     if ns.Get("layer.bar") ~= false then
         ns.Set("layer.bar", false)
-        ns.msg(L["Leiste Layer ausgeblendet; Einstellungen, Layer: \"Leiste zeigen\" bringt sie zurück."])
+        ns.msg(L["Leiste Layer ausgeblendet; Einstellungen, Layer: Anzeige, \"Leiste zeigen\" bringt sie zurück."])
     end
 end
 
@@ -661,7 +664,7 @@ local function buildMini()
     x:SetSize(S.MINI_X, S.MINI_X)
     x:SetPoint("RIGHT", -S.MINI_X_R, 0)
     x:SetScript("OnClick", function() hideBar() end)
-    W.Tooltip(x, L["Schließen"], L["Blendet die Leiste aus; \"Leiste zeigen\" unter Einstellungen, Layer bringt sie zurück."])
+    W.Tooltip(x, L["Schließen"], L["Blendet die Leiste aus; \"Leiste zeigen\" unter Einstellungen, Layer: Anzeige bringt sie zurück."])
     W.Tooltip(bar, L["Layer"], L["Klick: das Fenster Layer öffnen oder schließen. Rechtsklick: die Leiste ausblenden. Rechtsklick auf das Symbol: die Layer dieser Zone. Ziehen: die Leiste verschieben."])
     bar.close = x
     local acc = 0

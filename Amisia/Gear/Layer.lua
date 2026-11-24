@@ -801,13 +801,17 @@ loadSeen()
 ns.OnEvent("ADDON_LOADED", function(name) if name == ns.ADDON then loadSeen() end end)
 LY._loadSeen = loadSeen   -- for the tests: a /reload
 
-ns.RegisterSettings{ key = "layer", label = L["Layer"], order = 62, group = "guild", forever = true, items = {
-    { key = "layer.chip", type = "toggle", label = L["Layer-Chip zeigen"], default = false,
-      tip = L["Ein kleiner Kasten mit deinem Layer (\"Layer B\") bleibt auf dem Bildschirm; ziehen verschiebt ihn, ein Klick öffnet das Fenster Layer. Nicht in Instanzen."] },
+-- Two sections (D-166): what Amisia does for others and for you ("Layer: Helfen"), and what stands on the
+-- screen ("Layer: Anzeige"); the keys stay layer.*.
+ns.RegisterSettings{ key = "layer", label = L["Layer: Helfen"], order = 65, group = "guild", forever = true, items = {
     { key = "layer.answer", type = "toggle", label = L["Layer-Anfragen der Gilde beantworten"], default = true,
       tip = L["Fragt ein Gildenmitglied mit Amisia nach einem anderen Layer und bist du in derselben Zone auf einem anderen, sagt dein Amisia ihm leise deinen Layer. Nichts geht in den Chat."] },
     { key = "layer.chat", type = "toggle", label = L["Auch auf Chat-Anfragen aus der Gilde reagieren"], default = true,
       tip = L["Schreibt ein Gildenmitglied eine kurze Bitte wie \"inv layer\" in den Gildenchat oder flüstert sie dir (so fragen andere Layer-Addons), behandelt Amisia sie wie eine Bitte aus Amisia: dieselbe Frage oder Einladung, dieselben Grenzen. Nur wenn die Gildenliste dieselbe Zone nennt, lädt Amisia ohne Frage ein. Öffentliche Kanäle liest Amisia nur mit \"Auch Spielern außerhalb der Gilde helfen\"."] },
+    { key = "layer.autoInvite", type = "toggle", label = L["Ohne Frage einladen"], default = true,
+      tip = L["Bittet dich ein Spieler mit Amisia, den du beantwortet hast (aus der Gilde oder der Zone), um eine Einladung auf deinen Layer, lädt Amisia ihn sofort ein. Aus: Amisia fragt dich erst. Nie in Instanzen, höchstens sechs Einladungen in zehn Minuten."] },
+    { key = "layer.autoAccept", type = "toggle", label = L["Einladung des Gefragten annehmen"], default = true,
+      tip = L["Hast du ein Gildenmitglied um eine Einladung auf seinen Layer gebeten, nimmt Amisia genau seine Einladung an (eine Minute lang); nach \"Im Gildenchat fragen\" die Einladung eines Gildenmitglieds, nach \"Im Kanal fragen\" die nächste Einladung, egal von wem. Jede andere Einladung fragt das Spiel wie immer."] },
     { key = "layer.others", type = "toggle", label = L["Auch Spielern außerhalb der Gilde helfen"], default = false,
       tip = L["Spieler außerhalb der Gilde bekommen nur damit Hilfe: ihre Bitten über Amisia und über das andere Layer-Addon in deiner Zone, und kurze Bitten wie \"inv layer\" per Flüstern oder in einem Kanal, in dem du bist. Amisia fragt dich dann, ob du einladen willst. Dieselben Grenzen wie in der Gilde: nie in Instanzen, höchstens sechs Einladungen in zehn Minuten, höchstens eine Frage alle fünf Sekunden."] },
     { key = "layer.othersAuto", type = "toggle", label = L["Fremde ohne Frage einladen"], default = false,
@@ -818,10 +822,6 @@ ns.RegisterSettings{ key = "layer", label = L["Layer"], order = 62, group = "gui
       tip = L["Diese Zeile öffnen \"Im Gildenchat fragen\" und \"Im Kanal fragen\" im Chat, du schickst sie mit Enter ab. Stell sie auf das, worauf die Layer-Addons der anderen hören."] },
     { key = "layer.channel", type = "slider", label = L["Kanal für \"Im Kanal fragen\""], default = 1, min = 1, max = 10,
       tip = L["Die Nummer des Chatkanals, in den \"Im Kanal fragen\" deine Bitte schreibt. 1 ist meist Allgemein, der Kanal deiner Zone."] },
-    { key = "layer.autoInvite", type = "toggle", label = L["Ohne Frage einladen"], default = true,
-      tip = L["Bittet dich ein Spieler mit Amisia, den du beantwortet hast (aus der Gilde oder der Zone), um eine Einladung auf deinen Layer, lädt Amisia ihn sofort ein. Aus: Amisia fragt dich erst. Nie in Instanzen, höchstens sechs Einladungen in zehn Minuten."] },
-    { key = "layer.autoAccept", type = "toggle", label = L["Einladung des Gefragten annehmen"], default = true,
-      tip = L["Hast du ein Gildenmitglied um eine Einladung auf seinen Layer gebeten, nimmt Amisia genau seine Einladung an (eine Minute lang); nach \"Im Gildenchat fragen\" die Einladung eines Gildenmitglieds, nach \"Im Kanal fragen\" die nächste Einladung, egal von wem. Jede andere Einladung fragt das Spiel wie immer."] },
     { key = "layer.leaveSeconds", type = "slider", label = L["Verlassen nach Sekunden"], default = 4, min = 3, max = 120,
       tip = L["So lange nach dem Beitritt verlässt Amisia die Gruppe eines Helfers, der auf deine Frage geantwortet hat, sobald das Spiel dich bewegt hat; kommt der Wechsel später, so lange danach. Hat er dich nicht bewegt, verlässt Amisia sie gleich."] },
     { key = "layer.combatPause", type = "toggle", label = L["Helfen im Kampf pausieren"], default = true,
@@ -835,6 +835,11 @@ ns.RegisterSettings{ key = "layer", label = L["Layer"], order = 62, group = "gui
       tip = L["Helfen lädt niemanden ein, der näher als die eingestellten Meter bei dir steht (er wäre wohl auf deinem Layer). Nennt eine Bitte keine Position, lädt Amisia dann nicht ein."] },
     { key = "layer.skipNearYards", type = "slider", label = L["Nähe in Metern"], default = 150, min = 50, max = 200, step = 10,
       tip = L["So nah muss ein Fragender stehen, damit \"Fragende in der Nähe überspringen\" ihn auslässt."] },
+}}
+
+ns.RegisterSettings{ key = "layerview", label = L["Layer: Anzeige"], order = 66, group = "guild", forever = true, items = {
+    { key = "layer.chip", type = "toggle", label = L["Layer-Chip zeigen"], default = false,
+      tip = L["Ein kleiner Kasten mit deinem Layer (\"Layer B\") bleibt auf dem Bildschirm; ziehen verschiebt ihn, ein Klick öffnet das Fenster Layer. Nicht in Instanzen."] },
     -- F-221: the bar of its own, from the start
     { key = "layer.bar", type = "toggle", label = L["Leiste zeigen"], default = true,
       tip = L["Eine kleine Leiste mit deinem Layer und darunter dem Stand (Helfen, Frage, Neustart) bleibt auf dem Bildschirm, auch ohne das Fenster. Klick: das Fenster Layer. Rechtsklick auf das Symbol: die Layer der Zone. Rechtsklick sonst: ausblenden."] },

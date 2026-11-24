@@ -76,7 +76,7 @@ end
 
 ns.OnEvent("PARTY_INVITE_REQUEST", function(name) GA.Request(name) end)
 
-ns.RegisterSettings{ key = "invites", label = L["Gruppeneinladungen"], order = 15, group = "raid", items = {
+ns.RegisterSettings{ key = "invites", label = L["Einladungen und Online-Meldung"], order = 62, group = "guild", items = {
     { key = "invites.accept", type = "toggle", label = L["Einladungen von Gilde und Freunden annehmen"], default = false,
       tip = L["Lädt dich ein Mitglied deiner Gilde oder jemand von deiner Freundesliste in eine Gruppe ein, nimmt Amisia sofort an und sagt es in deinem Chat. Einladungen von anderen fragt das Spiel wie immer."] },
     -- F-197: the link behind "ist jetzt online" (Raid/OnlineInvite.lua)

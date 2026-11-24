@@ -5,6 +5,16 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(settings): switches are easier to find (F-200)
+
+    The tabs under Settings follow the main window's tabs (Gear, Dungeons & Raids, Professions, Talents, Raid,
+    Guild, General last) instead of A to Z. Sections moved to the tab you look in: guild orders under Professions;
+    tools, "Invites and online notices", "Layer: helping" and "Layer: display" under Guild, the guild queue and
+    duels at its end; drop data and the source collector under General. The talents, planner, tools and overview
+    pages got their gear button, and the talent window size has its own section "Talents". The layer, guild queue,
+    roll, raid note and run timer windows got a "Settings" link (the dungeon bar: right-click its name), long
+    sections start with their main switch, and a search hit for a setting reads "setting · Section".
+
 - fix(sync): the "Sync" switch stops only the raid sync (F-025)
 
     "Sync raid state with other Amisia clients" off used to stop every addon message: sign-ups, the guild's
@@ -20,7 +30,8 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 - fix(talents): the talent window size shows only with the Talents module (F-081)
 
-    "Talent window size (%)" under Interface is hidden while the Talents module is off, where it did nothing.
+    "Talent window size (%)" stands in the Talents module's own section "Talents" and is gone while the module is
+    off, where it did nothing.
 
 - fix(loot): quality names of the loot announcement (F-018)
 
