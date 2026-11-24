@@ -1401,8 +1401,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 
 ## Addon: Gilde
 ### F-233 Berufe der Gilde: Übersicht, Material-Suche, Rezept-Wunsch
-- Version: -
-- Status: geplant
+- Version: 2.107.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn du Berufe öffnest und kein Beruf gewählt ist, dann zeigt jede Kachel unter "Alle Berufe" die Zeile der Gilde mit Mitgliedern, Höchstrang und "Rezepte in der Gilde: N von M".
 - Prüfung: Wenn du einen Beruf mit "Gilde: Kann niemand" filterst, dann bleiben nur Rezepte, die kein Gildenmitglied mit Amisia kann, und "N von M Rezepten" stimmt mit der Kachel überein.
@@ -1412,8 +1412,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-23-gilde-berufe-uebersicht.md (freigegeben 2026-11-23).
 
 ### F-232 Berufs-Abklingzeiten (eigene Charaktere und Gilde)
-- Version: -
-- Status: geplant
+- Version: 2.107.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn du ein Rezept mit Abklingzeit herstellst (z. B. eine Transmutation), dann zeigt Berufe > Abklingzeiten bei deinem Charakter "Transmutation" mit der Restzeit des Spiels (auf eine Minute genau).
 - Prüfung: Wenn du dich mit einem Twink einloggst, dann steht unter "Deine Charaktere" auch dein anderer Charakter mit seinem gespeicherten Stand, und ist er bereit, nennt ihn die Login-Zeile.
@@ -1423,8 +1423,8 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-11-23-berufs-abklingzeiten.md (freigegeben 2026-11-23).
 
 ### F-231 Gildenaufträge
-- Version: -
-- Status: geplant
+- Version: 2.107.0
+- Status: gebaut
 - Braucht: Gilde
 - Prüfung: Wenn du auf Berufe bei einem Rezept "Auftrag stellen" klickst und den Auftrag stellst, dann steht er im Reiter "Aufträge" unter "Meine Aufträge" als "offen".
 - Prüfung: Wenn ein Gildenmitglied mit Amisia einen Auftrag für ein Rezept stellt, das du kannst, dann steht im Chat "Gildenauftrag von <Name>: ..." und der Auftrag unter "Für mich herstellbar".
