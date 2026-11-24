@@ -1810,7 +1810,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Wunsch des Nutzers 2026-11-05 ("können wir die quest besser markieren und die map direkt öffen wo man hin muss für die dungoen quest"; Antworten: Klick öffnet die Karte, Status mit Spiel-Symbolen). Vorbild war der Knopf "Karte" je Quest und Questschritt einer anderen Forever-Erweiterung (nur die Idee). Das graue "!" und "?" sind die gelben Symbole abgedunkelt.
 - Notiz: 2.54.2: in einer Instanz, im Kampf und in der Kampfsperre öffnet der Klick die Karte nicht und setzt keinen Spiel-Wegpunkt (Fehler "tainted by 'Amisia'" im Objective Tracker, DECISIONS D-62).
 - Notiz: 2.54.1: Questgeber-Pins nur noch als gelbes "!" ohne grünen Rahmen und Ring (Bildschirmfoto des Nutzers: das Karten-Symbol "QuestNormal" ist auf Forever eine Raute).
-- Notiz: Unreleased: "Erledigte ausblenden" (Einstellung `quests.hideDone`, aus) lässt erledigte Quests aus der Liste und aus `/amisia dungeon quests` weg; gezählt wird weiter über alle (Zustimmung des Nutzers 2026-11-24 zu einer Idee aus dem wöchentlichen Blick auf eine andere Erweiterung, nur die Idee). Die Dungeon-Leiste zeigt ohnehin nur offene Quests.
+- Notiz: 2.107.1: "Erledigte ausblenden" (Einstellung `quests.hideDone`, aus) lässt erledigte Quests aus der Liste und aus `/amisia dungeon quests` weg; gezählt wird weiter über alle (Zustimmung des Nutzers 2026-11-24 zu einer Idee aus dem wöchentlichen Blick auf eine andere Erweiterung, nur die Idee). Die Dungeon-Leiste zeigt ohnehin nur offene Quests.
 
 ### F-135 Questweg für Dungeon-Quests
 - Version: 2.55.0
