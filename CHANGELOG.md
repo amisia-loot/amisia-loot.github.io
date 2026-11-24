@@ -5,6 +5,17 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(ui): every feature can be reached by clicks, commands are shortcuts (F-234)
+
+    "Still to hand over" comes back with the link "1 to hand over" on the Awards page and its overview card. The
+    guild queue window opens from the Guild tab's side bar and the minimap menu (with how many of the guild wait).
+    Raiders get an overview card "My raid check" in a raid group or with a sign-up for tonight. The minimap menu
+    brings back a closed dungeon bar and, while you lead or assist, has the pull and break timer; a dungeon's page
+    shows "Show the bar". An item in the main window's search opens a menu: map target, add to the wishlist, link in
+    chat (Shift-click still links). Wishlist rows have "Note ...", the run timer window has "Cancel the run", the
+    settings have "Show a test round" (roll window) and "Forget remembered names" (soft-reserves), and Professions >
+    More has a Scrolls card for every class. Chat lines now name where to click instead of a command.
+
 - feat(professions): guild orders and cooldowns in the side bar and the overview (F-231)
 
     The page Professions lists "Orders" (with the open orders you can craft) and "Cooldowns" in its side bar

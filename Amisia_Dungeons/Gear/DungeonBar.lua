@@ -18,8 +18,9 @@
 -- D-106) the bar names the client's instance and lists the bosses and quests of all of them until the
 -- first kill tells which one the character is in; from then on that one, with its own name.
 -- The lists are the bar's own small panel (AmisiaDungeonBarList) under it, closed by a second click,
--- Escape and leaving the instance. The close circle hides the bar until the next entry or
--- `/amisia leiste`. A view on other modules: no data of its own, nothing sent. A plain frame without
+-- Escape and leaving the instance. The close circle hides the bar until the next entry, "Dungeon-Leiste
+-- zeigen" in the minimap menu, "Leiste zeigen" on the page Dungeons or `/amisia leiste`. A view on other
+-- modules: no data of its own, nothing sent. A plain frame without
 -- protected calls, built the first time it shows (also in a fight after a /reload). Its place in
 -- settings.dungeonBar, reset by "Fensterposition zurücksetzen".
 -- With another addon loaded that shows a dungeon's bosses and run time itself (DBar.OtherAddon, F-205,
@@ -679,6 +680,23 @@ function DBar.Shown() return bar ~= nil and bar:IsShown() and key or nil end
 function DBar.Close()
     override = { entry = R.entry, show = false }
     DBar.Update()
+    -- the page Dungeons offers "Leiste zeigen" now
+    if ns.CurrentPage and ns.CurrentPage() == "dungeons" and ns.Refresh then ns.Refresh() end
+end
+
+-- Whether a click can bring the bar back: inside a dungeon the facts know and the bar not shown (closed
+-- by its circle, or the setting off). The minimap menu and the page Dungeons offer "zeigen" then.
+function DBar.CanShow()
+    return DBar.Here() ~= nil and DBar.Shown() == nil
+end
+
+-- "Dungeon-Leiste zeigen" (minimap menu, page Dungeons): shows the bar for this entry, as `/amisia leiste`.
+function DBar.Show()
+    if not DBar.Here() then return false end
+    override = { entry = R.entry, show = true }
+    DBar.Update()
+    if ns.Refresh then ns.Refresh() end
+    return DBar.Shown() ~= nil
 end
 
 -- `/amisia leiste`: shows or hides the bar now; outside an instance the facts know it says so.

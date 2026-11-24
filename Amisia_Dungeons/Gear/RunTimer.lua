@@ -12,7 +12,8 @@
 -- (DungeonData.lua rares), stepped back, crossed out once seen dead in this run; a dungeon without rare
 -- data has no such row. "Gold" shows numbers with the client's coin icons. At the bottom the result
 -- ("Neue Bestzeit! -0:40", "Erste gemessene Zeit", "+1:40 zur Bestzeit", "Nicht beendet") and the link
--- "Alle Zeiten" (the part Zeiten of the page). Many bosses wrap into rows (W.Grid); the window grows.
+-- "Alle Zeiten" (the part Zeiten of the page); while the clock runs "Lauf abbrechen" in the result's place
+-- (a question first, then RT.Stop). Many bosses wrap into rows (W.Grid); the window grows.
 -- It opens by itself when a clock starts (the settings runtimes.window and, in a raid, runtimes.raids;
 -- not with another addon that shows the time, ns.DungeonBar.Yield, F-205), stays while the clock runs
 -- (a ghost outside too), shows the result until the character leaves the instance and closes when a
@@ -208,6 +209,18 @@ local function build()
     W.Tooltip(F.all, L["Alle Zeiten##Lauf"], L["Bestzeit, Zeiten je Boss und die letzten Läufe dieser Instanz auf ihrer Seite."])
     -- the way to its switches (D-166): the section "Lauf-Zeiten", under "Alle Zeiten"
     F.settings = W.SettingsLink(F, "runtimes")
+    -- while the clock runs: stop it after a question (as `/amisia zeiten stop`); the run counts as not ended
+    F.stop = W.Link(F, L["Lauf abbrechen"], function()
+        W.Confirm(L["Lauf abbrechen"], L["Die Uhr anhalten? Der Lauf zählt als nicht beendet und wird keine Bestzeit."],
+            L["Anhalten"], function()
+                if RT.Stop() then
+                    ns.msg(L["Uhr angehalten: der Lauf zählt als nicht beendet."])
+                    TW.Hide()
+                end
+            end)
+    end)
+    W.Tooltip(F.stop, L["Lauf abbrechen"], L["Hält die Uhr dieses Laufs an, ohne Bestzeit. Auch: /amisia zeiten stop"])
+    F.stop:Hide()
     F.bosses, F.rares = {}, {}
     local acc = 0
     F:SetScript("OnUpdate", ns.Perf.Wrap("OnUpdate RunTimer", function(_, elapsed)
@@ -363,6 +376,10 @@ local function refresh()
     F.all:SetPoint("TOPRIGHT", -(S.PAD + S.GRIP_ROOM), y)   -- clear of the grip in the corner
     F.settings:ClearAllPoints()
     F.settings:SetPoint("TOPRIGHT", -(S.PAD + S.GRIP_ROOM), y - T.CHIP_H)
+    -- in the result's place (empty while the clock runs)
+    F.stop:ClearAllPoints()
+    F.stop:SetPoint("TOPLEFT", S.PAD - T.TAB_PAD, y)
+    F.stop:SetShown(mode == "live")
     F:SetHeight(-y + T.CHIP_H + S.BOTTOM_H)
     TW.mode = mode
 end

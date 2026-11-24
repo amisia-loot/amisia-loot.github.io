@@ -571,7 +571,7 @@ local function take(c)
     lastTaken[c.by] = now()
     ns.Fire("RAIDNOTE", "cur")
     if ns.Get("raidnote.chat") then
-        ns.msg(L["Raid-Notiz von %s (%d Zeilen). /amisia notiz zeigt sie."]:format(c.by, lineCount(c.text)))
+        ns.msg(L["Raid-Notiz von %s (%d Zeilen). Minimap-Menü > Raid-Notiz zeigt sie."]:format(c.by, lineCount(c.text)))
     end
     if ns.Get("raidnote.autoShow") and RN.Window and not RN.Window.Shown() then
         if InCombatLockdown() then pendingShow = true else RN.Window.Show() end
@@ -651,7 +651,7 @@ local function takeParty(c)
     stats.taken = stats.taken + 1
     ns.Fire("RAIDNOTE", "party")
     if ns.Get("raidnote.chat") then
-        ns.msg(L["Gruppen-Notiz von %s (%d Zeilen). /amisia notiz zeigt sie."]:format(c.by, lineCount(c.text)))
+        ns.msg(L["Gruppen-Notiz von %s (%d Zeilen). Minimap-Menü > Raid-Notiz zeigt sie."]:format(c.by, lineCount(c.text)))
     end
     if ns.Get("raidnote.autoShow") and RN.Window and not RN.Window.Shown() then
         if InCombatLockdown() then pendingShow = true else RN.Window.Show() end

@@ -236,6 +236,6 @@ C(VULO, [[for _, e in ipairs(AmisiaDB.feedback.inbox) do e.new = nil end
 BUS.reload(VULO)
 C(VULO, [[STUB.faction = "Horde"; STUB.fire("PLAYER_LOGIN")]])
 BUS.tick(21)
-assert(said(VULO, "Amisia:|r 2 neue Meldungen (1 Bug, 1 Wunsch). /amisia feedback"))
+assert(said(VULO, "Amisia:|r 2 neue Meldungen (1 Bug, 1 Wunsch). Seite Feedback."))
 C(VULO, [[NS.Dispatch("feedback")]])
 assert(C(VULO, "NS.CurrentPage()") == "feedback", "/amisia feedback opens the page")

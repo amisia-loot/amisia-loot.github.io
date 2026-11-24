@@ -38,6 +38,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Andere Zeilen innerhalb eines Eintrags sind ein Fehler (der Test nennt die Zeile).
 
 ## Addon: Grundlagen
+### F-234 Alles mit Klicks erreichbar: Befehle sind nur Abkürzungen
+- Version: 2.109.0
+- Status: gebaut
+- Prüfung: Wenn ein vergebenes Item noch in deinen Taschen liegt und du auf Vergaben "Zu den Vergaben" klickst, dann steht oben "1 zu übergeben" als Link, und ein Klick darauf zeigt wieder "Noch zu übergeben" (auch der zweite Link der Karte "Vergaben" auf der Übersicht).
+- Prüfung: Wenn du in einer Gilde bist und unter Gilde "Gilden-Warteschlange" anklickst (oder im Minimap-Menü), dann öffnet sich das Fenster auch ohne eigene Warteschlange; der Tooltip im Minimap-Menü nennt, wie viele aus der Gilde warten.
+- Prüfung: Wenn du als Raider in einer Raidgruppe die Übersicht öffnest, dann zeigt die Karte "Mein Raid-Check" Fläschchen, Essen, Haltbarkeit und leere oder unverzauberte Plätze; die Maus darauf zeigt die ganze Zeile mit deinen Raid-IDs.
+- Prüfung: Wenn du in einem Dungeon die Dungeon-Leiste mit dem Kreis schließt, dann holt sie "Dungeon-Leiste zeigen" im Minimap-Menü oder "Leiste zeigen" auf der Seite des Dungeons zurück; "Lauf abbrechen" im Fenster "Lauf-Zeiten" hält die Uhr nach einer Rückfrage an.
+- Prüfung: Wenn du in der Suche oben links ein Item anklickst, dann öffnet sich ein Menü mit "Als Ziel auf der Karte", "Auf die Wunschliste" und "Link in den Chat"; auf der Wunschliste setzt "Notiz ..." im Rechtsklick-Menü eine Notiz; Einstellungen > Würfel-Fenster "Probe-Runde zeigen" öffnet eine Proberunde.
+- Notiz: DECISIONS D-167. Gebaut 2026-11-24 nach einer Prüfung aller Befehle ("will nicht für alles einen Befehl eingeben, will alles einfach und schnell finden"): Pull- und Pause-Timer im Minimap-Menü als Leiter oder Assistent, Karte "Schriftrollen" unter Berufe > Weiteres (Forever, jede Klasse), "Gemerkte Namen vergessen" unter Einstellungen > Soft-Reserves; Chatzeilen nennen den Klickweg statt des Befehls. Die Befehle bleiben.
+
 ### F-230 Eigene Gewichte, Einfügen und Vorlagen aus der Simulation
 - Version: 2.106.0
 - Status: gebaut

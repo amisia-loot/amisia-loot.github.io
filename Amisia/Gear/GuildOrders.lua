@@ -533,7 +533,7 @@ local function crafterLine(sender, id, e)
     told[key] = true
     chatTimes[#chatTimes + 1] = t
     local m = member(sender)
-    ns.msg(L["Gildenauftrag von %s: %s. /amisia auftraege"]:format(ns.ClassColored(sender, m and m.class), GO.What(e)))
+    ns.msg(L["Gildenauftrag von %s: %s. Seite Berufe > Aufträge."]:format(ns.ClassColored(sender, m and m.class), GO.What(e)))
 end
 
 local function countOpen(orders)

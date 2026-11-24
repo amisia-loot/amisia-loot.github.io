@@ -133,7 +133,7 @@ STUB.messages = {}
 recv("OA", "Anna Amboss", "GUILD", "a001", "1", "2330", "3", "B", "O", "-", "7200", "zahle 5g", "118")
 local a = heard("Anna Amboss", "a001")
 assert(a and a.n == 3 and a.mats == "B" and a.state == "O" and a.note == "zahle 5g" and a.item == 118 and a.at == math.floor(time()) - 7200)
-assert(has(msgs(), "Gildenauftrag von ") and has(msgs(), "Anna Amboss") and has(msgs(), "3x ") and has(msgs(), "/amisia auftraege"),
+assert(has(msgs(), "Gildenauftrag von ") and has(msgs(), "Anna Amboss") and has(msgs(), "3x ") and has(msgs(), "Seite Berufe > Aufträge."),
     "the crafter's chat line: " .. msgs())
 local function bad(what, ...)
     recv("OA", "Bob Hammer", "GUILD", ...)

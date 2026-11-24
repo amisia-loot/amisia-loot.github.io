@@ -687,7 +687,7 @@ summary = function()
     end
     if bugs + wishes == 0 then return end
     told = true
-    ns.msg(L["%d neue Meldungen (%d Bug, %d Wunsch). /amisia feedback"]:format(bugs + wishes, bugs, wishes))
+    ns.msg(L["%d neue Meldungen (%d Bug, %d Wunsch). Seite Feedback."]:format(bugs + wishes, bugs, wishes))
 end
 
 ns.OnEvent("PLAYER_LOGIN", function()

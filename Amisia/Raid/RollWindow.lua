@@ -924,6 +924,11 @@ ns.RegisterSettings{ key = "rollwin", label = L["Würfel-Fenster"], order = 21, 
           ns.ResetRollWindowPosition()
           ns.msg(L["Würfel-Fenster: Position zurückgesetzt."])
       end, tip = L["Setzt das Würfel-Fenster an seinen Standardplatz zurück."] },
+    { key = "rollwin.test", type = "button", label = L["Probe-Runde zeigen"],
+      run = function()
+          ns.RollWindowTest(nil, "R")
+          ns.msg(L["Probe-Runde nur bei dir: nichts wird gesendet. Mainspec und Offspec würfeln wirklich (allein sieht das nur dein Chat)."])
+      end, tip = L["Zeigt das Würfel-Fenster mit einem Item zur Probe, nur bei dir: nichts wird gesendet. Auch: /amisia wuerfeln test"] },
 }}
 
 ns.RegisterSlash("wuerfeln", { en = "rolltest", args = L["[test [Item-Link] [dkp|bedarf]|an|aus]"],   -- l10n-ok: the German command word
@@ -938,7 +943,7 @@ ns.RegisterSlash("wuerfeln", { en = "rolltest", args = L["[test [Item-Link] [dkp
             ns.msg(L["Würfel-Fenster an."])
         elseif sub == "aus" or sub == "off" then -- l10n-ok: typed sub-words
             ns.Set("rollwin.enabled", false)
-            ns.msg(L["Würfel-Fenster aus. Runden der Lootleitung zeigen kein Fenster mehr; /amisia wuerfeln an schaltet es wieder ein."])
+            ns.msg(L["Würfel-Fenster aus. Runden der Lootleitung zeigen kein Fenster mehr; Einstellungen, Würfel-Fenster schaltet es wieder ein."])
         elseif sub == "test" then -- l10n-ok: typed sub-word
             local art = "R"
             for w in (tail or ""):gmatch("%S+") do

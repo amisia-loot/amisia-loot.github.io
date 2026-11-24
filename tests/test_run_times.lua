@@ -2,7 +2,7 @@
 -- the first fight of a fresh run inside the instance (entering alone starts nothing, a run with a kill
 -- or a clock before neither), each boss of the list stores its split, the last boss of the game's order
 -- finishes it; best total and the fastest segment per boss only from finished runs; a reset, 30 minutes
--- outside or `/amisia zeiten stop` end it "nicht beendet"; the history cap; the cleanup on load; the
+-- outside, "Lauf abbrechen" in the window (D-167) or `/amisia zeiten stop` end it "nicht beendet"; the history cap; the cleanup on load; the
 -- window's lines and colours, the settings, the slash command, the chat line; the part Zeiten.
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function said(part)
@@ -122,6 +122,19 @@ resetInside()
 R.Mark("thanes", 1, true)
 fight()
 assert(RT.Live() == nil, "a boss already died in this run")
+resetInside()
+fight()
+-- the click path (D-167): "Lauf abbrechen" in the window while the clock runs, after a question
+assert(W:IsShown() and W.stop:IsShown(), "the window offers Lauf abbrechen while the clock runs")
+W.stop:Click()
+assert(AmisiaConfirmFrame:IsShown() and RT.Live() ~= nil, "a question first")
+AmisiaConfirmFrame.cancel:Click()
+assert(RT.Live() ~= nil, "Abbrechen keeps the clock")
+STUB.messages = {}
+W.stop:Click()
+AmisiaConfirmFrame.ok:Click()
+assert(said("Uhr angehalten") and RT.Live() == nil and not W:IsShown(), "stopped by the click, the window closed")
+STUB.tick(5)
 resetInside()
 fight()
 STUB.messages = {}

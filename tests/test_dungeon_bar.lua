@@ -3,7 +3,8 @@
 -- Bosse, Quests, Zeit, Route each only with something to show; the lists under the bar (ticks, the
 -- next boss, the quests' marks, the ready ones in green, the route's stops) and their clicks, closed by
 -- a second click, Escape and leaving; moving and the saved place, the common reset; the close circle
--- until the next entry; the settings (raids off by default, the four segments); /amisia leiste.
+-- until the next entry and the click paths back (minimap menu, the page's link, D-167); the settings (raids off
+-- by default, the four segments); /amisia leiste.
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function plain(t) return (tostring(t or ""):gsub("|T.-|t", ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")) end
 local function said(part)
@@ -226,6 +227,24 @@ NS.Dispatch("leiste")
 assert(not bar:IsShown(), "and hides it again")
 enter(OUT); enter(THANES)
 assert(bar:IsShown(), "the next entry shows it")
+-- the click paths back (D-167): "Dungeon-Leiste zeigen" in the minimap menu, "Leiste zeigen" on the page
+local function mmEntry()
+    for _, e in ipairs(NS.MinimapMenuEntries()) do if e[1] == "Dungeon-Leiste zeigen" then return e end end
+end
+assert(not DBar.CanShow() and not mmEntry(), "shown: nothing to bring back")
+bar.close:Click()
+assert(DBar.CanShow() and mmEntry(), "closed: the minimap menu offers it")
+mmEntry()[2]()
+assert(bar:IsShown() and not mmEntry(), "the minimap entry shows it")
+bar.close:Click()
+NS.ShowDungeon("thanes")
+local page = NS.PageFrame("dungeons")
+assert(page.barLink:IsShown(), "the page's detail offers Leiste zeigen")
+page.barLink:Click()
+assert(bar:IsShown() and not page.barLink:IsShown(), "the link shows it and goes")
+enter(OUT)
+assert(not DBar.CanShow() and not mmEntry(), "outside: no entry")
+enter(THANES)
 
 ---------------------------------------------------------------------------
 -- the settings: the segments, the bar itself, raids

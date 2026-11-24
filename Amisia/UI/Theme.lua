@@ -722,7 +722,8 @@ T.PROFPAGE = {
     MARK_ICONS = { overview = { file = "Interface\\GossipFrame\\TrainerGossipIcon" },
         camp = { file = "Interface\\GossipFrame\\BinderGossipIcon" }, favor = { atlas = "coin-gold" },
         orders = { file = "Interface\\GossipFrame\\PetitionGossipIcon" },
-        cooldowns = { file = "Interface\\Icons\\INV_Misc_PocketWatch_01" } },
+        cooldowns = { file = "Interface\\Icons\\INV_Misc_PocketWatch_01" },
+        scrolls = { file = "Interface\\Icons\\INV_Scroll_03" } },
 }
 
 -- the page Duelle (tab PvP, F-106): three lists on the page's 590 px. The history: two lines per row

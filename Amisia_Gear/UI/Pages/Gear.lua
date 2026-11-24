@@ -436,6 +436,8 @@ local function menuEntries(e, o)
     local place = rec and Gear.PlaceOf(rec)
     if place then out[#out + 1] = { L["Ort ausschließen"], function() say(ns.BisExclude("place", place)) end } end
     if e.wished then
+        out[#out + 1] = { L["Notiz ..."], function() lift(StaticPopup_Show("AMISIA_WISH_NOTE", nil, nil, id)) end,
+            tip = L["Eine kurze Notiz zu diesem Wunsch (steht auch auf der Website)."] }
         out[#out + 1] = { L["Von der Wunschliste nehmen"], function() ns.WishRemove(id) end }
     else
         out[#out + 1] = { L["Auf die Wunschliste"], function() say(ns.WishAdd(id)) end }
@@ -948,7 +950,7 @@ local function fillWish(V)
         V.clean:SetEnabled(owned)
     end
     if #list == 0 then
-        V.hint:SetText(L["Noch keine Wünsche. Wunsch-Knopf in Ziele oder Hier, oder /amisia wunsch <Item-Link>."])
+        V.hint:SetText(L["Noch keine Wünsche. Wunsch-Knopf in Ziele oder Hier, oder ein Item in der Suche oben links anklicken."])
     else
         V.hint:SetText(L["%d von %d Wünschen. Ein Klick auf die Priorität ändert sie."]:format(#list, ns.BIS_MAX_WISH or 50))
     end
@@ -1226,6 +1228,41 @@ ns.GearPageKit = {
     OWNED_TEXT = OWNED_TEXT,
     nameMissing = K.nameMissing,
     namesFresh = K.namesFresh,
+}
+
+-- The note of a wish (the wish list's row menu "Notiz ..."): the box shows the note, Enter or "Speichern"
+-- keeps it (as `/amisia wunsch <Link> <Notiz>`), an empty box clears it.
+local function noteBox(d) return (d.GetEditBox and d:GetEditBox()) or d.editBox or d.EditBox end
+local function saveWishNote(d, id)
+    local box = noteBox(d)
+    if box and id then ns.WishAdd(id, nil, box:GetText() or "") end
+end
+StaticPopupDialogs["AMISIA_WISH_NOTE"] = {
+    text = L["Notiz zum Wunsch:"],
+    button1 = L["Speichern"],
+    button2 = L["Abbrechen"],
+    hasEditBox = true,
+    maxLetters = ns.BIS_NOTE_MAX or 40,
+    OnShow = function(self, id)
+        local c = ns.BisChar and ns.BisChar()
+        local e = c and id and c.wish[id]
+        local box = noteBox(self)
+        if box then
+            box:SetText(e and e.note or "")
+            box:SetFocus()
+        end
+    end,
+    OnAccept = function(self, id) saveWishNote(self, id) end,
+    EditBoxOnEnterPressed = function(box, id)
+        local d = box:GetParent()
+        saveWishNote(d, id)
+        d:Hide()
+    end,
+    EditBoxOnEscapePressed = function(box) box:GetParent():Hide() end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
 }
 
 StaticPopupDialogs["AMISIA_BIS_CLEAR_EX"] = {

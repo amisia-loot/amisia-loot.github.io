@@ -1367,6 +1367,15 @@ ns.RegisterSettings{ key = "softres", label = L["Soft-Reserves"], order = 27, gr
       tip = L["Nach dem Übernehmen sagt eine Zeile im Raidchat, wie viele reserviert haben und wie man mit '!sr' fragt; die Hard-Reserves folgen mit ihren Items."] },
     { key = "softres.remindText", type = "text", label = L["Zusatz in der Erinnerung"], default = "", officer = true,
       tip = L["Z. B. Link zur Liste."], validate = cleanRemindText },
+    { key = "softres.forget", type = "button", label = L["Gemerkte Namen vergessen"], officer = true,
+      run = function()
+          ns.W.Confirm(L["Gemerkte Namen vergessen"], L["Alle gemerkten Namenskorrekturen der Soft-Reserve-Listen vergessen? Die geladene Liste bleibt, wie sie ist."],
+              L["Vergessen"], function()
+                  local n = ns.ForgetSoftResAliases()
+                  ns.msg(n > 0 and L["%d gemerkte Namenskorrekturen vergessen. Die geladene Liste bleibt, wie sie ist."]:format(n)
+                      or L["Keine gemerkten Namenskorrekturen."])
+              end)
+      end, tip = L["Vergisst nach einer Rückfrage, welche Namen einer Liste du welchem Raider zugeordnet hast. Auch: /amisia sr vergessen [Name]"] },
 }}
 -- Forgets the remembered name fixes (AmisiaDB.srAliases): all of them, or the ones of name (as
 -- written in a list or as fixed). The loaded list stays as it is. Returns the number forgotten.

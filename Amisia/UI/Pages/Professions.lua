@@ -1444,6 +1444,14 @@ local function overviewSections()
             open = function() openView(COOLDOWNS) end,
             tip = L["Klick: die Abklingzeiten deiner Charaktere und der Gilde."] }
     end
+    -- the mages' scrolls (Forever, UI/Pages/MageScrolls.lua): the page is in the side bar for mages only,
+    -- this card opens it for everyone (whoever finds a scroll can see where they go)
+    if ns.MageScrolls and ns.MageScrolls.Available() and ns.ShowMageScrolls then
+        more[#more + 1] = { icon = MARKS.scrolls, name = L["Schriftrollen"],
+            sub = L["Schriftrollen der Magier und wo du sie findest"],
+            open = function() ns.ShowMageScrolls() end,
+            tip = L["Klick: die Schriftrollen der Magier, was sie geben und wo du sie findest."] }
+    end
     local secs = { { title = L["Deine Berufe"], cards = own, none = L["Noch kein Beruf erlernt."] },
         { title = L["Alle Berufe"], cards = all, guild = gp ~= nil } }
     if #more > 0 then secs[#secs + 1] = { title = L["Weiteres"], cards = more, wide = true } end

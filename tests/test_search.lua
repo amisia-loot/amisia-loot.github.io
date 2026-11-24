@@ -144,12 +144,25 @@ assert(NS.CurrentPage() == "stats", NS.CurrentPage())
 local sp = NS.PageFrame("stats")
 local first = sp.detail.fs:GetText():match("^[^\n]*")
 assert(has(first, "Kimtaro"), "Statistik with Kimtaro chosen: " .. tostring(first))
--- an item hit puts its link into the chat line
+-- an item hit opens a menu (D-167: map target, wish list, link); "Link in den Chat" puts its link into the
+-- chat line, Shift-click at once
 type_("cursed")
 for i, it in ipairs(F.results.items) do
     if it.item == 32235 then F.results.rows[i]:Click() break end
 end
+assert(AmisiaMenu and AmisiaMenu:IsShown() and STUB.inserted == nil, "a click opens the item's menu")
+for _, b in ipairs(AmisiaMenu.buttons) do
+    if b:IsShown() and b.label:GetText() == "Link in den Chat" then b:Click() end
+end
 assert(STUB.inserted == LINK, "the link into the chat line")
+STUB.inserted = nil
+type_("cursed")
+STUB.shift = true
+for i, it in ipairs(F.results.items) do
+    if it.item == 32235 then F.results.rows[i]:Click() break end
+end
+STUB.shift = nil
+assert(STUB.inserted == LINK, "Shift-click: the link at once")
 -- the clear button empties the box too
 type_("raid")
 box.clearButton:Click()

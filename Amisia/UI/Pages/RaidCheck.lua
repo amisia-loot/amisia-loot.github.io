@@ -6,6 +6,9 @@
 -- locked or unknown, grouped by main, filters "nur frei" and "nur Stufe 60". "Prüfen" asks the raid
 -- (XQ), "Im Raid-Chat sagen" (raidcheck.chat) says what is missing, "Raid-IDs abfragen" asks the
 -- guild (IQ). The logic lives in Raid/RaidCheck.lua and Raid/RaidIDs.lua; this page only shows it.
+-- Raiders (no page) have the overview card "Mein Raid-Check" in a raid group or with a sign-up for tonight:
+-- the own flask, food, durability, empty and unenchanted slots, free talent points; the tooltip and
+-- "Im Chat zeigen" the whole line of /amisia raidcheck with the own raid IDs.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -390,6 +393,57 @@ end
 ns.RegisterPanel{ key = "raidcheck", label = L["Raid-Check"], sub = L["Fläschchen, Buffs, Ausrüstung und Raid-IDs der Gruppe."], icon = "Interface\\Icons\\INV_Potion_97", order = 16, group = "raid",
     officer = true, available = function() return ns.RaidCheckAllowed() end,
     create = build, refresh = refresh }
+
+---------------------------------------------------------------------------
+-- The raider's card "Mein Raid-Check" on the overview: what the officers' page shows of him (RC.Own),
+-- for whoever has no page Raid-Check, in a raid group or with a sign-up for tonight
+---------------------------------------------------------------------------
+local function signedTonight()
+    local rec = ns.SignupOf and ns.NightOf and ns.SignupOf()[ns.NightOf(time())]
+    return rec ~= nil and rec.s ~= "X"
+end
+
+-- The own raid check as the chat lines of /amisia raidcheck (a raider's).
+local function ownLines()
+    local out = { ns.RaidCheck.OwnLine() }
+    for _, line in ipairs(ns.RaidIDsOwnLines and ns.RaidIDsOwnLines() or {}) do out[#out + 1] = line end
+    return out
+end
+
+function ns.RaidCheckCardAvailable()
+    if ns.RaidCheckAllowed() then return false end
+    return IsInRaid() or signedTonight()
+end
+
+ns.RegisterCard{ key = "raidcheckOwn", order = 12, available = function() return ns.RaidCheckCardAvailable() end, fill = function(c)
+    local RC = ns.RaidCheck
+    c.title:SetText(L["Mein Raid-Check"])
+    local o = RC.Own()
+    local parts = {}
+    if o.cons then
+        parts[#parts + 1] = o.cons.flask and L["Fläschchen ja"] or (T.ORANGE .. L["Fläschchen fehlt"] .. "|r")
+        parts[#parts + 1] = o.cons.food and L["Essen ja"] or (T.ORANGE .. L["Essen fehlt"] .. "|r")
+    end
+    local dur = o.dur and ("%d %%"):format(o.dur) or "-"
+    if o.dur and o.dur < (ns.Get("raidcheck.durability") or 30) then dur = T.RED .. dur .. "|r" end
+    parts[#parts + 1] = L["Haltbarkeit %s"]:format(dur)
+    c.line1:SetText(table.concat(parts, " · "))
+    local more = {}
+    -- counts only (the slots' names would wrap past the card's two lines); the names in the tooltip
+    if #o.empty > 0 then more[#more + 1] = L["%d leer"]:format(#o.empty) end
+    if #o.unench > 0 then more[#more + 1] = L["%d unverzaubert"]:format(#o.unench) end
+    if o.free and o.free > 0 then more[#more + 1] = L["freie Talentpunkte %s"]:format(tostring(o.free)) end
+    c.line2:SetText(#more > 0 and table.concat(more, " · ") or L["Keine leeren oder unverzauberten Plätze, keine freien Talentpunkte."])
+    if c.line2.SetMaxLines then c.line2:SetMaxLines(2) end
+    c.tip = function()
+        local tip = { L["Mein Raid-Check"] }
+        for _, line in ipairs(ownLines()) do tip[#tip + 1] = line end
+        return tip
+    end
+    c:SetAction(L["Im Chat zeigen"], function()
+        for _, line in ipairs(ownLines()) do ns.msg(line) end
+    end)
+end }
 
 local function again()
     if ns.CurrentPage and ns.CurrentPage() == "raidcheck" and ns.Refresh then ns.Refresh() end

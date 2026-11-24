@@ -155,7 +155,7 @@ NS.Dispatch("wish nonsense")
 assert(has(msgs(), "Usage: /amisia wish <item link> [high|medium|low] [note]"), msgs())
 STUB.messages = {}
 NS.Dispatch("bis exclude " .. LINKS[301])
-assert(has(msgs(), "excluded. /amisia bis reset lifts all exclusions."), msgs())
+assert(has(msgs(), "excluded. \"reset\" on the Gear page lifts all exclusions."), msgs())
 STUB.messages = {}
 NS.Dispatch("bis reset")
 assert(has(msgs(), "1 exclusion lifted."), msgs())

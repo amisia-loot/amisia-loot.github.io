@@ -106,7 +106,12 @@ local H = NS.PageFrame("awards").handover
 assert(H.list.rows[1]:IsShown() and has(H.list.rows[1].to:GetText(), "Anna Bergmann") and has(H.list.rows[1].left:GetText(), "1:12 h"))
 H.back:Click()
 assert(not NS.PageFrame("awards").handover:IsShown() and NS.PageFrame("awards").officer:IsShown(), "put away")
-assert(has(NS.PageFrame("awards").officer.head:GetText(), "1 zu übergeben"), NS.PageFrame("awards").officer.head:GetText())
+-- the count is a link in front of the head's counts that brings the list back (D-167)
+local O = NS.PageFrame("awards").officer
+assert(O.handover:IsShown() and O.handover:GetText() == "1 zu übergeben", tostring(O.handover:GetText()))
+O.handover:Click()
+assert(NS.PageFrame("awards").handover:IsShown(), "the link opens the list")
+H.back:Click()
 
 -- master loot straight to the receiver (a loot line): that copy never was in these bags
 local a2 = NS.AddAwardTo(s, { name = "Fraktur", item = 30000, kind = "MS", src = "Illidan Stormrage" })

@@ -1,6 +1,8 @@
 -- Amisia minimap button and addon compartment entry: left click opens the Amisia window, right click
 -- a quick menu with the window's tabs (each opens its pages in the same menu), the window "Layer"
--- (Forever), the settings and the recording switch. Drag the button around the minimap; Alt + drag
+-- (Forever), the target window, the raid note, the guild queue (in a guild), the dungeon bar (in a
+-- dungeon while closed), the pull and break timer (leading or assisting a group), the settings and the
+-- recording switch. Drag the button around the minimap; Alt + drag
 -- places it anywhere on the screen (F-195, D-125: settings.minimap.x/y, the centre in the button's own
 -- scale from the screen's bottom left; a plain drag puts it back on the edge); /amisia minimap hides
 -- or shows it.
@@ -76,6 +78,23 @@ function ns.MinimapMenuEntries(group)
     if ns.RaidNote and ns.RaidNote.Window then
         e[#e + 1] = { L["Raid-Notiz"], function() ns.RaidNote.Window.Toggle() end, tipTitle = L["Raid-Notiz"],
             tip = L["Das Fenster mit den Cooldowns und Einteilungen der Raidleitung."] }
+    end
+    -- F-227: the window "Gilden-Warteschlange" in a guild, also without an own queue; the tooltip counts
+    -- the members in a queue now
+    if ns.GuildQueue and IsInGuild() then
+        local n = ns.GuildQueue.Count()
+        e[#e + 1] = { L["Gilden-Warteschlange"], function() ns.GuildQueue.Toggle() end, tipTitle = L["Gilden-Warteschlange"],
+            tip = n > 0 and L["%d aus der Gilde warten gerade auf ein Schlachtfeld."]:format(n)
+                or L["Gerade wartet niemand aus der Gilde (mit Amisia) auf ein Schlachtfeld."] }
+    end
+    -- F-168: the dungeon bar while inside a dungeon it knows and the bar is closed (module Dungeons & Raids)
+    if ns.DungeonBar and ns.DungeonBar.CanShow and ns.DungeonBar.CanShow() then
+        e[#e + 1] = { L["Dungeon-Leiste zeigen"], function() ns.DungeonBar.Show() end, tipTitle = L["Dungeon-Leiste"],
+            tip = L["Holt die geschlossene Leiste mit Bossen, Quests, Zeit und Route dieses Dungeons zurück."] }
+    end
+    -- F-164: the pull and the break timer while leading or assisting a group (as the main window's status menu)
+    if ns.PullTimer and IsInGroup() and ns.PullTimer.Mode() and ns.PullTimerMenu then
+        for _, pe in ipairs(ns.PullTimerMenu()) do e[#e + 1] = pe end
     end
     e[#e + 1] = { L["Einstellungen"], function() ns.ShowPage("settings") end }
     -- the raid recording's switch
@@ -218,7 +237,7 @@ end
 
 ns.RegisterSlash("minimap", { desc = L["Minimap-Button ein- oder ausblenden"], run = function()
     ns.Set("ui.minimap", not ns.Get("ui.minimap"))
-    ns.msg(ns.Get("ui.minimap") and L["Minimap-Button eingeblendet."] or L["Minimap-Button ausgeblendet. /amisia minimap holt ihn zurück."])
+    ns.msg(ns.Get("ui.minimap") and L["Minimap-Button eingeblendet."] or L["Minimap-Button ausgeblendet. Einstellungen > Oberfläche > Minimap-Button holt ihn zurück."])
 end })
 
 -- The addon compartment (the addon menu at the minimap) calls these by name, from the TOC.

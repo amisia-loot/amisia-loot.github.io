@@ -36,6 +36,7 @@ ns.RegisterPanel{ key = "overview", label = L["Übersicht"], sub = L["Was gerade
                 -- this slot starts unlimited again
                 if c.line2.SetMaxLines then c.line2:SetMaxLines(0) end
                 c:SetAction(nil)
+                c.tip = nil
                 local ok, err = pcall(spec.fill, c)
                 if not ok then
                     c.title:SetText(spec.key)

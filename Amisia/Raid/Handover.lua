@@ -852,7 +852,7 @@ local function verify(tr)
                 any = true
             elseif x.c.to then
                 local view = { item = item, a = x.c.a or { to = "player" }, to = x.c.to, copy = {} }
-                ns.msg(ORANGE .. L["%s ging an %s, vergeben ist es an %s. Vergabe ändern? Seite Vergaben (/amisia vergaben)."]:format(
+                ns.msg(ORANGE .. L["%s ging an %s, vergeben ist es an %s. Vergabe ändern? Seite Raid > Vergaben."]:format(
                     itemLink(view), tr.partner, toText(view)) .. "|r")
             end
         end

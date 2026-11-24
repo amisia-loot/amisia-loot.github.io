@@ -3,7 +3,7 @@
 -- "Rezepte" (every recipe of the profession data by the client's spell name), "Dungeons", "Items",
 -- "Spieler", "Befehle"; pages and settings sections also by their keywords (PAGE_WORDS,
 -- SECTION_WORDS: "dkp" finds the page Punkte). UI/MainFrame.lua shows the hits in place of the page list and
--- runs a hit's action on a click. Kept fast: nothing at all under T.MAIN.SEARCH_MIN characters,
+-- runs a hit's action on a click; an item hit opens a menu (Search.ItemMenu: map target, wish list, link). Kept fast: nothing at all under T.MAIN.SEARCH_MIN characters,
 -- items only once the gear data is built or from 3 characters on (only then may the gear data be
 -- built), the indexes of items and players built once and kept for a while, at most RES_MAX hits per
 -- group. Item names come only from what the client already holds (AmisiaDB.itemNames and cached
@@ -78,6 +78,28 @@ local function linkToChat(id)
     if CU and CU.OpenChat then CU.OpenChat(link) end
 end
 
+-- What a click on an item hit offers (a menu, UI/MainFrame.lua): a map target to its source (module Dungeons
+-- & Raids with the map data, as `/amisia karte <Link>`), the wish list (module Ausrüstung, as `/amisia wunsch
+-- <Link>`) and the link into the chat line; Shift-click puts the link in at once.
+function Search.ItemMenu(id)
+    local out = {}
+    if ns.MapSetTarget and ns.HasData and ns.HasData("MAP") then
+        out[#out + 1] = { L["Als Ziel auf der Karte"], function()
+            local ok, why = ns.MapSetTarget(id)
+            if not ok and why then ns.msg(why) end
+        end, tip = L["Setzt das Ziel und den Pfeil zum nächsten Ort, an dem es das Item gibt."] }
+    end
+    if ns.WishAdd and ns.Gear and ns.Gear.Available() then
+        out[#out + 1] = { L["Auf die Wunschliste"], function()
+            local e, why = ns.WishAdd(id)
+            local _, link = itemInfo(id)
+            if e then ns.msg(L["%s steht auf deiner Wunschliste."]:format(link or ("Item " .. id))) elseif why then ns.msg(why) end
+        end }
+    end
+    out[#out + 1] = { L["Link in den Chat"], function() linkToChat(id) end }
+    return out
+end
+
 local function itemHits(q)
     local gearBuilt = rawget(ns, "GEAR") ~= nil
     if not gearBuilt and #q < Search.ITEM_MIN then return {} end
@@ -95,7 +117,7 @@ local function itemHits(q)
         local e = found[i]
         local color = e.q and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[e.q]
         out[i] = { text = e.name, label = color and color.hex and (color.hex .. e.name .. "|r") or e.name, item = e.id,
-            run = function() linkToChat(e.id) end }
+            run = function() linkToChat(e.id) end, menu = function() return Search.ItemMenu(e.id) end }
     end
     return out
 end

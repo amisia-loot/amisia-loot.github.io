@@ -267,8 +267,8 @@ local function exportReminder()
     remindedAt = GetTime()
     local n = #ns.PendingExport()
     if n > 0 then
-        msg(n == 1 and L["1 Raid ist noch nicht auf der Website. Seite Export oder /amisia export."]
-            or L["%d Raids sind noch nicht auf der Website. Seite Export oder /amisia export."]:format(n))
+        msg(n == 1 and L["1 Raid ist noch nicht auf der Website. Seite Raid > Export."]
+            or L["%d Raids sind noch nicht auf der Website. Seite Raid > Export."]:format(n))
     end
 end
 
@@ -1061,7 +1061,7 @@ ns.RegisterSlash("status", { desc = L["Stand der Aufnahme und der Gildenbank"], 
         msg(L["Aufnahme: %s, %d Raider%s%s."]:format(active.zone, ns.MemberCount(active),
             late > 0 and L[", %d zu spät"]:format(late) or "", mats))
     else
-        msg(ns.IsEnabled() and L["Keine Aufnahme. Sie startet in einer Raidinstanz mit Raidgruppe."] or L["Aufnahme pausiert. /amisia pause setzt sie fort."])
+        msg(ns.IsEnabled() and L["Keine Aufnahme. Sie startet in einer Raidinstanz mit Raidgruppe."] or L["Aufnahme pausiert. Fortsetzen im Minimap-Menü oder am Pfeil der Statuszeile des Amisia-Fensters."])
     end
     -- the guild bank only while materials are tracked
     if not ns.HasMats() then return end

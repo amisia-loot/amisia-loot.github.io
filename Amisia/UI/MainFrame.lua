@@ -57,6 +57,11 @@ local SIDE_WINDOWS = {
       tip = L["Dein Layer in dieser Zone und der Wechsel in der Gilde."],
       visible = function() return ns.LayerWindow ~= nil end,
       toggle = function() if ns.LayerWindow then ns.LayerWindow.Toggle() end end },
+    -- F-227: the window "Gilden-Warteschlange" (Raid/GuildQueue.lua), also without an own queue (view only)
+    { key = "bgqueue", label = L["Gilden-Warteschlange"], group = "guild", frame = "AmisiaGuildQueue",
+      tip = L["Wer aus der Gilde gerade auf ein Schlachtfeld wartet."],
+      visible = function() return ns.GuildQueue ~= nil and IsInGuild() and true or false end,
+      toggle = function() if ns.GuildQueue then ns.GuildQueue.Toggle() end end },
 }
 
 -- settings.window: the place (point, rel, x, y), the dragged height (h, H_MIN to H_MAX; nil: HEIGHT)
@@ -791,6 +796,11 @@ local function buildResult(r)
     r:SetScript("OnClick", function(self)
         local hit = self.item
         if not hit or hit.head or not hit.run then return end
+        -- an item hit: a menu of what to do with it (Shift-click: the link into the chat line at once)
+        if hit.menu and not (IsShiftKeyDown and IsShiftKeyDown()) then
+            W.Menu(self, hit.menu())
+            return
+        end
         ns.ClearSearch()
         hit.run()
     end)
@@ -800,6 +810,7 @@ local function buildResult(r)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         if hit.item and GameTooltip.SetItemByID then
             GameTooltip:SetItemByID(hit.item)
+            if hit.menu then GameTooltip:AddLine(L["Klick: Menü · Shift-Klick: Link in den Chat"], 0.56, 0.53, 0.64) end
         else
             GameTooltip:AddLine(hit.text, 1, 0.82, 0)
             if hit.tip then GameTooltip:AddLine(hit.tip, 0.85, 0.85, 0.85, true) end

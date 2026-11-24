@@ -2410,7 +2410,7 @@ local function placeHead(B, mode)
     if B.headView == mode then return end
     B.headView = mode
     if mode == "detail" then
-        B:Place(1, { B.back, B.spec }, {})
+        B:Place(1, { B.back, B.spec }, { B.barLink })
     elseif mode == "journal" then
         B:Place(1, { B.spec }, {})
     else
@@ -2442,6 +2442,11 @@ local function create(parent)
         ns.Refresh()
     end)
     W.Tooltip(B.back, L["Alle Dungeons"], L["Zurück zur Liste aller Dungeons."])
+    -- in the detail, while inside a dungeon whose bar was closed: brings the bar back (DBar.CanShow)
+    B.barLink = W.Link(B, L["Leiste zeigen"], function() if ns.DungeonBar then ns.DungeonBar.Show() end end)
+    W.Tooltip(B.barLink, L["Dungeon-Leiste"], L["Holt die geschlossene Leiste mit Bossen, Quests, Zeit und Route dieses Dungeons zurück."])
+    W.FitChip(B.barLink)
+    B.barLink:Hide()
     B.spec = ns.GearPageKit and ns.GearPageKit.specPicker(B)
     B.next = W.Text(B, T.FONT.title)
     B.why = B:Line(4)
@@ -2744,6 +2749,7 @@ local function refresh(B)
         B.art:Hide()
     end
     placeHead(B, journal and "journal" or detail and "detail" or "start")
+    B.barLink:SetShown(detail and not journal and ns.DungeonBar ~= nil and ns.DungeonBar.CanShow() or false)
     if journal then
         B.pathDungeon = e.key
         B.pathView:Show()

@@ -115,4 +115,11 @@ L["nur Stufe 60"] = "only level 60"
 L["nur frei"] = "only free"
 L["tot"] = "dead"
 L["Amisia %s ohne Raid-Modul: meldet nichts an den Raid-Check, nur Buffs."] = "Amisia %s without the raid module: reports nothing to the raid check, buffs only."
+
+-- UI/Pages/RaidCheck.lua: the card "Mein Raid-Check" (D-167)
+L["Mein Raid-Check"] = "My raid check"
+L["Keine leeren oder unverzauberten Plätze, keine freien Talentpunkte."] = "No empty or unenchanted slots, no free talent points."
+L["Im Chat zeigen"] = "Show in chat"
+L["%d leer"] = "%d empty"
+L["%d unverzaubert"] = "%d unenchanted"
 end)

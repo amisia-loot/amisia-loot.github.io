@@ -1218,7 +1218,7 @@ end
 
 local function statusLine()
     local t = ns.MapTarget()
-    if not t then return L["Kein Ziel gesetzt. /amisia karte <Item-Link> setzt eins."] end
+    if not t then return L["Kein Ziel gesetzt. Ein Item in der Suche oben links anklicken: \"Als Ziel auf der Karte\"."] end
     return (L["Ziel: %s, %s %s."]):format(t.label or "?", zoneName(t.map), Map.Coords(t))
 end
 

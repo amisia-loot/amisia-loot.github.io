@@ -1219,7 +1219,7 @@ L["Geht an %s, sobald es wieder geht."] = "Goes to %s as soon as it can."
 L["Gibt den Auftrag frei; ein anderer Hersteller kann ihn annehmen."] = "Releases the order; another crafter can accept it."
 L["Gildenauftrag"] = "Guild order"
 L["Gildenauftrag gestellt: %s. Er steht unter Berufe > Aufträge."] = "Guild order placed: %s. It is under Professions > Orders."
-L["Gildenauftrag von %s: %s. /amisia auftraege"] = "Guild order from %s: %s. /amisia orders"
+L["Gildenauftrag von %s: %s. Seite Berufe > Aufträge."] = "Guild order from %s: %s. Page Professions > Orders."
 L["Gildenaufträge"] = "Guild orders"
 L["Gildenaufträge für dich: %d"] = "Guild orders for you: %d"
 L["Gildenaufträge sind aus (Einstellungen, Gilde)."] = "Guild orders are off (Settings, Guild)."
@@ -1254,4 +1254,8 @@ L["nach Absprache"] = "to be agreed"
 L["schon angenommen von %s"] = "already accepted by %s"
 L["vom Hersteller"] = "from the crafter"
 L["vor %d Tagen"] = "%d days ago"
+
+-- UI/Pages/Professions.lua: the card Schriftrollen under Weiteres (D-167)
+L["Schriftrollen der Magier und wo du sie findest"] = "The mages' scrolls and where to find them"
+L["Klick: die Schriftrollen der Magier, was sie geben und wo du sie findest."] = "Click: the mages' scrolls, what they give and where you find them."
 end)

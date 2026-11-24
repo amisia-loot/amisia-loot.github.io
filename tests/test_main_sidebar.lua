@@ -119,8 +119,9 @@ STUB.officer = true
 NS.Set("ui.view", "officer")
 NS.ShowTab("guild")
 assert(navAll():match("^members calls calendar bank duels"), navAll())
--- the window "Layer" at the end of the guild tab (F-185, Forever), lit while it is open
-assert(not NS.LayerWindow or navAll():match(" layer$"), navAll())
+-- the window "Layer" at the end of the guild tab (F-185, Forever), lit while it is open; after it the guild
+-- queue in a guild (D-167)
+assert(not NS.LayerWindow or navAll():match(" layer bgqueue$"), navAll())
 if NS.LayerWindow then
     local was = STUB.instance
     STUB.instance = { name = "Elwynn Forest", type = "none", id = 0 }   -- the window is not there in an instance

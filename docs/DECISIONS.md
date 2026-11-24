@@ -4938,3 +4938,31 @@ Item-Anzeige, Oberfläche, dann das Sammeln; die Laufzeit-Verknüpfung unter "Al
 Übersicht), `tests/test_settings_sections.lua` (Nummern eindeutig), `tests/test_talent_window.lua`,
 `tests/test_group_accept.lua`, `tests/test_search.lua`, `tools/tests/test_contracts.py` (Abschnitte in
 ARCHITECTURE.md).
+
+## D-167 Jede Funktion für Spieler hat einen Klickweg; Befehle sind Abkürzungen
+
+**Datum:** 2026-11-24
+**Entscheidung:** Ergänzt D-45, D-49, D-67 und D-166 (F-234). Was ein normaler Spieler tun kann, erreicht er mit der
+Maus: über eine Seite, eine Karte der Übersicht, eine Zeile der Seitenleiste, das Minimap-Menü, einen Link in einem
+Fenster oder einen Knopf in den Einstellungen. `/amisia`-Befehle bleiben als Abkürzung, sind aber nie der einzige Weg.
+Eine Chat- oder Seitenzeile nennt den Klickweg ("Seite Berufe > Aufträge", "Einstellungen, Würfel-Fenster") statt
+des Befehls; nur die Hilfe eines Befehls selbst und Werkzeuge ohne Seite (Scans, Leistung, Selbsttest) nennen ihn.
+Gebaut: "Noch zu übergeben" über den Link "%d zu übergeben" im Kopf der Seite Vergaben und auf ihrer Karte; das
+Fenster "Gilden-Warteschlange" als Zeile am Ende des Reiters Gilde und im Minimap-Menü (in einer Gilde, Tooltip mit
+der Zahl der Wartenden); die Karte "Mein Raid-Check" für Raider ohne die Seite Raid-Check (in einer Raidgruppe oder
+mit Anmeldung für heute; Tooltip und "Im Chat zeigen" mit der ganzen Zeile und den eigenen Raid-IDs); "Dungeon-Leiste
+zeigen" im Minimap-Menü und "Leiste zeigen" im Kopf eines Dungeons, solange die Leiste in einem Dungeon geschlossen
+ist; Pull- und Pause-Timer im Minimap-Menü als Leiter oder Assistent; "Probe-Runde zeigen" (Würfel-Fenster) und
+"Gemerkte Namen vergessen" (Soft-Reserves, mit Rückfrage) als Knöpfe der Einstellungen; ein Item der Suche öffnet ein
+Menü ("Als Ziel auf der Karte" mit dem Modul Dungeons & Raids, "Auf die Wunschliste" mit dem Modul Ausrüstung, "Link
+in den Chat"; Shift-Klick wie bisher der Link); "Notiz ..." im Menü einer Zeile der Wunschliste; die Karte
+"Schriftrollen" unter Berufe > Weiteres für jede Klasse (die Seitenleiste zeigt die Seite weiter nur Magiern und nach
+dem ersten Öffnen: entziffern können nur Magier, finden und weitergeben jeder); "Lauf abbrechen" im Fenster
+"Lauf-Zeiten", solange die Uhr läuft (mit Rückfrage).
+**Grund:** Nutzer 2026-11-24: "will nicht für alles einen Befehl eingeben, will alles einfach und schnell finden".
+Eine Prüfung aller Befehle fand zehn Funktionen, die nur ein Befehl erreichte oder zurückholte.
+**Folge:** Eine neue Funktion bekommt mit ihrem Befehl einen Klickweg; ein Befehl ohne ihn braucht einen Grund
+(Werkzeug, Fehlersuche). Der Kern ruft die Module nur über geprüfte Felder (`ns.DungeonBar`, `ns.MapSetTarget`,
+`ns.WishAdd`). Nicht umgesetzt: ein Befehl aus den Suchtreffern läuft nicht direkt (viele schalten etwas um oder
+brauchen ein Wort), er kommt weiter in die Chatzeile.
+**Durchgesetzt durch:** `tests/test_click_paths.lua`, `tests/test_dungeon_bar.lua`, `tests/test_run_times.lua`.

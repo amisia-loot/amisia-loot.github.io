@@ -840,7 +840,7 @@ function ns.AwardCommand(rest)
     rest = (rest or ""):match("^%s*(.-)%s*$")
     if rest:lower() == "unaward" then
         local a = ns.RemoveLastAward()
-        ns.msg(a and L["Vergabe entfernt: Item %d an %s. /amisia undo holt sie zurück."]:format(a.item, a.name) or L["Keine Vergabe in der laufenden Aufnahme."])
+        ns.msg(a and L["Vergabe entfernt: Item %d an %s. \"Rückgängig\" auf der Seite Vergaben holt sie zurück."]:format(a.item, a.name) or L["Keine Vergabe in der laufenden Aufnahme."])
         return
     end
     if rest == "" and ns.ShowAwardDialog then

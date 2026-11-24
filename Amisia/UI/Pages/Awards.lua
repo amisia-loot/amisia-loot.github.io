@@ -221,7 +221,11 @@ local function buildOfficer(parent)
     O.head = W.Text(O, T.FONT.hint, 330)
     O.sync = W.Text(O, T.FONT.hint, 260)
     O.sync:SetJustifyH("RIGHT")
-    O:Place(2, { O.head }, { O.sync })
+    -- awarded items still in the own bags: a link in front of the counts opens "Noch zu übergeben"
+    O.handover = W.Link(O, "", function() ns.ShowHandover() end)
+    W.Tooltip(O.handover, L["Noch zu übergeben"], L["Vergebene Items, die noch in deinen Taschen liegen, mit ihrer Restzeit."])
+    O.handover:Hide()
+    O:Place(2, { O.handover, O.head }, { O.sync }, { shown = true })
     O.syncHit = CreateFrame("Frame", nil, O)
     O.syncHit:SetSize(260, T.LAYOUT.LINE_H)
     O.syncHit:SetPoint("RIGHT", O.sync, "RIGHT", 0, 0)
@@ -512,7 +516,9 @@ local function fillSync(O, s, all)
     -- rounded up, so the counts never lose their last letter
     local hw = math.min(330, math.ceil(O.head:GetStringWidth() or 0))
     O.head:SetWidth(hw)
-    local w = 590 - hw - 12
+    -- the link "%d zu übergeben" in front of the counts takes its room too
+    local lw = O.handover:IsShown() and ((O.handover:GetWidth() or 0) + T.LAYOUT.ITEM_GAP) or 0
+    local w = 590 - hw - lw - 12
     if all or not s or not ns.SyncStatus then
         O.sync:SetText("")
         O.sync.color = nil
@@ -654,8 +660,12 @@ local function refreshOfficer(O)
     local act = ns.Active()
     local actConflicts = (act and act ~= s and ns.SyncConflicts) and #ns.SyncConflicts(act) or 0
     -- awarded items in the own bags while the page shows the awards: how many, in front
+    -- (a link that opens "Noch zu übergeben")
     local open = ns.HandoverEntries and #ns.HandoverEntries() or 0
-    if open > 0 then table.insert(parts, 1, T.ORANGE .. L["%d zu übergeben"]:format(open) .. "|r") end
+    if open > 0 then O.handover:SetText(L["%d zu übergeben"]:format(open)) end
+    W.FitChip(O.handover)
+    O.handover:SetShown(open > 0)
+    O:Place(2, { O.handover, O.head }, { O.sync }, { shown = true })
     if actConflicts > 0 then
         table.insert(parts, 2, L["|cffe2b857%d %s im laufenden Raid|r"]:format(actConflicts,
             actConflicts == 1 and L["Konflikt"] or L["Konflikte"]))
@@ -824,7 +834,11 @@ local function buildRaider(parent)
     R.allChip = W.Tab(R, L["Alle Vergaben"], function() setRaiderView("all") end)
     W.FitChip(R.mineChip)
     W.FitChip(R.allChip)
-    R:Place(1, { R.title, R.mineChip, R.allChip })
+    -- awarded items still in the own bags: a link at the right opens "Noch zu übergeben"
+    R.handover = W.Link(R, "", function() ns.ShowHandover() end)
+    W.Tooltip(R.handover, L["Noch zu übergeben"], L["Vergebene Items, die noch in deinen Taschen liegen, mit ihrer Restzeit."])
+    R.handover:Hide()
+    R:Place(1, { R.title, R.mineChip, R.allChip }, { R.handover })
     -- "Deine Items": the own loot of every saved raid
     local M = W.Page(R, { view = true, top = R.top })
     R.mine = M
@@ -882,13 +896,18 @@ local function refreshRaider(R)
     R.text:SetText(any and L["Alle Vergaben deines Raids siehst du unter Alle Vergaben, ältere auf der Amisia-Loot-Seite."]
         or L["Vergaben anderer siehst du auf der Amisia-Loot-Seite."])
     local open = ns.HandoverEntries and #ns.HandoverEntries() or 0
-    if open > 0 then R.text:SetText(T.ORANGE .. L["%d Items noch zu übergeben: /amisia uebergabe"]:format(open) .. "|r") end
+    if open > 0 then
+        R.handover:SetText(L["%d zu übergeben"]:format(open))
+        R.text:SetText(T.ORANGE .. L["%d Items noch zu übergeben, der Link oben rechts zeigt sie."]:format(open) .. "|r")
+    end
+    R.handover:SetShown(open > 0)
 end
 
 ---------------------------------------------------------------------------
 -- Noch zu übergeben: awarded items that still lie in the own bags (Handover.lua, D-39), shortest
 -- time first. The page shows this view first while it has entries; "Zu den Vergaben" puts it away
--- until a new entry comes (or /amisia uebergabe).
+-- until a new entry comes, the link "%d zu übergeben" in the page's head, the card's second link or
+-- /amisia uebergabe.
 ---------------------------------------------------------------------------
 local HANDOVER_COLS = { { "itemText", 6, 224, "Item" }, { "to", 234, 150, L["An##Übergabe"] }, { "left", 388, 100, L["Restzeit"] },
     { "by", 492, 92, L["Vergabe von"] } }
@@ -1030,6 +1049,12 @@ ns.Listen("SYNC_STATE", function()
     end)
 end)
 
+-- The card's second link while awarded items still lie in the own bags: opens "Noch zu übergeben".
+local function handoverAction(c)
+    local open = ns.HandoverEntries and #ns.HandoverEntries() or 0
+    if open > 0 then c:SetAction2(L["%d zu übergeben"]:format(open), function() ns.ShowHandover() end) end
+end
+
 ns.RegisterCard{ key = "awards", order = 40, fill = function(c)
     local all = ns.Sessions()
     local last = all[#all]
@@ -1059,6 +1084,7 @@ ns.RegisterCard{ key = "awards", order = 40, fill = function(c)
             end
         end
         c:SetAction(L["Öffnen"], function() ns.ShowPage("awards") end)
+        handoverAction(c)
         return
     end
     local n, bank, de, pending = 0, 0, 0, false
@@ -1081,6 +1107,7 @@ ns.RegisterCard{ key = "awards", order = 40, fill = function(c)
         c.line2:SetText(n == 0 and L["Master Loot hat nichts vergeben."] or "")
     end
     c:SetAction(L["Öffnen"], function() ns.ShowAwards(last.id) end)
+    handoverAction(c)
 end }
 
 ns.RegisterSlash("vergaben", { en = "awards", desc = L["Seite Vergaben öffnen"], run = function() ns.ShowPage("awards") end })

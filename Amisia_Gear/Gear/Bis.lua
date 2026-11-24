@@ -17,6 +17,7 @@ end
 
 local MAX_WISH, NOTE_MAX = 50, 40
 ns.BIS_MAX_WISH = MAX_WISH
+ns.BIS_NOTE_MAX = NOTE_MAX
 local PICK_SPECS = 8          -- own picks (F-112): spec tables kept per character
 -- the rows of the targets (Gear.SLOTS): the keys an own pick may have
 local PICK_SLOT = {}
@@ -2979,7 +2980,7 @@ ns.RegisterSlash("bis", { aliases = { "ziele", "ausruestung" },   -- l10n-ok: co
         elseif sub == "aus" or sub == "exclude" then   -- l10n-ok: command word / internal key
             local ok, why = ns.BisExclude("item", arg)
             if ok then
-                ns.msg(L["%s ausgeschlossen. /amisia bis zurueck hebt alle Ausschlüsse auf."]:format(ns.ItemID(arg) and arg or ("Item " .. arg)))
+                ns.msg(L["%s ausgeschlossen. \"zurücksetzen\" auf der Seite Ausrüstung hebt alle Ausschlüsse auf."]:format(ns.ItemID(arg) and arg or ("Item " .. arg)))
             else
                 ns.msg(why)
             end

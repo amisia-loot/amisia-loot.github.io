@@ -116,7 +116,7 @@ L["Stand der Aufnahme und der Gildenbank"] = "state of the recording and the gui
 L["Aufnahme: %s, %d Raider%s%s."] = "Recording: %s, %d raiders%s%s."
 L[", %d zu spät"] = ", %d late"
 L["Keine Aufnahme. Sie startet in einer Raidinstanz mit Raidgruppe."] = "Not recording. It starts in a raid instance with a raid group."
-L["Aufnahme pausiert. /amisia pause setzt sie fort."] = "Recording paused. /amisia pause resumes it."
+L["Aufnahme pausiert. Fortsetzen im Minimap-Menü oder am Pfeil der Statuszeile des Amisia-Fensters."] = "Recording paused. Resume it in the minimap menu or at the arrow of the Amisia window's status line."
 L["Gildenbank vom %s: %s."] = "Guild bank as of %s: %s."
 L["Gildenbank noch nicht gezählt. Öffne sie einmal."] = "Guild bank not counted yet. Open it once."
 L["den neuesten Raid exportieren"] = "export the latest raid"
@@ -191,7 +191,7 @@ L["Alt + Ziehen"] = "Alt + drag"
 L["Frei verschieben"] = "Move freely"
 L["Minimap-Button ein- oder ausblenden"] = "show or hide the minimap button"
 L["Minimap-Button eingeblendet."] = "Minimap button shown."
-L["Minimap-Button ausgeblendet. /amisia minimap holt ihn zurück."] = "Minimap button hidden. /amisia minimap brings it back."
+L["Minimap-Button ausgeblendet. Einstellungen > Oberfläche > Minimap-Button holt ihn zurück."] = "Minimap button hidden. Settings > Interface > Minimap button brings it back."
 
 -- Core/Names.lua
 L["zeigt, wie Amisia Namen liest"] = "shows how Amisia reads names"
@@ -562,8 +562,8 @@ L["Alle Einstellungen aller Abschnitte auf den Standard setzen? Raids, Listen, W
 -- the export reminder (2.34.0)
 L["An nicht exportierte Raids erinnern"] = "Remind me of raids not exported"
 L["Am Ende einer Aufnahme und wenn mehr Raids bleiben als eingestellt: wie viele Raids die Website noch nicht hat. Aus, wenn ein anderer Offizier exportiert."] = "At the end of a recording and when more raids stay than set: how many raids the site does not have yet. Off when another officer exports."
-L["1 Raid ist noch nicht auf der Website. Seite Export oder /amisia export."] = "1 raid is not on the site yet. Export page or /amisia export."
-L["%d Raids sind noch nicht auf der Website. Seite Export oder /amisia export."] = "%d raids are not on the site yet. Export page or /amisia export."
+L["1 Raid ist noch nicht auf der Website. Seite Raid > Export."] = "1 raid is not on the site yet. Page Raid > Export."
+L["%d Raids sind noch nicht auf der Website. Seite Raid > Export."] = "%d raids are not on the site yet. Page Raid > Export."
 L["%d Raids über \"Raids aufbewahren\" (%d) bleiben, weil die Website sie noch nicht hat. Bitte exportieren (Seite Export)."] = "%d raids over \"Raids to keep\" (%d) stay because the site does not have them yet. Please export (Export page)."
 
 -- UI/Pages/Members.lua
@@ -624,7 +624,7 @@ L["Noch %d Zeichen für die Suche"] = "%d more characters to search"
 L["Nichts gefunden. Items, Rezepte und Befehle ab %d Zeichen."] = "Nothing found. Items, recipes and commands from %d characters."
 
 -- Core/Feedback.lua, UI/Pages/Feedback.lua (F-130)
-L["%d neue Meldungen (%d Bug, %d Wunsch). /amisia feedback"] = "%d new reports (%d bug, %d wish). /amisia feedback"
+L["%d neue Meldungen (%d Bug, %d Wunsch). Seite Feedback."] = "%d new reports (%d bug, %d wish). Feedback page."
 L["%d offen · %d gesamt"] = "%d open · %d in all"
 L["%s von %s"] = "%s from %s"
 L["Abschicken"] = "Send"
@@ -961,4 +961,16 @@ L["Zielfenster"] = "Target window"
 L["Öffnet Amisia auf der Seite Mitglieder: Twinks und Itemlevel der Gilde."] = "Opens Amisia on the Members page: the guild's alts and item levels."
 L["Der Empfänger ist gerade offline gegangen."] = "The recipient just went offline."
 L["Fertig unter älteren Daten: noch einmal scannen."] = "Done with older data: scan again."
+
+-- Click paths (D-167): minimap menu, search, overview card
+L["%d aus der Gilde warten gerade auf ein Schlachtfeld."] = "%d of the guild are waiting for a battleground right now."
+L["Gerade wartet niemand aus der Gilde (mit Amisia) auf ein Schlachtfeld."] = "Nobody of the guild (with Amisia) is waiting for a battleground right now."
+L["Holt die geschlossene Leiste mit Bossen, Quests, Zeit und Route dieses Dungeons zurück."] = "Brings back the closed bar with this dungeon's bosses, quests, time and route."
+L["Wer aus der Gilde gerade auf ein Schlachtfeld wartet."] = "Who of the guild is waiting for a battleground right now."
+L["Als Ziel auf der Karte"] = "Map target"
+L["Setzt das Ziel und den Pfeil zum nächsten Ort, an dem es das Item gibt."] = "Sets the target and the arrow to the nearest place that has the item."
+L["%s steht auf deiner Wunschliste."] = "%s is on your wishlist."
+L["Klick: Menü · Shift-Klick: Link in den Chat"] = "Click: menu · Shift-click: link in chat"
+L["Dungeon-Leiste"] = "Dungeon bar"
+L["Dungeon-Leiste zeigen"] = "Show the dungeon bar"
 end)

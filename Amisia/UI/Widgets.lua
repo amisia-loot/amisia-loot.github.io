@@ -1593,9 +1593,23 @@ function W.Card(parent, width, height)
     c.glow:SetColorTexture(1, 1, 1, C.HOVER_ALPHA)
     c.glow:Hide()
     if c.EnableMouse then c:EnableMouse(true) end
-    c:SetScript("OnEnter", function(self) if self.button:IsShown() then self.glow:Show() end end)
+    -- c.tip: lines of a tooltip over the card ({ title, line, ... } or a function returning them), set by a
+    -- card's fill; the overview clears it before each fill
+    c:SetScript("OnEnter", function(self)
+        if self.button:IsShown() then self.glow:Show() end
+        local tip = type(self.tip) == "function" and self.tip() or self.tip
+        if type(tip) == "table" and tip[1] then
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(tip[1], GOLD[1], GOLD[2], GOLD[3])
+            for i = 2, #tip do GameTooltip:AddLine(tip[i], 0.85, 0.85, 0.85, true) end
+            GameTooltip:Show()
+        end
+    end)
     -- the glow stays while the mouse moves onto the card's own links
-    c:SetScript("OnLeave", function(self) if not self:IsMouseOver() then self.glow:Hide() end end)
+    c:SetScript("OnLeave", function(self)
+        if not self:IsMouseOver() then self.glow:Hide() end
+        if self.tip then GameTooltip:Hide() end
+    end)
     for _, link in ipairs({ c.button, c.button2 }) do
         link:HookScript("OnLeave", function() if not c:IsMouseOver() then c.glow:Hide() end end)
     end
