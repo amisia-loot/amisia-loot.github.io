@@ -935,7 +935,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du auf den Seiten Talente, Ausrüstungsplaner, Werkzeuge oder Übersicht auf das Zahnrad oben rechts klickst, dann zeigen die Einstellungen "Talente" (Größe des Talentfensters), "Ausrüstung und Wünsche", "Drop-Daten" und "Werkzeuge" bzw. "Raid-Anmeldung" mit den anderen Abschnitten der Seite.
 - Prüfung: Wenn du in den Fenstern Layer, Gilden-Warteschlange, Würfeln, Raid-Notiz (entsperrt) oder Lauf-Zeiten auf den Link "Einstellungen" klickst oder auf der Dungeon-Leiste den Namen mit der rechten Maustaste, dann öffnet das Amisia-Fenster den Abschnitt dieses Fensters.
 - Prüfung: Wenn du im Amisia-Fenster oben "Ton" suchst, dann stehen die Treffer als "Abschnitt: Einstellung", z. B. "Gilden-Warteschlange: Ton, wenn jemand aus der Gilde in meine Warteschlange kommt".
-- Notiz: 2.85.0 sortierte die Reiter alphabetisch; seit D-166 (unveröffentlicht) in der Reihenfolge des Hauptfensters, Allgemein zuletzt, mit neu geordneten Abschnitten. Ohne Spec (Auswahl des Nutzers aus einem Paket "besser zu finden").
+- Notiz: 2.85.0 sortierte die Reiter alphabetisch; seit 2.108.0 (D-166) in der Reihenfolge des Hauptfensters, Allgemein zuletzt, mit neu geordneten Abschnitten. Ohne Spec (Auswahl des Nutzers aus einem Paket "besser zu finden").
 
 ## Addon: Raid und Loot
 
