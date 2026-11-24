@@ -929,7 +929,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec `docs/specs/2026-10-13-dungeons-einstellungen.md`, Teil B, D-49.
 
 ### F-200 Einstellungen: Reiter in der Seitenleiste wie im Hauptfenster
-- Version: 2.85.0
+- Version: 2.108.0
 - Status: gebaut
 - Prüfung: Wenn du Einstellungen öffnest, dann stehen darunter Ausrüstung, Dungeons & Raids, Berufe, Talente, Raid, Gilde, Allgemein in dieser Reihenfolge, wie die Reiter oben im Fenster (ohne ein Modul fehlt sein Reiter); Gildenaufträge stehen unter Berufe, Werkzeuge, Einladungen und Online-Meldung, Layer: Helfen und Layer: Anzeige unter Gilde, Gilden-Warteschlange und Duelle am Ende von Gilde, Drop-Daten und Quellen-Sammler unter Allgemein.
 - Prüfung: Wenn du auf den Seiten Talente, Ausrüstungsplaner, Werkzeuge oder Übersicht auf das Zahnrad oben rechts klickst, dann zeigen die Einstellungen "Talente" (Größe des Talentfensters), "Ausrüstung und Wünsche", "Drop-Daten" und "Werkzeuge" bzw. "Raid-Anmeldung" mit den anderen Abschnitten der Seite.
