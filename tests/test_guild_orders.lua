@@ -331,7 +331,7 @@ assert(o.own[id3] == nil, "a closed one goes after 3 days")
 ---------------------------------------------------------------------------
 local now = math.floor(time())
 local function entry(x)
-    local e = { rev = 1, spell = 2330, n = 1, mats = "B", state = "O", at = now, changed = now }
+    local e = { owner = "Vulo Sturmwind", rev = 1, spell = 2330, n = 1, mats = "B", state = "O", at = now, changed = now }
     for k, v in pairs(x or {}) do e[k] = v end
     return e
 end
@@ -340,7 +340,8 @@ local root = { orders = { v = 1, own = {
         ["xyz1"] = entry(), ["0004"] = entry({ state = "T" }), ["0005"] = entry({ state = "T", by = "Bob Hammer", note = "a|b" }),
         ["0006"] = entry({ state = "X", changed = now - 4 * 86400 }), ["0007"] = entry({ state = "X", by = "Bad1" }),
         ["0008"] = entry({ at = now - 10 }), ["0009"] = entry({ at = now - 20 }), ["000a"] = entry({ at = now - 30 }),
-        ["000b"] = entry({ at = now - 40 }), ["000c"] = entry({ rev = 0 }) },
+        ["000b"] = entry({ at = now - 40 }), ["000c"] = entry({ rev = 0 }), ["000d"] = entry({ owner = false }),
+        ["0010"] = entry({ owner = "Vulo Twink" }) },
     heard = {
         ["Anna Amboss"] = { ["a001"] = entry({ seen = now }), ["a002"] = entry({ seen = now - 15 * 86400 }),
             ["a003"] = entry({ seen = now, state = "X" }), ["a004"] = entry({ seen = now, item = -3 }) },
@@ -357,7 +358,8 @@ assert(ow["0006"] == nil, "closed more than 3 days ago")
 assert(ow["0007"] and ow["0007"].by == nil, "a closed one keeps no bad name")
 local open = 0
 for _, e in pairs(ow) do if e.state ~= "X" then open = open + 1 end end
-assert(open == 5 and ow["000b"] == nil, "5 open, the newest: " .. open)
+assert(open == 6 and ow["000b"] == nil, "5 open per character, the newest: " .. open)
+assert(ow["000d"] == nil and ow["0010"] and ow["0010"].owner == "Vulo Twink", "the owner checked, per character")
 assert(hd["Bad|Name"] == nil and hd["Bob Hammer"] == nil, "a bad name, an entry without seen")
 local anna = hd["Anna Amboss"]
 assert(anna["a001"] and anna["a002"] == nil and anna["a003"] == nil and anna["a004"] and anna["a004"].item == nil)
@@ -383,3 +385,52 @@ local q = sent("OQ", "GUILD")
 assert(#q == 1 and q[1].f[1]:match("^%x%x%x%x$"), "one OQ")
 STUB.tick(120)
 assert(#sent("OQ") == 1, "once")
+
+---------------------------------------------------------------------------
+-- review 2026-11-24: own orders per character, closed ones capped, a refused step gets one order back, a newer
+-- revision is never held back by the keyed gap
+---------------------------------------------------------------------------
+for _, m in ipairs(GO.Mine()) do GO.Withdraw(m.id) end
+STUB.tick(5)
+local mainId = GO.Create(2330, 1, "B")
+assert(mainId and AmisiaDB.orders.own[mainId].owner == "Vulo Sturmwind")
+STUB.player = "Vulo Twink"
+assert(#GO.Mine() == 0 and GO.OpenCount() == 0, "a twink sees no orders of the main")
+STUB.addon = {}
+STUB.fire("PLAYER_LOGIN")
+STUB.tick(GO.LIM.announceMin + GO.LIM.announceSpread + 3)
+for _, m in ipairs(sent("OA")) do assert(m.f[1] ~= mainId, "a twink never sends the main's orders") end
+assert(GO.Withdraw(mainId) == nil, "nor closes them")
+STUB.player = "Vulo Sturmwind"
+assert(#GO.Mine() == 1)
+GO.Withdraw(mainId)
+for _ = 1, 8 do
+    local x = GO.Create(2330, 1, "B")
+    assert(x)
+    GO.Withdraw(x)
+    STUB.tick(3)
+end
+STUB.tick(GO.LIM.sweep + 1)
+local closed = 0
+for _, e in pairs(AmisiaDB.orders.own) do if e.owner == "Vulo Sturmwind" and e.state == "X" then closed = closed + 1 end end
+assert(closed <= GO.LIM.closedMax, "closed own orders capped: " .. closed)
+local k1, k2 = GO.Create(2330, 1, "B"), GO.Create(3321, 1, "B")
+STUB.tick(5)
+STUB.addon = {}
+recv("OT", "Anna Amboss", "WHISPER", k1, "D")
+STUB.tick(2)
+local w = sent("OA", "WHISPER")
+assert(#w == 1 and w[1].f[1] == k1 and w[1].target == "Anna Amboss", "only that order back: " .. #w)
+STUB.addon = {}
+recv("OT", "Anna Amboss", "WHISPER", k1, "D")
+recv("OT", "Anna Amboss", "WHISPER", k2, "D")
+STUB.tick(2)
+w = sent("OA", "WHISPER")
+assert(#w == 1 and w[1].f[1] == k2, "at most every 30 s per crafter and order: " .. #w)
+STUB.tick(5)
+STUB.fire("CHAT_MSG_ADDON", "Amisia", "1OA\tbeef\t1\t2330\t1\tB\tO\t-\t0\t-\t0", "WHISPER", "Anna Amboss", "", 0, 0, "", 0)
+STUB.tick(1)
+STUB.fire("CHAT_MSG_ADDON", "Amisia", "1OA\tbeef\t2\t2330\t1\tB\tT\tBob Hammer\t0\t-\t0", "GUILD", "Anna Amboss", "", 0, 0, "", 0)
+STUB.tick(0.1)
+local b = heard("Anna Amboss", "beef")
+assert(b and b.rev == 2 and b.state == "T", "a newer revision within 2 s still passes")

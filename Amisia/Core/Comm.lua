@@ -41,7 +41,7 @@ local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 6
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
 -- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
 -- a feedback answer per report id; the group quest state per dungeon; a raid note question per note; a guild
--- order's state and a crafter's step per order id
+-- order's state per order id and revision, a crafter's step per order id
 local KEYED_GAP = { DQ = 60, DR = 60, CQ = 60, CR = 60, WA = 2, AN = 10, IV = 60, SQ = 5, FA = 5, QS = 3, NQ = 5, EJ = 5, ZA = 5, OA = 2, OT = 3 }
 local KEYED_MAX = 64        -- keyed gaps remembered per sender before the old ones are cleared
 
@@ -1286,7 +1286,8 @@ local function onMessage(prefix, text, chan, sender)
     end
     local keyed = KEYED_GAP[kind]
     if keyed then
-        local t, k = now(), kind .. ":" .. fields[1]
+        -- a guild order per id and revision: a newer state of one order is never held back by the older one
+        local t, k = now(), kind .. ":" .. fields[1] .. (kind == "OA" and ":" .. tostring(fields[2]) or "")
         s.keyed = s.keyed or { n = 0, at = {} }
         if s.keyed.at[k] and t - s.keyed.at[k] < keyed then return end
         if not s.keyed.at[k] then

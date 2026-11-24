@@ -404,8 +404,12 @@ local function store(create)
     local p = AmisiaDB.prof
     if type(p) ~= "table" or type(p.chars) ~= "table" then
         if not create then return nil end
-        p = { chars = {} }
-        AmisiaDB.prof = p
+        -- never the whole table: it also holds the wishes, the cooldowns and the lists
+        if type(p) ~= "table" then
+            p = {}
+            AmisiaDB.prof = p
+        end
+        p.chars = {}
     end
     local key = charKey()
     local c = p.chars[key]

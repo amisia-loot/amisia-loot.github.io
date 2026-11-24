@@ -34,7 +34,8 @@ local LIM = {
     heardMax = 300, heardDays = 7,      -- names heard, days a name is kept without a new message
     ownMax = 50,                        -- own characters kept
     firstMin = 60, firstSpread = 120,   -- the first PC 60 to 180 s after the login
-    changeGap = 60,                     -- after an own change at most once a minute
+    changeGap = 65,                     -- after an own change at most once a minute (the receivers' gap is 60 s;
+                                        -- the margin covers the time a low message waits in the queue)
     outWait = 5, outSpread = 10,        -- seconds after leaving an instance before PC goes
     tick = 5,
     readDelay = 0.5,                    -- after a cast or the profession window
@@ -130,7 +131,7 @@ local function profRoot(create)
     if type(AmisiaDB) ~= "table" then return nil end
     if type(AmisiaDB.prof) ~= "table" then
         if not create then return nil end
-        AmisiaDB.prof = {}
+        AmisiaDB.prof = { chars = {} }   -- the shape Professions expects (it never replaces a prof table)
     end
     return AmisiaDB.prof
 end
@@ -196,6 +197,8 @@ local function fromStartDuration(start, duration)
     start, duration = tonumber(ns.Plain(start)), tonumber(ns.Plain(duration))
     if not start or not duration then return nil end
     if duration <= LIM.gcd or start == 0 then return 0 end
+    -- a cooldown begun before the computer started: the client's start has wrapped past 2^32 ms
+    if start > GetTime() then start = start - 4294967.296 end
     -- a start before the computer's uptime can come out odd: never more than the whole cooldown
     local left = math.min(start + duration - GetTime(), duration)
     return left > 0 and math.ceil(left) or 0
@@ -225,14 +228,29 @@ function PC.Remaining(spell)
     return nil
 end
 
+-- The skill lines the spell book lists now (nil when it lists none: a client without the functions, or too early).
+local function bookSkills()
+    local Pr = ns.Prof
+    if not (Pr and Pr.Own) then return nil end
+    local out, any = {}, false
+    for _, x in ipairs(Pr.Own()) do
+        if not x.saved then out[x.skill], any = true, true end
+    end
+    return any and out or nil
+end
+
 -- Whether the own character knows a recipe: true (a profession window read lists it, or the client says so),
 -- false (the client says no and no reading lists it), nil (nothing to say).
 local function knows(spell)
     local p = profRoot(false)
     local c = p and type(p.chars) == "table" and p.chars[myName() or "?"]
     if type(c) == "table" then
-        for _, s in pairs(c) do
-            if type(s) == "table" and type(s.known) == "table" and s.known[spell] then return true end
+        -- a profession dropped since its window was read: its reading no longer counts (verlernt)
+        local book = bookSkills()
+        for skill, s in pairs(c) do
+            if type(s) == "table" and type(s.known) == "table" and s.known[spell] and (not book or book[skill]) then
+                return true
+            end
         end
     end
     if type(_G.IsPlayerSpell) ~= "function" then return nil end
@@ -438,6 +456,8 @@ local tipCache, tipRev = {}, -1
 function PC.TooltipLine(item)
     item = tonumber(item)
     if not item or not cdData() then return nil end
+    local heard = AmisiaDB and type(AmisiaDB.prof) == "table" and AmisiaDB.prof.cdHeard
+    if type(heard) ~= "table" or next(heard) == nil then return nil end   -- no data built for nothing to say
     if tipRev ~= rev then tipCache, tipRev = {}, rev end
     local hit = tipCache[item]
     if hit and GetTime() - hit.at < LIM.tipKeep then return hit.line or nil end
@@ -630,6 +650,28 @@ function PC.Take(sender, f)
                 for spell, sec in pairs(p.lines) do e[spell] = t + sec end
                 list[name] = e
                 took = took + 1
+            else
+                -- the character's own report stays first, but a cooldown only moves later by a craft: a line
+                -- another sender (its twin account) knows to end later is newer and replaces that line
+                local was = {}
+                for spell in pairs(old) do
+                    local g = type(spell) == "number" and PC.Group(spell)
+                    if g then was[g] = spell end
+                end
+                local moved = false
+                for spell, sec in pairs(p.lines) do
+                    local g, at = PC.Group(spell), t + sec
+                    local prev = was[g]
+                    if not prev or at > (tonumber(old[prev]) or 0) + 60 then
+                        if prev then old[prev] = nil end
+                        old[spell] = at
+                        moved = true
+                    end
+                end
+                if moved then
+                    old.at = t
+                    took = took + 1
+                end
             end
         end
     end

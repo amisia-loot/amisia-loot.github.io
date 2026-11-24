@@ -4815,7 +4815,11 @@ Treffer einmal, 10 je Stunde, eigener Charakter still, Deckel 50, Prüfung beim 
 - **Vertrauen wie `AC`:** nur GUILD, nur Mitglieder; ein Name außerhalb des Rosters fällt allein heraus, ein Feld
   außerhalb seiner Grenzen (Spell nicht in `CD` oder unter 20 Stunden, 0-400000 s, 4 Zeilen je Charakter, eine Zeile
   zweimal, 10 Charaktere) verwirft die ganze Nachricht; der eigene Bericht eines Charakters gilt vor dem eines
-  anderen Absenders; eigene Charaktere nimmt Amisia nie aus einer Nachricht. Höchstens 300 gehörte Namen, 7 Tage.
+  anderen Absenders, nur eine Zeile, die laut dem anderen später endet, ersetzt die seine (eine Abklingzeit rückt nur
+  durch Herstellen nach hinten; Review 2026-11-24); eigene Charaktere nimmt Amisia nie aus einer Nachricht. Höchstens
+  300 gehörte Namen, 7 Tage.
+- **Verlernt (Review 2026-11-24):** die Lesung eines Berufsfensters zählt nur, solange das Zauberbuch den Beruf noch
+  nennt; ein abgelegter Beruf verliert seine Zeilen beim nächsten Lesen.
 
 **Grund:** Spec F-232, vom Nutzer am 2026-11-23 freigegeben ("Passt, alle drei": ab 20 Stunden, Teilen an, Twinks
 derselben Gilde mit, Reiter auf Berufe). Uhren der Spieler gehen verschieden; eine Restzeit ist von ihnen unabhängig.
@@ -4848,8 +4852,14 @@ vorgemerkt, die Nummer war schon vergeben) gilt:
   Empfang nur, wenn sie schon gebaut sind, sonst beim Öffnen des Reiters (`GO.Check`). Dafür trägt `OA` hinten
   freiwillig die Item-Nummer (für die Chatzeile ohne Daten); ob eigene Charaktere das Rezept können, kommt aus deren
   Berufsfenster (`prof.chars`).
-- **Geschlossene Aufträge** (`X`) bleiben 3 Tage beim Auftraggeber und gehen mit der Antwort auf `OQ` und nach dem
-  Login noch einmal hinaus, damit ein Hersteller, der beim "Erhalten" offline war, es erfährt.
+- **Je Charakter:** `AmisiaDB` gilt für den Account; jeder eigene Auftrag nennt seinen Charakter (`owner`), und
+  nur der eingeloggte Charakter sieht, sendet und bearbeitet seine Aufträge (ein Twink in einer anderen Gilde sagt
+  dort nie die Aufträge des Hauptcharakters). Review 2026-11-24.
+- **Geschlossene Aufträge** (`X`, je Charakter die neuesten 5) bleiben 3 Tage beim Auftraggeber und gehen mit der Antwort auf `OQ` und nach dem
+  Login noch einmal hinaus, damit ein Hersteller, der beim "Erhalten" offline war, es erfährt. Ein abgelehnter
+  Schritt (`OT`) bekommt nur den Stand dieses einen Auftrags zurück, höchstens alle 30 s je Hersteller und Auftrag.
+  Der Empfänger hält `OA` je Auftrag und Revision auseinander (Abstand 2 s), damit ein neuerer Stand nie hinter
+  einem älteren hängen bleibt.
 - **Wege wie der Rezept-Austausch (D-12):** nichts in der Sperre oder im Schlachtfeld; in einer Instanz wartet es
   bis 5-15 s nach dem Verlassen; Kampf hält nichts auf. Die Zeile im Gildenchat geht nur vom eigenen Klick aus
   (`ns.Say` kennt dafür jetzt "GUILD").

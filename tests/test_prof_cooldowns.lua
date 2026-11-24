@@ -232,6 +232,9 @@ recv("Bob Hammer", "1", "Bob Hammer:2330=100000")
 assert(heard("Bob Hammer").by == "Bob Hammer" and heard("Bob Hammer")[1252229] == nil)
 recv("Anna Amboss", "1", "Anna Amboss:3321=0", "Bob Hammer:2330=999")
 assert(heard("Bob Hammer").by == "Bob Hammer" and heard("Bob Hammer")[2330] == heard("Bob Hammer").at + 100000, "the own report first")
+-- but a line another sender knows to end later is newer (a cooldown only moves later by a craft)
+recv("Anna Amboss", "1", "Anna Amboss:3321=0", "Bob Hammer:2330=200000")
+assert(heard("Bob Hammer").by == "Bob Hammer" and heard("Bob Hammer")[2330] == heard("Bob Hammer").at + 200000, "a later end replaces")
 -- an own character is never taken from another
 recv("Anna Amboss", "1", "Vulo Zweit:2330=50")
 assert(heard("Vulo Zweit") == nil, "own characters stay ours")
@@ -300,3 +303,30 @@ assert(hd["Doppel Name"] == nil or lines == 1, "one spell per line")
 local odd = { prof = { cd = "x", cdHeard = 5 } }
 NS.ProfCooldownsLoaded(odd)
 assert(odd.prof.cd == nil and odd.prof.cdHeard == nil)
+
+---------------------------------------------------------------------------
+-- review 2026-11-24: a prof table made here has the shape the professions expect; a dropped profession's
+-- reading no longer counts
+---------------------------------------------------------------------------
+AmisiaDB.prof = nil
+STUB.tick(61)
+assert(PC.Take("Cleo Kessel", { "1", "Cleo Kessel:2330=0" }) == 1)
+assert(type(AmisiaDB.prof.chars) == "table" and AmisiaDB.prof.cdHeard["Cleo Kessel"], "chars made with it")
+AmisiaDB.prof.chars = { ["Vulo Sturmwind"] = { [171] = { rank = 300, max = 300, day = NS.DropsToday(), known = { [2330] = true } } } }
+for k in pairs(playerSpells) do playerSpells[k] = nil end
+for k in pairs(CD) do CD[k] = nil end
+CD[2330] = { STUB.clock - 3600, 95 * 3600 }
+PC.ReadOwn()
+assert(AmisiaDB.prof.cd["Vulo Sturmwind"][2330], "the reading counts while the book has no list")
+-- the spell book now lists only blacksmithing (164): alchemy was dropped
+_G.GetProfessions = function() return 1 end
+_G.GetProfessionInfo = function() return "Schmiedekunst", nil, 100, 300, nil, nil, 164 end
+CD[2330] = nil
+PC.ReadOwn()
+assert(AmisiaDB.prof.cd["Vulo Sturmwind"] == nil or AmisiaDB.prof.cd["Vulo Sturmwind"][2330] == nil, "verlernt: the line goes")
+_G.GetProfessions, _G.GetProfessionInfo = nil, nil
+-- a start wrapped past 2^32 ms (a cooldown begun before the computer started)
+CD[2330] = { STUB.clock + 4294967.296 - 7200, 95 * 3600 }
+playerSpells[2330] = true
+local left = PC.Remaining(2330)
+assert(left and math.abs(left - (95 * 3600 - 7200)) <= 1, "the wrapped start: " .. tostring(left))

@@ -46,6 +46,9 @@ local LIM = {
     askMin = 30, askSpread = 30,         -- OQ after the login
     answerJitter = 10,                   -- the whisper answer to OQ
     answersMax = 20,                     -- names waiting for an answer
+    backGap = 30,                        -- seconds between two state whispers of one order to one crafter
+    closedMax = 5,                       -- closed own orders still told, per character (the newest)
+    askedFor = 120,                      -- seconds an own step shows "Angefragt" without an answer
     outWait = 5, outSpread = 10,         -- seconds after leaving an instance before anything goes
     loginLine = 90,                      -- seconds after entering the world: the login line (after the answers)
     tick = 1,
@@ -245,13 +248,24 @@ local canTalk = function() return GO.CanTalk() end
 local due = {}            -- [id] = true: the own order goes to the guild (OA) once it may
 local sentAt = {}         -- [id] = GetTime() of the last own OA to the guild
 local answers = {}        -- [lower name] = name: an OQ waits for its whisper answer
+local backs = {}          -- ["lower name:id"] = { to, id }: a refused step gets that order's state back
+local backAt = {}         -- ["lower name:id"] = GetTime() of the last such answer
+local askedAt = {}        -- ["lower requester:id"] = GetTime() of the own last step
 local owedOT = {}         -- ["lower requester:id"] = { to, id, act }: an own step waits
 local otAt = {}           -- ["lower requester:id"] = GetTime() of the last OT
 local asked = {}          -- ["lower requester:id"] = "T"/"R"/"D": the own last step of another's order
 
+-- The own orders of the logged-in character (AmisiaDB is per account: each order names its owner, so a twink
+-- never sends, steps on or receives the orders of another own character).
 local function ownList()
     local o = store(false)
-    return o and o.own or {}
+    local me = myName()
+    local out = {}
+    if not o or not me then return out end
+    for id, e in pairs(o.own) do
+        if type(e) == "table" and e.owner == me then out[id] = e end
+    end
+    return out
 end
 
 local function openCount()
@@ -304,11 +318,13 @@ function GO.Create(spell, n, mats, note, announce)
     if openCount() >= LIM.ownMax then
         return nil, L["Du hast schon %d offene Gildenaufträge; schließe erst einen."]:format(LIM.ownMax)
     end
+    local me = myName()
+    if not me then return nil, L["Noch nicht geladen."] end
     local o = store(true)
     local id = newId(o.own)
     if not id then return nil, L["Noch nicht geladen."] end
     local t = now()
-    o.own[id] = { rev = 1, spell = spell, item = (r.item or 0) > 0 and r.item or nil, n = n, mats = mats, state = "O",
+    o.own[id] = { owner = me, rev = 1, spell = spell, item = (r.item or 0) > 0 and r.item or nil, n = n, mats = mats, state = "O",
         at = t, changed = t, note = GO.CleanNote(note) }
     due[id] = true
     changed()
@@ -319,11 +335,30 @@ function GO.Create(spell, n, mats, note, announce)
     return id
 end
 
+-- Keeps the newest closed own orders of the character (5); older ones are forgotten once told.
+local function pruneClosed()
+    local o = store(false)
+    if not o then return end
+    local closed = {}
+    for id, e in pairs(ownList()) do
+        if e.state == "X" and not due[id] then closed[#closed + 1] = id end
+    end
+    if #closed <= LIM.closedMax then return end
+    table.sort(closed, function(a, b)
+        local ca, cb = o.own[a].changed or 0, o.own[b].changed or 0
+        if ca ~= cb then return ca > cb end
+        return a < b
+    end)
+    for i = LIM.closedMax + 1, #closed do o.own[closed[i]] = nil end
+end
+GO.PruneClosed = pruneClosed
+
 local function closeOwn(id)
     local e = ownList()[id]
     if type(e) ~= "table" or e.state == "X" then return nil end
     e.state = "X"
     bump(id, e)
+    pruneClosed()
     return true
 end
 
@@ -399,7 +434,7 @@ local function step(sender, id, act)
     end
     local key = name:lower() .. ":" .. id
     owedOT[key] = { to = name, id = id, act = act }
-    asked[key] = act
+    asked[key], askedAt[key] = act, GetTime()
     if not GO.CanTalk() then ns.msg(L["Geht an %s, sobald es wieder geht."]:format(name)) end
     changed()
     return true
@@ -411,7 +446,13 @@ function GO.Done(sender, id) return step(sender, id, "D") end
 function GO.GiveBack(sender, id) return step(sender, id, "R") end
 
 -- The own last step on another's order ("T", "R", "D"), nil.
-function GO.Asked(sender, id) return asked[tostring(sender):lower() .. ":" .. tostring(id)] end
+function GO.Asked(sender, id)
+    local key = tostring(sender):lower() .. ":" .. tostring(id)
+    if asked[key] and askedAt[key] and GetTime() - askedAt[key] > LIM.askedFor then
+        asked[key], askedAt[key] = nil, nil
+    end
+    return asked[key]
+end
 
 ---------------------------------------------------------------------------
 -- Others' orders
@@ -600,7 +641,11 @@ function GO.TakeStep(sender, f)
     local e = ownList()[id]
     if type(e) ~= "table" then return false end
     local function back()
-        answers[sender:lower()] = sender
+        local key = sender:lower() .. ":" .. id
+        local t = GetTime()
+        if (not backAt[key] or t - backAt[key] >= LIM.backGap) and ns.Count(backs) < LIM.answersMax then
+            backs[key], backAt[key] = { to = sender, id = id }, t
+        end
         return false
     end
     if e.state == "X" then return back() end
@@ -611,7 +656,7 @@ function GO.TakeStep(sender, f)
         ns.msg(L["%s hat deinen Gildenauftrag angenommen: %s."]:format(sender, GO.What(e)))
         return true
     end
-    if not (e.by and ns.SameName(e.by, sender)) then return back() end
+    if not (e.by and e.by:lower() == sender:lower()) then return back() end
     if act == "D" then
         if e.state ~= "T" then return back() end
         e.state = "D"
@@ -688,6 +733,7 @@ function GO.Sweep()
         end
         if type(orders) ~= "table" or next(orders) == nil then o.heard[name] = nil end
     end
+    pruneClosed()
     if any then changed() end
 end
 
@@ -697,7 +743,7 @@ local function tick()
         lastSweep = t
         GO.Sweep()
     end
-    if not next(due) and not next(answers) and not next(owedOT) and not askAt then return end
+    if not next(due) and not next(answers) and not next(backs) and not next(owedOT) and not askAt then return end
     if not canTalk() then return end
     if askAt and t >= askAt then
         askAt = nil
@@ -723,9 +769,16 @@ local function tick()
             for id, e in pairs(own) do
                 if type(e) == "table" and (e.state ~= "X" or tt - (e.changed or 0) <= LIM.closedKeep) then
                     ns.CommSend("OA", GO.Fields(id, e), "WHISPER", m.name, { key = "OA:W:" .. low .. ":" .. id,
-                        jitter = LIM.answerJitter, ttl = 60, when = canTalk })
+                        jitter = LIM.answerJitter, ttl = 60, low = true, when = canTalk })
                 end
             end
+        end
+    end
+    for key, b in pairs(backs) do
+        backs[key] = nil
+        local m, e = member(b.to), own[b.id]
+        if m and m.online and type(e) == "table" then
+            ns.CommSend("OA", GO.Fields(b.id, e), "WHISPER", m.name, { key = "OA:W:" .. key, ttl = 60, when = canTalk })
         end
     end
     for key, s in pairs(owedOT) do
@@ -827,7 +880,8 @@ local function cleanEntry(e, heard)
     end
     if e.note ~= nil and not validNote(e.note) then e.note = nil end
     if e.item ~= nil and not (ns.Int(e.item, 1, 99999999)) then e.item = nil end
-    local keep = { rev = true, spell = true, item = true, n = true, mats = true, state = true, by = true, at = true,
+    if not heard and not validName(e.owner) then return nil end
+    local keep = { owner = not heard or nil, rev = true, spell = true, item = true, n = true, mats = true, state = true, by = true, at = true,
         changed = true, note = true, seen = heard or nil }
     for k in pairs(e) do
         if not keep[k] then e[k] = nil end
@@ -843,22 +897,30 @@ function ns.GuildOrdersLoaded(root)
         return
     end
     local t, limit = now(), LIM.days * 86400
-    local own, open = {}, {}
+    local own, open, closed = {}, {}, {}
     for id, e in pairs(type(o.own) == "table" and o.own or {}) do
         e = validId(id) and cleanEntry(e, false)
         if e and (e.state ~= "X" or t - e.changed <= LIM.closedKeep) then
             own[id] = e
-            if e.state ~= "X" then open[#open + 1] = id end
+            local list = e.state ~= "X" and open or closed
+            list[e.owner] = list[e.owner] or {}
+            table.insert(list[e.owner], id)
         end
     end
-    -- more than 5 open: the newest stay
-    if #open > LIM.ownMax then
-        table.sort(open, function(a, b)
-            if own[a].at ~= own[b].at then return own[a].at > own[b].at end
-            return a < b
-        end)
-        for i = LIM.ownMax + 1, #open do own[open[i]] = nil end
+    -- per character more than 5 open (or closed): the newest stay
+    local function newest(lists, key)
+        for _, ids in pairs(lists) do
+            if #ids > LIM.ownMax then
+                table.sort(ids, function(a, b)
+                    if own[a][key] ~= own[b][key] then return own[a][key] > own[b][key] end
+                    return a < b
+                end)
+                for i = LIM.ownMax + 1, #ids do own[ids[i]] = nil end
+            end
+        end
     end
+    newest(open, "at")
+    newest(closed, "changed")
     local heard, all = {}, {}
     for name, orders in pairs(type(o.heard) == "table" and o.heard or {}) do
         if validName(name) and type(orders) == "table" then
