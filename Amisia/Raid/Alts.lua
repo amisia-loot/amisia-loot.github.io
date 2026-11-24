@@ -292,6 +292,23 @@ function ns.ImportSiteText(text)
     return table.concat(parts, " "), ok
 end
 
+-- The link "Twinks löschen" of the page Punkte, view Einfügen (D-167): the list cleared after a question
+-- (the command /amisia twinks löschen clears it at once).
+function ns.AskClearAlts()
+    if not ns.IsOfficerView() then
+        ns.msg(L["Die Twink-Liste löschen nur Offiziere."])
+        return
+    end
+    local info = ns.AltsInfo()
+    if not info then return end
+    return ns.W.Confirm(L["Twink-Liste löschen?"],
+        L["Amisia löscht die Twink-Liste der Website (%d Twinks). Die Website behält ihre Liste."]:format(info.n or 0),
+        L["Löschen##Knopf"], function()
+            ns.ClearAlts()
+            ns.msg(L["Twink-Liste gelöscht."])
+        end)
+end
+
 ns.RegisterSlash("twinks", { en = "alts", args = L["[Name|löschen]"], desc = L["Twinks und ihre Mains von der Website"],
     run = function(rest)
         local word = type(rest) == "string" and rest:lower():match("^%s*(.-)%s*$") or ""

@@ -225,7 +225,12 @@ local function buildOfficer(parent)
     O.handover = W.Link(O, "", function() ns.ShowHandover() end)
     W.Tooltip(O.handover, L["Noch zu übergeben"], L["Vergebene Items, die noch in deinen Taschen liegen, mit ihrer Restzeit."])
     O.handover:Hide()
-    O:Place(2, { O.handover, O.head }, { O.sync }, { shown = true })
+    -- the running raid's sync at once (as /amisia sync jetzt, D-167): a link after the sync line
+    O.syncNow = W.Link(O, L["Jetzt abgleichen"], function() if ns.SyncNowSay then ns.SyncNowSay() end end)
+    W.FitChip(O.syncNow)
+    W.Tooltip(O.syncNow, L["Jetzt abgleichen"], L["Als Hüter sendest du den Raid-Stand sofort; sonst gehen deine wartenden Änderungen noch einmal an den Hüter, und Amisia fragt nach seinem Stand."])
+    O.syncNow:Hide()
+    O:Place(2, { O.handover, O.head }, { O.sync, O.syncNow }, { shown = true })
     O.syncHit = CreateFrame("Frame", nil, O)
     O.syncHit:SetSize(260, T.LAYOUT.LINE_H)
     O.syncHit:SetPoint("RIGHT", O.sync, "RIGHT", 0, 0)
@@ -518,7 +523,9 @@ local function fillSync(O, s, all)
     O.head:SetWidth(hw)
     -- the link "%d zu übergeben" in front of the counts takes its room too
     local lw = O.handover:IsShown() and ((O.handover:GetWidth() or 0) + T.LAYOUT.ITEM_GAP) or 0
-    local w = 590 - hw - lw - 12
+    -- and the link "Jetzt abgleichen" after the sync line (it reaches the edge, a text stops TEXT_X short)
+    local nw = O.syncNow:IsShown() and ((O.syncNow:GetWidth() or 0) + T.LAYOUT.ITEM_GAP - T.LAYOUT.TEXT_X) or 0
+    local w = 590 - hw - lw - nw - 12
     if all or not s or not ns.SyncStatus then
         O.sync:SetText("")
         O.sync.color = nil
@@ -665,7 +672,8 @@ local function refreshOfficer(O)
     if open > 0 then O.handover:SetText(L["%d zu übergeben"]:format(open)) end
     W.FitChip(O.handover)
     O.handover:SetShown(open > 0)
-    O:Place(2, { O.handover, O.head }, { O.sync }, { shown = true })
+    O.syncNow:SetShown(not all and ns.SyncNowPossible ~= nil and ns.SyncNowPossible(s) or false)
+    O:Place(2, { O.handover, O.head }, { O.sync, O.syncNow }, { shown = true })
     if actConflicts > 0 then
         table.insert(parts, 2, L["|cffe2b857%d %s im laufenden Raid|r"]:format(actConflicts,
             actConflicts == 1 and L["Konflikt"] or L["Konflikte"]))

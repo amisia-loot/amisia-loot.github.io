@@ -4965,4 +4965,18 @@ Eine Prüfung aller Befehle fand zehn Funktionen, die nur ein Befehl erreichte o
 (Werkzeug, Fehlersuche). Der Kern ruft die Module nur über geprüfte Felder (`ns.DungeonBar`, `ns.MapSetTarget`,
 `ns.WishAdd`). Nicht umgesetzt: ein Befehl aus den Suchtreffern läuft nicht direkt (viele schalten etwas um oder
 brauchen ein Wort), er kommt weiter in die Chatzeile.
-**Durchgesetzt durch:** `tests/test_click_paths.lua`, `tests/test_dungeon_bar.lua`, `tests/test_run_times.lua`.
+Nachtrag 2026-11-24: D-167 gilt auch für die Befehle der Offiziere; ihre Klickwege prüfen dieselben Rechte wie der Befehl
+(Offiziersansicht, die Einrichtung auch der Offiziersrang). Gebaut: "Erneut ansagen" im Roll-Fenster und im Kopf der Seite
+Rolls, solange das Lootfenster etwas anzusagen hat (`/amisia ansage`); "Wurf eintragen" im Kopf der Seite Rolls, solange
+eine Runde Würfe von Hand nimmt (ein Fenster mit einer Zeile wie `/amisia wurf`); "Roll-Runde starten" im Item-Menü der
+Suche für jedes Item, auch außerhalb des Lootfensters (`/amisia roll <Link>`); der Schalter "Zählt für Punkte" auf der
+Seite Punkte (`/amisia punkteraid`); "Probe" unter Einstellungen > Lootregeln (`/amisia regeln probe`, ohne Lootfenster
+fragt ein Fenster nach dem Item); "Einrichtung starten" unter Einstellungen > Oberfläche, auch nach "Nicht mehr fragen"
+(`/amisia einrichten`); "Prioliste löschen" unter Einstellungen > Loot-Prio und "Twinks löschen" auf der Seite Punkte,
+Einfügen, beide mit Rückfrage (`/amisia prio löschen`, `twinks löschen`; eine Seite mit der Liste gibt es für keine
+der beiden, die Twinks haben keinen Einstellungsabschnitt, sie kommen mit dem Punkteblock unter Einfügen); "Jetzt
+abgleichen" hinter der Sync-Zeile der Seite Vergaben (`/amisia sync jetzt`). `/amisia ersatz` hatte seinen Klickweg
+schon (Raid-Log > Ersatzbank: Eingabezeile und "Austragen" je Zeile). Chatzeilen, die auf diese Befehle zeigten, nennen
+den Klickweg.
+**Durchgesetzt durch:** `tests/test_click_paths.lua`, `tests/test_dungeon_bar.lua`, `tests/test_run_times.lua`,
+`tests/test_sync_ui.lua`.

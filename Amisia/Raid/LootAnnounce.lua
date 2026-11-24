@@ -230,10 +230,25 @@ local function onLootOpened(_, isFromItem)
         end
     end
 end
-ns.OnEvent("LOOT_OPENED", onLootOpened)
-ns.OnEvent("LOOT_CLOSED", function() lootOpen = false end)
+-- LOOT_WINDOW tells the roll window and the page Rolls that "Erneut ansagen" may come or go (D-167)
+ns.OnEvent("LOOT_OPENED", function(...)
+    onLootOpened(...)
+    ns.Fire("LOOT_WINDOW")
+end)
+ns.OnEvent("LOOT_CLOSED", function()
+    lootOpen = false
+    ns.Fire("LOOT_WINDOW")
+end)
 
--- /amisia ansage: the open loot window once more, without the key check.
+-- Whether "Erneut ansagen" has something to say: the officer view, in a raid, an open loot window
+-- with an item at the quality line (the checks of /amisia ansage).
+function ns.LootAnnounceReady()
+    if not (lootOpen and ns.IsOfficerView() and IsInRaid()) then return false end
+    return #lootGroups() > 0
+end
+
+-- /amisia ansage and the link "Erneut ansagen" (roll window, page Rolls): the open loot window once
+-- more, without the key check.
 local function announceAgain()
     if not ns.IsOfficerView() then ns.msg(L["Ansagen nur in der Offiziersansicht."]) return end
     if not lootOpen then ns.msg(L["Kein Lootfenster offen."]) return end
@@ -245,6 +260,7 @@ local function announceAgain()
         remember({ g.key })
     end
 end
+ns.LootAnnounceAgain = announceAgain
 
 ---------------------------------------------------------------------------
 -- Group loot: START_LOOT_ROLL(rollID, rollTime), collected over 1.5 s

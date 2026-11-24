@@ -656,6 +656,11 @@ ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, group = "
       values = { { "auto", L["Automatisch"] }, { "officer", L["Offizier"] }, { "raider", "Raider" } },
       available = function() return ns.MayOfficerView() end,
       tip = L["Automatisch: Offiziere der Gilde sehen den Offiziersbereich. Wer keinen Offiziersrang hat, hat nur die Raider-Ansicht."] },
+    -- the setup assistant again, also after "Nicht mehr fragen" (UI/Setup.lua, as /amisia einrichten, D-167)
+    { key = "ui.setup", type = "button", label = L["Einrichtung starten"],
+      available = function() return ns.SetupAllowed ~= nil and ns.SetupAllowed() end,
+      run = function() if ns.ShowSetup then ns.ShowSetup(1) end end,
+      tip = L["Öffnet die Einrichtungshilfe für Offiziere: Bank, Lootleitung, Lootart, Roll-Dauer, erste Lootregeln."] },
     { key = "ui.expert", type = "toggle", label = L["Expertenmodus"], default = false,
       tip = L["Zeigt die Werkzeuge und seltene Einstellungen."] },
     { key = "ui.resetAll", type = "button", label = L["Alle Einstellungen zurücksetzen"],

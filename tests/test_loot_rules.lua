@@ -97,7 +97,7 @@ assert(NS.LootRules().list[1].id == r1.id)
 STUB.lootThreshold = 1
 corpse({ GREEN, BLUE, MAT, EPIC, GREY, QUEST, LEGEND })
 STUB.fire("LOOT_CLOSED"); STUB.messages = {}; STUB.fire("LOOT_OPENED", false)
-assert(said("Lootregeln aktiv: 4 (Pause: /amisia regeln pause)"), "told once at the first loot of the raid")
+assert(said("Lootregeln aktiv: 4 (Pause: Einstellungen, Lootregeln)"), "told once at the first loot of the raid")
 local plan = NS.LootRulesPlan()
 local by = {}
 for _, e in ipairs(plan) do by[e.id] = e end

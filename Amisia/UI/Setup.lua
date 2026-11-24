@@ -1,4 +1,5 @@
--- Amisia setup assistant (DECISIONS D-40): "/amisia einrichten" (en "setup") and, for an officer
+-- Amisia setup assistant (DECISIONS D-40): the button "Einrichtung starten" (Einstellungen, Oberfläche, D-167),
+-- "/amisia einrichten" (en "setup") and, for an officer
 -- (officer rank or the officer view) who has neither finished nor declined it, a one-time offer at
 -- the first open of the main window after a login ("Los" / "Später" / "Nicht mehr fragen").
 -- Six steps in one window, each with the existing settings only (never a setting of its own):
@@ -53,6 +54,8 @@ local function officer()
     if ns.IsOfficerView() then return true end
     return ns.SelfIsOfficer and ns.SelfIsOfficer(true) or false
 end
+-- the settings button "Einrichtung starten" (Registry.lua, section Oberfläche) shows for them only
+ns.SetupAllowed = officer
 
 ---------------------------------------------------------------------------
 -- Settings: labels and values from the registry
@@ -448,7 +451,7 @@ end
 local function finish()
     if DB then DB.setup.done = math.floor(time()) end
     F:Hide()
-    ns.msg(L["Einrichtung fertig. Alles lässt sich unter Einstellungen ändern; /amisia einrichten öffnet sie wieder."])
+    ns.msg(L["Einrichtung fertig. Alles lässt sich unter Einstellungen ändern; \"Einrichtung starten\" unter Einstellungen, Oberfläche öffnet sie wieder."])
 end
 
 local function build()
@@ -506,7 +509,7 @@ local function buildOffer()
     o.never = W.Link(o, L["Nicht mehr fragen"], function()
         if DB then DB.setup.never = math.floor(time()) end
         o:Hide()
-        ns.msg(L["Amisia fragt nicht mehr. /amisia einrichten startet die Einrichtung jederzeit."])
+        ns.msg(L["Amisia fragt nicht mehr. \"Einrichtung starten\" unter Einstellungen, Oberfläche startet sie jederzeit."])
     end)
     for _, b in ipairs({ o.go, o.later }) do W.FitChip(b, S.NAV_W) end
     W.FitChip(o.never)

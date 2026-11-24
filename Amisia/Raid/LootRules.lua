@@ -13,7 +13,8 @@
 -- paused, in combat or the encounter lockdown (the run waits for ADDON_RESTRICTION_STATE_CHANGED),
 -- or for an item that is soft-reserved by someone in the raid, has a loot prio, is on a raider's
 -- guild wishlist, got an upgrade or wish answer, has a roll or points round, or is legendary.
--- "/amisia regeln probe" tells what the rules would do and gives nothing.
+-- "Probe" in the settings section (or "/amisia regeln probe") tells what the rules would do and gives
+-- nothing: for the open loot window, else for an item asked in a dialog.
 --
 -- Sharing between officers (Comm.lua checks the fields):
 --   MR <rev> <part> <parts> <set by> <id:kind:value:target,...|->  a rule set in at most 4 parts
@@ -751,7 +752,7 @@ local function tellOnce()
     local s = ns.Active()
     if not s or told[s.id or s] then return end
     told[s.id or s] = true
-    msg(L["Lootregeln aktiv: %d (Pause: /amisia regeln pause)"]:format(#ns.LootRules().list))
+    msg(L["Lootregeln aktiv: %d (Pause: Einstellungen, Lootregeln)"]:format(#ns.LootRules().list))
 end
 
 ns.OnEvent("LOOT_OPENED", function(_, isFromItem)
@@ -841,7 +842,7 @@ function ns.LootRulesProbe(rest)
     elseif lootOpen and not fromItem then
         plan = ns.LootRulesPlan()
     else
-        msg(L["Kein Lootfenster offen. /amisia regeln probe <Item> prüft ein Item."])
+        msg(L["Kein Lootfenster offen. \"Probe\" unter Einstellungen, Lootregeln prüft ein Item."])
         return lines
     end
     lines[1] = L["Probe der Lootregeln (nichts wird verteilt):"]
@@ -1054,7 +1055,7 @@ ns.CommOn("MR", function(sender, f)
         lr.offer = { from = name, rev = rev, at = now(), list = list }
         changed()
         if ns.IsOfficerView() then
-            msg(L["Neue Lootregeln von %s (%d Regeln): Übernehmen oder Ablehnen unter Einstellungen, Lootregeln (/amisia regeln)."]:format(name, #list))
+            msg(L["Neue Lootregeln von %s (%d Regeln): Übernehmen oder Ablehnen unter Einstellungen, Lootregeln."]:format(name, #list))
         end
     end)
 end)
@@ -1244,7 +1245,12 @@ local function fillEditor(f)
 end
 
 -- A link shift-clicked while one of the editor's boxes has the focus lands in it (a list collects).
+local probeBox   -- the box of the dialog "Probe" while it is shown
 local function onInsertLink(link)
+    if probeBox and probeBox:IsVisible() and probeBox:HasFocus() and ns.ItemID(link) then
+        probeBox:SetText(link)
+        return
+    end
     if not editor or not ns.ItemID(link) then return end
     if editor.items:HasFocus() then
         local text = editor.items:GetText() or ""
@@ -1266,6 +1272,49 @@ local function setPaused(on)
     if refreshBar then refreshBar() end
 end
 
+-- "Probe" (D-167): the open loot window at once, else a dialog for one item (link, shift-clicked, or ID).
+local function dialogBox(d) return (d.GetEditBox and d:GetEditBox()) or d.editBox or d.EditBox end
+local function probeItem(d)
+    local box = dialogBox(d)
+    if box then ns.LootRulesProbe(box:GetText() or "") end
+end
+StaticPopupDialogs["AMISIA_RULES_PROBE"] = {
+    text = L["Probe der Lootregeln für ein Item: Link (Shift-Klick) oder Item-ID."],
+    button1 = L["Probe"],
+    button2 = L["Abbrechen"],
+    hasEditBox = true,
+    maxLetters = 255,
+    OnShow = function(self)
+        probeBox = dialogBox(self)
+        if probeBox then
+            probeBox:SetText("")
+            probeBox:SetFocus()
+        end
+    end,
+    OnHide = function() probeBox = nil end,
+    OnAccept = function(self) probeItem(self) end,
+    EditBoxOnEnterPressed = function(box)
+        local d = box:GetParent()
+        probeItem(d)
+        d:Hide()
+    end,
+    EditBoxOnEscapePressed = function(box) box:GetParent():Hide() end,
+    timeout = 0,
+    whileDead = true,
+    hideOnEscape = true,
+    preferredIndex = 3,
+}
+local function probeButton()
+    if not ns.IsOfficerView() then return end
+    if #ns.LootRules().list == 0 then
+        msg(L["Keine Lootregeln angelegt."])
+    elseif lootOpen and not fromItem then
+        ns.LootRulesProbe("")
+    else
+        W.LiftDialog(StaticPopup_Show("AMISIA_RULES_PROBE"))
+    end
+end
+
 ns.RegisterSettings{ key = "lootrules", label = L["Lootregeln"], order = 24, group = "raid", pages = { "rolls" }, officer = true, items = {
     { key = "lootrules.paused", type = "toggle", label = L["Pause"], default = false,
       tip = L["Solange an, verteilen die Regeln nichts; alle Items gehen den normalen Weg."],
@@ -1275,6 +1324,8 @@ ns.RegisterSettings{ key = "lootrules", label = L["Lootregeln"], order = 24, gro
       tip = L["Automatisch: eine Sekunde nach dem Öffnen der Leiche, nur außerhalb von Kampf und Kampfsperre. Ein Klick: eine Leiste am Lootfenster mit dem Knopf \"Verteilen\"."] },
     { key = "lootrules.chat", type = "toggle", label = L["Eine Zeile im Raidchat"], default = true,
       tip = L["Nennt, was die Regeln verteilt haben. Nur die Lootleitung schreibt sie."] },
+    { key = "lootrules.probe", type = "button", label = L["Probe"], run = probeButton,
+      tip = L["Zeigt im Chat, was die Regeln verteilen würden, und verteilt nichts: das offene Lootfenster, sonst ein Item, nach dem ein Fenster fragt."] },
     { key = "lootrules.list", type = "custom", label = L["Regeln (die erste passende gilt)"],
       tip = L["Reservierte Items, Items mit Loot-Prio, Gildenwunsch oder Upgrade-Antwort fasst keine Regel an."],
       build = buildEditor, fill = fillEditor },
@@ -1288,7 +1339,7 @@ ns.RegisterSlash("regeln", { en = "rules", officer = true, args = L["[pause|weit
         word = (word or ""):lower()
         if word == "pause" then -- l10n-ok: typed sub-word
             setPaused(true)
-            msg(L["Lootregeln pausiert. /amisia regeln weiter schaltet sie wieder ein."])
+            msg(L["Lootregeln pausiert. \"Pause\" unter Einstellungen, Lootregeln schaltet sie wieder ein."])
         elseif word == "weiter" or word == "resume" then -- l10n-ok: typed sub-words
             setPaused(false)
             msg(L["Lootregeln laufen wieder (%d Regeln)."]:format(#ns.LootRules().list))

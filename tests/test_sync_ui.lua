@@ -76,7 +76,10 @@ BUS.tick(200)
 line = syncLine(FRAK)
 assert(line:find("Sync: 1 Änderung nicht abgeglichen", 1, true), line)
 BUS.drop(nil)
-C(FRAK, "NS.Dispatch('sync jetzt')")
+-- the link "Jetzt abgleichen" after the sync line does what /amisia sync jetzt does (D-167)
+assert(officer(FRAK, "return O.syncNow:IsShown() and O.syncNow:GetText()") == "Jetzt abgleichen", "the running raid's link")
+officer(FRAK, "STUB.messages = {}; O.syncNow:Click()")
+assert(count(FRAK, "Beim Hüter nachgefragt, 1 Änderung erneut gesendet.") == 1, "the link asks the keeper")
 BUS.tick(20)
 assert(syncLine(FRAK):find("Sync: Hüter Vulo Sturmwind", 1, true), syncLine(FRAK))
 rows = officer(FRAK, "return O.list.rows[2].name:GetText()")
@@ -115,14 +118,18 @@ assert(line:find("Sync: älterer Raid, Änderungen bleiben lokal", 1, true), lin
 -- layout of the officer view: the head line and the sync line side by side
 ---------------------------------------------------------------------------
 officer(FRAK, [[local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
-    L.row("officer head", O.head, O.sync)
+    L.row("officer head", O.head, O.sync, O.syncNow)
     local l, r = L.span(O.sync)
     local h1, h2 = L.span(O.head)
-    -- 2.1: the sync line takes the space the counts leave, 12 px after them
+    -- 2.1: the sync line takes the space the counts leave, 12 px after them, up to the link "Jetzt
+    -- abgleichen" at the right edge (the running raid)
     assert(h1 == 6 and h2 <= 336 and h2 - h1 >= math.min(330, O.head:GetStringWidth()), "the counts on at most 330 px: " .. h1 .. ".." .. h2)
-    assert(r == 596 and l == h2 + 12, "the sync line right-aligned after the counts: " .. l .. ".." .. r)
+    assert(O.syncNow:IsShown(), "the running raid has the link")
+    local n1, n2 = L.span(O.syncNow)
+    assert(n2 == 602 and r <= n1 and n1 - r <= 12, "the link at the right edge, after the sync line: " .. r .. " / " .. n1 .. ".." .. n2)
+    assert(math.abs(l - (h2 + 12)) < 0.01, "the sync line right-aligned after the counts: " .. l .. ".." .. r .. " head " .. h1 .. ".." .. h2)
     local hl, hr = L.span(O.syncHit)
-    assert(hl == l and hr == r, "the tooltip area covers the line")
+    assert(math.abs(hl - l) < 0.01 and math.abs(hr - r) < 0.01, "the tooltip area covers the line")
     for _, t in ipairs({ "Sync: aus", "Sync: kein Hüter im Raid", "Sync: du bist Hüter · 3 Offiziere", "Sync: dieser Client kann nicht packen",
                          "Sync: wartet auf Kampfende (4 Nachrichten)" }) do
         O.sync:SetText(t); L.fits(O.sync)
@@ -303,6 +310,10 @@ assert(out:find("Sync: Hüter Vulo Sturmwind", 1, true) and out:find("Prüfsumme
     and out:find("Konflikte: 0", 1, true) and out:find("Schlange:", 1, true), out)
 C(VULO, "STUB.messages = {}; NS.Dispatch('sync jetzt')")
 assert(count(VULO, "Raid-Stand gesendet.") == 1)
+officer(VULO, "STUB.messages = {}; O.syncNow:Click()")
+assert(count(VULO, "Raid-Stand gesendet.") == 1, "the keeper's link sends at once")
+-- an older raid: no link
+assert(officer(FRAK, [[O.raid.onPick("alt"); local shown = O.syncNow:IsShown(); O.raid.onPick(s.id); return shown]]) == false, "no link for an older raid")
 C(KIM, "STUB.messages = {}; NS.Dispatch('sync jetzt')")
 assert(count(KIM, "Nur in der Offiziersansicht.") == 1)
 C(FRAK, "STUB.messages = {}; NS.Dispatch('sync aus')")

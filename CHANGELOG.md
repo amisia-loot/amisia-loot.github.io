@@ -16,6 +16,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
     settings have "Show a test round" (roll window) and "Forget remembered names" (soft-reserves), and Professions >
     More has a Scrolls card for every class. Chat lines now name where to click instead of a command.
 
+- feat(raid): officer commands get click paths too (F-234)
+
+    The roll window and the Rolls page show "Announce again" while the loot window has something to announce; the
+    Rolls page has "Add a roll" while a round runs (name and number in one box). An item in the main window's search
+    offers officers "Start a roll round", for any item. The Points page has the switch "Counts for points" for the
+    running raid and, under Paste, "Clear alts". The Awards page has "Sync now" after its sync line. The settings have
+    "Dry run" (Loot rules), "Delete the priority list" (Loot prio) and "Start the setup" (Interface), which also works
+    after "Don't ask again". The commands stay.
+
 - feat(professions): guild orders and cooldowns in the side bar and the overview (F-231)
 
     The page Professions lists "Orders" (with the open orders you can craft) and "Cooldowns" in its side bar

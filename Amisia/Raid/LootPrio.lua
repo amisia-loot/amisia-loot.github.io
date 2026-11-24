@@ -801,6 +801,26 @@ end)
 ---------------------------------------------------------------------------
 -- Settings and the command
 ---------------------------------------------------------------------------
+-- The whole list cleared after a question: /amisia prio löschen and the settings button "Prioliste
+-- löschen" (D-167).
+function ns.AskClearLootPrio()
+    if not ns.IsOfficerView() then
+        ns.msg(L["Loot-Prio bearbeiten nur Offiziere."])
+        return
+    end
+    local info = ns.LootPrioInfo and ns.LootPrioInfo()
+    if not info then
+        ns.msg(L["Keine Prioliste geladen. Auf der Website: Loot Council, Copy for the addon; im Spiel: /amisia wuensche."])
+        return
+    end
+    return ns.W.Confirm(L["Prioliste löschen?"],
+        L["Amisia löscht die ganze Loot-Prio (%d Items) und die eigenen Änderungen daran. Die Website behält ihre Liste."]:format(info.n or 0),
+        L["Löschen##Knopf"], function()
+            ns.ClearLootPrio()
+            ns.msg(L["Prioliste gelöscht."])
+        end)
+end
+
 ns.RegisterSettings{ key = "prio", label = L["Loot-Prio"], order = 25, group = "raid", pages = { "rolls", "awards", "gear" }, items = {
     { key = "prio.tooltip", type = "toggle", label = L["Loot-Prio im Item-Tooltip"], default = true,
       tip = L["Offiziere sehen ihre Liste, Raider die der Offiziere im Raid."] },
@@ -808,6 +828,8 @@ ns.RegisterSettings{ key = "prio", label = L["Loot-Prio"], order = 25, group = "
       tip = L["P1, P2 ...: an dieser Stelle stehst du selbst."] },
     { key = "prio.share", type = "toggle", label = L["Loot-Prio im Raid teilen"], default = true,
       tip = L["Die Lootleitung schickt ihre Liste an alle Amisia-Clients im Raid. Angenommen wird sie nur von Offizieren der eigenen Gilde."] },
+    { key = "prio.clear", type = "button", label = L["Prioliste löschen"], officer = true, run = function() ns.AskClearLootPrio() end,
+      tip = L["Löscht nach einer Rückfrage die ganze Loot-Prio und die eigenen Änderungen daran. Die Website behält ihre Liste."] },
 }}
 
 local CLEAR_WORD = { ["löschen"] = true, loeschen = true, clear = true }   -- l10n-ok: typed sub-words
@@ -816,22 +838,8 @@ ns.RegisterSlash("prio", { officer = true, args = L["[Item-Link|löschen]"], des
         rest = type(rest) == "string" and rest:match("^%s*(.-)%s*$") or ""
         local word = rest:lower()
         if CLEAR_WORD[word] then
-            if not ns.IsOfficerView() then
-                ns.msg(L["Loot-Prio bearbeiten nur Offiziere."])
-                return
-            end
             -- the whole list: ask first, like removing the points
-            local info = ns.LootPrioInfo and ns.LootPrioInfo()
-            if not info then
-                ns.msg(L["Keine Prioliste geladen. Auf der Website: Loot Council, Copy for the addon; im Spiel: /amisia wuensche."])
-                return
-            end
-            ns.W.Confirm(L["Prioliste löschen?"],
-                L["Amisia löscht die ganze Loot-Prio (%d Items) und die eigenen Änderungen daran. Die Website behält ihre Liste."]:format(info.n or 0),
-                L["Löschen##Knopf"], function()
-                    ns.ClearLootPrio()
-                    ns.msg(L["Prioliste gelöscht."])
-                end)
+            ns.AskClearLootPrio()
             return
         end
         -- "<Item-Link> löschen": that item's prio cleared at once, like the dialog's "Leeren"

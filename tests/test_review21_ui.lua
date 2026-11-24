@@ -117,15 +117,17 @@ assert(bar.tip[3] == 'Deine Änderung: Notiz "' .. MY_NOTE .. '".', tostring(bar
 -- 4. the sync line takes the space the counts leave: the keeper's long name fits
 ---------------------------------------------------------------------------
 local sync = officer(FRAK, [[local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(f, 602, 478)
-    L.row("officer head", O.head, O.sync)
+    L.row("officer head", O.head, O.sync, O.syncNow)
     L.fits(O.sync)
     local l, r = L.span(O.sync)
     local hl, hr = L.span(O.syncHit)
-    return { text = O.sync:GetText(), l = l, r = r, hl = hl, hr = hr,
-        want = 590 - math.min(330, math.ceil(O.head:GetStringWidth())) - 12 }]])
+    -- the link "Jetzt abgleichen" (D-167) stands at the right edge, the sync line before it
+    local n1, n2 = L.span(O.syncNow)
+    return { text = O.sync:GetText(), l = l, r = r, hl = hl, hr = hr, n1 = n1, n2 = n2,
+        want = 590 - math.min(330, math.ceil(O.head:GetStringWidth())) - 12 - (O.syncNow:GetWidth() + NS.Theme.LAYOUT.ITEM_GAP - NS.Theme.LAYOUT.TEXT_X) }]])
 assert(sync.text:find("Sync: Hüter Vulo Sturmwind · Stand ", 1, true), sync.text)
-assert(sync.r == 596 and sync.r - sync.l >= sync.want, ("%d..%d, want %d"):format(sync.l, sync.r, sync.want))
-assert(sync.hl == sync.l and sync.hr == sync.r, "the tooltip area covers the line")
+assert(sync.n2 == 602 and sync.r <= sync.n1 and sync.r - sync.l >= sync.want - 0.01, ("%d..%d, want %d"):format(sync.l, sync.r, sync.want))
+assert(math.abs(sync.hl - sync.l) < 0.01 and math.abs(sync.hr - sync.r) < 0.01, "the tooltip area covers the line")
 
 ---------------------------------------------------------------------------
 -- (B) a gold mark in the head for conflicts of the running raid while another raid is shown

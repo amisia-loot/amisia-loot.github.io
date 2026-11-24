@@ -2,8 +2,10 @@
 -- the chosen one and book a correction with a reason; a raider sees the own row, the whole list only
 -- when the website shows it (pub). The view "Einfügen" takes the website's text (the points block
 -- with the wishes, alts and prio, Alts.lua ns.ImportSiteText); officers remove the stored standing
--- there ("Punkte entfernen", after a question, 2.27.4). While the guild rolls, officers see a
--- hint how to switch and raiders do not see the page at all.
+-- there ("Punkte entfernen", after a question, 2.27.4) and the twink list ("Twinks löschen", D-167).
+-- While the guild rolls, officers see a hint how to switch and raiders do not see the page at all.
+-- Officers switch the running raid in or out of the count with the chip "Zählt für Punkte" at the
+-- head row's right (as /amisia punkteraid, D-167).
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -79,7 +81,15 @@ local function build_page(parent)
     }
     W.FitChip(f.view.list, 70)
     W.FitChip(f.view.paste, 70)
-    f:Place(1, { f.view.list, f.view.paste })
+    -- officers: whether the running raid counts for points
+    f.counts = W.TabCheck(f, L["Zählt für Punkte"], function()
+        if not ns.IsOfficerView() then return end
+        ns.PointsRaidSwitch(not ns.PointsRaidCounts())
+        ns.Refresh()
+    end)
+    W.Tooltip(f.counts, L["Zählt für Punkte"], L["Ob der laufende Raid Punkte gibt und kostet. Ein Raid, der beim Würfeln begann, zählt damit schon mit dem System von jetzt."])
+    f.counts:Hide()
+    f:Place(1, { f.view.list, f.view.paste }, { f.counts })
     f.info = f:Line(2)
     -- the footer: what the last correction did
     f:Footer({ "status" })
@@ -139,8 +149,12 @@ local function build_page(parent)
     f.clear = W.Link(f, L["Punkte entfernen"], function() ns.AskClearPoints() end)
     W.FitChip(f.clear)
     W.Tooltip(f.clear, L["Punkte entfernen"], L["Löscht den eingefügten Stand der Website und die Korrekturen aus dem Spiel, nach einer Frage. Die Website behält ihren Stand."])
+    -- officers: the twink list of the website, after a question (ns.AskClearAlts)
+    f.clearAlts = W.Link(f, L["Twinks löschen"], function() ns.AskClearAlts() end)
+    W.FitChip(f.clearAlts)
+    W.Tooltip(f.clearAlts, L["Twinks löschen"], L["Löscht die eingefügte Twink-Liste der Website aus dem Spiel, nach einer Frage. Die Website behält ihre Liste."])
     f.result = W.Text(f, T.FONT.hint)
-    f.bottomList = { f.adjLabel, f.who, f.amount, f.pool, f.reason, f.book, f.import, f.clear, { f.result, fill = true } }
+    f.bottomList = { f.adjLabel, f.who, f.amount, f.pool, f.reason, f.book, f.import, f.clear, f.clearAlts, { f.result, fill = true } }
     f:BottomRow(f.bottomList)
     f.paste:SetPoint("TOPLEFT", 0, top)
     f.paste:SetPoint("BOTTOMRIGHT", 0, f:Bottom())
@@ -162,11 +176,18 @@ local function refresh(f)
     local sys = cfg.sys
     f.view.list:SetOn(view == "list")
     f.view.paste:SetOn(view == "paste")
+    -- true or false: the running raid counts or not; nil: nothing to switch (raiders never)
+    local counts
+    if officer and ns.PointsRaidCounts then counts = ns.PointsRaidCounts() end
+    f.counts:SetShown(counts ~= nil)
+    f.counts:SetOn(counts == true)
 
     local paste = view == "paste"
     setShown({ f.paste, f.import, f.result }, paste)
     f.clear:SetShown(paste and officer)
     f.clear:SetEnabled(ns.PointsStored())
+    f.clearAlts:SetShown(paste and officer)
+    f.clearAlts:SetEnabled(ns.AltsInfo() ~= nil)
     local rolling = sys == "roll"
     local listOn = not paste and not rolling
     setShown({ f.headFrame, f.list, f.detail }, listOn)
@@ -244,7 +265,9 @@ ns.RegisterPanel{ key = "points", label = L["Punkte"], sub = L["Der Punktestand 
     create = function(parent) return build_page(parent) end,
     refresh = function(f) refresh(f) end }
 
-ns.Listen("POINTS", function()
-    if ns.CurrentPage and ns.CurrentPage() == "points" and ns.Refresh then ns.Refresh() end
-end)
+for _, msgName in ipairs({ "POINTS", "ALTS" }) do
+    ns.Listen(msgName, function()
+        if ns.CurrentPage and ns.CurrentPage() == "points" and ns.Refresh then ns.Refresh() end
+    end)
+end
 end)

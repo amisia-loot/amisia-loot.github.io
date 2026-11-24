@@ -527,25 +527,32 @@ function ns.ManualRollCount(r)
     return n
 end
 
--- /amisia wurf <Name> <Zahl> [os]: the number is the first purely numeric word, the name all
--- before it (Forever names hold a space).
-local function rollCommand(rest)
-    if not ns.IsOfficerView() then ns.msg(L["Würfe von Hand nur in der Offiziersansicht."]) return end
+-- The round a roll by hand goes into (the running one, else the last finished one up to 10 minutes),
+-- or nil: the page Rolls shows "Wurf eintragen" while there is one.
+function ns.ManualRollRound() return handRound() end
+
+-- /amisia wurf <Name> <Zahl> [os] and the dialog "Wurf eintragen" of the page Rolls (usage the line
+-- the dialog's box gets wrong): the number is the first purely numeric word, the name all before it
+-- (Forever names hold a space). Returns the entry, or nil.
+function ns.AddRollText(rest, usage)
+    if not ns.IsOfficerView() then ns.msg(L["Würfe von Hand nur in der Offiziersansicht."]) return nil end
     local words = {}
     for w in (rest or ""):gmatch("%S+") do words[#words + 1] = w end
     local at
     for i, w in ipairs(words) do
         if w:match("^%d+$") then at = i break end
     end
-    if not at or at == 1 then ns.msg(L["Aufruf: /amisia wurf <Name> <Zahl> [os]"]) return end
+    if not at or at == 1 then ns.msg(usage or L["Aufruf: /amisia wurf <Name> <Zahl> [os]"]) return nil end
     local name = table.concat(words, " ", 1, at - 1)
     local kind = (words[at + 1] or "ms"):upper()
     local e, why = ns.AddManualRoll(name, words[at], kind)
-    if not e then ns.msg(why) return end
+    if not e then ns.msg(why) return nil end
     ns.msg(L["Wurf eingetragen: %s %d (%s)."]:format(e.name, e.value, e.kind))
     local r = handRound()
     if r and r.done and r.dirty then ns.msg(L["Die Runde ist beendet: \"Ergebnis ansagen\" im Roll-Fenster sagt das neue Ergebnis an."]) end
+    return e
 end
+local function rollCommand(rest) ns.AddRollText(rest) end
 
 -- MS, OS or SR for an award: what the recipient reserved, rolled or said in the newest round of
 -- this item that knows the name (ns.RoundsOf), "-" when none does.

@@ -2254,7 +2254,16 @@ function ns.SyncNow()
     return nil, L["Kein Hüter im Raid."]
 end
 
-ns.RegisterSyncCommand("jetzt", function()   -- l10n-ok: sub-word, English "now" in Comm.lua
+-- Whether "Jetzt abgleichen" can do something for raid s (the page Vergaben's sync line): the officer
+-- view, the raid sync on and s the running recording.
+function ns.SyncNowPossible(s)
+    local cur = running()
+    return ns.IsOfficerView() and ready() and cur ~= nil and cur == s or false
+end
+
+-- "/amisia sync jetzt" and the link "Jetzt abgleichen" of the page Vergaben (D-167): ns.SyncNow and
+-- what it did, in the chat.
+function ns.SyncNowSay()
     if not ns.IsOfficerView() then
         ns.msg(L["Nur in der Offiziersansicht."])
         return
@@ -2268,7 +2277,8 @@ ns.RegisterSyncCommand("jetzt", function()   -- l10n-ok: sub-word, English "now"
     else
         ns.msg(why)
     end
-end)
+end
+ns.RegisterSyncCommand("jetzt", function() ns.SyncNowSay() end)   -- l10n-ok: sub-word, English "now" in Comm.lua
 
 ---------------------------------------------------------------------------
 -- Settings

@@ -952,7 +952,7 @@ noteRunningRaid = function(v)
     if has == v or told[key] then return end
     told[key] = true
     if not p then
-        ns.msg(L["Der laufende Raid bleibt beim Würfeln; %s gilt ab dem nächsten Raid. /amisia punkteraid an zählt ihn schon jetzt."]:format(SYS_NAME[v] or "?"))
+        ns.msg(L["Der laufende Raid bleibt beim Würfeln; %s gilt ab dem nächsten Raid. Seite Punkte, \"Zählt für Punkte\" zählt ihn schon jetzt."]:format(SYS_NAME[v] or "?"))
     else
         ns.msg(L["Der laufende Raid behält sein System (%s); %s gilt ab dem nächsten Raid."]:format(SYS_NAME[has] or "?", SYS_NAME[v] or "?"))
     end
@@ -1048,6 +1048,30 @@ local function adjustCommand(rest)
         e.reason, standingText(ns.PointsOf(e.name), ns.PointsConfig())))
 end
 
+-- Whether the running raid counts for points: true or false, nil when there is nothing to switch (no
+-- recording, or a raid without a system while the guild rolls). The page Punkte's chip reads it.
+function ns.PointsRaidCounts()
+    local s = ns.Active and ns.Active()
+    if not s then return nil end
+    local p = ns.PointsSession(s)
+    if p then return not p.off end
+    if settingsSys() ~= "roll" then return false end
+    return nil
+end
+
+-- Counts the running raid for points (on) or not and says so: /amisia punkteraid an|aus and the chip
+-- "Zählt für Punkte" of the page Punkte (D-167). Returns whether it switched.
+function ns.PointsRaidSwitch(on)
+    local s = ns.Active and ns.Active()
+    if not s then ns.msg(L["Keine laufende Aufzeichnung."]) return false end
+    if not ns.PointsRaidOff(s, not on) then
+        ns.msg(on and L["Kein Punktesystem gewählt."] or L["Dieser Raid hat kein Punktesystem."])
+        return false
+    end
+    ns.msg(on and L["Dieser Raid zählt für Punkte (%s)."]:format(SYS_NAME[s.points.sys] or "?") or L["Dieser Raid zählt nicht für Punkte."])
+    return true
+end
+
 local ON = { an = true, on = true, ein = true }   -- l10n-ok: typed sub-words
 local OFF = { aus = true, off = true }            -- l10n-ok: typed sub-words
 local function raidCommand(rest)
@@ -1060,11 +1084,7 @@ local function raidCommand(rest)
             or L["Dieser Raid hat kein Punktesystem."])
         return
     end
-    if not ns.PointsRaidOff(s, OFF[w]) then
-        ns.msg(OFF[w] and L["Dieser Raid hat kein Punktesystem."] or L["Kein Punktesystem gewählt."])
-        return
-    end
-    ns.msg(OFF[w] and L["Dieser Raid zählt nicht für Punkte."] or L["Dieser Raid zählt für Punkte (%s)."]:format(SYS_NAME[s.points.sys] or "?"))
+    ns.PointsRaidSwitch(ON[w] and true or false)
 end
 
 ns.RegisterSlash("punkte", { en = "points", args = L["[Name|löschen]"], desc = L["Punktestand (DKP/EPGP)"], run = pointsCommand })

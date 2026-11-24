@@ -3,7 +3,8 @@
 -- A hand-out is only offered once the round is over, and always asks first: while rolls come in
 -- the rows re-sort, so a click could land on the row that just moved up.
 -- Below the list a row enters rolls by hand (the roll chat is secret in a boss fight on Forever);
--- a finished round changed that way is announced with "Ergebnis ansagen".
+-- a finished round changed that way is announced with "Ergebnis ansagen". While the loot window has
+-- something to announce, "Erneut ansagen" beside it says it again (LootAnnounce.lua, as /amisia ansage).
 -- Under the item a line names everyone the item is an upgrade or a wish for (the answers to "Wer
 -- braucht das?", asked by the window itself when a round starts, the guild wishes and the own
 -- comparison, ns.UpgradeOf), and each row shows its roller's part of it. For green and blue items
@@ -334,6 +335,7 @@ end
 
 refresh = function()
     if not F or not F:IsShown() then return end
+    F.announceBtn:SetShown(ns.LootAnnounceReady and ns.LootAnnounceReady() or false)
     local r = ns.CurrentRoll() or ns.LastRoll()
     F.namePick:SetValues(entryNames(), L["Anderer Name"])
     showHint(r)
@@ -538,6 +540,11 @@ local function build()
 
     F.resultBtn = W.Link(F, L["Ergebnis ansagen"], function() ns.AnnounceRollResult(ns.CurrentRoll() or ns.LastRoll()) end)
     F.resultBtn:SetPoint("BOTTOMRIGHT", -12, 10)
+    -- the open loot window once more in the raid chat (as /amisia ansage), while it has something to say
+    F.announceBtn = W.Link(F, L["Erneut ansagen"], function() if ns.LootAnnounceAgain then ns.LootAnnounceAgain() end end)
+    F.announceBtn:SetPoint("RIGHT", F.resultBtn, "LEFT", -T.LAYOUT.ITEM_GAP, 0)
+    W.Tooltip(F.announceBtn, L["Erneut ansagen"], L["Sagt die Items des offenen Lootfensters noch einmal im Schlachtzugschat an."])
+    F.announceBtn:Hide()
     F.rows = rows
     -- the parts the layout tests read
     F.header, F.timer, F.stopBtn, F.againBtn = header, timer, stopBtn, againBtn
@@ -562,6 +569,7 @@ ns.OnRollChanged = function(r)
 end
 ns.Listen("NEED", function() refresh() end)
 ns.Listen("LOOT_PRIO", function() refresh() end)
+ns.Listen("LOOT_WINDOW", function() refresh() end)
 ns.Listen("SETTING", function(path)
     if path == "bis.compare" or path == "rolls.lookHint" or path == "bis.minTotal" then refresh() end  -- l10n-ok: setting keys
 end)
