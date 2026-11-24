@@ -170,6 +170,11 @@ local it = NS.SettingItem("ui.talentScale")
 assert(it and it.section.key == "ui" and it.type == "slider" and it.min == 70 and it.max == 150 and it.step == 5
     and it.default == 100, "the setting under Oberfläche")
 assert(it.label == "Größe des Talentfensters (%)")
+-- shown only with the Talents module there: without it the slider does nothing
+assert(NS.Visible(it), "shown with the Talents module")
+NS.MODULES.talents = nil
+assert(not NS.Visible(it), "hidden without the Talents module")
+NS.MODULES.talents = true
 assert(win:GetScale() == 1)
 NS.Set("ui.talentScale", 120)
 assert(math.abs(win:GetScale() - 1.2) < 1e-9, "applied live")

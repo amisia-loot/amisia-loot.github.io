@@ -391,7 +391,7 @@ local function sectionComm(R)
         add(R, "WERT", "C_ChatInfo.IsAddonMessagePrefixRegistered", L["fehlt"])
     end
     check(R, L["Addon-Nachrichten"], function()
-        return "WERT", L["verfügbar %s, Abgleich an %s"]:format(show(ns.CommAvailable and ns.CommAvailable()), show(ns.CommReady and ns.CommReady()))
+        return "WERT", L["verfügbar %s, Abgleich an %s"]:format(show(ns.CommAvailable and ns.CommAvailable()), show(ns.RaidSyncReady and ns.RaidSyncReady()))
     end)
     check(R, L["Zähler"], function()
         local stats = ns.CommStats and ns.CommStats() or {}

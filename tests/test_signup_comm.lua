@@ -34,10 +34,13 @@ end
 -- a click: AN to the guild, the officer's lineup
 C(PALA, "NS.SignupLoadTerms()")
 BUS.tick(1)
+-- sync.enabled stops only the raid state sync (D-165): with it off the sign-up still goes and is taken
+for _, name in ipairs(CLIENTS) do C(name, "NS.Set('sync.enabled', false)") end
 local ok, line = C(PALA, "return NS.SignupSet(NS.SignupTerms()[1], 'A', 'H', 'komme 20:15')")
 assert(ok == true and has(line, "Gesendet."), tostring(line))
 BUS.tick(2)
 assert(BUS.count({ kind = "AN", sender = PALA, chan = "GUILD" }) == 1)
+for _, name in ipairs(CLIENTS) do C(name, "NS.Reset('sync.enabled')") end
 local e = entry(PALA)
 assert(e and e.f == "A" and e.st == "A" and e.r == "H" and e.w == "komme 20:15" and e.c == "PALADIN", "in the officer's lineup")
 assert(entry(PALA, N1) and not entry(BOB), "only the sender")

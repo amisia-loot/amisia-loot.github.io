@@ -584,7 +584,7 @@ ns.RegisterSettings{ key = "rolls", label = L["Roll-Runden"], order = 20, group 
       values = { { "RAID_WARNING", L["Schlachtzugswarnung"] }, { "RAID", L["Schlachtzug"] } },
       tip = L["Schlachtzugswarnung nur als Leiter oder Assistent, sonst Schlachtzug."] },
     { key = "rolls.announceEnglish", type = "toggle", label = L["Rundenansage auch auf Englisch"], default = false,
-      tip = L["Auf einem deutschen Client eine zweite Zeile auf Englisch, damit Raider mit einem anderen Loot-Addon oder englischem Client sie verstehen: /roll für Mainspec, /roll 99 für Offspec."] },
+      tip = L["Auf einem deutschen Client eine zweite Zeile auf Englisch, damit Raider mit einem anderen Loot-Addon oder englischem Client sie verstehen: /roll für Mainspec, /roll 99 für Offspec. Die Ansage der Soft-Reserves bekommt ihre Zeilen ebenso auf Englisch."] },
     { key = "rolls.foreignWatch", type = "toggle", label = L["Runden anderer Loot-Addons erkennen"], default = true,
       tip = L["Startet die Lootleitung eine Runde mit einem anderen Loot-Addon, schreibt Amisia die Würfe still mit (keine Ansage). Den Gewinner sagt das andere Addon an."] },
     { key = "rolls.altClick", type = "toggle", label = L["Alt-Klick im Lootfenster startet einen Roll"], default = true,

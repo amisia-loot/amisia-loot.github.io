@@ -1161,7 +1161,7 @@ end
 
 ns.RegisterSettings{ key = "map", label = L["Karte und Wegpunkt"], order = 48, group = "dungeons", pages = { "map" }, available = function() return ns.HasData("MAP") end, items = {
     { key = "map.pins", type = "toggle", label = L["Orte auf der Weltkarte zeigen"], default = true,
-      tip = L["Pins für Upgrades und Wünsche, mit Item-Symbol."] },
+      tip = L["Pins für Upgrades und Wünsche, mit Item-Symbol, und die Pins der Quest-Schritte auf der Weltkarte."] },
     { key = "map.pinsTargets", type = "toggle", label = L["Pins für Upgrades aus Ziele"], default = true, tip = L["Die Weltkarte zeigt Pins, wo deine Upgrades zu holen sind (Seite Ausrüstung, Ziele)."] },
     { key = "map.pinsWishes", type = "toggle", label = L["Pins für Wünsche"], default = true, tip = L["Die Weltkarte zeigt Pins, wo deine Wünsche zu holen sind."] },
     { key = "map.pinsQuests", type = "toggle", label = L["Pins für Quest-Schritte"], default = true, tip = L["Die Weltkarte und die Seite Karte zeigen den nächsten Schritt jeder offenen Dungeon-Quest deiner Stufe (gelbes Ausrufezeichen)."] },

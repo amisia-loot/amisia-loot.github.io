@@ -5,6 +5,38 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(sync): the "Sync" switch stops only the raid sync (F-025)
+
+    "Sync raid state with other Amisia clients" off used to stop every addon message: sign-ups, the guild's
+    layer change, bank pledges, raid lockouts, the raid check and the sharing of needs, loot prio, points and
+    loot rules. Now it stops only what its tip names: awards, plus-ones, bench and boss kills of the current raid.
+    Every other feature follows its own switch.
+
+- fix(quests): quest switches moved by 2.107.0 come back (F-134)
+
+    Up to 2.107.0 the first opening of the Quests page moved the quest switches (item tooltip, delete without
+    asking, start window, share with the group, hide completed) into the page's own state, so the settings showed
+    the defaults again. A migration moves them back to their settings once; a value already set there stays.
+
+- fix(talents): the talent window size shows only with the Talents module (F-081)
+
+    "Talent window size (%)" under Interface is hidden while the Talents module is off, where it did nothing.
+
+- fix(loot): quality names of the loot announcement (F-018)
+
+    "Announce from quality" named blue items "Uncommon" in German ("Selten" is green); it now says "Rare (blue)",
+    "Epic (purple)" and "Legendary (orange)", like the loot toast.
+    A loot rule "Quality up to" names its limit the same way ("Rare (blue)" was "Uncommon").
+
+- fix(softres): the English announcement tip names the soft-reserve lines (F-019)
+
+    The tip of "Round announcement also in English" now says that the soft-reserve announcement gets its lines
+    in English as well.
+
+- fix(map): the world map pins tip names the quest steps (F-045)
+
+    The tip of "Show places on the world map" now says that it also switches the quest step pins.
+
 ## [v2.107.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.107.1) (2026-11-24)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.107.0...v2.107.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

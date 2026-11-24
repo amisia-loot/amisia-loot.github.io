@@ -46,7 +46,9 @@ local ok, why = C(A, "return NS.LayerChange.Ask()")
 assert(not ok and why:find("Erst die Gruppe verlassen", 1, true), tostring(why))
 C(A, "STUB.roster = {}")
 
--- Anna asks: one YQ to the guild; only Vulo answers, by whisper
+-- Anna asks: one YQ to the guild; only Vulo answers, by whisper. sync.enabled stops only the raid
+-- state sync (D-165): with it off on every client the question still goes and is answered
+for _, n in ipairs({ A, V, K, U }) do C(n, "NS.Set('sync.enabled', false)") end
 assert(C(A, "return NS.LayerChange.Ask()") == true)
 local ok2, why2 = C(A, "return NS.LayerChange.Ask()")
 assert(not ok2 and why2:find("10 Sekunden", 1, true), "once in 10 s")
@@ -55,6 +57,7 @@ assert(BUS.count({ kind = "YQ", chan = "GUILD", sender = A }) == 1)
 assert(BUS.count({ kind = "YA", chan = "WHISPER", sender = V, target = A }) == 1, "Vulo answers")
 assert(BUS.count({ kind = "YA", sender = K }) == 0, "Kai on the same layer stays silent")
 assert(BUS.count({ kind = "YA", sender = U }) == 0, "Udo outside the guild hears nothing")
+for _, n in ipairs({ A, V, K, U }) do C(n, "NS.Reset('sync.enabled')") end
 local answers = C(A, "NS.LayerChange.Answers()")
 assert(#answers == 1 and answers[1].name == V and answers[1].layer == "Layer A" and not answers[1].seen, tostring(answers[1] and answers[1].layer))
 assert(C(A, "NS.Layer.Name(1429, 4012)") == "Layer B", "the guild's lower id shifts Anna's letter")

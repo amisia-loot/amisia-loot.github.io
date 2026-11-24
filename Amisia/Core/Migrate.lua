@@ -182,6 +182,21 @@ ns.MIGRATIONS = {
         if p.guild == true and p.guildFilter == nil then p.guildFilter = "has" end
         p.guild = nil
     end,
+    -- 9 (F-134): up to 2.107.0 the first opening of the Quests page moved every quest setting but
+    -- "enabled" into the page's state (settings.questsPage); they go back to settings.quests, a value
+    -- already there stays
+    function(db)
+        local s = type(db.settings) == "table" and db.settings
+        local page = s and s.questsPage
+        if type(page) ~= "table" then return end
+        for _, k in ipairs({ "itemTooltip", "itemNoAsk", "startPopup", "groupShare", "hideDone" }) do
+            if page[k] ~= nil then
+                s.quests = type(s.quests) == "table" and s.quests or {}
+                if s.quests[k] == nil then s.quests[k] = page[k] end
+                page[k] = nil
+            end
+        end
+    end,
 }
 
 local newer   -- the schema of a file a newer Amisia saved, for the one chat line

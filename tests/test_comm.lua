@@ -32,9 +32,10 @@ end
 assert(STUB.prefixes.Amisia and STUB.prefixes.AmisiaD, "both prefixes registered while loading")
 assert(NS.SYNC_PROTO == 1 and NS.SYNC_MIN_PROTO == 1)
 assert(NS.CommAvailable() == true and NS.CommPacking() == true)
-assert(NS.CommReady() == true, "sync is on by default")
+assert(NS.CommReady() == true and NS.RaidSyncReady() == true, "sync is on by default")
+-- sync.enabled stops only the raid state sync (D-165); every other feature needs only the layer
 NS.Set("sync.enabled", false)
-assert(NS.CommReady() == false and NS.CommAvailable() == true)
+assert(NS.CommReady() == true and NS.RaidSyncReady() == false and NS.CommAvailable() == true)
 NS.Set("sync.enabled", true)
 assert(NS.CommQueueSize() == 0 and NS.CommHeld() == false)
 

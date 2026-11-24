@@ -405,7 +405,7 @@ local function shut()
     if not ns.CommAvailable() or not ns.CommPacking() then return true end
     if type(IsInGuild) ~= "function" or ns.Plain(IsInGuild()) ~= true then return true end
     if ns.CommHeld() then return true end
-    return ns.Active ~= nil and ns.Active() ~= nil and ns.CommReady() and true or false
+    return ns.Active ~= nil and ns.Active() ~= nil and ns.RaidSyncReady() and true or false
 end
 
 function ns.CraftersCanTalk()

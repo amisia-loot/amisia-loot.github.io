@@ -111,7 +111,7 @@ L["Hard-Reserve für %s: erst die Rückfrage beantworten."] = "Hard reserve for 
 L["Hard-Reserve für %s. Trotzdem würfeln?"] = "Hard reserve for %s. Roll anyway?"
 L["Gargul-Runde von %s auf %s erkannt, während eine Amisia-Runde läuft."] = "Gargul round by %s on %s seen while an Amisia round runs."
 L["Rundenansage auch auf Englisch"] = "Round announcement in English too"
-L["Auf einem deutschen Client eine zweite Zeile auf Englisch, damit Raider mit einem anderen Loot-Addon oder englischem Client sie verstehen: /roll für Mainspec, /roll 99 für Offspec."] = "On a German client a second line in English, so raiders with another loot addon or an English client understand it: /roll for main spec, /roll 99 for off spec."
+L["Auf einem deutschen Client eine zweite Zeile auf Englisch, damit Raider mit einem anderen Loot-Addon oder englischem Client sie verstehen: /roll für Mainspec, /roll 99 für Offspec. Die Ansage der Soft-Reserves bekommt ihre Zeilen ebenso auf Englisch."] = "On a German client a second line in English, so raiders with another loot addon or an English client understand it: /roll for main spec, /roll 99 for off spec. The soft-reserve announcement gets its lines in English as well."
 L["Runden anderer Loot-Addons erkennen"] = "Recognise rounds of other loot addons"
 L["Startet die Lootleitung eine Runde mit einem anderen Loot-Addon, schreibt Amisia die Würfe still mit (keine Ansage). Den Gewinner sagt das andere Addon an."] = "When the loot lead starts a round with another loot addon, Amisia records the rolls silently (no announcement). The other addon announces the winner."
 

@@ -217,7 +217,7 @@ assert(p.presets[1]:GetText() == "Grünes zum Entzaubern" and p.presets[2]:GetTe
 p.presets[2]:Click()
 local list = NS.LootRules().list
 assert(#list == 1 and list[1].k == "q" and list[1].q == 3 and list[1].to == "de")
-assert(has(p.rules:GetText(), "1. Qualität bis Selten -> Entzaubern") and has(p.rules:GetText(), "Vuloo"), "the list shows the rule")
+assert(has(p.rules:GetText(), "1. Qualität bis Rar (blau) -> Entzaubern") and has(p.rules:GetText(), "Vuloo"), "the list shows the rule")
 p.presets[2]:Click()
 assert(#NS.LootRules().list == 1 and has(F.status:GetText(), "Diese Regel gibt es schon."), "no duplicate")
 p.presets[3]:Click()

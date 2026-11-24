@@ -4875,3 +4875,26 @@ Einstellungsabschnitt `orders` (Reiter Gilde), ein Reiter "Aufträge" auf der Se
 14 Tage, Chatzeile 6 je Stunde, offline, `OQ`, Instanz, Sperre, Prüfung beim Laden),
 `tests/test_guild_orders_flow.lua` (der Ablauf zwischen fünf Clients), `tests/test_guild_orders_page.lua`,
 `tools/tests/test_contracts.py`.
+
+## D-165 Der Schalter "Sync" hält nur den Raid-Abgleich an
+
+**Datum:** 2026-11-24
+**Entscheidung:** `sync.enabled` ("Raid-Stand mit anderen Amisia-Clients abgleichen") hält nur den Raid-Abgleich
+von `Raid/Sync.lua` an: Vergaben, Plus-Eins, Ersatzbank und Bosskills des laufenden Raids, mit Hüterwahl,
+Ständen und Wünschen. `ns.CommReady()` heißt jetzt nur "die Nachrichtenschicht geht" (wie `ns.CommAvailable()`);
+`ns.RaidSyncReady()` ist `CommReady` und `sync.enabled`. Jede andere Funktion fragt `CommReady` und ihren eigenen
+Schalter: Anmeldungen (`Raid/Signup.lua`), "Gilde fragen" des Layers (`Gear/LayerChange.lua`), Bedarf und Zusagen
+der Gildenbank (`Raid/BankNeeds.lua`), Raid-IDs und Raid-Check (`Raid/RaidIDs.lua`, `Raid/RaidCheck.lua`),
+Bedarf (`need.share`), Loot-Prio (`prio.share`), Punkte (`points.share`), Lootregeln. Die Gildenaustausche, die
+während eines abgeglichenen Raids schweigen (Sammlung `Collect/CollectSync.lua`, Drops `Collect/DropSync.lua`,
+Hersteller `Gear/Crafters.lua`), fragen `RaidSyncReady`: ist der Raid-Abgleich aus, belegt er keine Bandbreite,
+und sie dürfen reden. Der Selbsttest nennt bei "Abgleich an" `RaidSyncReady`.
+**Grund:** Prüfung aller Schalter am 2026-11-24: aus schaltete der Schalter still Dutzende Funktionen ab, die
+weder sein Name noch sein Tipp nennen. Entscheidung des Nutzers ("Fehler beheben"): der Schalter tut, was sein
+Tipp sagt.
+**Folge:** Eine neue Nachricht, die zum Raid-Stand gehört, fragt `ns.RaidSyncReady()`; jede andere
+`ns.CommReady()` und einen eigenen Schalter. Der Tipp des Schalters sagt, dass die übrigen Teile eigene
+Schalter haben.
+**Durchgesetzt durch:** `tests/test_comm.lua`, `tests/test_signup_comm.lua`, `tests/test_layer_change.lua`,
+`tests/test_bank_needs.lua` (Sync aus, die Nachricht geht), `tests/test_sync_raid.lua`, `tests/test_sync_ops.lua`
+(Sync aus, kein Raid-Abgleich), `tests/test_drop_sync.lua`.

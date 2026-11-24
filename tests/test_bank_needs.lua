@@ -87,10 +87,13 @@ assert(none[1].have == nil and none[1].level == "unknown", "no count")
 ---------------------------------------------------------------------------
 -- pledges
 ---------------------------------------------------------------------------
+-- sync.enabled stops only the raid state sync (D-165): with it off the pledge still goes and is heard
+for _, name in ipairs(CLIENTS) do C(name, "NS.Set('sync.enabled', false)") end
 ok, why = C(KIM, "return NS.PledgeBankNeed(61001, 15)")
 assert(ok == true, tostring(why))
 BUS.tick(2)
 assert(BUS.count({ kind = "GP", sender = KIM, chan = "GUILD" }) == 1, "the pledge goes to the guild")
+for _, name in ipairs(CLIENTS) do C(name, "NS.Reset('sync.enabled')") end
 for _, name in ipairs({ VULO, FRAK, KIM }) do
     local p = C(name, "return NS.BankPledgeList()")
     assert(#p == 1 and p[1].name == KIM and p[1].item == 61001 and p[1].count == 15, name .. " lists the pledge")

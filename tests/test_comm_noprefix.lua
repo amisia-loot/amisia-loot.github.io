@@ -3,7 +3,7 @@ STUB.prefixResult = 3
 ]]
 -- The client refuses the prefixes (too many registered): the message layer stays off and says so once.
 STUB.roster = { { name = "Vuloo", class = "PRIEST" }, { name = "Fraktur", class = "SHAMAN" } }
-assert(NS.CommAvailable() == false and NS.CommReady() == false)
+assert(NS.CommAvailable() == false and NS.CommReady() == false and NS.RaidSyncReady() == false)
 local n = 0
 for _, m in ipairs(STUB.messages) do
     if m:find("Addon-Nachrichten sind nicht verfügbar (Präfix nicht angemeldet). Sync und Versionsprüfung sind aus.", 1, true) then n = n + 1 end

@@ -645,7 +645,7 @@ ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, group = "
     { key = "ui.alpha", type = "slider", label = L["Deckkraft des Hauptfensters (%)"], default = 100, min = 30, max = 100, step = 5,
       onChange = function(v) if ns.ApplyAlpha then ns.ApplyAlpha(v) end end,
       tip = L["Wie durchsichtig das Amisia-Fenster ist: 100 ist ganz deckend, weniger lässt die Spielwelt durchscheinen."] },
-    { key = "ui.talentScale", forever = true, type = "slider", label = L["Größe des Talentfensters (%)"], default = 100, min = 70, max = 150, step = 5,
+    { key = "ui.talentScale", forever = true, available = function() return ns.HasModule("talents") end, type = "slider", label = L["Größe des Talentfensters (%)"], default = 100, min = 70, max = 150, step = 5,
       tip = L["Das große Talentfenster (Talentrechner). Strg + Mausrad über dem Fenster ändert die Größe auch."],
       onChange = function(v) if ns.ApplyTalentScale then ns.ApplyTalentScale(v) end end },
     -- F-169: the player tooltip's lines (UI/UnitInfo.lua)

@@ -98,7 +98,7 @@ end
 ---------------------------------------------------------------------------
 local function raidSynced()
     local s = ns.Active and ns.Active()
-    return s ~= nil and ns.CommReady() and true or false
+    return s ~= nil and ns.RaidSyncReady() and true or false
 end
 
 local battlefield = ns.InBattlefield

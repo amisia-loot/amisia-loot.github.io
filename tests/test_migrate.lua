@@ -69,3 +69,22 @@ assert(t.show == false and t.money == false and t.size == 22, "moved")
 assert(t.quality == "4", "a value already in the new place stays")
 assert(u.lootToast == nil and u.lootToastMoney == nil and u.lootToastSize == nil and u.lootToastQuality == nil, "the old ones go")
 assert(u.scale == 110, "the rest of Oberfläche stays")
+
+-- step 9 (F-134): the quest switches a released 2.107.0 moved into the page state go back
+local q9 = NS.MIGRATIONS[9]
+db = { settings = { quests = { enabled = true, hideDone = true }, questsPage = { itemTooltip = false, itemNoAsk = true,
+    startPopup = false, groupShare = false, hideDone = false, search = "dm", zone = 3, collapsed = { a = true } } } }
+q9(db)
+local qs, qp = db.settings.quests, db.settings.questsPage
+assert(qs.itemTooltip == false and qs.itemNoAsk == true and qs.startPopup == false and qs.groupShare == false, "moved back")
+assert(qs.hideDone == true and qs.enabled == true, "a value already in quests stays")
+for _, k in ipairs({ "itemTooltip", "itemNoAsk", "startPopup", "groupShare", "hideDone" }) do
+    assert(qp[k] == nil, "cleared from the page: " .. k)
+end
+assert(qp.search == "dm" and qp.zone == 3 and qp.collapsed.a == true, "the page keys stay")
+-- no quests section yet, no page state, no settings: no error
+db = { settings = { questsPage = { startPopup = false } } }
+q9(db)
+assert(db.settings.quests.startPopup == false and db.settings.questsPage.startPopup == nil)
+q9({ settings = { quests = { hideDone = true } } })
+q9({})

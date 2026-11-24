@@ -116,7 +116,7 @@ function ns.CollectSyncCanTalk()
     if kind ~= nil and kind ~= "none" then return false end
     if type(InCombatLockdown) == "function" and InCombatLockdown() then return false end
     if ns.CommHeld() then return false end
-    if (ns.Active and ns.Active() ~= nil and ns.CommReady()) or battlefield() then return false end
+    if (ns.Active and ns.Active() ~= nil and ns.RaidSyncReady()) or battlefield() then return false end
     return true
 end
 local canTalk = function() return ns.CollectSyncCanTalk() end

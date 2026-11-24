@@ -175,7 +175,7 @@ end
 ---------------------------------------------------------------------------
 -- Words for a rule
 ---------------------------------------------------------------------------
-local QUALITY_WORD = { [2] = L["Ungewöhnlich"], [3] = L["Selten"] }
+local QUALITY_WORD = { [2] = L["Selten (grün)"], [3] = L["Rar (blau)"] }
 
 local function targetWord(to)
     if to == "bank" then return L["Bank##Ziel"] end

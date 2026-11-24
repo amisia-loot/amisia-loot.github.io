@@ -118,7 +118,7 @@ local function sessionFor(key)
     return nil
 end
 
-local function ready() return ns.CommReady() and ns.CommPacking() end
+local function ready() return ns.RaidSyncReady() and ns.CommPacking() end
 
 -- Officer view and officer rank: this client takes the officer part.
 local function officerSelf() return ns.IsOfficerView() and ns.SelfIsOfficer() end

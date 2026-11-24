@@ -130,8 +130,12 @@ function ns.CommPrefixResults()
     return out
 end
 
--- The layer works and the raid sync is switched on.
-function ns.CommReady() return available and ns.Get("sync.enabled") ~= false end
+-- The layer works. Every feature checks its own switch besides; sync.enabled stops only the raid
+-- state sync (ns.RaidSyncReady, D-165).
+function ns.CommReady() return available end
+
+-- The layer works and the raid state sync (awards, plus-one, bench, boss kills) is switched on.
+function ns.RaidSyncReady() return available and ns.Get("sync.enabled") ~= false end
 
 -- Whether the client can pack tables (C_EncodingUtil with the six functions).
 function ns.CommPacking()
@@ -1386,7 +1390,7 @@ end
 -- again.
 ns.SYNC_SETTINGS = { key = "sync", label = L["Sync und Version"], order = 85, group = "amisia", pages = { "about" }, items = {
     { key = "sync.enabled", type = "toggle", label = L["Raid-Stand mit anderen Amisia-Clients abgleichen"], default = true,
-      tip = L["Vergaben, Plus-Eins, Ersatzbank und Bosskills des laufenden Raids. Die Lootleitung hält den Stand."] },
+      tip = L["Nur Vergaben, Plus-Eins, Ersatzbank und Bosskills des laufenden Raids; die Lootleitung hält den Stand. Anmeldungen, Gildenbank, Layer und das übrige Teilen haben eigene Schalter."] },
     { key = "sync.debug", type = "toggle", label = L["Sync-Nachrichten im Chat (Fehlersuche)"], default = false, expert = true, tip = L["Schreibt jede Sync-Nachricht in den Chat. Nur zur Fehlersuche."] },
 } }
 ns.RegisterSettings(ns.SYNC_SETTINGS)
