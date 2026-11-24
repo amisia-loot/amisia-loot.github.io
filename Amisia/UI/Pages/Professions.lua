@@ -1440,7 +1440,7 @@ local function overviewSections()
     end
     if hasCooldowns() then
         more[#more + 1] = { icon = MARKS.cooldowns, name = L["Abklingzeiten"],
-            sub = L["Transmutation, Mondstoff und mehr: wann sie wieder bereit sind"],
+            sub = L["Wann Transmutation und Co. wieder bereit sind"],
             open = function() openView(COOLDOWNS) end,
             tip = L["Klick: die Abklingzeiten deiner Charaktere und der Gilde."] }
     end

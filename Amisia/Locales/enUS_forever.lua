@@ -460,7 +460,7 @@ L["Klick auf eine Kachel: die Rezepte des Berufs; unter \"Weiteres\" Lager, Hän
 L["%d offene für dich · bestellen und herstellen"] = "%d open for you · order and craft"
 L["Bei der Gilde bestellen und für sie herstellen"] = "Order from the guild and craft for it"
 L["Klick: deine Aufträge, was du für andere herstellen kannst, und alle offenen der Gilde."] = "Click: your orders, what you can craft for others, and all open orders of the guild."
-L["Transmutation, Mondstoff und mehr: wann sie wieder bereit sind"] = "Transmutes, mooncloth and more: when they are ready again"
+L["Wann Transmutation und Co. wieder bereit sind"] = "When transmutes and more are ready again"
 L["Klick: die Abklingzeiten deiner Charaktere und der Gilde."] = "Click: the cooldowns of your characters and the guild."
 L["%d Lagerobjekte"] = "%d camp objects"
 L["%d Zertifizierungen (1000 Gunst, Rang 300)"] = "%d certifications (1000 favor, rank 300)"
