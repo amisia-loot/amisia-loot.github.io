@@ -136,6 +136,34 @@ assert(shown() and has(text(), "Keine Neuigkeiten gespeichert."), text())
 win():Hide()
 
 ---------------------------------------------------------------------------
+-- only what this client loads: TBC and Era the parts of every client, Forever without a module not its items;
+-- a version left without items shows nothing and is marked seen
+---------------------------------------------------------------------------
+NS.WHATSNEW = { version = "2.110.0", versions = {
+    { "2.110.0", { { "F-235", "Lauf-Gewinne", "Run gains", "dungeons" }, { "F-232", "Berufe", "Professions", "forever" },
+                   { "F-236", "Was ist neu", "What's new", "all" } } },
+    { "2.109.0", { { "F-230", "Gewichte", "Weights", "gear" }, { "F-200", "Alt", "Old" } } },
+} }
+items = NS.WhatsNewItems(nil)
+assert(#items == 2 and #items[1].list == 3 and #items[2].list == 2, "Forever with every module: everything")
+local wasForever, wasDungeons = NS.FOREVER, NS.MODULES.dungeons
+NS.MODULES.dungeons = nil
+items = NS.WhatsNewItems(nil)
+assert(#items[1].list == 2 and items[1].list[1] == "Berufe", "without the module Dungeons its item stays out")
+NS.FOREVER = false
+items = NS.WhatsNewItems(nil)
+assert(#items == 2 and #items[1].list == 1 and items[1].list[1] == "Was ist neu" and items[2].list[1] == "Alt",
+    "TBC and Era: the parts of every client (an item without a part counts as one)")
+NS.WHATSNEW.versions[1][2][3] = nil
+items = NS.WhatsNewItems("2.109.0")
+assert(#items == 0, "a version left without items")
+root = { seenVersion = "2.109.0" }
+NS.WhatsNewLoaded(root)
+enter()
+assert(not shown() and root.seenVersion == "2.110.0", "shows nothing and is marked seen")
+NS.FOREVER, NS.MODULES.dungeons = wasForever, wasDungeons
+
+---------------------------------------------------------------------------
 -- the setting stands in Oberfläche
 ---------------------------------------------------------------------------
 local found

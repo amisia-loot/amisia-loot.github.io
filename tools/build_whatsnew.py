@@ -14,6 +14,13 @@ same once the release turned the notes into the version's section. Versions newe
 out (FEATURES entries of the coming release). The newest KEEP versions with at least one item go in, newest
 first. Characters the game font lacks are replaced (tools/tests/test_contracts.py).
 
+Where an item is shown: the scope of the note it comes from (its first feat note, else the first note naming the
+feature) mapped by WHERE: "all" (the core on every client: the raid part, the interface), "forever" (the core's
+Forever-only files: professions, layer, duels, collecting, data), or a module ("gear", "dungeons", "talents",
+Forever only). The window leaves out what the client does not load (UI/WhatsNew.lua). A note without a scope or
+with one WHERE lacks counts as "forever" (shown on Forever only); lint() names such a scope and every feat line of
+the coming or current version the reader cannot parse (build.py check via tools/tests/test_build_whatsnew.py).
+
 tools/tests/test_build_whatsnew.py holds the shipped file against the documents (build.py check).
 """
 import argparse
@@ -33,7 +40,24 @@ NAME = 'WhatsNew.lua'
 KEY = 'WHATSNEW'
 KEEP = 5            # versions in the file
 LEFT_OUT = ('site',)   # note scopes the game does not show
-NOTE = re.compile(r'^- (\w+)\(([^)]*)\): (.+?)\s*\(((?:F-\d+)(?:,\s*F-\d+)*)\)\s*$')
+# "- type(scope): summary (F-1, F-2, D-3)"; the scope may be missing ("- feat: summary (F-1)"), the trailing
+# group may name decisions too
+NOTE = re.compile(r'^- (\w+)(?:\(([^)]*)\))?: (.+?)\s*\(((?:[FD]-\d+)(?:,\s*[FD]-\d+)*)\)\s*$')
+FEAT_LINE = re.compile(r'^- feat\b')
+# the part each note scope belongs to: "all" every client, "forever" the core's Forever-only files, a module key
+WHERE = {}
+for _where, _scopes in {
+    'all': 'ui raid settings calendar softres loot points lineup awards rolls raidnote bank members invites calls '
+           'guild chat comms comm sync feedback selftest locale modules core toast minimap import perf security '
+           'release tools docs license',
+    'forever': 'professions prof layer duels scan collect data drops',
+    'gear': 'gear goals catalog',
+    'dungeons': 'dungeons map quests runs routes world',
+    'talents': 'talents',
+}.items():
+    for _scope in _scopes.split():
+        WHERE[_scope] = _where
+UNKNOWN_WHERE = 'forever'   # a note without a known scope: shown on Forever only
 SECTION = re.compile(r'^## \[v(\d+\.\d+\.\d+)\][^\n]*$', re.M)
 # the game font has no glyph for these (test_no_characters_the_game_font_lacks)
 GLYPHS = {'–': '-', '—': '-', '…': '...', '←': '<-', '↑': '^', '→': '->', '↓': 'v', '•': '·', '●': '·', '▶': '>',
@@ -73,17 +97,40 @@ def sections(changelog, version):
 
 
 def notes(text):
-    """[(type, scope, summary, [F numbers])] of the note lines of a section."""
+    """[(type, scope, summary, [F numbers])] of the note lines of a section naming at least one feature (scope ''
+    when the note has none)."""
     out = []
     for line in text.splitlines():
         m = NOTE.match(line)
-        if m:
-            out.append((m.group(1), m.group(2), m.group(3), re.findall(r'F-\d+', m.group(4))))
+        ids = re.findall(r'F-\d+', m.group(4)) if m else []
+        if ids:
+            out.append((m.group(1), m.group(2) or '', m.group(3), ids))
+    return out
+
+
+def lint(changelog, version):
+    """The problems of the notes the next file is built from (the Unreleased notes and version's section): a feat
+    line the reader cannot parse or that names no feature (it would be missing from the window), a scope WHERE
+    does not know (shown on Forever only)."""
+    out, parts = [], []
+    m = re.search(r'^## Unreleased[ \t]*\n(.*?)(?=^## |\Z)', changelog, re.M | re.S)
+    if m:
+        parts.append(('Unreleased', m.group(1)))
+    parts += [(v, text) for v, text in sections(changelog, None) if v == version]
+    for v, text in parts:
+        for line in text.splitlines():
+            if not FEAT_LINE.match(line):
+                continue
+            m = NOTE.match(line)
+            if not m or not re.findall(r'F-\d+', m.group(4)):
+                out.append(f'{v}: a feat note without a readable "(F-xxx)" at its end: {line.strip()}')
+            elif m.group(2) and m.group(2) not in WHERE and m.group(2) not in LEFT_OUT:
+                out.append(f'{v}: the scope "{m.group(2)}" is not in build_whatsnew.WHERE: {line.strip()}')
     return out
 
 
 def collect(features_text, changelog, version, keep=KEEP):
-    """[(version, [(F number, German, English)])], newest first, at most keep versions with items."""
+    """[(version, [(F number, German, English, where)])], newest first, at most keep versions with items."""
     feats = {f.id: f for f in features.parse(features_text)}
     out = []
     for v, text in sections(changelog, version):
@@ -101,18 +148,24 @@ def collect(features_text, changelog, version, keep=KEEP):
                     return text_
             return None
 
-        for kind, _, text_, ids in ns:
+        def where(fid, scope=''):
+            """The part of the item: scope's, else the first scoped note naming fid, else UNKNOWN_WHERE."""
+            if not scope:
+                scope = next((sc for _, sc, _, ids in ns if sc and fid in ids), '')
+            return WHERE.get(scope, UNKNOWN_WHERE)
+
+        for kind, scope, text_, ids in ns:
             fid = ids[0]
             if kind != 'feat' or fid in seen:
                 continue
             seen.add(fid)
             f = feats.get(fid)
-            items.append((fid, clean(f.title if f else text_), clean(text_)))
+            items.append((fid, clean(f.title if f else text_), clean(text_), where(fid, scope)))
         for f in feats.values():
             if f.version == v and f.id not in seen:
                 seen.add(f.id)
                 en = summary(f.id)
-                items.append((f.id, clean(f.title), clean(en or f.title)))
+                items.append((f.id, clean(f.title), clean(en or f.title), where(f.id)))
         if items:
             out.append((v, items))
         if len(out) >= keep:
@@ -129,7 +182,8 @@ def render(data, version):
         '-- Generated by tools/build_whatsnew.py from docs/FEATURES.md (the German titles) and CHANGELOG.md (the',
         '-- English summaries). Do not edit; rebuild instead (python3 tools/build.py whatsnew; build.py release does',
         '-- it). The news of the newest versions for the window "Neu in Amisia" (F-236, D-168), newest first:',
-        '-- { version, { { feature, German title, English summary }, ... } }',
+        '-- { version, { { feature, German title, English summary, where }, ... } }; where: "all" every client,',
+        '-- "forever" the core on Forever, else the module that must be loaded ("gear", "dungeons", "talents")',
         'local _, ns = ...',
         '',
         'ns.%s = {' % KEY,
@@ -138,8 +192,9 @@ def render(data, version):
     ]
     for v, items in data:
         lines.append('        { %s, {' % lua_string(v))
-        for fid, de, en in items:
-            lines.append('            { %s, %s, %s },' % (lua_string(fid), lua_string(de), lua_string(en)))
+        for fid, de, en, where in items:
+            lines.append('            { %s, %s, %s, %s },' % (lua_string(fid), lua_string(de), lua_string(en),
+                                                         lua_string(where)))
         lines.append('        } },')
     lines += ['    },', '}', '']
     return lua_data.lazy('\n'.join(lines), KEY, len(data))

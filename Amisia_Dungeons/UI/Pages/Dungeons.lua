@@ -2913,6 +2913,12 @@ ns.Listen("RUN", function() if ns.RefreshSoon then ns.RefreshSoon() end end)
 ns.Listen("DUNGEON_NOTES", function() if ns.RefreshSoon then ns.RefreshSoon() end end)
 -- a member's quest state came or went (F-178)
 ns.Listen("GROUP_QUESTS", function() if ns.RefreshSoon then ns.RefreshSoon() end end)
+-- a rare learned in the game (F-235, Gear/RunGains.lua): the boss lists are built anew with it
+ns.Listen("RUNTIMES", function(what)
+    if what ~= "learned" then return end
+    cached().detail = nil
+    if ns.RefreshSoon then ns.RefreshSoon() end
+end)
 
 -- the journal parts the page Raids shares (UI/Pages/RaidJournal.lua)
 ns.DungeonJournalKit = { buildArt = buildArt, fillArt = fillArt, buildDetail = buildDetail,

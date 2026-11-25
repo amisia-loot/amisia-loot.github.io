@@ -415,9 +415,11 @@ end
 
 -- Whether unit is a harmless creature, never the cause of a real fight: a critter by its creature type,
 -- or a creature of level 1 (every critter is; no mob of a dungeon is) while the character is above 5. A
--- unit that does not exist, a player or a secret answer: not harmless (the fight counts).
+-- unit that does not exist, a player, a dead one (a corpse left targeted did not cause the next fight) or
+-- a secret answer: not harmless (the fight counts).
 function RT.Harmless(unit)
     if plainCall(UnitExists, unit) ~= true or plainCall(UnitIsPlayer, unit) == true then return false end
+    if plainCall(UnitIsDead, unit) == true then return false end
     local kind = plainCall(_G.UnitCreatureType, unit)
     local critter = CRITTER[type(GetLocale) == "function" and GetLocale() or ""]
     if type(kind) == "string" and critter and kind == critter then return true end
@@ -425,11 +427,56 @@ function RT.Harmless(unit)
     return lvl == 1 and own ~= nil and own > 5
 end
 
-local deferred    -- a fight began with a harmless target: its next real target within it starts the clock
+-- Whether unit is a real foe within a deferred fight: a living creature (no player) the character can
+-- attack that is not harmless; inCombat: it fights as well (a name plate, a threat list). A missing or
+-- secret answer is no foe: only the fight's start counts "no target" as real.
+local function realFoe(unit, inCombat)
+    if plainCall(UnitExists, unit) ~= true or plainCall(UnitIsPlayer, unit) == true then return false end
+    if plainCall(UnitIsDead, unit) == true or RT.Harmless(unit) then return false end
+    if plainCall(_G.UnitCanAttack, "player", unit) == false then return false end
+    return not inCombat or plainCall(UnitAffectingCombat, unit) == true
+end
 
--- A fight starts: the clock of a fresh run starts (inside an instance with encounters, the run of
+-- A fight that began with a harmless target inside an instance: { at, entry } (its start), else nil.
+-- A real foe within it starts the clock, dated at that start (F-235).
+local deferred
+local MAX_PLATES = 40
+
+-- Starts the clock of a fresh run at the moment at (inside an instance with encounters, the run of
 -- Runs.lua of this instance without a kill and without a clock before; a map of several: canStart).
--- A fight whose target is a critter (RT.Harmless) starts nothing (F-235).
+local function begin(t, c, at)
+    local inst, kind, name = instanceNow()
+    if not inst then return end
+    local run = runsRun()
+    if not run or run.inst ~= inst or not tonumber(run.at) then return end
+    if not canStart(t, c, run, inst) then return end
+    -- the dungeon stood in (a guess in a map of several until the first kill), else the first with encounters
+    local key = ns.Runs.Here and ns.Runs.Here()
+    if not (key and ns.Runs.Encounters(key)) then key = keyFor(inst) end
+    if not key then return end
+    start(t, c, key, inst, name, run, at)
+    changed("start")
+    if ns.RunTimer and ns.RunTimer.Started then ns.RunTimer.Started(kind) end
+end
+
+-- A real foe (realFoe) in a deferred fight while the character still fights: the clock starts, dated
+-- at the fight's start. Answers whether the deferral ended.
+function RT.Foe(unit, inCombat)
+    if not deferred or type(unit) ~= "string" then return false end
+    if plainCall(UnitAffectingCombat, "player") ~= true or not realFoe(unit, inCombat) then return false end
+    local d = deferred
+    deferred = nil
+    local t, c = store(), me()
+    if not (t and c) then return true end
+    if not entryFight or entryFight.entry ~= d.entry then entryFight = { entry = d.entry, at = d.at } end
+    RT.Check()
+    if not t.live[c] then begin(t, c, d.at) end
+    return true
+end
+
+-- A fight starts (PLAYER_REGEN_DISABLED): the clock of a fresh run starts (begin). A fight whose target
+-- is harmless (RT.Harmless) starts nothing yet (F-235): inside an instance it waits for a real foe (a
+-- name plate fighting now or later, a threat list, a new target), dated at this start.
 function RT.Fight()
     local t, c = store(), me()
     if not (t and c) then return end
@@ -440,21 +487,15 @@ function RT.Fight()
     RT.Check()
     if t.live[c] then return end
     if harmless then
-        deferred = true
+        if not instanceNow() then return end
+        deferred = { at = now(), entry = entry }
+        -- a mob already fighting on a name plate is the real cause
+        for i = 1, MAX_PLATES do
+            if RT.Foe("nameplate" .. i, true) then return end
+        end
         return
     end
-    local inst, kind, name = instanceNow()
-    if not inst then return end
-    local run = runsRun()
-    if not run or run.inst ~= inst or not tonumber(run.at) then return end
-    if not canStart(t, c, run, inst) then return end
-    -- the dungeon stood in (a guess in a map of several until the first kill), else the first with encounters
-    local key = ns.Runs.Here and ns.Runs.Here()
-    if not (key and ns.Runs.Encounters(key)) then key = keyFor(inst) end
-    if not key then return end
-    start(t, c, key, inst, name, run, now())
-    changed("start")
-    if ns.RunTimer and ns.RunTimer.Started then ns.RunTimer.Started(kind) end
+    begin(t, c, now())
 end
 
 -- A boss killed (an encounter id): its split; the last boss of the game's order ends the run.
@@ -548,6 +589,18 @@ function RT.Rares(key)
     return out
 end
 
+-- Whether npc is a rare of key, of the data or learned (RT.Rares without building its list: the paths of
+-- dead units and loot sources ask often).
+function RT.IsRare(key, npc)
+    if type(npc) ~= "number" then return false end
+    local f = ns.Runs.Fact(key)
+    for _, r in ipairs(f and type(f.rares) == "table" and f.rares or {}) do
+        if type(r) == "table" and r[1] == npc then return true end
+    end
+    local RG = ns.RunGains
+    return RG ~= nil and RG.IsLearned ~= nil and RG.IsLearned(key, npc)
+end
+
 -- The times of key: { nm, best, seg, runs } or nil.
 function RT.Of(key)
     local t = store()
@@ -602,10 +655,11 @@ ns.OnEvent("PLAYER_ENTERING_WORLD", function() RT.Check() end)
 ns.OnEvent("ZONE_CHANGED_NEW_AREA", function() RT.Check() end)
 ns.Listen("RUN", function() RT.Check() end)
 ns.OnEvent("PLAYER_REGEN_DISABLED", function() RT.Fight() end)
--- a fight that began with a critter: a real target while it goes on starts the clock (F-235)
-ns.OnEvent("PLAYER_TARGET_CHANGED", function()
-    if deferred and plainCall(UnitAffectingCombat, "player") == true then RT.Fight() end
-end)
+-- a fight that began with a critter: a real foe while it goes on starts the clock (F-235); the handlers
+-- return at once unless such a fight waits
+ns.OnEvent("PLAYER_TARGET_CHANGED", function() if deferred then RT.Foe("target") end end)
+ns.OnEvent("UNIT_THREAT_LIST_UPDATE", function(unit) if deferred then RT.Foe(ns.Plain(unit), true) end end)
+ns.OnEvent("NAME_PLATE_UNIT_ADDED", function(unit) if deferred then RT.Foe(ns.Plain(unit), true) end end)
 ns.OnEvent("PLAYER_REGEN_ENABLED", function() deferred = nil end)
 ns.OnEvent("ENCOUNTER_END", function(enc, _, _, _, success)
     if tonumber(ns.Plain(success)) == 1 then RT.Kill(enc) end

@@ -25,10 +25,11 @@
 --   sees its creature dead: the target or the mouseover dead (UnitIsDead) with its NPC id in the GUID, or
 --   a loot window from its corpse (GetLootSourceInfo). A rare never seen dead stays grey.
 -- - Learned rares (F-235): a creature the client classifies "rare" or "rareelite" (UnitClassification)
---   seen inside a dungeon or raid as the target, under the mouse or as a name plate, alive or dead, is
---   remembered for that dungeon (its NPC id and the client's name; no boss of the game's order or of the
---   item data, none the data knows already). Account-wide in AmisiaDB.rares = { v = 1, list = {
---   [dungeon or raid key] = { [NPC id] = { n = name, t = epoch first seen } } } }, at most 12 per key and
+--   seen inside a 5-player dungeon (not a raid) as the target, under the mouse or as a name plate, alive
+--   or dead, is remembered for that dungeon (its NPC id and the client's name, never the client's
+--   "Unknown"; no boss and no rare the data knows of any dungeon of the map; on a map of several only once
+--   a kill told the dungeon, D-106). Account-wide in AmisiaDB.rares = { v = 1, list = {
+--   [dungeon key] = { [NPC id] = { n = name, t = epoch first seen } } } }, at most 12 per key and
 --   80 keys (the oldest go); never sent. tools/build_dungeons.py carries them into Data/DungeonData.lua.
 local ADDON, ns = ...
 ns.Load(function()
@@ -191,9 +192,7 @@ RG.NpcOf = npcOf
 -- key is a guess until the first kill, D-106).
 local function rareOfMap(l, npc)
     for _, key in ipairs(ns.Runs.KeysOf(l.i)) do
-        for _, r in ipairs(ns.RunTimes.Rares(key)) do
-            if r[1] == npc then return true end
-        end
+        if ns.RunTimes.IsRare(key, npc) then return true end
     end
     return false
 end
@@ -238,7 +237,8 @@ end
 -- The vendor value of the looted items (F-235)
 ---------------------------------------------------------------------------
 local lootMatch      -- the own loot lines' matchers, built on first use (the global strings are loaded then)
-local pending = {}   -- { id, n, l }: items looted before the client knew their price
+local pending = {}   -- { id, n, l, at }: items looted before the client knew their price
+local PENDING_AGE = 60   -- seconds a looted item waits for its price
 
 local function ownLoot(text)
     if not lootMatch then
@@ -283,8 +283,12 @@ local function onLoot(text)
     local price = sellPrice(id)
     if price then
         addValue(l, price * n)
-    elseif #pending < MAX_PENDING then
-        pending[#pending + 1] = { id = id, n = n, l = l }
+    else
+        -- the ones waiting too long go (the client never sent their data)
+        for i = #pending, 1, -1 do
+            if clockNow() - (pending[i].at or 0) > PENDING_AGE then table.remove(pending, i) end
+        end
+        if #pending < MAX_PENDING then pending[#pending + 1] = { id = id, n = n, l = l, at = clockNow() } end
     end
 end
 RG.OnLoot = onLoot
@@ -301,7 +305,7 @@ local function itemArrived(id)
         local p = pending[i]
         if p.id == id then
             table.remove(pending, i)
-            if p.l == live then addValue(p.l, price * p.n) end
+            if p.l == live and clockNow() - (p.at or 0) <= PENDING_AGE then addValue(p.l, price * p.n) end
         end
     end
 end
@@ -378,8 +382,12 @@ end
 ---------------------------------------------------------------------------
 local RARE_CLASS = { rare = true, rareelite = true }
 
+-- a name to keep: plain text, not the client's word for a creature not loaded yet (UNKNOWNOBJECT,
+-- "Unbekannt"/"Unknown"; the real name is read the next time it is seen)
 local function plainName(s)
-    return type(s) == "string" and s ~= "" and #s <= 60 and not s:find("[|%c]") and s or nil
+    if type(s) ~= "string" or s == "" or #s > 60 or s:find("[|%c]") then return nil end
+    if s == _G.UNKNOWNOBJECT or s == "Unknown" or s == "Unbekannt" then return nil end   -- l10n-ok: the client's words
+    return s
 end
 
 -- Shapes AmisiaDB.rares (ADDON_LOADED): keys and NPC ids checked, names plain, the caps kept.
@@ -434,6 +442,13 @@ function RG.Learned(key)
     return list
 end
 
+-- Whether npc was learned for key: a look-up, nothing built (the loot and dead-unit paths ask often).
+function RG.IsLearned(key, npc)
+    local learnedSet = AmisiaDB and AmisiaDB.rares
+    local set = type(learnedSet) == "table" and type(learnedSet.list) == "table" and key and learnedSet.list[key]
+    return type(set) == "table" and set[npc] ~= nil
+end
+
 -- Whether npc is a boss of key: of the game's order (the facts' npcs) or of the item data (D-152).
 local function isBoss(key, npc)
     local f = ns.Runs.Fact(key)
@@ -447,31 +462,36 @@ local function isBoss(key, npc)
     return false
 end
 
--- The dungeon key a creature seen now belongs to: the dungeon stood in, else the only one of the map,
--- else the running clock's; nil outside or where none can be told.
+-- The dungeon key a creature seen now belongs to and the keys of its map: only in a 5-player dungeon
+-- (instance type "party": a raid's elite adds and bosses are no rares to learn). The only key of the
+-- map; on a map of several (D-106) the one stood in when that is sure (a kill since entering), else the
+-- running clock's when a kill confirmed it; nil where none can be told.
 local function keyHere()
-    local inst = ns.RunTimes.InstanceNow()
-    if not inst then return nil end
+    local inst, kind = ns.RunTimes.InstanceNow()
+    if not inst or kind ~= "party" then return nil end
     local keys = ns.Runs.KeysOf(inst)
-    local here = ns.Runs.Here and ns.Runs.Here()
-    for _, k in ipairs(keys) do
-        if k == here then return k end
+    if #keys <= 1 then return keys[1], keys end
+    local here, sure = ns.Runs.Here()
+    if sure then
+        for _, k in ipairs(keys) do
+            if k == here then return k, keys end
+        end
     end
-    if #keys == 1 then return keys[1] end
     local l = ns.RunTimes.Live()
-    if l and l.i == inst then return l.k end
+    if l and l.i == inst and type(l.s) == "table" and next(l.s) then return l.k, keys end
     return nil
 end
 
--- unit (target, mouseover, a name plate): a rare creature inside a dungeon is remembered for it.
+-- unit (target, mouseover, a name plate): a rare creature inside a dungeon is remembered for it; not a
+-- boss and not a rare (data or learned) of any dungeon of the map.
 local function learn(unit)
     if not RARE_CLASS[ns.Plain(call(UnitClassification, unit)) or ""] then return end
     local npc = npcOf(call(UnitGUID, unit))
     if not npc then return end
-    local key = keyHere()
-    if not key or isBoss(key, npc) then return end
-    for _, r in ipairs(ns.RunTimes.Rares(key)) do
-        if r[1] == npc then return end
+    local key, keys = keyHere()
+    if not key then return end
+    for _, k in ipairs(keys) do
+        if isBoss(k, npc) or ns.RunTimes.IsRare(k, npc) then return end
     end
     local name = plainName(ns.Plain(call(UnitName, unit)))
     local learnedSet = name and learnedDB()
@@ -480,14 +500,15 @@ local function learn(unit)
     local set = learnedSet.list[key] or {}
     learnedSet.list[key] = set
     set[npc] = { n = name, t = time() }
-    local n, keys = 0, 0
+    local n, nKeys = 0, 0
     for _ in pairs(set) do n = n + 1 end
     if fresh then
-        for _ in pairs(learnedSet.list) do keys = keys + 1 end
+        for _ in pairs(learnedSet.list) do nKeys = nKeys + 1 end
     end
     -- over a cap: the shaping drops the oldest
-    if n > MAX_LEARN_KEY or keys > MAX_LEARN then RG.LearnedLoaded() end
-    ns.Fire("RUNTIMES", "rare")
+    if n > MAX_LEARN_KEY or nKeys > MAX_LEARN then RG.LearnedLoaded() end
+    -- "learned": the window and the dungeon bar draw again, the page Dungeons builds its boss list anew
+    ns.Fire("RUNTIMES", "learned")
 end
 RG.Learn = learn
 
@@ -535,6 +556,9 @@ ns.Listen("RUNTIMES", function(what)
     if what == "start" then
         owe, recent, pending, repRecent = {}, {}, {}, {}
         sync()
+    elseif what == "done" or what == "end" then
+        -- items still waiting for their price belong to the clock that ended
+        pending = {}
     end
 end)
 

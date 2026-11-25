@@ -321,6 +321,63 @@ assert(live() == nil, "a fight with a critter starts no clock")
 calm()
 STUB.fire("PLAYER_TARGET_CHANGED")
 assert(live() == nil, "a target after the fight starts nothing")
+-- "no target" is a real fight only at its start: clearing the target within a critter fight starts nothing
+pull({ kind = CRITTER, level = 1 })
+units.target = nil
+STUB.fire("PLAYER_TARGET_CHANGED")
+assert(live() == nil, "the target cleared in a critter fight starts no clock")
+-- a friendly or dead unit as the new target neither
+STUB.targetDead = true
+units.target = { kind = "Humanoid", level = 18 }
+STUB.fire("PLAYER_TARGET_CHANGED")
+assert(live() == nil, "a dead target within it starts nothing")
+STUB.targetDead = false
+calm()
+-- a critter left targeted: a mob fighting the group (its threat list, a name plate) starts the clock,
+-- dated at the fight's start
+local function again()
+    RT.Stop()
+    STUB.tick(1)
+    STUB.fire("CHAT_MSG_SYSTEM", "Die Todesminen has been reset.")
+    calm()
+    units.nameplate3 = nil
+end
+units.target = { kind = CRITTER, level = 1 }
+pull(units.target)
+local pulledAt = time()
+STUB.tick(7)
+units.nameplate3 = { kind = "Humanoid", level = 18 }
+STUB.fire("UNIT_THREAT_LIST_UPDATE", "nameplate3")
+assert(live() and live().k == "deadmines" and live().at == pulledAt, "a mob's threat list starts it, dated at the pull")
+again()
+-- the mob already on a name plate when the fight begins: at once
+units.nameplate3 = { kind = "Humanoid", level = 18 }
+pull(units.target)
+assert(live() and live().at == time(), "a fighting name plate at the start")
+again()
+-- or appearing later
+pull(units.target)
+pulledAt = time()
+STUB.tick(3)
+units.nameplate3 = { kind = "Humanoid", level = 18 }
+STUB.fire("NAME_PLATE_UNIT_ADDED", "nameplate3")
+assert(live() and live().at == pulledAt, "a name plate that comes later")
+again()
+-- a critter name plate or one of a player is no foe
+units.nameplate3 = { kind = CRITTER, level = 1 }
+pull(units.target)
+STUB.fire("UNIT_THREAT_LIST_UPDATE", "nameplate3")
+units.nameplate3 = { kind = "Humanoid", level = 18, player = true }
+STUB.fire("UNIT_THREAT_LIST_UPDATE", "nameplate3")
+assert(live() == nil, "no foe from a critter or a player")
+calm()
+-- the critter's corpse left targeted did not cause the next fight: it counts
+STUB.targetDead = true
+assert(not RT.Harmless("target"), "a dead critter is not harmless")
+pull(units.target)
+assert(live() and live().k == "deadmines", "a fight with a corpse as the target starts the clock")
+STUB.targetDead = false
+again()
 -- a creature of level 1 of another type (a language the table lacks): harmless as well
 pull({ kind = "Wildtier", level = 1 })
 assert(live() == nil and RT.Harmless("target"), "level 1 is harmless")
@@ -358,6 +415,13 @@ STUB.fire("GET_ITEM_INFO_RECEIVED", 4306, true)
 assert(live().v == 189, "and counts when it arrives: " .. live().v)
 STUB.fire("GET_ITEM_INFO_RECEIVED", 4306, true)
 assert(live().v == 189, "once")
+-- an item whose data comes after a minute is dropped
+prices[4307] = 500
+lootLine(4307)
+STUB.tick(61)
+loaded[4307] = true
+STUB.fire("GET_ITEM_INFO_RECEIVED", 4307, true)
+assert(live().v == 189, "too late: not counted")
 STUB.fire("CHAT_MSG_LOOT", _G.LOOT_ITEM:format("Anna", itemLink(5000)))
 STUB.fire("CHAT_MSG_LOOT", _G.LOOT_ITEM_PUSHED_SELF:format(itemLink(5000)))
 assert(live().v == 189, "another's loot and an item handed over are not loot")
@@ -467,6 +531,48 @@ assert(NS.Count(kept) == 12 and kept[100015] and not kept[100003] and not kept[5
 local order = NS.RunGains.Learned("deadmines")
 assert(#order == 12 and order[1][1] == 100004 and order[12][1] == 100015, "in the order first seen")
 AmisiaDB.rares = nil
+
+-- a map of several dungeons (D-106): nothing is learned while the wing is a guess; once a kill tells it,
+-- for that wing; a rare or boss of any wing of the map is no news; never the client's "Unknown"; never
+-- in a raid. The page Dungeons builds its boss list anew.
+RT.Stop()
+_G.UNKNOWNOBJECT = EN and "Unknown" or "Unbekannt"
+enter({ name = "Schwarzfelsspitze", type = "party", id = 229 })
+local function seeRare(npc, name, inst)
+    STUB.targetGUID, STUB.target, STUB.targetClass, STUB.targetDead = "Creature-0-1-" .. (inst or 229) .. "-1-" .. npc .. "-00001", name, "rare", false
+    STUB.fire("PLAYER_TARGET_CHANGED")
+end
+local function learnedIn(key, npc)
+    local s = AmisiaDB.rares and AmisiaDB.rares.list[key]
+    return s ~= nil and s[npc] ~= nil
+end
+seeRare(99010, "Rarer der Spitze")
+assert(not learnedIn("lbrs", 99010) and not learnedIn("ubrs", 99010), "the wing is a guess before a kill: nothing learned")
+kill(267)
+assert(select(2, NS.Runs.Here()) == true, "a kill tells the wing")
+seeRare(10509, "Jed Runenblick")
+assert(not learnedIn("lbrs", 10509), "a rare of the other wing is no news")
+seeRare(10363, "General Drakkisath")
+assert(not learnedIn("lbrs", 10363), "nor a boss of the other wing")
+seeRare(99011, _G.UNKNOWNOBJECT)
+assert(not learnedIn("lbrs", 99011), "the client's Unknown is no name")
+NS.ItemKit.cached().detail = { stale = true }
+seeRare(99010, "Rarer der Spitze")
+assert(learnedIn("lbrs", 99010) and not learnedIn("ubrs", 99010), "learned for the wing a kill told")
+assert(NS.ItemKit.cached().detail == nil, "the page's boss lists are built anew")
+assert(RT.IsRare("lbrs", 99010) and not RT.IsRare("ubrs", 99010) and RT.IsRare("ubrs", 10509), "the look-up")
+-- an Unknown kept from before goes on load
+AmisiaDB.rares.list.lbrs[99012] = { n = _G.UNKNOWNOBJECT, t = 5 }
+RG.LearnedLoaded()
+assert(not learnedIn("lbrs", 99012) and learnedIn("lbrs", 99010), "an Unknown is dropped on load")
+-- a raid: its rare elites are no dungeon rares
+enter({ name = "Onyxias Hort", type = "raid", id = 249 })
+seeRare(99013, "Raidwache", 249)
+assert(not learnedIn("onyxia", 99013), "nothing learned in a raid")
+STUB.targetGUID, STUB.target, STUB.targetClass = nil, nil, nil
+_G.UNKNOWNOBJECT = nil
+AmisiaDB.rares = nil
+enter(OUT)
 
 C_Item.GetItemInfo = getInfo
 _G.UnitExists, _G.UnitIsPlayer, _G.UnitCreatureType, _G.UnitAffectingCombat, _G.UnitLevel = nil, nil, nil, nil, unitLevel

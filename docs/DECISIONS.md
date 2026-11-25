@@ -5002,6 +5002,14 @@ Titel in FEATURES.md ist zugleich der Text, den deutsche Spieler sehen. Wer FEAT
 Abschnitt des Changelogs ändert, schreibt die Datei mit `python3 tools/build.py whatsnew` neu (der Check sagt es).
 **Durchgesetzt durch:** `tools/tests/test_build_whatsnew.py`, `tests/test_whats_new.lua`,
 `tools/tests/test_contracts.py::test_the_toc_loads_the_forever_parts_on_forever_only`.
+**Nachtrag 2026-11-25 (Review):** Jede Zeile trägt ihren Teil: der Scope ihrer Notiz (der ersten `feat`-Notiz, sonst
+der ersten Notiz, die das Feature nennt), über `build_whatsnew.WHERE` zu `all` (jeder Client: Raid-Teil, Oberfläche),
+`forever` (die Forever-Dateien des Kerns: Berufe, Layer, Duelle, Sammeln, Daten) oder einem Modul (`gear`,
+`dungeons`, `talents`); ohne bekannten Scope `forever`. `ns.WhatsNewItems` lässt weg, was der Client nicht lädt (TBC
+und Era nur `all`, Forever ein Modul nur mit `ns.HasModule`); eine Version ohne Zeilen zeigt nichts und gilt als
+gesehen. Die Notizen werden auch ohne Scope (`- feat: ...`) und mit D-Nummern in der Klammer am Ende gelesen;
+`build_whatsnew.lint` (im Check) nennt eine `feat`-Notiz der kommenden oder laufenden Version, die nicht lesbar ist,
+keine F-Nummer nennt oder einen Scope hat, den `WHERE` nicht kennt.
 
 ## D-169 Lauf-Fenster: keine Uhr durch Kleintiere, Beutewert, Ruf auf der Höchststufe, Rare selbst gelernt
 
@@ -5054,3 +5062,18 @@ startet, Beutewert mit Nachladen, fremde und zugesteckte Beute, geheime Zeile, E
 Quest davor und danach, Höchststufe "Ruf", gelernte Rare als Ziel und Plakette, kein Boss und kein Daten-Rarer, Deckel,
 Werte im Lauf und im Reiter "Zeiten"), `tests/test_boss_portraits.lua` (Rare nach den Bossen, keiner doppelt,
 gelernte), `tools/tests/test_build_dungeons.py::test_learned_rares_join_the_archive_and_the_dungeons_rares`.
+**Nachtrag 2026-11-25 (Review):**
+- **Kleintiere:** "kein Ziel zählt als echter Kampf" gilt nur bei `PLAYER_REGEN_DISABLED`; ein totes Ziel ist nie
+  harmlos (eine liegengelassene Leiche hat den nächsten Kampf nicht begonnen). Wartet ein Kampf (nur in einer
+  Instanz), startet die Uhr erst durch einen echten Gegner (`RT.Foe`: lebend, kein Spieler, angreifbar, nicht
+  harmlos): das neue Ziel, eine kämpfende Namensplakette bei Kampfbeginn oder bei `NAME_PLATE_UNIT_ADDED`, eine
+  Einheit von `UNIT_THREAT_LIST_UPDATE`; die Uhr zählt dann ab dem Beginn dieses Kampfs. Ein Abwählen startet nichts.
+  Die Handler kehren sofort zurück, solange kein Kampf wartet.
+- **Rare:** nur in 5er-Dungeons (Instanztyp `party`; Raids nicht: ihre Elite-Adds und Bosse fluten sonst). Auf einer
+  Karte mehrerer Dungeons (D-106) erst, wenn `Runs.Here` sicher ist (ein Kill seit dem Betreten) oder die laufende
+  Uhr einen Kill hat; kein Boss und kein Rarer irgendeines Dungeons der Karte; nie der Name `UNKNOWNOBJECT`
+  ("Unbekannt"/"Unknown"), auch nicht beim Laden. `build_dungeons.add_learned_rares` nimmt keine NPC, die Boss oder
+  Rarer eines Dungeons derselben Karte ist, und `learned_rares` keinen solchen Namen. Ein neu gelernter Rarer lässt
+  die Seite Dungeons ihre Bossliste neu bauen (`RUNTIMES` "learned"). `RT.IsRare`/`RG.IsLearned` schlagen nach,
+  statt die Liste zu bauen (`Runs.NpcBoss`, tote Einheiten, Beutequellen).
+- **Beutewert:** Gegenstände ohne Preis warten höchstens 60 Sekunden und fallen mit dem Ende der Uhr weg.

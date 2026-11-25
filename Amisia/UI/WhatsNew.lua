@@ -20,8 +20,17 @@ local function isVersion(v)
     return type(v) == "string" and #v <= 20 and v:match("^%d+%.%d+%.%d+$") ~= nil
 end
 
+-- Whether this client loads the part an item is about (its fourth field, tools/build_whatsnew.py WHERE): "all"
+-- (or none) every client, "forever" the core on Forever, a module key Forever with that module loaded.
+local function loaded(where)
+    if where == nil or where == "all" then return true end
+    if not ns.FOREVER then return false end
+    return where == "forever" or ns.HasModule(where)
+end
+
 -- The items of the versions after `after` (nil: every version in the file; false: the running version's only)
--- up to the running one, newest version first: { { v = "2.110.0", list = { text, ... } }, ... }.
+-- up to the running one, newest version first: { { v = "2.110.0", list = { text, ... } }, ... }. Items of a part
+-- this client does not load are left out, a version left without items too.
 function ns.WhatsNewItems(after)
     local data = ns.Data and ns.Data("WHATSNEW")
     local out = {}
@@ -38,7 +47,7 @@ function ns.WhatsNewItems(after)
         if take then
             local list = {}
             for _, it in ipairs(items) do
-                local text = ns.GERMAN and it[2] or it[3]
+                local text = type(it) == "table" and loaded(it[4]) and (ns.GERMAN and it[2] or it[3])
                 if type(text) == "string" and text ~= "" then list[#list + 1] = text end
             end
             if #list > 0 then out[#out + 1] = { v = v, list = list } end

@@ -47,6 +47,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du "Neuigkeiten nach einem Update zeigen" unter Einstellungen > Oberfläche ausschaltest, dann kommt beim nächsten Update kein Fenster.
 - Prüfung: Wenn das Spiel auf Englisch läuft (oder Sprache English unter Oberfläche), dann stehen die Neuerungen auf Englisch da.
 - Notiz: DECISIONS D-168, Spec `docs/specs/2026-11-25-was-ist-neu.md`. Inhalt aus FEATURES.md (deutsche Titel) und CHANGELOG.md (englische `feat`-Notizen), `tools/build_whatsnew.py`, beim Release geschrieben. Die erste Version mit dem Schlüssel zeigt bei bestehender Installation nur die Neuerungen von 2.110.0.
+- Notiz: Jede Zeile nennt ihren Teil (Scope der Notiz, `build_whatsnew.WHERE`): TBC und Era zeigen nur, was dort läuft (Raid-Teil, Oberfläche), Forever ohne ein Modul nicht dessen Zeilen (D-168 Nachtrag).
 
 ### F-234 Alles mit Klicks erreichbar: Befehle sind nur Abkürzungen
 - Version: 2.109.0
@@ -305,6 +306,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du in einem der neuen Forever-Dungeons einen Rare (silberner Drache am Porträt) anzielst oder mit der Maus berührst, dann steht er im Fenster unter "Rare" und auf der Seite Dungeons in der Liste der Bosse; tot gesehen wird er durchgekreuzt; nach `/reload` und im nächsten Lauf ist er noch da.
 - Prüfung: Wenn du unter Dungeons, Reiter "Zeiten", die Maus auf einen neuen Lauf unter "Letzte Läufe" hältst, dann nennt der Tooltip Mob-XP, Gold, Gegenstände und Ruf dieses Laufs.
 - Notiz: DECISIONS D-169; erweitert F-180 und F-166. Die Uhr wartet auch bei Kreaturen der Stufe 1. Gelernte Rare bleiben im eigenen Account und kommen mit `build.py data` (tools/rare_obs.json) in die Daten für alle. Ob Forever Kreaturtyp, Klassifizierung und Kennung in Instanzen lesbar gibt, ist ungeprüft.
+- Notiz: Nach dem Review (D-169 Nachtrag): ein abgewähltes Ziel oder eine Leiche startet im Kleintier-Kampf nichts; ein Mob, der im selben Kampf kämpft (Namensplakette, Bedrohungsliste) oder neu angezielt wird, startet die Uhr ab dem Kampfbeginn. Rare werden nur in 5er-Dungeons gelernt, in Schwarzfelsspitze und Kloster erst nach dem ersten Bosskill des Flügels, nie mit dem Namen "Unbekannt".
 
 ### F-180 Lauf-Fenster: Zeit, Mob-XP, Gold, Bosse und Rare
 - Version: 2.76.2

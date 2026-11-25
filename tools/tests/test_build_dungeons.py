@@ -526,3 +526,27 @@ def test_learned_rares_join_the_archive_and_the_dungeons_rares(tmp_path):
     assert added == [('deadmines', 99002, 'Learned Rare'), ('thanes', 99007, 'Thanrarer')]
     # a key the facts do not know gets nothing
     assert build_dungeons.add_learned_rares({}, set(), learned) == []
+
+
+def test_learned_rares_skip_the_other_wings_rares_and_bosses_and_unknown_names(tmp_path):
+    """A map of several dungeons (D-106): a learned NPC that is a rare or boss of another dungeon of the same
+    map stays out (seen while the addon guessed the wing); the client's "Unknown" is never a name, not even
+    one archived before."""
+    arch = tmp_path / 'rare_obs.json'
+    arch.write_text(json.dumps({'v': 1, 'rares': {'lbrs': {'99020': 'Unbekannt', '99021': 'Alter Rarer'}}}),
+                    encoding='utf-8')
+    db = {'rares': {'v': 1, 'list': {'lbrs': {10509: {'n': 'Jed Runenblick', 't': 1}, 10363: {'n': 'Drakkisath', 't': 2},
+                                              99022: {'n': 'Unknown', 't': 3}, 99010: {'n': 'Rarer der Spitze', 't': 4}}}}}
+    learned = build_dungeons.learned_rares([db], str(arch))
+    assert learned == {'lbrs': {99021: 'Alter Rarer', 10509: 'Jed Runenblick', 10363: 'Drakkisath',
+                                99010: 'Rarer der Spitze'}}
+    dungeons = {'lbrs': {'inst': 229, 'npcs': [9196], 'rares': [[9217, 'Spirestone Lord Magus']]},
+                'ubrs': {'inst': 229, 'npcs': [10363], 'rares': [[10509, 'Jed Runewatcher']]},
+                'deadmines': {'inst': 36, 'npcs': [644], 'rares': []}}
+    added = build_dungeons.add_learned_rares(dungeons, {'lbrs': 229, 'ubrs': 229, 'deadmines': 36}, learned)
+    assert added == [('lbrs', 99010, 'Rarer der Spitze'), ('lbrs', 99021, 'Alter Rarer')]
+    assert dungeons['ubrs']['rares'] == [[10509, 'Jed Runewatcher']]
+    # another map's rare is no reason: the same NPC learned in the Deadmines is kept there
+    added = build_dungeons.add_learned_rares(dungeons, {'lbrs': 229, 'ubrs': 229, 'deadmines': 36},
+                                             {'deadmines': {10509: 'Jed'}})
+    assert added == [('deadmines', 10509, 'Jed')]

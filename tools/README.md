@@ -1372,7 +1372,12 @@ file current).
 Builds `Amisia/Data/WhatsNew.lua` (`ns.WHATSNEW`, lazy) for the window "Neu in Amisia" after an update (F-236,
 D-168, `UI/WhatsNew.lua`): per version, newest first, the features its `feat` notes in `CHANGELOG.md` name (the first
 F number of a note, one line per feature, the scope `site` left out), then the features whose `docs/FEATURES.md`
-entry carries the version; each with its German title (FEATURES.md) and English summary (the note). The newest five
+entry carries the version; each with its German title (FEATURES.md), English summary (the note) and part: the note's
+scope mapped by `WHERE` to `all` (every client), `forever` (the core's Forever-only files) or a module (`gear`,
+`dungeons`, `talents`), a note without a scope taking another note's of the feature, an unknown scope `forever`; the
+window shows only what the client loads. A note reads `- type(scope): summary (F-1, D-2)`, the scope may be
+missing; `lint()` names a feat note of the coming or current version it cannot read or whose scope `WHERE` lacks
+(the check fails then: add the scope to `WHERE` or fix the note). The newest five
 versions with items, none newer than the version given (default the TOC's); the notes under "Unreleased" count as
 that version's while the changelog has no section of it. Characters the game font lacks are replaced. Runs as
 `build.py whatsnew`, and `build.py release` runs it after setting the new version and before its check, so the

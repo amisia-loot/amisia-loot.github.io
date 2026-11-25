@@ -375,20 +375,25 @@ def rares_of(att, iid, e, order, npcs):
 KEY_RE = re.compile(r'^[\w-]{1,40}$')
 
 
+# the client's word for a creature it has not loaded yet (UNKNOWNOBJECT): no name to keep
+UNKNOWN_NAMES = {'Unknown', 'Unbekannt', 'Inconnu', 'Desconocido', 'Sconosciuto', 'Desconhecido', 'Неизвестно'}
+
+
 def _rare_name(n):
-    return n if isinstance(n, str) and 0 < len(n) <= 60 and '|' not in n and not any(ord(c) < 32 for c in n) else None
+    ok = isinstance(n, str) and 0 < len(n) <= 60 and '|' not in n and not any(ord(c) < 32 for c in n)
+    return n if ok and n not in UNKNOWN_NAMES else None
 
 
 def learned_rares(dbs, path=RARE_OBS):
     """The rares the addon learned in the game (AmisiaDB.rares = {v, list = {[dungeon key] = {[NPC id] =
     {n = the client's name, t}}}}) of the SavedVariables tables dbs, joined into the archive at path (the
     name first archived stays; written when it grew): {key: {NPC id: name}}. Bad keys, ids and names are
-    left out."""
+    left out, so is the client's "Unknown" (UNKNOWN_NAMES), also one archived before."""
     arch = {}
     if path and os.path.exists(path):
         with open(path, encoding='utf-8') as fh:
             for key, part in (json.load(fh).get('rares') or {}).items():
-                arch[key] = {int(npc): name for npc, name in part.items()}
+                arch[key] = {int(npc): name for npc, name in part.items() if _rare_name(name)}
     before = json.dumps({k: sorted(v) for k, v in arch.items()}, sort_keys=True)
     for db in dbs:
         lst = ((db or {}).get('rares') or {}).get('list') if isinstance((db or {}).get('rares'), dict) else None
@@ -413,27 +418,39 @@ def learned_rares(dbs, path=RARE_OBS):
 
 
 def add_learned_rares(dungeons, keys, learned, scans=None):
-    """Adds the learned rares (learned_rares) to the rares of the dungeons of keys (the facts' keys) after
-    the ones there: never an NPC of the order (npcs), never one twice; the English name of the NPC scan
-    where there is one. In place; returns [(key, NPC id, name)] added."""
+    """Adds the learned rares (learned_rares) to the rares of the dungeons of keys (the facts' keys; a dict
+    {key: instance map id} or a set, the map then from dungeons[key]['inst']) after the ones there: never an
+    NPC that is a boss (npcs) or a rare of any dungeon of the same map (D-106: a wing's rare seen while the
+    addon guessed another wing), never one twice; the English name of the NPC scan where there is one. In
+    place; returns [(key, NPC id, name)] added."""
     english = {}
     for loc in ('enUS', 'enGB'):
         for nid, f in (((scans or {}).get('npcs') or {}).get(loc) or {}).items():
             if f.get('name'):
                 english.setdefault(int(nid), f['name'])
+    def inst_of(k):
+        return (dungeons.get(k) or {}).get('inst') or (keys.get(k) if isinstance(keys, dict) else None)
+
+    def known(k):
+        """The NPCs that are bosses or rares of k or of a dungeon on its map."""
+        inst = inst_of(k)
+        out = set()
+        for o in keys:
+            if o == k or (inst is not None and inst_of(o) == inst):
+                rec = dungeons.get(o) or {}
+                out |= {n for n in rec.get('npcs') or [] if n} | {r[0] for r in rec.get('rares') or []}
+        return out
+
     added = []
     for key in sorted(learned):
         if key not in keys:
             continue
         rec = dungeons.setdefault(key, {})
-        bosses = {n for n in rec.get('npcs') or [] if n}
-        have = {r[0] for r in rec.get('rares') or []}
         for nid in sorted(learned[key]):
-            if nid in bosses or nid in have:
+            if nid in known(key):
                 continue
             name = english.get(nid) or learned[key][nid]
             rec.setdefault('rares', []).append([nid, name])
-            have.add(nid)
             added.append((key, nid, name))
     return added
 
@@ -615,7 +632,8 @@ def main(argv=None):
         client = client_facts(facts, args.wago, att, scans, enc_names)
         # the rares learned in the game (F-235)
         learned = learned_rares(dbs)
-        for key, nid, name in add_learned_rares(client['dungeons'], {e['key'] for e in facts['dungeons']}, learned, scans):
+        for key, nid, name in add_learned_rares(client['dungeons'], {e['key']: e.get('inst') for e in facts['dungeons']},
+                                                learned, scans):
             print(f'learned rare: {key} {nid} {name}')
         if not client['tables'].get('LFGDungeons') and not client['tables'].get('AreaTable'):
             raise SystemExit('no LFGDungeons or AreaTable CSV in ' + ', '.join(args.wago))
