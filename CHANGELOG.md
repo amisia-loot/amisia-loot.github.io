@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.110.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.110.0) (2026-11-25)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.109.0...v2.110.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(dungeons): the run window counts loot value and reputation and learns rares (F-235)
 
     The run clock no longer starts when you attack a critter: it waits for the first real fight (or a real

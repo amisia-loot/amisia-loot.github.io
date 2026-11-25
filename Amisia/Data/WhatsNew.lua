@@ -7,8 +7,12 @@ local _, ns = ...
 
 ns.LazyData("WHATSNEW", [=[
 return {
-version="2.109.0",
+version="2.110.0",
 versions={
+{"2.110.0",{
+{"F-235","Lauf-Fenster: Beutewert, Ruf, gelernte Rare","The run window counts loot value and reputation and learns rares","dungeons"},
+{"F-236","Neuigkeiten nach einem Update","A window shows what is new after an update","all"},
+}},
 {"2.109.0",{
 {"F-234","Alles mit Klicks erreichbar: Befehle sind nur Abkürzungen","Every feature can be reached by clicks, commands are shortcuts","all"},
 {"F-231","Gildenaufträge","Guild orders and cooldowns in the side bar and the overview","forever"},
@@ -23,9 +27,6 @@ versions={
 {"F-233","Berufe der Gilde: Übersicht, Material-Suche, Rezept-Wunsch","The guild's professions at a glance, recipes from a material, and a bell for a wanted recipe","forever"},
 {"F-232","Berufs-Abklingzeiten (eigene Charaktere und Gilde)","Profession cooldowns of your characters and the guild","forever"},
 {"F-231","Gildenaufträge","Guild orders, crafting requests to the guild","forever"},
-}},
-{"2.106.0",{
-{"F-230","Eigene Gewichte, Einfügen und Vorlagen aus der Simulation","Own stat weights per spec: type them, paste them or start from the simulation's templates","gear"},
 }},
 },
 }
