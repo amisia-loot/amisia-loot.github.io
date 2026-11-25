@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.111.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.111.0) (2026-11-25)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.110.0...v2.111.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(guild): a page of its own shows who runs Amisia and which version (F-237)
 
     Guild > Amisia versions lists you and everyone whose Amisia said hello in the last 30 days over the whole

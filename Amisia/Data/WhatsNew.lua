@@ -7,8 +7,11 @@ local _, ns = ...
 
 ns.LazyData("WHATSNEW", [=[
 return {
-version="2.110.0",
+version="2.111.0",
 versions={
+{"2.111.0",{
+{"F-237","Seite Amisia-Versionen: wer Amisia hat und welche Version","A page of its own shows who runs Amisia and which version","all"},
+}},
 {"2.110.0",{
 {"F-235","Lauf-Fenster: Beutewert, Ruf, gelernte Rare","The run window counts loot value and reputation and learns rares","dungeons"},
 {"F-236","Neuigkeiten nach einem Update","A window shows what is new after an update","all"},
@@ -22,11 +25,6 @@ versions={
 }},
 {"2.107.1",{
 {"F-134","Dungeon-Quests: Status-Symbole und Karte","Hide completed dungeon quests","dungeons"},
-}},
-{"2.107.0",{
-{"F-233","Berufe der Gilde: Übersicht, Material-Suche, Rezept-Wunsch","The guild's professions at a glance, recipes from a material, and a bell for a wanted recipe","forever"},
-{"F-232","Berufs-Abklingzeiten (eigene Charaktere und Gilde)","Profession cooldowns of your characters and the guild","forever"},
-{"F-231","Gildenaufträge","Guild orders, crafting requests to the guild","forever"},
 }},
 },
 }
