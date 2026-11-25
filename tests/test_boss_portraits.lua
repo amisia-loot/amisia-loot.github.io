@@ -49,13 +49,36 @@ assert(find(dr, "Captain Dreadrise").b == given[1], "the given boss itself")
 local lower, upper = Dn.JournalBosses("lbrs", {}), Dn.JournalBosses("ubrs", {})
 assert(find(lower, "Highlord Omokk") and not find(lower, "General Drakkisath"), names(lower))
 assert(find(upper, "General Drakkisath") and not find(upper, "Highlord Omokk"), names(upper))
-assert(#lower == #Dn.BossOrder("lbrs") and #upper == #Dn.BossOrder("ubrs"), "every boss in one half")
+local function bossesOnly(list)
+    local out = {}
+    for _, b in ipairs(list) do if not b.rare then out[#out + 1] = b end end
+    return out
+end
+assert(#bossesOnly(lower) == #Dn.BossOrder("lbrs") and #bossesOnly(upper) == #Dn.BossOrder("ubrs"), "every boss in one half")
+-- the rares after the bosses (F-235): every rare of the data once, without loot rows, after the order
+local rares = NS.RunTimes.Rares("lbrs")
+assert(#rares > 0 and #lower == #Dn.BossOrder("lbrs") + #rares, names(lower))
+for i, r in ipairs(rares) do
+    local b = lower[#Dn.BossOrder("lbrs") + i]
+    assert(b.rare and b.npc == r[1] and b.name == r[2] and #b.b.items == 0, b.name)
+end
+-- a rare that has loot rows (given) stands once, as the given boss
+local withLoot = Dn.JournalBosses("lbrs", { { name = rares[1][2], npc = rares[1][1], items = { {} } } })
+local seen = 0
+for _, b in ipairs(withLoot) do if b.npc == rares[1][1] then seen = seen + 1 end end
+assert(seen == 1 and #withLoot == #lower, "no rare twice")
+-- a rare learned in the game joins them (F-235)
+AmisiaDB.rares = { v = 1, list = { lbrs = { [99001] = { n = "Gelernter Rarer", t = 100 } } } }
+local learned = Dn.JournalBosses("lbrs", {})
+assert(#learned == #lower + 1 and learned[#learned].npc == 99001 and learned[#learned].name == "Gelernter Rarer"
+    and learned[#learned].rare, names(learned))
+AmisiaDB.rares = nil
 assert(#Dn.BossOrder("lbrs") == 9 and #Dn.BossOrder("ubrs") == 5, "9 below, 5 above")
 -- the Scarlet Monastery: four wings, each its own bosses in the game's order, every boss with its NPC
 local wings = { smgy = "Interrogator Vishas,Bloodmage Thalnos", smlib = "Houndmaster Loksey,Arcanist Doan",
     smarm = "Herod", smcath = "High Inquisitor Fairbanks,High Inquisitor Whitemane" }
 for key, order in pairs(wings) do
-    local list = Dn.JournalBosses(key, {})
+    local list = bossesOnly(Dn.JournalBosses(key, {}))
     assert(names(list) == order, key .. ": " .. names(list))
     for _, b in ipairs(list) do assert(b.npc, key .. ": " .. b.name) end
 end

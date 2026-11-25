@@ -350,8 +350,9 @@ function R.NpcBoss(dkey, npc)
     for _, id in ipairs(type(f.npcs) == "table" and f.npcs or {}) do
         if id == npc then return false end
     end
-    for _, x in ipairs(type(f.rares) == "table" and f.rares or {}) do
-        if type(x) == "table" and x[1] == npc then return false end
+    -- a rare of the data or learned in the game (F-235) is no boss
+    for _, x in ipairs(ns.RunTimes and ns.RunTimes.Rares(dkey) or {}) do
+        if x[1] == npc then return false end
     end
     local B = ns.BIS
     for _, e in ipairs(type(B) == "table" and type(B.DG) == "table" and B.DG or {}) do

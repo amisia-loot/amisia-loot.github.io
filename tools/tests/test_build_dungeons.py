@@ -498,3 +498,31 @@ def test_the_rares_in_the_generated_facts_have_their_form():
             assert isinstance(r, list) and len(r) == 2 and isinstance(r[0], int) and r[0] > 0, (k, r)
             assert isinstance(r[1], str) and r[1] and '(Rare)' not in r[1], (k, r)
             assert r[0] not in (v.get('npcs') or []), (k, r)
+
+
+def test_learned_rares_join_the_archive_and_the_dungeons_rares(tmp_path):
+    """F-235: the rares the addon learned (AmisiaDB.rares) join tools/rare_obs.json for good and the dungeon's
+    rares after AllTheThings': never a boss of the order, never twice, the English scan name first, bad
+    entries left out."""
+    arch = tmp_path / 'rare_obs.json'
+    db1 = {'rares': {'v': 1, 'list': {
+        'deadmines': {599: {'n': "Marisa du'Paige", 't': 1}, 99002: {'n': 'Gelernter Rarer', 't': 2},
+                      644: {'n': "Rhahk'Zor", 't': 3}, 99005: {'n': 'bad|name', 't': 4}},
+        'bad key': {99006: {'n': 'x', 't': 1}},
+        'thanes': {99007: {'n': 'Thanrarer', 't': 5}}}}}
+    learned = build_dungeons.learned_rares([db1], str(arch))
+    assert learned == {'deadmines': {599: "Marisa du'Paige", 99002: 'Gelernter Rarer', 644: "Rhahk'Zor"},
+                       'thanes': {99007: 'Thanrarer'}}
+    saved = json.loads(arch.read_text(encoding='utf-8'))
+    assert saved['rares']['deadmines']['99002'] == 'Gelernter Rarer'
+    # kept for good: a later file without them keeps them, the first name stays
+    db2 = {'rares': {'v': 1, 'list': {'deadmines': {99002: {'n': 'Anderer Name', 't': 9}}}}}
+    assert build_dungeons.learned_rares([db2, {}], str(arch)) == learned
+    dungeons = {'deadmines': {'npcs': [644, 0], 'rares': [[599, "Marisa du'Paige"]]}}
+    scans = {'npcs': {'enUS': {99002: {'name': 'Learned Rare'}}}}
+    added = build_dungeons.add_learned_rares(dungeons, {'deadmines', 'thanes'}, learned, scans)
+    assert dungeons['deadmines']['rares'] == [[599, "Marisa du'Paige"], [99002, 'Learned Rare']]
+    assert dungeons['thanes']['rares'] == [[99007, 'Thanrarer']]
+    assert added == [('deadmines', 99002, 'Learned Rare'), ('thanes', 99007, 'Thanrarer')]
+    # a key the facts do not know gets nothing
+    assert build_dungeons.add_learned_rares({}, set(), learned) == []

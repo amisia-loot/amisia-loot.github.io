@@ -5,6 +5,23 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(dungeons): the run window counts loot value and reputation and learns rares (F-235)
+
+    The run clock no longer starts when you attack a critter: it waits for the first real fight (or a real
+    target in the same fight). "Gold" became "Loot": the looted gold plus what a merchant pays for the looted
+    items, split in its tooltip (Settings > Run times can show the gold alone). At the level cap "Reputation"
+    takes the place of the mob XP, counting the reputation of the run without quest rewards. Rare creatures you
+    target, mouse over or see as a name plate in a dungeon are remembered for it, so dungeons without rare data
+    get a "Rares" row too; the dungeon page lists every rare after the bosses. A run's tooltip under "Times"
+    names its XP, gold, items and reputation.
+
+- feat(ui): a window shows what is new after an update (F-236)
+
+    After Amisia was updated, a small window "New in Amisia X.Y.Z" shows once, a few seconds after logging in,
+    what the versions since your last one bring (never in combat or a boss fight: it waits). "News" on the
+    About page and /amisia news show it any time; Settings > Interface "Show the news after an update" turns
+    it off. A first install shows nothing.
+
 ## [v2.109.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.109.0) (2026-11-24)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.108.0...v2.109.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

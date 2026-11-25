@@ -991,4 +991,12 @@ L["Zählt für Punkte"] = "Counts for points"
 L["Ob der laufende Raid Punkte gibt und kostet. Ein Raid, der beim Würfeln begann, zählt damit schon mit dem System von jetzt."] = "Whether the running raid earns and costs points. A raid that started while rolling then counts with the current system."
 L["Twinks löschen"] = "Clear alts"
 L["Löscht die eingefügte Twink-Liste der Website aus dem Spiel, nach einer Frage. Die Website behält ihre Liste."] = "Removes the pasted alt list of the website from the game, after a question. The website keeps its list."
+-- F-236: the window "Neu in Amisia" (UI/WhatsNew.lua)
+L["Neu in Amisia %s"] = "New in Amisia %s"
+L["Keine Neuigkeiten gespeichert."] = "No news stored."
+L["Neuigkeiten"] = "News"
+L["Was die letzten Versionen von Amisia Neues bringen."] = "What the last versions of Amisia bring."
+L["Neuigkeiten der letzten Versionen"] = "News of the last versions"
+L["Neuigkeiten nach einem Update zeigen"] = "Show the news after an update"
+L["Nach einem Update von Amisia zeigt ein kleines Fenster einmal, was neu ist (nicht im Kampf). \"Neuigkeiten\" unter \"Über und Befehle\" und /amisia neu zeigen es jederzeit."] = "After an update of Amisia a small window shows once what is new (not in combat). \"News\" under \"About and commands\" and /amisia news show it any time."
 end)

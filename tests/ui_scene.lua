@@ -1061,6 +1061,8 @@ S.WINDOWS = {
     { key = "orderdialog", view = "raider", open = function()
         return NS.ShowOrderDialog(NS.Prof.Recipes(197)[2].spell)
     end },
+    -- the window "Neu in Amisia" (F-236) with every version of the shipped news
+    { key = "whatsnew", view = "raider", open = function() return NS.ShowWhatsNew(nil) end },
     { key = "priodialog", view = "officer", open = function()
         NS.ShowPrioDialog(LINK2)
         return AmisiaPrioDialog

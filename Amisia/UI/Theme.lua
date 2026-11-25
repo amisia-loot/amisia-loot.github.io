@@ -1161,6 +1161,18 @@ T.CONFIRM = {
     BOTTOM = 14,          -- the button row from the window's bottom edge
 }
 
+-- the window "Neu in Amisia" (UI/WhatsNew.lua, F-236, AmisiaWhatsNewFrame): the news as scrolling text under
+-- the title bar, LINES lines of LINE_H high (more scroll), then "Einstellungen" on the left and "Schließen" on
+-- the right, BOTTOM above the window's bottom edge.
+T.NEWS = {
+    W = 440,
+    TEXT_Y = 34,          -- the text below the window's top, under the title bar
+    LINES = 8, LINE_H = 14,
+    GAP = 10,             -- between the text and the button row
+    BUTTON_W = 100,       -- "Schließen" (at least; FitChip)
+    BOTTOM = 14,
+}
+
 ---------------------------------------------------------------------------
 -- Atlases: the client's art Amisia may use (the style allow-list; the layout rules fail on any
 -- other). Not on it on purpose: common-dropdown-b-button (the filter button carries a baked-in

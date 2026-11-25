@@ -2,10 +2,12 @@
 -- title is the dungeon's name (a wing as "Scharlachrotes Kloster: Friedhof", D-106). Under it three
 -- values side by side, a grey word over a large white value: "Zeit" (the running total of
 -- Gear/RunTimes.lua, GetTime only for the live display; after the end the final time), "Mob-XP" and
--- "Gold" (Gear/RunGains.lua: the own character's mob experience and looted money of this run; "-" for
--- the XP at the level cap). A grey line with the best time ("Bestzeit 24:12", "Noch keine Bestzeit",
--- "Bestzeit vorher ...", before the first fight "Die Uhr läuft ab dem ersten Kampf."), a thin gold
--- rule, the dungeon's bosses as round portraits in the game's order (the kit of the pages, W.Portrait):
+-- "Beute" (Gear/RunGains.lua: the own character's mob experience, and the looted money plus the vendor
+-- value of the looted items of this run, F-235; the setting runtimes.lootValue off: "Gold", the money
+-- alone). At the level cap (or with XP turned off) "Ruf" in the place of "Mob-XP": the reputation of the
+-- run (F-235). The mouse on a value splits it (gold and items; XP and reputation). A grey line with the
+-- best time ("Bestzeit 24:12", "Noch keine Bestzeit", "Bestzeit vorher ...", before the first fight
+-- "Die Uhr läuft ab dem ersten Kampf."), a thin gold rule, the dungeon's bosses as round portraits in the game's order (the kit of the pages, W.Portrait):
 -- in colour while alive, crossed out in red and stepped back once killed in this run; the mouse names
 -- the boss, its split and the difference to the best run's split (green faster, red slower) or, for the
 -- next boss, the best run's split as the target. Under the heading "Rare" the dungeon's rare mobs
@@ -38,6 +40,11 @@ local GREEN, RED, GREY = T.GREEN, T.RED, T.GREY
 
 local TEXT = {
     time = L["Zeit"], xp = L["Mob-XP"], gold = L["Gold"], rare = L["Rare##Lauf"],
+    loot = L["Beute"], rep = L["Ruf##Lauf"],
+    lootGold = L["Geplündertes Gold: %s"], lootItems = L["Verkaufswert der Gegenstände: %s"],
+    lootHint = L["Gegenstände zählen mit dem Preis, den ein Händler zahlt. Nur Gold: Einstellungen, Lauf-Zeiten."],
+    xpLine = L["Mob-XP: %s"], repLine = L["Ruf: +%d"],
+    repHint = L["Der Ruf aller Fraktionen aus diesem Lauf zusammen, ohne Questbelohnungen. Auf der Höchststufe steht er an der Stelle der Mob-XP."],
     split = L["Zwischenzeit %s"], toBest = L["%s zum besten Lauf"], target = L["Ziel: %s (bester Lauf)"],
     bestRun = L["Bester Lauf: %s"], alive = L["Noch nicht getötet"], killed = L["getötet"],
     skipped = L["Übersprungen"],
@@ -100,12 +107,39 @@ function TW.XPText(x)
     return tostring(x)
 end
 
+-- Whether the second value shows the reputation (F-235): the level cap or XP turned off, and no mob XP
+-- counted in rec.
+function TW.ShowsRep(rec)
+    local x = rec and math.floor(tonumber(rec.x) or 0) or 0
+    return x == 0 and ns.RunGains ~= nil and ns.RunGains.Capped() == true
+end
+
+-- the third value: the looted copper plus the items' vendor value (runtimes.lootValue), else the copper
+function TW.LootValue(rec)
+    local g = rec and math.max(0, math.floor(tonumber(rec.g) or 0)) or 0
+    local v = rec and math.max(0, math.floor(tonumber(rec.v) or 0)) or 0
+    if ns.Get("runtimes.lootValue") == false then return g, g, v end
+    return g + v, g, v
+end
+
 ---------------------------------------------------------------------------
 -- Building
 ---------------------------------------------------------------------------
--- A column of the values: the grey word over the large white value, w wide.
+local function showTip(self)
+    local tip = self.tip
+    if not tip then return end
+    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+    GameTooltip:AddLine(tip[1], 1, 0.82, 0)
+    for i = 2, #tip do GameTooltip:AddLine(tip[i], 0.85, 0.85, 0.85, true) end
+    GameTooltip:Show()
+end
+
+-- A column of the values: the grey word over the large white value, w wide; the mouse shows its tip.
 local function buildValue(word, w)
     local c = CreateFrame("Frame", nil, F)
+    c:EnableMouse(true)
+    c:SetScript("OnEnter", showTip)
+    c:SetScript("OnLeave", function() GameTooltip:Hide() end)
     c:SetSize(w, S.LABEL_H + S.VALUE_H)
     c.label = W.Text(c, T.FONT.hint, w)
     c.label:SetPoint("TOPLEFT", 0, 0)
@@ -116,15 +150,8 @@ local function buildValue(word, w)
     return c
 end
 
--- The tooltip of a portrait: p.tip = { title, line, ... } (a line may carry its colour codes).
-local function showTip(self)
-    local tip = self.tip
-    if not tip then return end
-    GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-    GameTooltip:AddLine(tip[1], 1, 0.82, 0)
-    for i = 2, #tip do GameTooltip:AddLine(tip[i], 0.85, 0.85, 0.85, true) end
-    GameTooltip:Show()
-end
+-- The tooltip of a portrait or a value: p.tip = { title, line, ... } (a line may carry its colour codes);
+-- showTip above.
 
 local function buildPortrait()
     local p = W.Portrait(F, S.PORT)
@@ -194,7 +221,7 @@ local function build()
     if F then return F end
     F = W.Window("AmisiaRunTimer", S.W, S.TOP + S.BOTTOM_H, { title = L["Lauf-Zeiten"], strata = "MEDIUM",
         escape = false, onDragStop = function(f) W.SaveWindowPlace(f, windowState()) end })
-    F.values = { buildValue(TEXT.time, S.COL_W[1]), buildValue(TEXT.xp, S.COL_W[2]), buildValue(TEXT.gold, S.COL_W[3]) }
+    F.values = { buildValue(TEXT.time, S.COL_W[1]), buildValue(TEXT.xp, S.COL_W[2]), buildValue(TEXT.loot, S.COL_W[3]) }
     W.Row(F, F.values, 0, S.PAD, -S.TOP)
     F.total, F.xp, F.gold = F.values[1].value, F.values[2].value, F.values[3].value
     F.sub = W.Text(F, T.FONT.hint, S.W - 2 * S.PAD)
@@ -322,8 +349,22 @@ local function refresh()
     F:SetTitle((rec and rec.nm) or (done and done.nm) or RT.Name(key))
     -- the three values
     F.total:SetText(RT.Fmt(secs))
-    F.xp:SetText(TW.XPText(rec and rec.x))
-    F.gold:SetText(TW.Money(rec and rec.g))
+    local f = rec and math.max(0, math.floor(tonumber(rec.f) or 0)) or 0
+    if TW.ShowsRep(rec) then
+        F.values[2].label:SetText(TEXT.rep)
+        F.xp:SetText(tostring(f))
+        F.values[2].tip = { TEXT.rep, TEXT.repLine:format(f), GREY .. TEXT.repHint .. "|r" }
+    else
+        F.values[2].label:SetText(TEXT.xp)
+        F.xp:SetText(TW.XPText(rec and rec.x))
+        F.values[2].tip = { TEXT.xp, TEXT.xpLine:format(TW.XPText(rec and rec.x)), TEXT.repLine:format(f) }
+    end
+    local shown, g, v = TW.LootValue(rec)
+    local withItems = ns.Get("runtimes.lootValue") ~= false
+    F.values[3].label:SetText(withItems and TEXT.loot or TEXT.gold)
+    F.gold:SetText(TW.Money(shown))
+    F.values[3].tip = { withItems and TEXT.loot or TEXT.gold, TEXT.lootGold:format(TW.Money(g)),
+        TEXT.lootItems:format(TW.Money(v)), GREY .. TEXT.lootHint .. "|r" }
     if mode == "wait" then
         F.sub:SetText(L["Die Uhr läuft ab dem ersten Kampf."])
     elseif done and done.best and done.prev then

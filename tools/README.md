@@ -11,6 +11,7 @@ python3 tools/build.py data [--sv FILE] [--wago DIR] [--att DIR] [--refresh-att]
 python3 tools/build.py tables [--version V] [--tables T ...] [--locale deDE]
 python3 tools/build.py check
 python3 tools/build.py tocs
+python3 tools/build.py whatsnew
 python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
 python3 tools/build.py release X.Y.Z [-m "summary"] [--no-push] [--no-copy] [--no-upload]
 python3 tools/build.py testlist [--all] [--out FILE]
@@ -1365,6 +1366,20 @@ dropped and reported. `build.py data` runs it after the raid check (after the ta
 SpellName, SkillLineAbility, SkillRaceClassInfo, ChrClasses). Tests: `tools/tests/test_build_raidbuffs.py`
 (small tables written by the test; every listed name still a class's in the tables on disk, the shipped
 file current).
+
+## build_whatsnew.py
+
+Builds `Amisia/Data/WhatsNew.lua` (`ns.WHATSNEW`, lazy) for the window "Neu in Amisia" after an update (F-236,
+D-168, `UI/WhatsNew.lua`): per version, newest first, the features its `feat` notes in `CHANGELOG.md` name (the first
+F number of a note, one line per feature, the scope `site` left out), then the features whose `docs/FEATURES.md`
+entry carries the version; each with its German title (FEATURES.md) and English summary (the note). The newest five
+versions with items, none newer than the version given (default the TOC's); the notes under "Unreleased" count as
+that version's while the changelog has no section of it. Characters the game font lacks are replaced. Runs as
+`build.py whatsnew`, and `build.py release` runs it after setting the new version and before its check, so the
+shipped file names the released version and stays the same once the notes became its section. The core loads it on
+every client (no camelot mark). Tests: `tools/tests/test_build_whatsnew.py` (the selection, the Lua it writes, the
+release step in a temporary repository, the shipped file current: after editing FEATURES.md titles or a released
+changelog section run `python3 tools/build.py whatsnew`).
 
 ## build_raidcheck.py
 

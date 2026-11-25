@@ -2351,13 +2351,27 @@ function D.JournalBosses(dkey, bosses)
         end
     end
     -- after the game's order: the bosses the client has no encounter of (Ruuzlu, Darkreaver), then the
-    -- rares (DungeonData's rares), then drops of an NPC without a name, the "Trash" last
+    -- rares (DungeonData's rares and the ones learned in the game, ns.RunTimes.Rares; F-235: a rare
+    -- without loot rows stands there too), then drops of an NPC without a name, the "Trash" last
     local rare = {}
-    for _, r in ipairs(f and type(f.rares) == "table" and f.rares or {}) do
-        if type(r) == "table" then
-            if type(r[1]) == "number" then rare[r[1]] = true end
-            local k = nameKey(r[2])
-            if k then rare[k] = true end
+    local rares = ns.RunTimes and ns.RunTimes.Rares(dkey) or {}
+    for _, r in ipairs(rares) do
+        rare[r[1]] = true
+        local k = nameKey(r[2])
+        if k then rare[k] = true end
+    end
+    local listed = {}
+    for _, x in ipairs(out) do
+        if x.npc then listed[x.npc] = true end
+        local k = nameKey(x.name)
+        if k then listed[k] = true end
+    end
+    for _, r in ipairs(rares) do
+        local k = nameKey(r[2])
+        if not listed[r[1]] and not (k and listed[k]) then
+            listed[r[1]] = true
+            out[#out + 1] = { name = r[2], npc = r[1], at = #out + 1, rare = true,
+                b = { name = r[2], npc = r[1], items = {}, perRun = 0, known = D.KnownLoot(dkey, r[2]) } }
         end
     end
     local function tier(x)

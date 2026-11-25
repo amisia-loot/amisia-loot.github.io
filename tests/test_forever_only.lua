@@ -67,7 +67,10 @@ for _, page in ipairs({ "Gear", "JournalParts", "Dungeons", "RaidJournal", "Map"
                         "Tools", "Export", "Planner" }) do
     FOREVER_FILES["UI/Pages/" .. page .. ".lua"] = true
 end
+-- the news after an update (F-236): generated data every client reads
+local ALL_CLIENTS = { ["Data/WhatsNew.lua"] = true }
 local function foreverOnly(name)
+    if ALL_CLIENTS[name] then return false end
     return FOREVER_FILES[name] or name:find("^Data/") ~= nil or name:find("^Collect/") ~= nil or name:find("^Gear/") ~= nil
 end
 local tagged, gear = 0, 0

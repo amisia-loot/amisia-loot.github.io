@@ -38,6 +38,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Andere Zeilen innerhalb eines Eintrags sind ein Fehler (der Test nennt die Zeile).
 
 ## Addon: Grundlagen
+### F-236 Neuigkeiten nach einem Update
+- Version: 2.110.0
+- Status: gebaut
+- Prüfung: Wenn du nach dem Update auf 2.110.0 einloggst, dann zeigt sich nach wenigen Sekunden einmal "Neu in Amisia 2.110.0" mit den Neuerungen; nach `/reload` nicht noch einmal.
+- Prüfung: Wenn du im Kampf einloggst oder neu lädst, dann wartet das Fenster bis nach dem Kampf.
+- Prüfung: Wenn du auf der Seite "Über und Befehle" auf "Neuigkeiten" klickst (oder `/amisia neu` tippst), dann zeigt das Fenster die Neuerungen der letzten Versionen.
+- Prüfung: Wenn du "Neuigkeiten nach einem Update zeigen" unter Einstellungen > Oberfläche ausschaltest, dann kommt beim nächsten Update kein Fenster.
+- Prüfung: Wenn das Spiel auf Englisch läuft (oder Sprache English unter Oberfläche), dann stehen die Neuerungen auf Englisch da.
+- Notiz: DECISIONS D-168, Spec `docs/specs/2026-11-25-was-ist-neu.md`. Inhalt aus FEATURES.md (deutsche Titel) und CHANGELOG.md (englische `feat`-Notizen), `tools/build_whatsnew.py`, beim Release geschrieben. Die erste Version mit dem Schlüssel zeigt bei bestehender Installation nur die Neuerungen von 2.110.0.
+
 ### F-234 Alles mit Klicks erreichbar: Befehle sind nur Abkürzungen
 - Version: 2.109.0
 - Status: gebaut
@@ -286,6 +296,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du "Fenster bei Gegenständen, die eine Quest starten" (Einstellungen, Questgegenstände) ausschaltest, dann erscheint nichts mehr.
 - Notiz: Spec `docs/specs/2026-11-11-quest-start-item.md`; DECISIONS D-113. Ob der Client für Startgegenstände den Quest-Vermerk liefert und Addons den Gegenstand per sicherem Knopf benutzen lässt, sagt `/amisia selbsttest gruppe` ("Quest-Startgegenstände"); lehnt er ab, informiert das Fenster nur ("Rechtsklick auf den Gegenstand in der Tasche ...").
 
+### F-235 Lauf-Fenster: Beutewert, Ruf, gelernte Rare
+- Version: 2.110.0
+- Status: gebaut
+- Prüfung: Wenn du in einem Dungeon vor dem ersten Mob eine Ratte (ein Kleintier) angreifst, dann öffnet sich kein Fenster "Lauf-Zeiten" und es läuft keine Uhr; erst beim ersten Kampf mit einem Mob geht es auf (bitte melden, wenn es doch bei der Ratte startet).
+- Prüfung: Wenn du Mobs plünderst, dann heißt der dritte Wert "Beute" und wächst mit dem Gold und dem Händlerwert der Gegenstände; die Maus darauf zeigt "Geplündertes Gold" und "Verkaufswert der Gegenstände" getrennt. Mit "Verkaufswert der Beute mitzählen" aus (Einstellungen, Lauf-Zeiten) steht dort wieder "Gold" allein.
+- Prüfung: Wenn du mit Stufe 60 einen Dungeon läufst, dann steht an der Stelle von "Mob-XP" "Ruf" und wächst mit dem Ruf aus den Kills (eine abgegebene Quest zählt nicht); bitte melden, ob nach einem Bosskill sein Ruf mitzählt.
+- Prüfung: Wenn du in einem der neuen Forever-Dungeons einen Rare (silberner Drache am Porträt) anzielst oder mit der Maus berührst, dann steht er im Fenster unter "Rare" und auf der Seite Dungeons in der Liste der Bosse; tot gesehen wird er durchgekreuzt; nach `/reload` und im nächsten Lauf ist er noch da.
+- Prüfung: Wenn du unter Dungeons, Reiter "Zeiten", die Maus auf einen neuen Lauf unter "Letzte Läufe" hältst, dann nennt der Tooltip Mob-XP, Gold, Gegenstände und Ruf dieses Laufs.
+- Notiz: DECISIONS D-169; erweitert F-180 und F-166. Die Uhr wartet auch bei Kreaturen der Stufe 1. Gelernte Rare bleiben im eigenen Account und kommen mit `build.py data` (tools/rare_obs.json) in die Daten für alle. Ob Forever Kreaturtyp, Klassifizierung und Kennung in Instanzen lesbar gibt, ist ungeprüft.
+
 ### F-180 Lauf-Fenster: Zeit, Mob-XP, Gold, Bosse und Rare
 - Version: 2.76.2
 - Status: gebaut
@@ -294,7 +314,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du einen Boss tötest, dann wird sein Porträt blasser und rot durchgekreuzt, und die Maus darauf zeigt seinen Namen und "Zwischenzeit m:ss" (im zweiten Lauf grün oder rot "... zum besten Lauf").
 - Prüfung: Wenn du einen Rare (z. B. Marisa du'Paige) tot im Ziel hast oder seine Leiche plünderst, dann wird sein Porträt unter "Rare" rot durchgekreuzt; nach `/reload` stehen Zeit, Mob-XP, Gold und die Kreuze noch da.
 - Prüfung: Wenn du in Schwarzfelstiefen kämpfst, dann stehen die 21 Bosse in drei Reihen im Fenster, nichts ragt heraus; in der Halle der Thane gibt es keine Reihe "Rare".
-- Notiz: Spec `docs/specs/2026-11-11-lauf-fenster.md`; DECISIONS D-112. Rare-Daten (AllTheThings) für 12 Dungeons; die neuen Forever-Dungeons und Raids haben keine. Seit 2.76.2 (D-112 Nachtrag, nach Bildern des Nutzers): lebende Bosse in Farbe, getötete durchgekreuzt; Münzsymbole selbst gesetzt; Größengriff. Vorher blieben die Kreise im Fenster schwarz (Schleier und Entsättigung der Modelle).
+- Notiz: Spec `docs/specs/2026-11-11-lauf-fenster.md`; DECISIONS D-112. Rare-Daten (AllTheThings) für 12 Dungeons; die neuen Forever-Dungeons und Raids haben keine (seit F-235 lernt Amisia sie im Spiel; "Gold" heißt seitdem "Beute", auf Stufe 60 steht "Ruf" statt "Mob-XP"). Seit 2.76.2 (D-112 Nachtrag, nach Bildern des Nutzers): lebende Bosse in Farbe, getötete durchgekreuzt; Münzsymbole selbst gesetzt; Größengriff. Vorher blieben die Kreise im Fenster schwarz (Schleier und Entsättigung der Modelle).
 
 ### F-179 Dungeonquest-Geber auf der Weltkarte
 - Version: 2.76.0
@@ -443,7 +463,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du den Dungeon zurücksetzt und noch einmal läufst, dann zeigt die Maus auf dem nächsten Boss grau "Ziel: m:ss (bester Lauf)", nach jedem Kill sein Tooltip grün "-m:ss" oder rot "+m:ss zum besten Lauf", am Ende "Neue Bestzeit!" oder rot "+m:ss zur Bestzeit" und im Chat "(Bestzeit m:ss, ...)".
 - Prüfung: Wenn du während eines Laufs `/amisia zeiten stop` tippst, dann steht "Uhr angehalten: der Lauf zählt als nicht beendet.", das Fenster geht zu, und unter Dungeons, Reiter "Zeiten" steht der Lauf als "nicht beendet · n/m Bosse"; "Bester Lauf" bleibt.
 - Prüfung: Wenn du das Fenster verschiebst und `/reload` machst, dann steht es nach dem nächsten Kampfbeginn bzw. `/amisia zeiten` am selben Platz; draußen öffnet `/amisia zeiten` den Reiter "Zeiten" der zuletzt gemessenen Instanz, "Zeiten löschen" fragt erst.
-- Notiz: Spec docs/specs/2026-11-10-lauf-zeiten.md; DECISIONS D-96. In Raids dasselbe (Einstellung "Zeitfenster auch in Raids"); eine Gruppe ändert nur die Spalte "Gruppe". Nichts wird gesendet.
+- Notiz: Spec docs/specs/2026-11-10-lauf-zeiten.md; DECISIONS D-96. Seit F-235 (D-169) startet ein Kampf mit einem Kleintier keine Uhr. In Raids dasselbe (Einstellung "Zeitfenster auch in Raids"); eine Gruppe ändert nur die Spalte "Gruppe". Nichts wird gesendet.
 
 ### F-165 Raid-Rollen: Haupttanks, Assistenten, Plündermeister
 - Version: 2.74.0

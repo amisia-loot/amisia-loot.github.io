@@ -8,6 +8,7 @@
     python3 tools/build.py diff [OLD NEW] [--out FILE]
     python3 tools/build.py check
     python3 tools/build.py tocs
+    python3 tools/build.py whatsnew
     python3 tools/build.py snapshots [--out DIR] [--compare DIR] [--scale N] [--mono]
     python3 tools/build.py release X.Y.Z [-m SUMMARY] [--no-push] [--no-copy] [--no-upload]
     python3 tools/build.py testlist [--all] [--out FILE]
@@ -49,10 +50,14 @@ check    the syntax check, the addon tests (German, then English), the translati
 tocs     writes the core's ## Version into the modules' TOCs (Amisia_Gear.toc, Amisia_Dungeons.toc, ...) and each
          folder's <folder>_TBC.toc and <folder>_Vanilla.toc: its TOC without the Forever parts (D-57,
          D-130); check fails while they differ, release writes them with the new version.
+whatsnew writes Amisia/Data/WhatsNew.lua for the TOC's version (tools/build_whatsnew.py, F-236): the German
+         titles (docs/FEATURES.md) and English summaries (CHANGELOG.md) of the newest five versions for the window
+         "Neu in Amisia"; check fails while it differs (tools/tests/test_build_whatsnew.py), release writes it.
 snapshots  draws every page (raider, officer and expert view) and side window from the test stub
          (--locale deDE or enUS) into PNGs with an index.html contact sheet (default /tmp/amisia-snapshots); --compare names
          the shots whose layout boxes differ from an earlier run's folder.
-release  refuses a dirty tree, sets ## Version in the TOC, runs check (and puts the TOC back when it
+release  refuses a dirty tree, sets ## Version in the TOC, writes Data/WhatsNew.lua for it (the notes under
+         "## Unreleased" count as the new version's), runs check (and puts the TOC back when it
          fails), builds Amisia-Website/Amisia.zip, turns the English notes under "## Unreleased" in
          CHANGELOG.md into the version's section (D-60; stops without notes), commits "Amisia X.Y.Z:
          <summary>", tags it vX.Y.Z, pushes origin main with the tag, makes the tag a GitHub release
@@ -833,6 +838,10 @@ def release(root, version, summary=None, push=True, copy=True, check=None, day=N
 
     touched = [f'{d}/{d}.toc' for d in addon_folders(root)] + flavor_toc_names(root) + \
         ['Amisia-Website/Amisia.zip', 'CHANGELOG.md']
+    # the news after an update (F-236): written for the new version where the addon ships the file
+    news = whatsnew_rel(root)
+    if news:
+        touched.append(news)
     previous = last_release_commit(root)
     note = game_errors_note(errors_sv)
     if note:
@@ -852,6 +861,8 @@ def release(root, version, summary=None, push=True, copy=True, check=None, day=N
     try:
         set_toc_version(root, version)
         flavor_tocs(root, write=True)
+        if news:
+            tool_module('build_whatsnew').write(root, version)
         say(f'TOC: {current} -> {version}; running check')
         if (check or cmd_check)() != 0:
             undo()
@@ -920,6 +931,18 @@ def cmd_tocs(args=None):
     return 0
 
 
+def whatsnew_rel(root):
+    """The path of Data/WhatsNew.lua relative to root, or None where the checkout has none (F-236)."""
+    rel = os.path.relpath(tool_module('build_whatsnew').out_path(root), root)
+    return rel.replace(os.sep, '/') if os.path.exists(os.path.join(root, rel)) else None
+
+
+def cmd_whatsnew(args=None):
+    path, changed = tool_module('build_whatsnew').write(ROOT)
+    say(f'{os.path.relpath(path, ROOT)}: {"written" if changed else "unchanged"}')
+    return 0
+
+
 def cmd_release(args):
     upload = None
     if not args.no_upload:
@@ -961,6 +984,7 @@ def main(argv=None):
     df.add_argument('builds', nargs='*', help='OLD NEW (default: the build of the data on main, the newest on disk)')
     df.add_argument('--out', default=None, help='also write the full report into this file')
     sub.add_parser('check', help='every test and check; exit 1 on a failure')
+    sub.add_parser('whatsnew', help='Data/WhatsNew.lua for the TOC\'s version (tools/build_whatsnew.py, F-236)')
     sub.add_parser('tocs', help="the modules' version and every folder's _TBC/_Vanilla TOC from its TOC (D-57, D-130)")
     sn = sub.add_parser('snapshots', help='PNGs of every page and window with an index.html (tools/ui_layout.py)')
     sn.add_argument('--out', default=SNAPSHOTS, help=f'output folder (default {SNAPSHOTS})')
@@ -999,7 +1023,8 @@ def main(argv=None):
         os.execv(VENV_PY, [VENV_PY, os.path.abspath(__file__)] + rest)
     return {'data': cmd_data, 'tables': cmd_tables, 'questie': cmd_questie, 'wowsims': cmd_wowsims, 'web': cmd_web, 'diff': cmd_diff, 'check': cmd_check, 'snapshots': cmd_snapshots, 'release': cmd_release,
             'github-release': cmd_github_release,
-            'testlist': cmd_testlist, 'tested': cmd_tested, 'errors': cmd_errors, 'perf': cmd_perf, 'tocs': cmd_tocs}[args.cmd](args)
+            'testlist': cmd_testlist, 'tested': cmd_tested, 'errors': cmd_errors, 'perf': cmd_perf, 'tocs': cmd_tocs,
+            'whatsnew': cmd_whatsnew}[args.cmd](args)
 
 
 if __name__ == '__main__':

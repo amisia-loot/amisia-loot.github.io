@@ -4980,3 +4980,77 @@ schon (Raid-Log > Ersatzbank: Eingabezeile und "Austragen" je Zeile). Chatzeilen
 den Klickweg.
 **Durchgesetzt durch:** `tests/test_click_paths.lua`, `tests/test_dungeon_bar.lua`, `tests/test_run_times.lua`,
 `tests/test_sync_ui.lua`.
+
+## D-168 Neuigkeiten nach einem Update: einmal, aus dem Release, abschaltbar
+
+**Datum:** 2026-11-25
+**Entscheidung:** F-236 (Spec `docs/specs/2026-11-25-was-ist-neu.md`). Nach einem Update zeigt ein kleines Fenster
+"Neu in Amisia X.Y.Z" einmal die Neuerungen der Versionen seit der zuletzt gesehenen (`AmisiaDB.seenVersion`), 6 s nach
+dem Betreten der Welt, nie im Kampf oder Bosskampf (es wartet). Eine erste Installation zeigt nichts und merkt sich die
+Version; eine Installation ohne den Schlüssel (2.109.0 und älter) zeigt die Neuerungen der laufenden Version. Der Inhalt
+entsteht beim Release: `tools/build_whatsnew.py` schreibt `Amisia/Data/WhatsNew.lua` aus `docs/FEATURES.md` (deutsche
+Titel) und `CHANGELOG.md` (englische Zusammenfassungen der `feat`-Notizen; Scope `site` nicht), die letzten fünf
+Versionen; `build.py release` schreibt sie nach dem Setzen der Version und vor dem Check (die Notizen unter
+"Unreleased" zählen als die der neuen Version). Die Datei lädt auf allen Clients (keine camelot-Markierung, die einzige
+Ausnahme unter `Data/*` des Kerns). Abschaltbar mit `ui.whatsNew`; jederzeit über "Neuigkeiten" auf der Seite "Über
+und Befehle" (D-167) und `/amisia neu` (en `news`). Die Zeilen springen nicht auf Seiten.
+**Grund:** Nutzer 2026-11-25: nach einem Update einmal unaufdringlich die wichtigsten Neuerungen zeigen, auf Deutsch,
+ein englischer Client auf Englisch. Titel und Notizen gibt es schon für jedes Release (D-60, FEATURES.md); eine zweite
+Liste von Hand würde veralten.
+**Folge:** Eine neue Funktion braucht eine `feat`-Notiz mit ihrer F-Nummer (D-60), sonst fehlt sie im Fenster; ein
+Titel in FEATURES.md ist zugleich der Text, den deutsche Spieler sehen. Wer FEATURES.md oder einen veröffentlichten
+Abschnitt des Changelogs ändert, schreibt die Datei mit `python3 tools/build.py whatsnew` neu (der Check sagt es).
+**Durchgesetzt durch:** `tools/tests/test_build_whatsnew.py`, `tests/test_whats_new.lua`,
+`tools/tests/test_contracts.py::test_the_toc_loads_the_forever_parts_on_forever_only`.
+
+## D-169 Lauf-Fenster: keine Uhr durch Kleintiere, Beutewert, Ruf auf der Höchststufe, Rare selbst gelernt
+
+**Datum:** 2026-11-25
+**Entscheidung:** Vier Erweiterungen der Lauf-Zeiten (F-166, D-96) und des Lauf-Fensters (F-180, D-112), F-235:
+- **Kleintiere:** `RT.Fight` startet keine Uhr, wenn das Ziel beim Kampfbeginn harmlos ist (`RT.Harmless`): ein
+  Kleintier nach `UnitCreatureType`, verglichen mit dem Wort des Clients je Sprache (`GetLocale`; der Client hat keine
+  Konstante dafür, `UnitCreatureType` antwortet in seiner Sprache), oder eine Kreatur der Stufe 1, solange die Figur
+  über Stufe 5 ist (jedes Kleintier ist Stufe 1, kein Dungeon-Mob). Ein Spieler, kein Ziel oder eine geheime Antwort
+  zählt als echter Kampf. Wechselt die Figur in diesem Kampf auf ein echtes Ziel (`PLAYER_TARGET_CHANGED`,
+  `UnitAffectingCombat`), startet die Uhr dann; sonst der nächste Kampf. Neutrale Mobs zählen (sie kämpfen zurück).
+- **Beutewert:** der dritte Wert heißt "Beute": geplündertes Gold (wie bisher) plus der Händlerpreis der geplünderten
+  Gegenstände (`C_Item.GetItemInfo`, Verkaufspreis mal Anzahl) aus den eigenen Beutezeilen (`CHAT_MSG_LOOT` mit den
+  Mustern `LOOT_ITEM_SELF` und `LOOT_ITEM_SELF_MULTIPLE` des Clients, gelesen mit `ns.BuildMatcher`); ein Gegenstand,
+  den der Client noch nicht geladen hat, zählt bei `GET_ITEM_INFO_RECEIVED` (in die Uhr, in der er geplündert wurde).
+  Zugesteckte Gegenstände (`LOOT_ITEM_PUSHED_SELF`: Questbelohnung, Kauf) und Beute anderer zählen nicht. Die Maus auf
+  dem Wert trennt Gold und Gegenstände; die Einstellung "Verkaufswert der Beute mitzählen" (`runtimes.lootValue`, an)
+  zeigt aus wieder "Gold" allein. Gespeichert als `live.v` und `run.v` (Kupfer).
+- **Ruf:** die Gewinne der Rufzeilen (`CHAT_MSG_COMBAT_FACTION_CHANGE`, gelesen mit `FACTION_STANDING_INCREASED` und
+  seinen Bonusformen; eine Dezimalzahl wird als Text gelesen) aller Fraktionen zusammen, `live.f` und `run.f`; ein
+  Verlust zählt nie, eine Questbelohnung nicht (Fenster der Questbelohnung offen, oder 3 Sekunden vor oder nach
+  `QUEST_TURNED_IN`: was davor zählte, wird zurückgenommen). Auf der Höchststufe oder mit abgeschalteter XP
+  (`RG.Capped`) steht "Ruf" an der Stelle von "Mob-XP"; darunter nennt der Tooltip der Mob-XP den Ruf.
+- **Rare selbst gelernt:** eine Kreatur, die der Client "rare" oder "rareelite" nennt (`UnitClassification`), als
+  Ziel, unter der Maus oder als Namensplakette in einem Dungeon oder Raid gesehen, lebend oder tot, merkt sich Amisia
+  für diesen Dungeon (der Dungeon, in dem die Figur steht, sonst der einzige der Karte, sonst der der laufenden Uhr):
+  NPC-Nummer und Name des Clients, im Account unter `AmisiaDB.rares` (12 je Dungeon, 80 Dungeons, die ältesten
+  gehen), nie gesendet. Kein Boss der Reihenfolge oder der Item-Daten, keiner, den die Daten schon kennen.
+  `RT.Rares` hängt sie hinter die Rare der Daten (jede NPC einmal): im Lauf-Fenster unter "Rare", auf der Seite
+  Dungeons in der Liste der Bosse (dort stehen jetzt alle Rare, auch ohne Beute, nach den Bossen).
+- **Für alle Nutzer:** `build.py data` (`build_dungeons.py` mit `--wago`) nimmt die gelernten Rare aus den
+  SavedVariables in `tools/rare_obs.json` (für immer, der erste Name bleibt) und hängt sie in `Data/DungeonData.lua`
+  hinter die Rare von AllTheThings (englischer Name aus dem NPC-Scan, sonst der des Clients). Nur eigene Beobachtungen
+  (D-153): der Schlüssel wird nie gesendet.
+- Im Reiter "Zeiten" nennt der Tooltip eines Laufs Mob-XP, Gold, Gegenstände und Ruf.
+
+**Grund:** Nutzer 2026-11-25 nach dem Vergleich mit anderen Addons: die Uhr startete beim Angriff auf eine Ratte am
+Eingang; auf Stufe 60 zeigt Mob-XP immer 0; die neuen Forever-Dungeons haben keine Rare-Daten. Übernommen sind Ideen,
+weder Code noch Daten.
+
+**Folge:** Kein Kampflog (D-20): eine Kreatur, die man nie anzielt, berührt oder als Plakette sieht, wird nicht
+gelernt. Ein Kampf, den ein Kleintier beginnt, während ein Mob angreift, startet die Uhr erst mit einem Wechsel des
+Ziels oder dem nächsten Kampf. Ob Forever `UnitCreatureType`, `UnitClassification` und die Kennung einer Kreatur in
+Instanzen lesbar gibt und ob die Ruf- und Beutezeilen nach einem Bosskill geheim sind (dann fehlt dieser Teil), ist im
+Spiel zu prüfen. Die Wörter für "Kleintier" außer Deutsch und Englisch sind ungeprüft (die Stufe 1 fängt sie auf).
+Alte Läufe ohne `v` und `f` bleiben gültig.
+
+**Durchgesetzt durch:** `tests/test_run_window.lua` (Kleintier und Stufe 1 starten nichts, echtes Ziel im selben Kampf
+startet, Beutewert mit Nachladen, fremde und zugesteckte Beute, geheime Zeile, Einstellung, Ruf mit Bonus, Verlust,
+Quest davor und danach, Höchststufe "Ruf", gelernte Rare als Ziel und Plakette, kein Boss und kein Daten-Rarer, Deckel,
+Werte im Lauf und im Reiter "Zeiten"), `tests/test_boss_portraits.lua` (Rare nach den Bossen, keiner doppelt,
+gelernte), `tools/tests/test_build_dungeons.py::test_learned_rares_join_the_archive_and_the_dungeons_rares`.

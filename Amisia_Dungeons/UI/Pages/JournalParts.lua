@@ -494,7 +494,16 @@ local TTEXT = {
     clear = L["Zeiten löschen"],
     clearTip = L["Löscht nach einer Rückfrage Bestzeit, Zeiten je Boss und Verlauf dieser Instanz."],
     segTip = L["Schnellste Strecke: die kürzeste Zeit vom Boss davor (oder vom Start) bis zu diesem Boss, aus allen beendeten Läufen."],
+    gains = L["Mob-XP %s · Gold %s · Gegenstände %s · Ruf %d"],
 }
+
+-- What run r brought (F-180, F-235): the tooltip line of its row, or nil for a run older than those values.
+local function gainsTip(r)
+    if r.x == nil and r.g == nil and r.v == nil and r.f == nil then return nil end
+    local money = ns.RunTimer and ns.RunTimer.Money or tostring
+    return TTEXT.gains:format(tostring(r.x or 0), money(r.g or 0), money(r.v or 0), r.f or 0)
+end
+P.GainsTip = gainsTip
 
 -- The rows of the times of dkey: the best run, the bosses with the best run's split and the fastest
 -- segment, the last runs (date, time or "nicht beendet", group size, character).
@@ -520,7 +529,7 @@ local function timesRows(dkey)
             local kills = 0
             for _ in pairs(r.s) do kills = kills + 1 end
             local t = r.d and RT.Fmt(r.t) or (GREY .. TTEXT.open .. " · " .. TTEXT.kills:format(kills, #encs) .. "|r")
-            out[#out + 1] = { kind = "row", cells = { ns.FmtDayTime(r.at), t, TTEXT.players:format(r.n), r.c } }
+            out[#out + 1] = { kind = "row", cells = { ns.FmtDayTime(r.at), t, TTEXT.players:format(r.n), r.c }, tip = gainsTip(r) }
         end
     end
     return out

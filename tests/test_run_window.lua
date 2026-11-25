@@ -57,7 +57,7 @@ local l = live()
 assert(l and l.k == "deadmines" and l.x == 0 and l.g == 0 and next(l.rk) == nil, "a fresh clock counts from zero")
 assert(W:IsShown() and W.total:GetText() == "0:00" and W.xp:GetText() == "0" and W.gold:GetText() == "0", W.xp:GetText())
 assert(W.values[1].label:GetText() == (EN and "Time" or "Zeit") and W.values[2].label:GetText() == (EN and "Mob XP" or "Mob-XP")
-    and W.values[3].label:GetText() == "Gold", "the three words")
+    and W.values[3].label:GetText() == (EN and "Loot" or "Beute"), "the three words")
 assert(#W.bosses == 8 and not W.bosses[1].dim and not W.bosses[8].dim and not W.bosses[1].done and not W.bosses[1].cross:IsShown(),
     "every boss in colour, no cross, before its kill")
 assert(W.rareHead:IsShown() and W.rareHead:GetText() == (EN and "Rares" or "Rare") and #W.rares == 3, "the three rares")
@@ -220,7 +220,9 @@ STUB.tick(1)   -- a run of the same second gets no clock of its own (D-96)
 STUB.fire("CHAT_MSG_SYSTEM", "Die Todesminen has been reset.")
 STUB.level, STUB.xp = 60, { 0, 0 }
 fight()
-assert(RG.Capped() and W.xp:GetText() == "-", "no XP at the cap: " .. W.xp:GetText())
+assert(RG.Capped() and TW.XPText(0) == "-", "no XP at the cap")
+-- at the cap the reputation takes the XP's place (F-235)
+assert(W.values[2].label:GetText() == (EN and "Reputation" or "Ruf") and W.xp:GetText() == "0", "the reputation at the cap: " .. W.xp:GetText())
 STUB.level, STUB.xp = 22, { 3100, 6000 }
 assert(not RG.Capped())
 RT.Stop()
@@ -291,4 +293,181 @@ do
     NS.ResetRunTimerPosition()
     assert(W:GetScale() == 1 and AmisiaDB.settings.runTimerWindow.scale == nil, "the reset")
 end
+---------------------------------------------------------------------------
+-- F-235: a critter starts no clock; the loot's vendor value; the reputation; the rares learned in the game
+---------------------------------------------------------------------------
+STUB.tick(1)
+enter(DM)
+STUB.fire("CHAT_MSG_SYSTEM", "Die Todesminen has been reset.")
+STUB.targetGUID, STUB.target, STUB.targetClass = nil, nil, nil
+local units = {}
+local inCombat = false
+local unitLevel = _G.UnitLevel
+_G.UnitExists = function(u) return units[u] ~= nil end
+_G.UnitIsPlayer = function(u) return units[u] ~= nil and units[u].player == true end
+_G.UnitCreatureType = function(u) return units[u] and units[u].kind end
+_G.UnitLevel = function(u) if units[u] then return units[u].level end return unitLevel(u) end
+_G.UnitAffectingCombat = function() return inCombat end
+local CRITTER = EN and "Critter" or "Kleintier"
+local function pull(target)
+    units.target = target
+    inCombat = true
+    STUB.fire("PLAYER_REGEN_DISABLED")
+end
+local function calm() inCombat = false; STUB.fire("PLAYER_REGEN_ENABLED") end
+-- a critter as the target: no clock; the fight ends: still none
+pull({ kind = CRITTER, level = 1 })
+assert(live() == nil, "a fight with a critter starts no clock")
+calm()
+STUB.fire("PLAYER_TARGET_CHANGED")
+assert(live() == nil, "a target after the fight starts nothing")
+-- a creature of level 1 of another type (a language the table lacks): harmless as well
+pull({ kind = "Wildtier", level = 1 })
+assert(live() == nil and RT.Harmless("target"), "level 1 is harmless")
+-- while that fight goes on, a real target starts the clock
+units.target = { kind = "Humanoid", level = 18 }
+STUB.fire("PLAYER_TARGET_CHANGED")
+assert(live() and live().k == "deadmines", "a real target in the same fight starts it")
+calm()
+assert(not RT.Harmless("target") and not RT.Harmless("focus"), "a mob or no unit is no critter")
+units.target = { kind = CRITTER, level = 1, player = true }
+assert(not RT.Harmless("target"), "a player is never harmless")
+units.target = nil
+
+-- the loot's vendor value: own loot lines only, an item without data counts once it arrives
+local prices, loaded = { [2589] = 13, [4306] = 150, [5000] = 7 }, { [2589] = true, [5000] = true }
+local getInfo = C_Item.GetItemInfo
+C_Item.GetItemInfo = function(x)
+    local id = tonumber(x) or tonumber(tostring(x):match("item:(%d+)"))
+    if prices[id] then
+        if not loaded[id] then return nil end
+        return "Item " .. id, nil, 1, 10, 1, "", "", 20, "", 134, prices[id]
+    end
+    return getInfo(x)
+end
+local function itemLink(id) return "|cffffffff|Hitem:" .. id .. "::::::::20:::::|h[Item " .. id .. "]|h|r" end
+local function lootLine(id, n)
+    STUB.fire("CHAT_MSG_LOOT", n and _G.LOOT_ITEM_SELF_MULTIPLE:format(itemLink(id), n) or _G.LOOT_ITEM_SELF:format(itemLink(id)))
+end
+lootLine(2589, 3)
+assert(live().v == 39, "three linen at 13: " .. tostring(live().v))
+lootLine(4306)
+assert(live().v == 39, "an item without data waits")
+loaded[4306] = true
+STUB.fire("GET_ITEM_INFO_RECEIVED", 4306, true)
+assert(live().v == 189, "and counts when it arrives: " .. live().v)
+STUB.fire("GET_ITEM_INFO_RECEIVED", 4306, true)
+assert(live().v == 189, "once")
+STUB.fire("CHAT_MSG_LOOT", _G.LOOT_ITEM:format("Anna", itemLink(5000)))
+STUB.fire("CHAT_MSG_LOOT", _G.LOOT_ITEM_PUSHED_SELF:format(itemLink(5000)))
+assert(live().v == 189, "another's loot and an item handed over are not loot")
+local secretLine = _G.LOOT_ITEM_SELF:format(itemLink(5000))
+STUB.secret[secretLine] = true
+STUB.fire("CHAT_MSG_LOOT", secretLine)
+STUB.secret = {}
+assert(live().v == 189, "a secret line is not read")
+-- the window: "Beute" the gold and the items, the mouse splits them
+money(STUB.money + 300)
+assert(live().g == 300 and coins(W.gold:GetText()) == coins(TW.Money(489)), W.gold:GetText())
+assert(W.values[3].tip and has(W.values[3].tip[2], coins and "|T") and has(W.values[3].tip[3], EN and "Vendor value" or "Verkaufswert"), "the split")
+NS.Set("runtimes.lootValue", false)
+TW.Refresh()
+assert(W.values[3].label:GetText() == "Gold" and W.gold:GetText() == TW.Money(300), "the setting off: the gold alone")
+NS.Set("runtimes.lootValue", true)
+TW.Refresh()
+assert(W.values[3].label:GetText() == (EN and "Loot" or "Beute"), "and back")
+
+-- the reputation: the gains of the client's lines, a loss never, a quest's not
+_G.FACTION_STANDING_INCREASED = EN and "Your %s reputation has increased by %d." or "Euer Ruf bei der Fraktion '%s' hat sich um %d verbessert."
+_G.FACTION_STANDING_INCREASED_BONUS = EN and "Reputation with %s increased by %d. (+%.1f bonus)" or "Euer Ruf bei der Fraktion '%s' hat sich um %d verbessert. (+%.1f Bonus)"
+_G.FACTION_STANDING_DECREASED = EN and "Your %s reputation has decreased by %d." or "Euer Ruf bei der Fraktion '%s' hat sich um %d verschlechtert."
+local function rep(fmt, ...) STUB.fire("CHAT_MSG_COMBAT_FACTION_CHANGE", fmt:format(...)) end
+rep(_G.FACTION_STANDING_INCREASED, "Sturmwind", 25)
+assert(live().f == 25, "a gain: " .. tostring(live().f))
+rep(_G.FACTION_STANDING_INCREASED_BONUS, "Sturmwind", 30, 2.5)
+assert(live().f == 55, "a gain with a bonus: " .. live().f)
+rep(_G.FACTION_STANDING_DECREASED, "Defias", 50)
+assert(live().f == 55, "a loss never counts")
+STUB.tick(5)
+rep(_G.FACTION_STANDING_INCREASED, "Sturmwind", 75)
+STUB.fire("QUEST_TURNED_IN", 127, 0, 0)
+assert(live().f == 55, "a quest's reputation just before it is taken back: " .. live().f)
+rep(_G.FACTION_STANDING_INCREASED, "Sturmwind", 75)
+assert(live().f == 55, "and just after it is not counted")
+STUB.tick(5)
+STUB.fire("QUEST_COMPLETE")
+rep(_G.FACTION_STANDING_INCREASED, "Sturmwind", 10)
+STUB.fire("QUEST_FINISHED")
+assert(live().f == 55, "nor while the quest reward window is open")
+rep(_G.FACTION_STANDING_INCREASED, "Sturmwind", 5)
+assert(live().f == 60, "a kill's again")
+-- below the cap "Mob-XP" with the reputation in its tooltip; at the cap "Ruf" in its place
+assert(W.values[2].label:GetText() == (EN and "Mob XP" or "Mob-XP") and has(W.values[2].tip[3], "+60"), "below the cap")
+STUB.level, STUB.xp = 60, { 0, 0 }
+TW.Refresh()
+assert(W.values[2].label:GetText() == (EN and "Reputation" or "Ruf") and W.xp:GetText() == "60", "at the cap the reputation: " .. W.xp:GetText())
+STUB.level, STUB.xp = 22, { 3100, 6000 }
+
+-- the rares learned in the game: a rare creature seen inside, alive or dead, for this dungeon
+STUB.targetGUID, STUB.target, STUB.targetClass, STUB.targetDead = "Creature-0-1-36-1-99002-00001", "Gelernter Rarer", "rareelite", false
+STUB.fire("PLAYER_TARGET_CHANGED")
+local learnedSet = AmisiaDB.rares.list.deadmines
+assert(learnedSet and learnedSet[99002] and learnedSet[99002].n == "Gelernter Rarer", "learned alive as the target")
+assert(#RT.Rares("deadmines") == 4 and RT.Rares("deadmines")[4][1] == 99002, "after the data's rares")
+assert(#W.rares == 4 and W.rares[4]:IsShown() and W.rares[4].creature == 99002 and not W.rares[4].done, "its portrait")
+STUB.targetDead = true
+STUB.fire("UNIT_HEALTH", "target")
+assert(live().rk[99002] and W.rares[4].done, "and crossed out once dead")
+-- a data rare, a boss and a normal creature are not learned; a name plate is
+STUB.targetGUID, STUB.target, STUB.targetDead = "Creature-0-1-36-1-599-00001", "Marisa du'Paige", false
+STUB.fire("PLAYER_TARGET_CHANGED")
+STUB.targetGUID, STUB.target = "Creature-0-1-36-1-644-00001", "Rhahk'Zor"
+STUB.fire("PLAYER_TARGET_CHANGED")
+STUB.targetGUID, STUB.target, STUB.targetClass = "Creature-0-1-36-1-99003-00001", "Normaler Mob", "elite"
+STUB.fire("PLAYER_TARGET_CHANGED")
+assert(NS.Count(learnedSet) == 1, "only the new rare")
+local classify, nameOf = _G.UnitClassification, _G.UnitName
+_G.UnitClassification = function(u) if u == "nameplate2" then return "rare" end return classify(u) end
+_G.UnitName = function(u) if u == "nameplate2" then return "Rarer der Leiste" end return nameOf(u) end
+STUB.unitGUIDs.nameplate2 = "Creature-0-1-36-1-99004-00001"
+STUB.fire("NAME_PLATE_UNIT_ADDED", "nameplate2")
+assert(learnedSet[99004] and learnedSet[99004].n == "Rarer der Leiste", "a name plate")
+_G.UnitClassification, _G.UnitName = classify, nameOf
+STUB.unitGUIDs.nameplate2 = nil
+STUB.targetGUID, STUB.target, STUB.targetClass = nil, nil, nil
+
+-- the end: loot value and reputation go into the run; its row on the page names them
+for i = 1, 8 do STUB.tick(10); kill(DM_ENC[i]) end
+assert(live() == nil, "finished")
+run = RT.Of("deadmines").runs[1]
+assert(run.v == 189 and run.f == 60 and run.g == 300, "the run keeps the loot value and the reputation")
+assert(W.gold:GetText() == TW.Money(489), "the final loot")
+local tipLine = NS.JournalParts.GainsTip(run)
+assert(has(tipLine, "60") and has(coins(tipLine), "1s 89c"), tipLine)
+assert(NS.JournalParts.GainsTip({ at = 1, t = 1, s = {}, n = 1, c = "Vuloo" }) == nil, "an old run has no line")
+local rowTip
+for _, row in ipairs(NS.JournalParts.TimesRows("deadmines")) do
+    if row.tip and has(row.tip, "60") then rowTip = row.tip end
+end
+assert(rowTip, "the row of the run carries it")
+-- checked on load: bad values go, old runs stay
+AmisiaDB.runTimes.inst.deadmines.runs[2].v, AmisiaDB.runTimes.inst.deadmines.runs[2].f = -1, "viel"
+RT.Loaded()
+runs = RT.Of("deadmines").runs
+assert(runs[1].v == 189 and runs[1].f == 60 and runs[2].v == nil and runs[2].f == nil, "checked on load")
+
+-- the learned rares on load: shaped, the oldest go over the cap
+local many = {}
+for i = 1, 15 do many[100000 + i] = { n = "Rarer " .. i, t = 1000 + i } end
+many[5] = { n = "bad|name", t = 1 }
+AmisiaDB.rares = { v = 1, list = { deadmines = many, ["bad key"] = { [1] = { n = "x", t = 1 } } } }
+NS.RunGains.LearnedLoaded()
+local kept = AmisiaDB.rares.list.deadmines
+assert(NS.Count(kept) == 12 and kept[100015] and not kept[100003] and not kept[5] and not AmisiaDB.rares.list["bad key"], "capped and checked")
+local order = NS.RunGains.Learned("deadmines")
+assert(#order == 12 and order[1][1] == 100004 and order[12][1] == 100015, "in the order first seen")
+AmisiaDB.rares = nil
+
+C_Item.GetItemInfo = getInfo
+_G.UnitExists, _G.UnitIsPlayer, _G.UnitCreatureType, _G.UnitAffectingCombat, _G.UnitLevel = nil, nil, nil, nil, unitLevel
 print(EN and "run window enUS ok" or "run window ok")

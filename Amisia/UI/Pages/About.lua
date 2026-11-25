@@ -90,7 +90,11 @@ ns.RegisterPanel{ key = "about", label = L["Über und Befehle"], sub = L["Versio
         W.FitChip(f.selfTest, 110)
         f.selfTest.tip = L["Prüft Namen, Sperren, Gildenränge, Atlanten, Vorlagen und Client-Funktionen und zeigt einen Bericht zum Kopieren. Sendet nichts."]
         tipButton(f.selfTest)
-        f:Place(1, { { f.head, fill = true } }, { f.selfTest })
+        -- F-236: the news of the last versions (UI/WhatsNew.lua), any time (D-167)
+        f.news = W.Link(f, L["Neuigkeiten"], function() if ns.ShowWhatsNew then ns.ShowWhatsNew(nil) end end)
+        W.FitChip(f.news)
+        W.Tooltip(f.news, L["Neuigkeiten"], L["Was die letzten Versionen von Amisia Neues bringen."])
+        f:Place(1, { { f.head, fill = true } }, { f.news, f.selfTest })
         f.sub = f:Line(2)
         f.newer = f:Line(3)
         f.title = W.Text(f, T.FONT.title, 360)

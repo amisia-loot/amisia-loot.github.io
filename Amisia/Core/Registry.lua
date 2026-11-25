@@ -637,6 +637,9 @@ ns.RegisterSettings{ key = "ui", label = L["Oberfläche"], order = 90, group = "
       onChange = function(v) if ns.ShowMinimapButton then ns.ShowMinimapButton(v) end end },
     { key = "ui.scale", type = "slider", label = L["Fenstergröße (%)"], default = 100, min = 70, max = 130, step = 5,
       onChange = function(v) if ns.ApplyScale then ns.ApplyScale(v) end end, tip = L["Größe des Amisia-Fensters in Prozent."] },
+    -- F-236: the window "Neu in Amisia" after an update (UI/WhatsNew.lua)
+    { key = "ui.whatsNew", type = "toggle", label = L["Neuigkeiten nach einem Update zeigen"], default = true,
+      tip = L["Nach einem Update von Amisia zeigt ein kleines Fenster einmal, was neu ist (nicht im Kampf). \"Neuigkeiten\" unter \"Über und Befehle\" und /amisia neu zeigen es jederzeit."] },
     { key = "ui.alpha", type = "slider", label = L["Deckkraft des Hauptfensters (%)"], default = 100, min = 30, max = 100, step = 5,
       onChange = function(v) if ns.ApplyAlpha then ns.ApplyAlpha(v) end end,
       tip = L["Wie durchsichtig das Amisia-Fenster ist: 100 ist ganz deckend, weniger lässt die Spielwelt durchscheinen."] },

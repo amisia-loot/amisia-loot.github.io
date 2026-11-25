@@ -25,6 +25,11 @@ hand facts win: the client's values only fill what the JSON leaves open (lvl alw
 facts have none; order and enc where the facts give none; npcs and maps always: the planner sorts the
 bosses it knows by order).
 
+With --wago it also joins the rares Amisia learned in the game (AmisiaDB.rares of the SavedVariables,
+F-235) into tools/rare_obs.json (kept for good: the addon keeps 12 per dungeon) and adds them to the
+dungeon's rares after AllTheThings' (learned_rares, add_learned_rares): never a boss of the order, never a
+rare twice; the English name where the NPC scan knows it, else the name the client saw.
+
 The generated table is ns.DUNGEON_FACTS. Once tools/build_bis.py writes ns.BIS.DG (task 2 of the
 2.3 design: the same facts plus the level ranges of the client's LFGDungeons table and the bosses'
 NPC ids), the planner takes that instead and this file can go.
@@ -43,6 +48,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 FACTS = os.path.join(HERE, 'forever_dungeons.json')
 CLIENT = os.path.join(HERE, 'forever_dungeons_client.json')
+RARE_OBS = os.path.join(HERE, 'rare_obs.json')
 KEYS = os.path.join(HERE, 'forever_dungeon_keys.json')
 OUT = modules.data_file('DungeonData.lua')
 WAGO_DIRS = (os.path.expanduser('~/addons/_wago'), os.path.join(att_data.ATT_CACHE, '.config', '.wago'))
@@ -365,6 +371,73 @@ def rares_of(att, iid, e, order, npcs):
     return out
 
 
+# ---------------------------------------------------------------- rares learned in the game (F-235)
+KEY_RE = re.compile(r'^[\w-]{1,40}$')
+
+
+def _rare_name(n):
+    return n if isinstance(n, str) and 0 < len(n) <= 60 and '|' not in n and not any(ord(c) < 32 for c in n) else None
+
+
+def learned_rares(dbs, path=RARE_OBS):
+    """The rares the addon learned in the game (AmisiaDB.rares = {v, list = {[dungeon key] = {[NPC id] =
+    {n = the client's name, t}}}}) of the SavedVariables tables dbs, joined into the archive at path (the
+    name first archived stays; written when it grew): {key: {NPC id: name}}. Bad keys, ids and names are
+    left out."""
+    arch = {}
+    if path and os.path.exists(path):
+        with open(path, encoding='utf-8') as fh:
+            for key, part in (json.load(fh).get('rares') or {}).items():
+                arch[key] = {int(npc): name for npc, name in part.items()}
+    before = json.dumps({k: sorted(v) for k, v in arch.items()}, sort_keys=True)
+    for db in dbs:
+        lst = ((db or {}).get('rares') or {}).get('list') if isinstance((db or {}).get('rares'), dict) else None
+        for key, part in (lst or {}).items():
+            if not isinstance(key, str) or not KEY_RE.match(key) or not isinstance(part, dict):
+                continue
+            for npc, x in part.items():
+                try:
+                    nid = int(npc)
+                except (TypeError, ValueError):
+                    continue
+                name = _rare_name((x or {}).get('n')) if isinstance(x, dict) else None
+                if not (1 <= nid <= 9999999 and nid == float(npc)) or not name:
+                    continue
+                arch.setdefault(key, {}).setdefault(nid, name)
+    if path and json.dumps({k: sorted(v) for k, v in arch.items()}, sort_keys=True) != before:
+        with open(path, 'w', encoding='utf-8', newline='\n') as fh:
+            json.dump({'v': 1, 'rares': {k: {str(n): arch[k][n] for n in sorted(arch[k])} for k in sorted(arch)}},
+                      fh, ensure_ascii=False, indent=1, sort_keys=True)
+            fh.write('\n')
+    return arch
+
+
+def add_learned_rares(dungeons, keys, learned, scans=None):
+    """Adds the learned rares (learned_rares) to the rares of the dungeons of keys (the facts' keys) after
+    the ones there: never an NPC of the order (npcs), never one twice; the English name of the NPC scan
+    where there is one. In place; returns [(key, NPC id, name)] added."""
+    english = {}
+    for loc in ('enUS', 'enGB'):
+        for nid, f in (((scans or {}).get('npcs') or {}).get(loc) or {}).items():
+            if f.get('name'):
+                english.setdefault(int(nid), f['name'])
+    added = []
+    for key in sorted(learned):
+        if key not in keys:
+            continue
+        rec = dungeons.setdefault(key, {})
+        bosses = {n for n in rec.get('npcs') or [] if n}
+        have = {r[0] for r in rec.get('rares') or []}
+        for nid in sorted(learned[key]):
+            if nid in bosses or nid in have:
+                continue
+            name = english.get(nid) or learned[key][nid]
+            rec.setdefault('rares', []).append([nid, name])
+            have.add(nid)
+            added.append((key, nid, name))
+    return added
+
+
 def uimap_floors(folder):
     """{map id: [uiMap id, ...]} from the UiMapAssignment table in folder: every uiMap assigned to the
     map, in the order of its first assignment (smallest OrderIndex, then smallest row ID, then the uiMap
@@ -533,12 +606,17 @@ def main(argv=None):
         import build_scan
         import build_scan_archive
         svs = args.sv if args.sv is not None else build_scan_archive.default_svs()
-        scans = build_scan_archive.id_scans(args.scan_archive or None, [build_scan.load_sv(p) for p in svs])
+        dbs = [build_scan.load_sv(p) for p in svs]
+        scans = build_scan_archive.id_scans(args.scan_archive or None, dbs)
         enc_names = {loc: encounter_names(DE_DIRS, loc) for loc in (scans.get('npcs') or {}) if loc not in ('enUS', 'enGB')}
         for loc, names in sorted(enc_names.items()):
             print(f'NPC scan {loc}: {len(scans["npcs"][loc])} names; DungeonEncounter.{loc}: '
                   + (f'{len(names)} encounters' if names else 'missing (python3 tools/build.py tables --tables DungeonEncounter --locale ' + loc + ')'))
         client = client_facts(facts, args.wago, att, scans, enc_names)
+        # the rares learned in the game (F-235)
+        learned = learned_rares(dbs)
+        for key, nid, name in add_learned_rares(client['dungeons'], {e['key'] for e in facts['dungeons']}, learned, scans):
+            print(f'learned rare: {key} {nid} {name}')
         if not client['tables'].get('LFGDungeons') and not client['tables'].get('AreaTable'):
             raise SystemExit('no LFGDungeons or AreaTable CSV in ' + ', '.join(args.wago))
         print('client tables: ' + ', '.join(f'{t} {n}' for t, n in sorted(client['tables'].items())))

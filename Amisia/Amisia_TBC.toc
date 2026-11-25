@@ -47,6 +47,8 @@ UI\Pages\Settings.lua
 UI\Pages\About.lua
 UI\Pages\Feedback.lua
 UI\LootToast.lua
+Data\WhatsNew.lua
+UI\WhatsNew.lua
 Core\Minimap.lua
 Core\SelfTest.lua
 Core\SelfTestData.lua

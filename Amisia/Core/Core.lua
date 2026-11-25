@@ -321,6 +321,8 @@ local function onEvent(self, event, arg1, ...)
         -- once: Locales/Locale.lua hands the event on (ns.CoreLoaded) and the client may deliver it
         -- too; the first run unregisters it
         if arg1 ~= ADDON or (self.IsEventRegistered and not self:IsEventRegistered("ADDON_LOADED")) then return end
+        -- no saved file yet: a first install (UI/WhatsNew.lua shows no news then, F-236)
+        ns.NEW_INSTALL = AmisiaDB == nil
         AmisiaDB = AmisiaDB or {}
         DB = AmisiaDB
         DB.settings = DB.settings or {}

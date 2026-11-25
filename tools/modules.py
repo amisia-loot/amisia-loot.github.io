@@ -37,6 +37,7 @@ DATA_HOME = {
     'QuestData.lua': 'dungeons', 'QuestItemData.lua': 'dungeons',
     'MapData.lua': 'dungeons', 'DungeonArt.lua': 'dungeons',
     'TalentData.lua': 'talents',
+    'WhatsNew.lua': 'core',   # the news after an update (F-236, tools/build_whatsnew.py): every client, no camelot mark
 }
 
 

@@ -11,11 +11,13 @@
 -- the next; a kill of another of them while a clock with kills runs ends it unfinished and starts the
 -- other's from the first fight of this entry. Saved account-wide in
 -- AmisiaDB.runTimes = { v = 1, inst = { [dungeon key] = { nm, best = run, seg = { [encounter id] =
--- { t, at, c } }, runs = { run, ... } } }, live = { [character] = { k, i, nm, at, r, s, n, x, g, rk } }, last =
+-- { t, at, c } }, runs = { run, ... } } }, live = { [character] = { k, i, nm, at, r, s, n, x, g, v, f, rk } }, last =
 -- { [character] = { r = the Runs run's at, i = its instance, k = the key of that clock } whose clock ran } }; a run = { at, t, s = { [encounter id] =
 -- seconds }, n = group size, c = character, d = true when finished, x = mob experience, g = looted copper
--- (F-180, Gear/RunGains.lua; older runs have neither) }; live.rk = { [NPC id] = true } the rares seen
--- dead. The key is the dungeon or raid
+-- (F-180, Gear/RunGains.lua; older runs have neither), v = the vendor value of the looted items (copper),
+-- f = the reputation gained (F-235, D-169; older runs have neither) }; live.rk = { [NPC id] = true } the
+-- rares seen dead. A fight with a critter (or another level-1 creature) as the target starts no clock
+-- (F-235): the next fight does, or a target that is no critter while the fight goes on. The key is the dungeon or raid
 -- key alone: this client has one difficulty per instance and the raids a fixed size (D-96).
 -- Fires "RUNTIMES" (what changed) for the window (Gear/RunTimer.lua) and the part Zeiten of the pages.
 local ADDON, ns = ...
@@ -35,6 +37,7 @@ local MAX_LIVE = 12 * 3600   -- a clock older than this is over
 local MAX_T = 7 * 86400      -- no run is longer than a week
 local MAX_XP = 1e9           -- experience of one run at most (F-180)
 local MAX_COPPER = 1e11      -- money of one run at most (copper)
+local MAX_REP = 1e7          -- reputation of one run at most (F-235)
 local MAX_RARES = 40         -- rare kills kept per clock
 RT.MAX_RUNS, RT.MAX_INST, RT.AWAY, RT.MAX_LIVE = MAX_RUNS, MAX_INST, AWAY, MAX_LIVE
 
@@ -71,8 +74,10 @@ local function cleanRun(r)
     local size = num(r.n, 1, 40)
     -- the mob experience and the looted money of the run (F-180, D-112): optional, older runs have none
     local x, g = num(r.x, 0, MAX_XP), num(r.g, 0, MAX_COPPER)
+    -- the items' vendor value and the reputation (F-235): optional as well
+    local v, f = num(r.v, 0, MAX_COPPER), num(r.f, 0, MAX_REP)
     return { at = math.floor(at), t = t, s = s, n = size and math.floor(size) or 1, c = c, d = r.d == true or nil,
-        x = x and math.floor(x) or nil, g = g and math.floor(g) or nil }
+        x = x and math.floor(x) or nil, g = g and math.floor(g) or nil, v = v and math.floor(v) or nil, f = f and math.floor(f) or nil }
 end
 RT.CleanRun = cleanRun
 
@@ -133,7 +138,7 @@ function RT.Loaded()
     for c, l in pairs(type(src.live) == "table" and src.live or {}) do
         if plainName(c) and type(l) == "table" and type(l.k) == "string" and l.k:match("^[%w_%-]+$") then
             local i, at, r = num(l.i, 1, 1e9), num(l.at, 1, 4e9), num(l.r, 1, 4e9)
-            local run = i and at and r and cleanRun({ at = at, t = 0, s = l.s, n = l.n, c = c, x = l.x, g = l.g })
+            local run = i and at and r and cleanRun({ at = at, t = 0, s = l.s, n = l.n, c = c, x = l.x, g = l.g, v = l.v, f = l.f })
             if run then
                 -- the rares seen dead in this run (F-180): NPC ids
                 local rk, nr = {}, 0
@@ -143,7 +148,7 @@ function RT.Loaded()
                     end
                 end
                 out.live[c] = { k = l.k, i = math.floor(i), nm = plainName(l.nm), at = run.at, r = math.floor(r), s = run.s, n = run.n,
-                    x = run.x or 0, g = run.g or 0, rk = rk }
+                    x = run.x or 0, g = run.g or 0, v = run.v or 0, f = run.f or 0, rk = rk }
                 chars[#chars + 1] = c
             end
         end
@@ -309,7 +314,8 @@ local function finish(t, c, done)
         end
     end
     local run = { at = l.at, t = math.max(0, total), s = l.s, n = l.n, c = c, d = done or nil,
-        x = math.floor(tonumber(l.x) or 0), g = math.floor(tonumber(l.g) or 0) }
+        x = math.floor(tonumber(l.x) or 0), g = math.floor(tonumber(l.g) or 0), v = math.floor(tonumber(l.v) or 0),
+        f = math.floor(tonumber(l.f) or 0) }
     local rec = instRec(t, l.k)
     rec.nm = rec.nm or l.nm
     local prev = rec.best and rec.best.t or nil
@@ -386,21 +392,57 @@ end
 -- Starts the clock of key in instance inst at the moment at (the run of Runs.lua: run).
 local function start(t, c, key, inst, name, run, at)
     t.live[c] = { k = key, i = inst, nm = keptName(key, name or run.name), at = at, r = run.at, s = {}, n = groupSize(),
-        x = 0, g = 0, rk = {} }
+        x = 0, g = 0, v = 0, f = 0, rk = {} }
     t.last[c] = { r = run.at, i = inst, k = key }
     clock[c] = GetTime() - (now() - at)
     RT.lastDone = nil
 end
 
+---------------------------------------------------------------------------
+-- A fight with a critter starts nothing (F-235)
+---------------------------------------------------------------------------
+-- The client's word for the creature type "Critter" (UnitCreatureType answers in the client's
+-- language; the client has no constant for it), per language of the client.
+local CRITTER = { enUS = "Critter", enGB = "Critter", deDE = "Kleintier", frFR = "Bestiole", esES = "Alimaña",
+    esMX = "Alimaña", itIT = "Animale", ptBR = "Bicho", ruRU = "Существо", koKR = "동물", zhCN = "小动物", zhTW = "小動物" }   -- l10n-ok: the client's words
+
+local function plainCall(fn, ...)
+    if type(fn) ~= "function" then return nil end
+    local ok, v = pcall(fn, ...)
+    if not ok then return nil end
+    return ns.Plain(v)
+end
+
+-- Whether unit is a harmless creature, never the cause of a real fight: a critter by its creature type,
+-- or a creature of level 1 (every critter is; no mob of a dungeon is) while the character is above 5. A
+-- unit that does not exist, a player or a secret answer: not harmless (the fight counts).
+function RT.Harmless(unit)
+    if plainCall(UnitExists, unit) ~= true or plainCall(UnitIsPlayer, unit) == true then return false end
+    local kind = plainCall(_G.UnitCreatureType, unit)
+    local critter = CRITTER[type(GetLocale) == "function" and GetLocale() or ""]
+    if type(kind) == "string" and critter and kind == critter then return true end
+    local lvl, own = tonumber(plainCall(UnitLevel, unit)), tonumber(plainCall(UnitLevel, "player"))
+    return lvl == 1 and own ~= nil and own > 5
+end
+
+local deferred    -- a fight began with a harmless target: its next real target within it starts the clock
+
 -- A fight starts: the clock of a fresh run starts (inside an instance with encounters, the run of
 -- Runs.lua of this instance without a kill and without a clock before; a map of several: canStart).
+-- A fight whose target is a critter (RT.Harmless) starts nothing (F-235).
 function RT.Fight()
     local t, c = store(), me()
     if not (t and c) then return end
+    deferred = nil
+    local harmless = RT.Harmless("target")
     local entry = ns.Runs and ns.Runs.entry
-    if not entryFight or entryFight.entry ~= entry then entryFight = { entry = entry, at = now() } end
+    if not harmless and (not entryFight or entryFight.entry ~= entry) then entryFight = { entry = entry, at = now() } end
     RT.Check()
     if t.live[c] then return end
+    if harmless then
+        deferred = true
+        return
+    end
     local inst, kind, name = instanceNow()
     if not inst then return end
     local run = runsRun()
@@ -484,13 +526,24 @@ function RT.Live()
     return l, math.max(0, secs)
 end
 
--- The rare mobs of key (DungeonData.lua rares, F-180): { { npc, English name }, ... } checked, or an
--- empty list where the data knows none.
+-- The rare mobs of key (DungeonData.lua rares, F-180), then the ones this account learned there itself
+-- (Gear/RunGains.lua, F-235) that the data lacks: { { npc, name }, ... } checked, each NPC once, or an
+-- empty list where neither knows one.
 function RT.Rares(key)
     local f = ns.Runs.Fact(key)
-    local out = {}
+    local out, seen = {}, {}
     for _, r in ipairs(f and type(f.rares) == "table" and f.rares or {}) do
-        if type(r) == "table" and type(r[1]) == "number" and r[1] > 0 and type(r[2]) == "string" then out[#out + 1] = r end
+        if type(r) == "table" and type(r[1]) == "number" and r[1] > 0 and type(r[2]) == "string" and not seen[r[1]] then
+            out[#out + 1] = r
+            seen[r[1]] = true
+        end
+    end
+    local RG = ns.RunGains
+    for _, r in ipairs(RG and RG.Learned and RG.Learned(key) or {}) do
+        if not seen[r[1]] then
+            out[#out + 1] = r
+            seen[r[1]] = true
+        end
     end
     return out
 end
@@ -549,6 +602,11 @@ ns.OnEvent("PLAYER_ENTERING_WORLD", function() RT.Check() end)
 ns.OnEvent("ZONE_CHANGED_NEW_AREA", function() RT.Check() end)
 ns.Listen("RUN", function() RT.Check() end)
 ns.OnEvent("PLAYER_REGEN_DISABLED", function() RT.Fight() end)
+-- a fight that began with a critter: a real target while it goes on starts the clock (F-235)
+ns.OnEvent("PLAYER_TARGET_CHANGED", function()
+    if deferred and plainCall(UnitAffectingCombat, "player") == true then RT.Fight() end
+end)
+ns.OnEvent("PLAYER_REGEN_ENABLED", function() deferred = nil end)
 ns.OnEvent("ENCOUNTER_END", function(enc, _, _, _, success)
     if tonumber(ns.Plain(success)) == 1 then RT.Kill(enc) end
 end)
@@ -615,6 +673,8 @@ ns.RegisterSlash("zeiten", { en = "times", args = L["[stop]"], desc = L["Lauf-Ze
 ns.RegisterSettings{ key = "runtimes", label = L["Lauf-Zeiten"], order = 52, group = "dungeons", pages = { "dungeons", "raidjournal" }, items = {
     { key = "runtimes.window", type = "toggle", label = L["Zeitfenster in Dungeons"], default = true,
       tip = L["Öffnet ein kleines Fenster mit der Uhr, Mob-XP, Gold, den Bossen und den Rare des Dungeons, sobald dort der erste Kampf beginnt. Gemessen wird auch ohne das Fenster."] },
+    { key = "runtimes.lootValue", type = "toggle", label = L["Verkaufswert der Beute mitzählen"], default = true,
+      tip = L["Das Fenster zeigt unter \"Beute\" das geplünderte Gold und dazu, was ein Händler für die geplünderten Gegenstände zahlt. Aus: nur das Gold."] },
     { key = "runtimes.raids", type = "toggle", label = L["Zeitfenster auch in Raids"], default = true,
       tip = L["Das Fenster öffnet sich auch beim ersten Kampf in einem Raid."] },
     { key = "runtimes.clear", type = "button", label = L["Alle Bestzeiten löschen"], run = function() confirmClear(nil) end,
@@ -625,6 +685,6 @@ ns.RegisterSettings{ key = "runtimes", label = L["Lauf-Zeiten"], order = 52, gro
 RT._reset = function()
     clock = {}
     RT.lastDone = nil
-    entryFight, doneEntry = nil, nil
+    entryFight, doneEntry, deferred = nil, nil, nil
 end
 end)

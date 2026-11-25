@@ -303,6 +303,8 @@ FOREVER_FILES = {'Core/Duels.lua', 'Core/SelfTestLayer.lua', 'Raid/Handover.lua'
                  'UI/ItemKit.lua'} | {
     f'UI/Pages/{p}.lua' for p in ('Gear', 'JournalParts', 'Dungeons', 'RaidJournal', 'Map', 'Professions', 'Quests', 'Talents',
                                   'MageScrolls', 'Duels', 'Tools', 'Export', 'Planner')}
+# generated data every client reads: the news after an update (F-236, D-168)
+ALL_CLIENTS = {'Data/WhatsNew.lua'}
 
 
 def test_the_classic_clients_have_their_own_toc_without_the_forever_parts():
@@ -336,7 +338,7 @@ def test_the_toc_loads_the_forever_parts_on_forever_only():
             if not line.strip() or line.startswith('#'):
                 continue
             name = re.sub(r'\s*\[[^\]]*\]', '', line).replace('\\', '/').strip()
-            forever = name.startswith(FOREVER_DIRS) or name in FOREVER_FILES
+            forever = (name.startswith(FOREVER_DIRS) or name in FOREVER_FILES) and name not in ALL_CLIENTS
             conds = re.findall(r'\[([^\]]*)\]', line)
             if module != 'core':
                 assert not conds, f'a module is Forever\'s by its TOC, no mark per file: {line}'
