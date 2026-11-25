@@ -252,6 +252,32 @@ function S.calls(mode)
     NS.Refresh()
 end
 
+-- The page Amisia-Versionen (F-237): the lineup's guild, eight hellos (several versions, an officer, modules from none
+-- to all, four languages, one offline, one older than 2.104.0), a guild question whose answers are in (the online
+-- members without a hello: "kein Amisia?") and a raid question (Bobbington, in the raid without an answer).
+local versionsDone
+function S.versions(tab)
+    S.members()
+    if not versionsDone then
+        versionsDone = true
+        local own = NS.VERSION
+        for _, h in ipairs({ { "Fraktur", own, "O", "rgdt", "deDE" }, { "Chorf", "2.109.0", "-", "rg", "enUS" },
+            { "Anna Bergmann", own, "-", "rgdt", "frFR" }, { "Bob Eisherz", own, "-", "rgdt", "deDE" },
+            { "Lina Sonnfeld", own, "-", "r", "deDE" }, { "Mara Quell", "2.108.1", "-", "rgd", "deDE" },
+            { "Kimtaro", "2.100.0", "-", "rg", "deDE" }, { "Tobi Hain", own, "-", "rgdt", "esES" } }) do
+            STUB.fire("CHAT_MSG_ADDON", "Amisia", ("1HI\t%s\t1\t%s\t-\t%s\t%s"):format(h[2], h[3], h[4], h[5]), "GUILD", h[1],
+                "", 0, 0, "", 0)
+        end
+        STUB.tick(1)
+        NS.VersionAsk("guild")
+        NS.VersionAsk("raid")
+        STUB.tick(17)
+    end
+    NS.VersionsPageState(tab or "all", false)
+    NS.ShowPage("versions")
+    NS.Refresh()
+end
+
 -- The duels page (F-106): an evening at the duel spot of Durotar: duels of strangers and own ones,
 -- a flight, players without a class, a tournament of three duels; the view chosen by the caller.
 local duelsDone
@@ -966,6 +992,11 @@ S.STATES = {
     { page = "duels", name = "duels-board", open = function() S.duels("board") end },
     { page = "duels", name = "duels-classes", open = function() S.duels("classes") end },
     { page = "duels", name = "duels-priest", open = function() S.duels("classes", "PRIEST") end },
+    -- the page Amisia-Versionen (F-237): versions, modules, languages, online and offline, outdated, without
+    -- Amisia (still in the raid: its questions tick the clock 18 s, after the map's leaving the raid that ends
+    -- the recording)
+    { page = "versions", name = "versions-guild", open = function() S.versions("all") end },
+    { page = "versions", name = "versions-none", open = function() S.versions("none") end },
     -- the map page outside the raid, in Westfall: every zone with the quest steps and a target (the
     -- card with distance and direction), the own zone alone, the items without a place
     { page = "map", name = "map-all", open = function() S.mapWorld(); NS.ShowMap("alle") end },

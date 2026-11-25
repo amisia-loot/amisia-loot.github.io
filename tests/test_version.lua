@@ -3,7 +3,8 @@
 -- /reload within 30 minutes), the hello on entering a raid, questions to the raid and the guild with
 -- whispered answers after a random delay, the 5 minutes of the guild question, the note on a newer
 -- version once per version and only from an officer or two members, senders outside the guild
--- ignored, the cleaning of the seen list, the page "Über und Befehle" and the command.
+-- ignored, the cleaning of the seen list, the page Amisia-Versionen (F-237; until then on "Über und Befehle") and the
+-- command.
 local function count(name, text)
     return C(name, ("local n = 0; for _, m in ipairs(STUB.messages) do if m:find(%q, 1, true) then n = n + 1 end end; return n"):format(text))
 end
@@ -152,7 +153,7 @@ assert(ok == nil and why == "Versionsprüfung ist ausgeschaltet.")
 C("Lia Weide", "NS.Reset('sync.versionCheck')")
 
 ---------------------------------------------------------------------------
--- the page "Über und Befehle": rows, colours, "kein Amisia?", buttons
+-- the page Amisia-Versionen (F-237): rows, colours, "kein Amisia?", buttons; "Über und Befehle" its head
 ---------------------------------------------------------------------------
 BUS.tick(300)
 C("Vulo Sturmwind", [[_G.UnitClass = function() return "Priester", "PRIEST" end
@@ -161,12 +162,12 @@ C("Vulo Sturmwind", [[_G.UnitClass = function() return "Priester", "PRIEST" end
     _G.GetInventoryItemLink = function() return nil end
     NS.ShowPage("about")]])
 assert(C("Vulo Sturmwind", "NS.CurrentPage()") == "about")
+assert(C("Vulo Sturmwind", "NS.PageFrame('about').head:GetText()") == ("Amisia %s · Sync-Protokoll 1"):format(own))
+C("Vulo Sturmwind", "NS.ShowPage('versions')")
 -- code with the page frame as f; an expression gives its value back
 local function page(name, code)
-    return C(name, "local f = NS.PageFrame('about'); " .. (code:find("^local ") and "" or "return ") .. code)
+    return C(name, "local f = NS.PageFrame('versions'); " .. (code:find("^local ") and "" or "return ") .. code)
 end
-assert(page("Vulo Sturmwind", "f.head:GetText()") == ("Amisia %s · Sync-Protokoll 1"):format(own))
-assert(page("Vulo Sturmwind", "f.title:GetText()") == "Amisia in Raid und Gilde")
 assert(page("Vulo Sturmwind", "f.askRaid:GetText()") == "Raid fragen" and page("Vulo Sturmwind", "f.askGuild:GetText()") == "Gilde fragen")
 assert(page("Vulo Sturmwind", "f.askRaid:IsEnabled() and f.askGuild:IsEnabled()") == true)
 -- asking from the page; 10 s later the raid member without an answer shows
@@ -181,12 +182,12 @@ local rows = page("Vulo Sturmwind", [[local out = {}
     return out]])
 -- raid first by name (Vulo himself among them), then the guild by the time seen
 assert(rows[1][1]:find("Fraktur", 1, true) and rows[1][2] == own and rows[1][3] == "Offizier" and rows[1][4] == "Raid", rows[1][1])
-assert(rows[2][1]:find("Pug", 1, true) and rows[2][2] == "-" and rows[2][3] == "-" and rows[2][5]:find("kein Amisia?", 1, true), rows[2][5])
+assert(rows[2][1]:find("Pug", 1, true) and rows[2][2]:find("-", 1, true) and rows[2][3]:find("-", 1, true) and rows[2][5]:find("kein Amisia?", 1, true), rows[2][5])
 assert(rows[2][5]:find("|cff", 1, true) == 1, "grey")
 assert(rows[3][1]:find("Vulo Sturmwind", 1, true) and rows[3][2] == own and rows[3][3] == "Offizier" and rows[3][4] == "Raid")
 assert(rows[4][4] == "Gilde" and rows[5][4] == "Gilde" and rows[6] == nil, "two guild rows")
 assert(rows[4][5]:match("^%d%d:%d%d$"), "seen today: the time " .. rows[4][5])
-assert(page("Vulo Sturmwind", "f.summary:GetText()") == "Raid: 2 von 3 mit Amisia · Gilde: 2 gesehen", page("Vulo Sturmwind", "f.summary:GetText()"))
+assert(page("Vulo Sturmwind", "f.summary:GetText()") == ("4 mit Amisia · 4× %s"):format(own), page("Vulo Sturmwind", "f.summary:GetText()"))
 assert(page("Vulo Sturmwind", "f.newer:IsShown()") == false)
 -- a newer version from an officer in the raid: the note, the own row orange
 C("Fraktur", "NS.CommSend('HI', { '9.0.1', '1', 'O', '-' }, 'RAID')")
@@ -194,9 +195,10 @@ BUS.tick(1.1)
 page("Vulo Sturmwind", "NS.Refresh()")
 assert(page("Vulo Sturmwind", "f.newer:IsShown()") == true)
 assert(page("Vulo Sturmwind", "f.newer:GetText()"):find("Es gibt eine neuere Version: 9.0.1 (gesehen bei Fraktur). Bitte aktualisieren.", 1, true))
-assert(page("Vulo Sturmwind", "f.summary:GetText()") == "Raid: 2 von 3 mit Amisia · 1 veraltet · Gilde: 2 gesehen")
+-- every one below the raid's highest version is old: the raid's and the guild's
+assert(page("Vulo Sturmwind", "f.summary:GetText()") == ("4 mit Amisia · 3× %s · 1× 9.0.1 · 3 veraltet"):format(own), page("Vulo Sturmwind", "f.summary:GetText()"))
 local ver = page("Vulo Sturmwind", "f.list.rows[3].ver:GetText()")
-assert(ver:find(own, 1, true) and ver:find("|cffff9933", 1, true), "the own old version is orange: " .. ver)
+assert(ver:find(own, 1, true) and ver:find(C("Vulo Sturmwind", "NS.Theme.ORANGE"), 1, true), "the own old version is orange: " .. ver)
 assert(page("Vulo Sturmwind", "f.list.rows[1].ver:GetText()") == "9.0.1")
 -- the guild question from the page locks its button for 5 minutes
 page("Vulo Sturmwind", "f.askGuild:Click()")
@@ -223,26 +225,29 @@ BUS.tick(1.3)
 assert(C("Vulo Sturmwind", "NS.VersionLang('Lia Weide')") == nil, "not four letters: dropped")
 C("Vulo Sturmwind", "AmisiaDB.sync.seen['Fraktur'].lc = 'x<y'; NS.VersionLoaded(AmisiaDB)")
 assert(C("Vulo Sturmwind", "AmisiaDB.sync.seen['Fraktur'].lc") == nil, "a broken saved one dropped on load")
-assert(page("Vulo Sturmwind", "f.summary:GetText()"):find("Gilde: 2 gesehen", 1, true))
--- the commands under the list
-assert(page("Vulo Sturmwind", "f.cmdTitle:GetText()") == "Befehle")
-assert(page("Vulo Sturmwind", "f.text.fs:GetText()"):find("/amisia version", 1, true))
--- a client outside the guild sees nobody: the empty text
+assert(page("Vulo Sturmwind", "f.summary:GetText()"):find("^%d+ mit Amisia"))
+-- the commands on "Über und Befehle", with the count and the link to the page
+C("Vulo Sturmwind", "NS.ShowPage('about')")
+assert(C("Vulo Sturmwind", "NS.PageFrame('about').cmdTitle:GetText()") == "Befehle")
+assert(C("Vulo Sturmwind", "NS.PageFrame('about').text.fs:GetText()"):find("/amisia version", 1, true))
+assert(C("Vulo Sturmwind", "NS.PageFrame('about').seen:GetText()"):find("^%d+ mit Amisia gesehen$"))
+C("Vulo Sturmwind", "NS.ShowPage('versions')")
+-- a client outside the guild sees only itself
 C("Pug", [[_G.UnitClass = function() return "Priester", "PRIEST" end
     _G.UnitLevel = function() return 24 end
     _G.UnitFactionGroup = function() return "Alliance" end
     _G.GetInventoryItemLink = function() return nil end
-    NS.ShowPage("about")]])
-assert(page("Pug", "f.empty:IsShown()") == true and page("Pug", "f.empty:GetText()") == "Noch keine anderen Amisia-Clients gesehen.")
-assert(page("Pug", "f.list.rows[1]:IsShown()") == false)
+    NS.ShowPage("versions")]])
+assert(page("Pug", "f.list.rows[1]:IsShown()") == true and page("Pug", "f.list.rows[1].item.self") == true)
+assert(page("Pug", "f.list.rows[2]:IsShown()") == false)
 -- outside a raid the raid button is locked
 C("Lia Weide", [[_G.UnitClass = function() return "Priester", "PRIEST" end
     _G.UnitLevel = function() return 24 end
     _G.UnitFactionGroup = function() return "Alliance" end
     _G.GetInventoryItemLink = function() return nil end
-    NS.ShowPage("about")]])
+    NS.ShowPage("versions")]])
 assert(page("Lia Weide", "f.askRaid:IsEnabled()") == false and page("Lia Weide", "f.askGuild:IsEnabled()") == true)
-assert(page("Lia Weide", "f.summary:GetText()"):find("^Gilde: %d+ gesehen$"))
+assert(page("Lia Weide", "f.summary:GetText()"):find("^%d+ mit Amisia"))
 
 ---------------------------------------------------------------------------
 -- the note on a newer version: once per version, only from an officer or two members

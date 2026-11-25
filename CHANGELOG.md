@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(guild): a page of its own shows who runs Amisia and which version (F-237)
+
+    Guild > Amisia versions lists you and everyone whose Amisia said hello in the last 30 days over the whole
+    page: name with the online mark, version (orange when older than the newest seen), modules, game language,
+    view, where and when. Click a column head to sort; the filters show who is online, the outdated versions or
+    the members without Amisia, greyed as "nothing heard" until "Ask guild" had its answers ("no Amisia?" for
+    online members who stayed silent). "Ask raid" and "Ask guild" moved there; the About page keeps a count and
+    the link "All versions".
+
 ## [v2.110.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.110.0) (2026-11-25)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.109.0...v2.110.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

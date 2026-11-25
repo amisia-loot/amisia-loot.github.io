@@ -353,8 +353,12 @@ local LANG_WORD = {
     esMX = L["Spanisch"], itIT = L["Italienisch"], ptBR = L["Portugiesisch"], ruRU = L["Russisch"], koKR = L["Koreanisch"],
     zhCN = L["Chinesisch"], zhTW = L["Chinesisch"],
 }
+-- The word alone ("Französisch"), nil for an unknown one (the page Amisia-Versionen, F-237).
+function UI.LangWord(lc)
+    return type(lc) == "string" and LANG_WORD[lc] or nil
+end
 function UI.LangText(lc)
-    local word = type(lc) == "string" and LANG_WORD[lc]
+    local word = UI.LangWord(lc)
     return word and L["Spielsprache: %s"]:format(word) or nil
 end
 

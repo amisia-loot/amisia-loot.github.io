@@ -1435,6 +1435,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-10-12-raid-check.md, Teil C; DECISIONS D-46. Nachrichten IV/IQ, gespeichert in AmisiaDB.raidcheck. Einstellung "Raid-IDs der Gilde mitteilen" (an); nur Offiziere sehen die Raid-IDs anderer, jeder seine eigenen (`/amisia raidcheck`). Die Reset-Zeit ist die, die das Spiel pro ID nennt (Forevers Regeln sind vor 2026-12-09 unbekannt, Prüfung 17 der Spec).
 
 ## Addon: Gilde
+### F-237 Seite Amisia-Versionen: wer Amisia hat und welche Version
+- Version: 2.111.0
+- Status: gebaut
+- Prüfung: Wenn du Gilde > Amisia-Versionen öffnest, dann stehen dort du und alle, deren Amisia sich gemeldet hat, mit Version, Modulen, Sprache und Ansicht, und oben "N mit Amisia · ...".
+- Prüfung: Wenn du "Gilde fragen" klickst und 20 Sekunden wartest, dann stehen Mitglieder, die online sind und nicht antworteten, unter "Ohne Amisia" mit "kein Amisia?"; die übrigen ohne Hallo mit "nichts gehört".
+- Prüfung: Wenn du auf "Veraltet" klickst, dann stehen nur die älteren Versionen da, orange; ein Klick auf den Kopf "Version" sortiert nach Version, ein zweiter dreht um.
+- Prüfung: Wenn du auf "Über und Befehle" auf "Alle Versionen" klickst, dann öffnet sich die Seite Amisia-Versionen.
+- Prüfung: Wenn du im Raid "Raid fragen" klickst, dann stehen nach 10 Sekunden die Raidmitglieder ohne Amisia grau mit "kein Amisia?".
+- Notiz: DECISIONS D-170, Spec `docs/specs/2026-11-25-amisia-versionen.md` (Nutzer 2026-11-25: "Eigene Seite"). Alle Clients (Reiter Gilde, auch TBC/Era); die Liste auf "Über und Befehle" ist jetzt eine Zeile mit Link.
+
 ### F-233 Berufe der Gilde: Übersicht, Material-Suche, Rezept-Wunsch
 - Version: 2.107.0
 - Status: gebaut

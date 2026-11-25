@@ -138,13 +138,13 @@ assert(navAll() == "overview softres softres raidnote rolls rolls awards raidlog
 assert(row("win", "rolls") and row("win", "softres"), "the roll window and the soft-reserve import")
 NS.ShowTab("guild")
 local bank, exp, members, cal, duels = NS.Panel("bank"), NS.Panel("export"), NS.Panel("members"), NS.Panel("calendar"), NS.Panel("duels")
-local calls = NS.Panel("calls")
-local keep = { bank.available, members.available, cal.available, duels.available, calls.available }
-for _, p in ipairs({ bank, members, cal, duels, calls }) do p.available = function() return false end end
+local calls, versions = NS.Panel("calls"), NS.Panel("versions")
+local keep = { bank.available, members.available, cal.available, duels.available, calls.available, versions.available }
+for _, p in ipairs({ bank, members, cal, duels, calls, versions }) do p.available = function() return false end end
 NS.Set("ui.view", "raider"); STUB.tick(0)      -- the guild tab has no page left: gone, the page falls back
 assert(tabsShown() == "gear dungeons prof talents raid amisia", tabsShown())
 assert(NS.CurrentPage() == "overview" and F.tabs.raid.on, "the open page fell back: " .. NS.CurrentPage())
-bank.available, members.available, cal.available, duels.available, calls.available = keep[1], keep[2], keep[3], keep[4], keep[5]
+bank.available, members.available, cal.available, duels.available, calls.available, versions.available = keep[1], keep[2], keep[3], keep[4], keep[5], keep[6]
 NS.Refresh()
 assert(tabsShown():find("guild", 1, true), "the guild tab is back")
 assert(exp.officer, "export stays an officer page")

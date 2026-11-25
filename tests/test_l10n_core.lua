@@ -121,7 +121,15 @@ NS.MATS[12345], NS.MAT_ORDER[1] = nil, nil
 NS.ShowPage("about")
 local ab = NS.PageFrame("about")
 assert(has(ab.head:GetText(), "sync protocol"), ab.head:GetText())
-assert(ab.askGuild:GetText() == "Ask guild" and ab.askRaid:GetText() == "Ask raid" and ab.selfTest:GetText() == "Self-test")
+assert(ab.versions:GetText() == "All versions" and ab.selfTest:GetText() == "Self-test")
+assert(ab.seen:GetText():find("^%d+ seen with Amisia$"), ab.seen:GetText())
+-- the page Amisia versions (F-237): its links, filters and heads in English
+NS.ShowPage("versions")
+local vf = NS.PageFrame("versions")
+assert(vf.askGuild:GetText() == "Ask guild" and vf.askRaid:GetText() == "Ask raid")
+assert(vf.tabs.all:GetText() == "All" and vf.tabs.old:GetText() == "Outdated" and vf.tabs.none:GetText() == "Without Amisia")
+assert(vf.summary:GetText():find("^%d+ with Amisia"), vf.summary:GetText())
+NS.ShowPage("about")
 assert(ab.cmdTitle:GetText() == "Commands")
 local help = table.concat(NS.SlashHelpLines(true), "\n")
 for _, w in ipairs({ "/amisia settings [section or search word] - open the settings", "/amisia selftest [short] [waypoint] [calendar [write]] [group] [data] [layer] - checks the client",

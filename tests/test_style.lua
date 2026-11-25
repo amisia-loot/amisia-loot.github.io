@@ -496,7 +496,7 @@ assert(talentMarks == " class:WARRIOR class:PALADIN class:HUNTER class:ROGUE cla
     .. " class:DRUID slot:1 slot:2 live reset import export", tostring(talentMarks))
 assert(table.concat(tabsOf, " | "):gsub(talentMarks, "", 1):gsub(" L%d+", ""):gsub(" %d+", "") == "planner gear raid dungeon pvp craft world rep"
     .. " | dungeons raidjournal quests map | professions overview camp favor orders cooldowns | talents talents"
-    .. " | members calls calendar bank duels" .. (NS.LayerWindow and " layer" or "") .. " bgqueue"
+    .. " | members calls calendar bank duels versions" .. (NS.LayerWindow and " layer" or "") .. " bgqueue"
     -- (the settings' tabs in the main window's order, "Allgemein" last; the first one open, D-166)
     .. " | settings gear bis dungeons prof talents raid guild amisia about feedback", table.concat(tabsOf, " | "))
 NS.Set("ui.view", "officer")
@@ -505,7 +505,7 @@ NS.ShowPage("overview")
 assert(navAll() == "overview softres softres raidnote rolls rolls awards raidlog points stats raids export", navAll())
 NS.Set("ui.expert", true)
 NS.ShowTab("guild")
-assert(navAll() == "members calls calendar bank duels tools" .. (NS.LayerWindow and " layer" or "") .. " bgqueue", navAll())
+assert(navAll() == "members calls calendar bank duels versions tools" .. (NS.LayerWindow and " layer" or "") .. " bgqueue", navAll())
 -- ShowTab opens a tab's last page
 NS.ShowPage("map")
 NS.ShowTab("raid"); assert(NS.CurrentPage() == "overview", NS.CurrentPage())

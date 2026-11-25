@@ -25,7 +25,8 @@ _G.UnitClass = function() return "Priester", "PRIEST" end
 _G.UnitLevel = function() return 24 end
 _G.UnitFactionGroup = function() return "Alliance" end
 _G.GetInventoryItemLink = function() return nil end
-NS.ShowPage("about")
-local f = NS.PageFrame("about")
-assert(f.empty:IsShown() and f.empty:GetText() == "Addon-Nachrichten sind nicht verfügbar.")
+NS.ShowPage("versions")
+local f = NS.PageFrame("versions")
+assert(f.data:GetText() == "Addon-Nachrichten sind nicht verfügbar.", f.data:GetText())
 assert(not f.askRaid:IsEnabled() and not f.askGuild:IsEnabled())
+assert(f.askRaid.tip == "Addon-Nachrichten sind nicht verfügbar." and f.askGuild.tip == "Addon-Nachrichten sind nicht verfügbar.")

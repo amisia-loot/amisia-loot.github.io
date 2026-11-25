@@ -15,6 +15,7 @@ local HELLO_KEEP = 1800      -- seconds a guild hello holds over a /reload
 local RAID_HELLO_GAP = 120
 local RAID_ASK_GAP, GUILD_ASK_GAP = 30, 300
 local NO_ANSWER_AFTER = 10   -- seconds after a raid question that a silent member counts as "kein Amisia?"
+local GUILD_ANSWERS_IN = 16  -- seconds after a guild question its whispered answers (1 to 15 s) are in
 local SEEN_DAYS, SEEN_MAX = 30, 300
 
 local helloDone = false
@@ -206,8 +207,16 @@ function ns.VersionAsk(where)
     askedAt[where] = t
     ns.Fire("SYNC_VERSIONS")
     -- the silent members show once the answers had their time
-    if where == "raid" then C_Timer.After(NO_ANSWER_AFTER + 0.1, function() ns.Fire("SYNC_VERSIONS") end) end
+    C_Timer.After((where == "raid" and NO_ANSWER_AFTER or GUILD_ANSWERS_IN) + 0.1, function() ns.Fire("SYNC_VERSIONS") end)
     return true
+end
+
+-- Whether a question to "raid" or "guild" was asked in this session and its answers had their time
+-- (raid 10 s, guild 16 s): a member who is online and stayed silent then likely has no Amisia (F-237).
+function ns.VersionAnswered(where)
+    local at = askedAt[where]
+    if not at then return false end
+    return now() - at >= (where == "raid" and NO_ANSWER_AFTER or GUILD_ANSWERS_IN)
 end
 
 -- Every guild member answers by whisper: in the raid after 0 to 3 s, in the guild after 1 to 15 s.
@@ -272,7 +281,7 @@ function ns.VersionSeen()
     end
     for name, e in pairs(d.seen) do
         if type(name) == "string" and type(e) == "table" then
-            out[#out + 1] = { name = name, v = e.v, p = e.p, mp = e.mp, flags = e.flags, k = e.k, o = e.o, m = e.m,
+            out[#out + 1] = { name = name, v = e.v, p = e.p, mp = e.mp, flags = e.flags, k = e.k, o = e.o, m = e.m, lc = e.lc,
                               where = inGroup(name) and "raid" or "guild", at = e.at }
         end
     end
@@ -401,7 +410,7 @@ function ns.VersionRows()
     local rows, me = {}, ns.UnitFullName("player")
     local inRaid = homeRaid()
     rows[1] = { name = me or "?", v = ns.VERSION, p = ns.SYNC_PROTO, mp = ns.SYNC_MIN_PROTO, flags = ownFlags(),
-                where = inRaid and "raid" or "guild", at = time(), self = true, m = ownModules() }
+                where = inRaid and "raid" or "guild", at = time(), self = true, m = ownModules(), lc = langOf(ownLang()) }
     for _, e in ipairs(ns.VersionSeen()) do
         if not ns.SameName(e.name, me) then rows[#rows + 1] = e end
     end
@@ -439,6 +448,20 @@ function ns.VersionRows()
         end
     end
     return rows
+end
+
+-- The modules a row's Amisia runs (F-237): a list of "gear", "dungeons", "talents" in the order of the tabs.
+-- No field (before F-202) is every module; before F-228 (2.104.0) "g" stood for all three.
+local MODULE_KEYS = { { "g", "gear" }, { "d", "dungeons" }, { "t", "talents" } }
+function ns.VersionModuleKeys(r)
+    local out = {}
+    if type(r) ~= "table" or not r.v then return out end
+    local m = r.m
+    local all = m == nil or (m:find("g", 1, true) and ns.CompareVersion(r.v, "2.104.0") < 0)
+    for _, k in ipairs(MODULE_KEYS) do
+        if all or m:find(k[1], 1, true) then out[#out + 1] = k[2] end
+    end
+    return out
 end
 
 -- "Hüter", "Offizier", "Raider", "ohne Raid" or "-".

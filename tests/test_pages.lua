@@ -257,21 +257,29 @@ do
     -- the first section starts with its bar, its first row right under it
     assert(parts[1].inherits and parts[1].points.TOPLEFT.y == 0 and parts[2].points.TOPLEFT.y == -25, "a bar of 25, then the rows")
 end
--- about: the list and the commands end 12 px before the edge, their bars inside the page
+-- about: the count with its link, the commands end 12 px before the edge, their bar inside the page
 NS.ShowPage("about")
 do
     local af = NS.PageFrame("about")
     local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(af, 602, 478)
-    L.row("about head", af.title, af.askRaid, af.askGuild)
-    L.row("about list", af.list, af.list.bar)
-    L.inside("about list bar", af.list.bar)
-    local _, lr = L.span(af.list)
-    assert(lr == 590, "the about list is 590 wide: " .. lr)
-    local _, cr = L.span(af.list.rows[1].last)
-    assert(cr <= 590, "the last column ends in the row: " .. cr)
+    L.row("about count", af.seen, af.versions)
     L.row("about commands", af.text, af.text.bar)
     L.inside("about commands bar", af.text.bar)
-    L.column("about page", af.head, af.sub, af.title, af.summary, af.cols[1], af.list, af.cmdTitle, af.text)
+    L.column("about page", af.head, af.sub, af.seen, af.cmdTitle, af.text)
+end
+-- Amisia-Versionen (F-237): the list ends 12 px before the edge, its bar and its last column inside the page
+NS.ShowPage("versions")
+do
+    local vf = NS.PageFrame("versions")
+    local L = dofile(ADDON_DIR .. "/../tests/layout.lua")(vf, 602, 478)
+    L.row("versions head", vf.tabs.all, vf.askRaid, vf.askGuild)
+    L.row("versions list", vf.list, vf.list.bar)
+    L.inside("versions list bar", vf.list.bar)
+    local _, lr = L.span(vf.list)
+    assert(lr == 590, "the versions list is 590 wide: " .. lr)
+    local _, cr = L.span(vf.list.rows[1].last)
+    assert(cr <= 590, "the last column ends in the row: " .. cr)
+    L.column("versions page", vf.tabs.all, vf.summary, vf.headFrame, vf.list, vf.data)
 end
 NS.ShowPage("overview")
 

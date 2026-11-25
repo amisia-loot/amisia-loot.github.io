@@ -115,6 +115,7 @@ UI\SoftResImport.lua
 UI\Pages\Bank.lua
 UI\Pages\Members.lua
 UI\Pages\Calls.lua
+UI\Pages\Versions.lua
 UI\Setup.lua
 UI\Signup.lua
 UI\RaidCalendar.lua

@@ -2,8 +2,8 @@
 -- 2.1 UI review: the guild bank list keeps 18 rows on the page and scrolls; the award dialog
 -- shows "Fragen" only where asking works; the conflict bar cuts notes and has both sentences as
 -- tooltip; the sync line takes the space the counts leave; a gold mark for conflicts of the
--- running raid while another raid is shown; the shorter settings label; the scroll hint on the
--- About page.
+-- running raid while another raid is shown; the shorter settings label; the version list scrolls (the
+-- page Amisia-Versionen since F-237, the scroll hint of the About page before).
 local VULO, FRAK, KIM = "Vulo Sturmwind", "Fraktur", "Kim Eisherz"
 
 local function S(name, code)
@@ -149,20 +149,20 @@ assert(not heads.running:find("Konflikt", 1, true) and heads.bar, "the running r
 -- the settings label and the About page
 ---------------------------------------------------------------------------
 assert(C(KIM, "NS.SettingItem('need.share').label") == "Der Lootleitung meine Upgrades nennen")
+-- (since F-237 the versions have a page of their own that fills the page's height and scrolls with the wheel)
 local about = C(VULO, [[local rows = {}
-    for i = 1, 12 do rows[i] = { name = "Spieler" .. i, where = "guild", v = "2.1" } end
+    for i = 1, 40 do rows[i] = { name = "Spieler" .. i, where = "guild", v = "2.1", at = time() } end
     rows[1].self = true
     local keep = NS.VersionRows
     NS.VersionRows = function() return rows end
-    local p = NS.Panel("about")
+    local p = NS.Panel("versions")
     local root = CreateFrame("Frame", nil, UIParent); root:SetSize(602, 478)
     local f = p.create(root); f:SetAllPoints(root)
     p.refresh(f)
-    local many = f.summary:GetText()
-    for i = 9, 12 do rows[i] = nil end
-    p.refresh(f)
-    local few = f.summary:GetText()
+    local out = { items = #f.list.items, summary = f.summary:GetText(), first = f.list.rows[1].item.name }
+    f.list:GetScript("OnMouseWheel")(f.list, -1)
+    out.scrolled = f.list.rows[1].item.name
     NS.VersionRows = keep
-    return { many = many, few = few }]])
-assert(about.many:find("8 von 12, Mausrad", 1, true), about.many)
-assert(not about.few:find("Mausrad", 1, true), about.few)
+    return out]])
+assert(about.items >= 40 and about.summary:find("^40 mit Amisia"), about.summary)
+assert(about.first == "Spieler1" and about.scrolled == "Spieler2", "the wheel scrolls the list")

@@ -229,6 +229,7 @@ T.NAV_ICONS = {
     map = own("map"),
     members = own("members"),
     calls = own("calls"),
+    versions = own("versions"),
     calendar = own("calendar"),
     bank = own("bank"),
     duels = own("duels"),
@@ -363,6 +364,21 @@ T.CALLS = {
     MINE_ROWS = 14, MINE_ROW_H = 22,
     COLS = { { "name", 6, 170 }, { "level", 180, 44 }, { "role", 228, 80 }, { "il", 312, 50 }, { "status", 366, 110 } },
     ACTION_GAP = 10,                               -- between the row actions "Einladen" and "Ablehnen"
+}
+
+-- the page Amisia-Versionen (UI/Pages/Versions.lua, tab Gilde, F-237): the head row (the filters as text tabs, the
+-- links "Raid fragen" and "Gilde fragen"), the summary line and the line of a newer version, the column heads, then
+-- the list down to the footer (at least ROWS rows of ROW_H: 26 + 2 x 20 + 18 + 18 x 20 + 20 = 464 of 478).
+-- The name with the client's online mark before it; the modules as the tabs' symbols (T.TAB_ICONS).
+T.VERSIONS = {
+    ROWS = 18, ROW_H = 20,
+    DOT = 12, DOT_X = 4,                           -- the online mark (the friends list's), from the row's left edge
+    ONLINE_ICON = "Interface\\FriendsFrame\\StatusIcon-Online",
+    MOD_ICON = 14, MOD_GAP = 3,                    -- a module's symbol and the room between two
+    -- the columns: key, x, width on the list (the name's text starts at NAME_X, after the mark)
+    COLS = { { "name", 20, 136 }, { "ver", 160, 60 }, { "mods", 224, 54 }, { "lang", 282, 76 }, { "view", 362, 70 },
+        { "where", 436, 44 }, { "last", 484, 100 } },
+    VERSIONS = 3,                                  -- the summary names the most common versions, the rest as a count
 }
 
 -- the page Karte (tab Ausrüstung, F-045): the head row (zone picker, the chips Ziele, Wünsche,

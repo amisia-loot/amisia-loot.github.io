@@ -1388,7 +1388,7 @@ end
 ---------------------------------------------------------------------------
 -- The "sync" settings section; later parts add their items to SYNC_SETTINGS.items and register it
 -- again.
-ns.SYNC_SETTINGS = { key = "sync", label = L["Sync und Version"], order = 85, group = "amisia", pages = { "about" }, items = {
+ns.SYNC_SETTINGS = { key = "sync", label = L["Sync und Version"], order = 85, group = "amisia", pages = { "about", "versions" }, items = {
     { key = "sync.enabled", type = "toggle", label = L["Raid-Stand mit anderen Amisia-Clients abgleichen"], default = true,
       tip = L["Nur Vergaben, Plus-Eins, Ersatzbank und Bosskills des laufenden Raids; die Lootleitung hält den Stand. Anmeldungen, Gildenbank, Layer und das übrige Teilen haben eigene Schalter."] },
     { key = "sync.debug", type = "toggle", label = L["Sync-Nachrichten im Chat (Fehlersuche)"], default = false, expert = true, tip = L["Schreibt jede Sync-Nachricht in den Chat. Nur zur Fehlersuche."] },

@@ -5077,3 +5077,28 @@ gelernte), `tools/tests/test_build_dungeons.py::test_learned_rares_join_the_arch
   die Seite Dungeons ihre Bossliste neu bauen (`RUNTIMES` "learned"). `RT.IsRare`/`RG.IsLearned` schlagen nach,
   statt die Liste zu bauen (`Runs.NpcBoss`, tote Einheiten, Beutequellen).
 - **Beutewert:** Gegenstände ohne Preis warten höchstens 60 Sekunden und fallen mit dem Ende der Uhr weg.
+
+## D-170 Amisia-Versionen als eigene Seite im Reiter Gilde, ehrlicher Wortlaut ohne Hallo
+
+**Datum:** 2026-11-25
+**Entscheidung:** F-237 (Spec `docs/specs/2026-11-25-amisia-versionen.md`). Wer Amisia hat und welche Version, zeigt
+die Seite "Amisia-Versionen" (`versions`, Reiter Gilde, Reihenfolge 78) über die ganze Höhe, nicht mehr eine Liste mit
+acht Zeilen auf "Über und Befehle" (dort bleibt "N mit Amisia gesehen" mit dem Link "Alle Versionen"; die Links
+"Raid fragen" und "Gilde fragen" ziehen mit um). Die Seite lädt auf jedem Client und hat keine Bedingung: der Reiter
+Gilde besteht auch auf TBC und Era und ohne Gilde (die Seite Mitglieder ist immer da), so finden Raidspieler ohne
+Gilde sie; ohne Gilde zeigt sie die eigene Zeile und den Raid. Zeilen: `ns.VersionRows`, dann jedes Mitglied der
+Gildenliste ohne Hallo (30 Tage), grau, die online zuerst. Wortlaut: "nichts gehört", solange niemand gefragt hat
+(Amisia meldet sich nur einmal pro Sitzung, ein Mitglied kann es haben und sich noch nicht gemeldet haben); "kein
+Amisia?" nur für ein Mitglied, das online ist, nachdem eine Gildenfrage dieser Sitzung 16 s Zeit für die Antworten
+hatte (`ns.VersionAnswered`), und wie bisher für Raidmitglieder 10 s nach "Raid fragen". Module aus dem Hallo: kein
+Feld oder "g" vor 2.104.0 heißen alle drei. Filter und Sortierung gelten für die Sitzung (kein neuer Schlüssel); die
+Zeilen werden nur neu gebaut, wenn sich die gesehenen Versionen, die Gildenliste, die Gruppe, eine Frage, die Ansicht
+oder der Hüter ändern. Keine neue Nachricht, kein neues Feld. Das Zahnrad der Seite öffnet "Sync und Version".
+**Grund:** Nutzer 2026-11-25: "Können wir die Anzeige verbessern, wer alles das Amisia-Addon hat und welche
+Version?", gewählt: "Eigene Seite". Die kleine Liste teilte sich die Seite mit den Befehlen und zeigte Mitglieder ohne
+Amisia nur im Raid.
+**Folge:** "Raid fragen" und "Gilde fragen" stehen nur noch auf der neuen Seite (`/amisia version` bleibt). Ein Hallo
+von vor F-209 hat keine Sprache ("-"). Mitglieder, die seit über 30 Tagen nicht online waren, stehen immer unter
+"nichts gehört". Ein Link in der Zählzeile der Seite Mitglieder und Marken in der Seitenleiste gibt es nicht.
+**Durchgesetzt durch:** `tests/test_versions_page.lua`, `tests/test_version.lua`, `tests/test_pages.lua`,
+`tests/test_settings_pages.lua`.
