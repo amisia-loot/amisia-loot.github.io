@@ -20,12 +20,13 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+# Upload and deploy are two jobs, and the deploy tries a second time after a pause: deploy-pages lists
+# the run's artifacts right after the upload and, run in the same job, often finds none yet
+# (actions/deploy-pages#451, failed here on 2026-11-25). A re-run of the failed run does not help, it
+# only adds a second artifact of the same name.
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - name: Stage the site
@@ -36,5 +37,20 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url || steps.deployment_again.outputs.page_url }}
+    steps:
       - id: deployment
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+      - name: Wait before the second try
+        if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+      - id: deployment_again
+        if: steps.deployment.outcome == 'failure'
         uses: actions/deploy-pages@v4

@@ -604,11 +604,12 @@ def test_the_failing_lines_are_the_steps_and_tests():
 
 
 def test_the_pc_scripts_go_out_as_committed(tmp_path):
-    # D-154: the committed version of main, written only when it differs, nothing from a file being edited
+    # D-154: the committed version of main, written only when it differs, nothing from a file being edited.
+    # The test reads HEAD, not main: the check of a release tag runs on a checkout without a branch main.
     import auto_data as ad
     out = tmp_path / 'pc'
-    assert ad.publish_pc_scripts('main', out=str(out)) == ['export_db2.ps1', 'install_export_task.ps1', 'install_junctions.ps1']
+    assert ad.publish_pc_scripts('HEAD', out=str(out)) == ['export_db2.ps1', 'install_export_task.ps1', 'install_junctions.ps1']
     assert (out / 'export_db2.ps1').read_bytes() == ad.subprocess.run(
-        ['git', 'show', 'main:tools/export_db2.ps1'], cwd=ad.ROOT, stdout=ad.subprocess.PIPE).stdout
-    assert ad.publish_pc_scripts('main', out=str(out)) == [], 'unchanged: nothing written'
-    assert ad.publish_pc_scripts('main', out=str(out), files=('tools/no_such_file.ps1',)) == []
+        ['git', 'show', 'HEAD:tools/export_db2.ps1'], cwd=ad.ROOT, stdout=ad.subprocess.PIPE).stdout
+    assert ad.publish_pc_scripts('HEAD', out=str(out)) == [], 'unchanged: nothing written'
+    assert ad.publish_pc_scripts('HEAD', out=str(out), files=('tools/no_such_file.ps1',)) == []
