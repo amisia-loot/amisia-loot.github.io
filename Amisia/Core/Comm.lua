@@ -35,8 +35,9 @@ local IGNORE_FOR = 60
 local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open sets of one sender
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart, and a guild
--- queue state with a battleground that popped, was joined or declined (QW with a P, J or L entry: QWP, F-227) apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, ZQ = 30, NV = 8, AC = 300, PC = 60, OQ = 300, EA = 10, EQ = 300, TQ = 30, QW = 10, QWP = 1, BQ = 10 }
+-- queue state with a battleground that popped, was joined or declined (QW with a P, J or L entry: QWP, F-227) apart,
+-- and a guild bank pull by whisper (BQ L/C/LC: BQL, F-238) apart from the question to the guild (BQ ? / ?C)
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, ZQ = 30, NV = 8, AC = 300, PC = 60, OQ = 300, EA = 10, EQ = 300, TQ = 30, QW = 10, QWP = 1, BQ = 10, BQL = 10 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
 -- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
@@ -480,7 +481,8 @@ local VALID = {
     GQ = function(f) return #f >= 1 and isNum(f[1], 0, 4294967295) end,
     -- guild bank sharing (BankShare.lua, F-238, D-171): BE <batch> <part> <parts> <base> <-|M> <entry>... with an
     -- entry "<tab>:<kind letter>:<item>:<count>:<tab1tab2 or empty>:<age>:<width>:<name>" (numbers base 36, the name
-    -- 1-48 bytes); BQ <?|L|C|LC> <count at> <tab:n:newest:oldest>... (at most 10 tabs); BH <entries> <count at>;
+    -- 1-48 bytes); BQ <?|?C|L|C|LC> <count at> [<keep from> <entries> <oldest> <first day> <days> <counts|->]
+    -- (the horizon and the per-day counts, two base-36 digits a day, with "?", "L" and "LC"); BH <entries> <count at>;
     -- BC <at> <part> <parts> <by> <tabs> <filled> <total> <id:count,...> (16 at most, base 36)
     BE = function(f)
         if #f < 6 or not isHex(f[1], 4) or not isNum(f[2], 1, 40) or not isNum(f[3], 1, 40) or tonumber(f[2]) > tonumber(f[3]) then return false end
@@ -491,12 +493,14 @@ local VALID = {
         return true
     end,
     BQ = function(f)
-        if #f < 2 or #f > 12 or not (f[1] == "?" or f[1] == "L" or f[1] == "C" or f[1] == "LC") or not isNum(f[2], 0, 4294967295) then return false end
-        for i = 3, #f do
-            local k, n, new, old = f[i]:match("^(%d):(%d+):([0-9a-z]+):([0-9a-z]+)$")
-            if not k or not isNum(n, 0, 9999) or #new > 7 or #old > 7 then return false end
+        local ask = f[1]
+        if #f < 2 or not (ask == "?" or ask == "?C" or ask == "L" or ask == "C" or ask == "LC") or not isNum(f[2], 0, 4294967295) then return false end
+        if ask == "?C" or ask == "C" then return true end
+        if #f < 8 or not isNum(f[3], 0, 4294967295) or not isNum(f[4], 0, 9999) or not isNum(f[5], 0, 4294967295)
+            or not isNum(f[6], 0, 99999) or not isNum(f[7], 1, 400) then
+            return false
         end
-        return true
+        return f[8] == "-" or (#f[8] % 2 == 0 and #f[8] <= 2 * tonumber(f[7]) and f[8]:match("^[0-9a-z]+$") ~= nil)
     end,
     BH = function(f) return #f >= 2 and isNum(f[1], 0, 9999) and isNum(f[2], 0, 4294967295) end,
     BC = function(f)
@@ -1309,7 +1313,8 @@ local function onMessage(prefix, text, chan, sender)
     if not check or not check(fields) then return bad(kind) end
     stats.received = stats.received + 1
     debugLine("< " .. sender .. " " .. describe(kind, fields))
-    local gapKey = (kind == "RQ" and fields[5] == "G") and "RQG" or (kind == "QW" and queueNews(fields)) and "QWP" or kind
+    local gapKey = (kind == "RQ" and fields[5] == "G") and "RQG" or (kind == "QW" and queueNews(fields)) and "QWP"
+        or (kind == "BQ" and fields[1]:sub(1, 1) ~= "?") and "BQL" or kind
     local gap = KIND_GAP[gapKey]
     if gap then
         local t = now()

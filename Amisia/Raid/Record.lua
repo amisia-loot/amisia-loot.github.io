@@ -531,6 +531,16 @@ function ns.Bank()
     return DB.bank
 end
 
+-- The count the Bank page shows: ns.Bank(), else a count an officer sent (BankShare.lua, F-238: via set)
+-- while this client has learned no material yet; then true as well, and the count's own items are the list.
+function ns.BankShown()
+    local bank = ns.Bank()
+    if bank then return bank, false end
+    bank = DB and DB.bank
+    if type(bank) == "table" and bank.via and type(bank.counts) == "table" and next(bank.counts) then return bank, true end
+    return nil, false
+end
+
 ---------------------------------------------------------------------------
 -- Public helpers for the window
 ---------------------------------------------------------------------------

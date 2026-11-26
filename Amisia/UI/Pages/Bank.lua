@@ -87,7 +87,7 @@ local function buildStock(f)
     end, function(r, e)
         r.name:SetText(ns.ItemName(e.id) .. (e.manual and (" " .. T.GREY .. L["(von Hand)"] .. "|r") or ""))
         r.count:SetText(e.count and tostring(e.count) or "-")
-        if ns.IsOfficerView() then r.remove:Show() else r.remove:Hide() end
+        if ns.IsOfficerView() and not e.foreign then r.remove:Show() else r.remove:Hide() end
     end)
     -- the count and the button hang on the row's right and move with it
 end
@@ -102,8 +102,12 @@ local function refreshStock(f, on)
     local head = L["%d von %d Raidmaterialien%s%s. "]:format(n, ns.MAT_CAP,
         hidden > 0 and L[" · %d herausgenommen"]:format(hidden) or "",
         n > BANK_ROWS and L[" · %d von %d sichtbar, Mausrad"]:format(BANK_ROWS, n) or "")
-    local bank = ns.Bank()
-    if not ns.HasMats() then
+    -- a count an officer sent shows even before this client learned a material (its items are the list then)
+    local bank, foreign = ns.BankShown()
+    if foreign then
+        head = L["Noch keine eigenen Raidmaterialien; die Liste ist die der Zählung. "]
+    end
+    if not ns.HasMats() and not foreign then
         f.state:SetText(T.GREY .. L["Noch keine Raidmaterialien."] .. "|r " .. L["Amisia lernt sie in Raidaufnahmen von selbst: Handwerkswaren, die droppen, geplündert oder vergeben werden. Von Hand: Link unten einfügen."])
     elseif not (bank and bank.counts) then
         f.state:SetText(head .. T.GREY .. L["Noch nicht gezählt."] .. "|r " .. L["Öffne die Gildenbank einmal, dann zählt Amisia die Materialien."])
@@ -116,6 +120,12 @@ local function refreshStock(f, on)
     end
     local counts = bank and bank.counts or {}
     local items = {}
+    if foreign then
+        local ids = {}
+        for id in pairs(counts) do ids[#ids + 1] = id end
+        table.sort(ids)
+        for _, id in ipairs(ids) do items[#items + 1] = { id = id, count = counts[id], foreign = true } end
+    end
     for _, id in ipairs(ns.MAT_ORDER) do
         local e = ns.MatInfo(id)
         items[#items + 1] = { id = id, count = counts[id], manual = e and e.manual }
@@ -352,8 +362,25 @@ local function buildLog(f)
     end, L["Name oder Gegenstand"])
     G.state = W.Text(G, T.FONT.hint)
     G:Place(1, { G.tab, G.kind, G.search, { G.state, fill = true } })
-    -- the sharing with the guild (BankShare.lua): who sent the last entries, or that it is off
-    G.share = G:Line(2)
+    -- the sharing with the guild (BankShare.lua): who sent the last entries, or that it is off; the link "Jetzt
+    -- abgleichen" asks the officers at once (the question after the login, D-167), once a minute
+    G.share = W.Text(G, T.FONT.hint)
+    G.shareNow = W.Link(G, L["Jetzt abgleichen"], function()
+        local ok, why, left = ns.AskBankShare()
+        if ok then
+            ns.msg(L["Gildenbank: Offiziere gefragt; was dir fehlt, kommt in etwa einer Minute."])
+        elseif why == "wait" then
+            ns.msg(L["Gildenbank: gerade erst gefragt, wieder in %d s."]:format(left or 60))
+        end
+        ns.Refresh()
+    end)
+    W.FitChip(G.shareNow)
+    W.Tooltip(G.shareNow, L["Jetzt abgleichen"], function()
+        local text = L["Fragt die Offiziere der Gilde jetzt nach Protokolleinträgen und einer Zählung, die dir fehlen. Höchstens einmal in der Minute; jeder Offizier gibt dir höchstens einen ganzen Abgleich in zehn Minuten."]
+        local _, left = ns.BankShareCanAsk()
+        if left and left > 0 then text = text .. "\n" .. T.ORANGE .. L["Wieder möglich in %d s."]:format(left) .. "|r" end
+        return text
+    end)
     G:Columns(LOG_COLS)
     G.list = G:List(LOG_ROWS, 22, function(r)
         W.Cells(r, LOG_COLS)
@@ -406,6 +433,8 @@ local function refreshLog(f, on)
     else
         G.share:SetText(T.GREY .. L["Abgleich mit der Gilde an · noch nichts von einem Offizier gehört."] .. "|r")
     end
+    G.shareNow:SetShown(shared and ns.BankShareCanAsk() or false)
+    G:Place(2, { { G.share, fill = true } }, { G.shareNow }, { shown = true })
     if #log.list == 0 then
         G.empty:Set(L["Noch kein Protokoll"], L["Öffne die Gildenbank; Amisia liest dann das Protokoll jedes Tabs, das du sehen darfst, und das Goldprotokoll."])
         G.empty:Show()

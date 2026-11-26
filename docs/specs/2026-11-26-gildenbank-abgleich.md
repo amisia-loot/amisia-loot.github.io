@@ -84,7 +84,8 @@ Zählung wie beim Offizier, der zuletzt dort war.
 
 ## Daten
 
-- Neue Nachrichten `BE`, `BQ`, `BH`, `BC` (Präfix `Amisia`, GUILD und WHISPER; Abstand `BQ` 10 s, sonst keiner),
+- Neue Nachrichten `BE`, `BQ`, `BH`, `BC` (Präfix `Amisia`, GUILD und WHISPER; Abstand `BQ` 10 s, eine geflüsterte
+  Abholung eigene 10 s, sonst keiner),
   `docs/ARCHITECTURE.md` "Message kinds".
 - `AmisiaDB.bankLog.got = {by, at, n}`, Eintragsfeld `r`; `AmisiaDB.bank.via`.
 - Einstellung `bank.share` (an); der Abschnitt `bank` ist nicht mehr nur für Offiziere.
@@ -102,3 +103,37 @@ Nichts.
   Wahl teilt sich Amisia mit der Rangverwaltung des Spiels (Blizzard_GuildControlUI setzt sie selbst und zeigt die
   Bankrechte nur dem Gildenmeister). Nicht verlässlich für andere prüfbar -> Offiziersränge (D-171).
 - 2026-11-26: Frage 2 (wer sieht): alle mit Amisia in der Gilde; die Seite Gildenbank ist schon für alle da.
+
+## Nachtrag 2026-11-26 (Prüfung der Logik)
+
+Eine Prüfung fand Lücken; behoben, jede mit einem Test in `tests/test_bank_share.lua` (R1-R9 und drei Zusätze):
+
+- Die erste Abholung fiel dem Abstand von `BQ` beim Offizier zum Opfer, wenn das `?` in der eigenen Warteschlange
+  wartete: die 12 s für die Angebote zählen jetzt ab dem Moment, in dem das `?` wirklich hinausging (Comm `sent`), und
+  eine geflüsterte Abholung hat einen eigenen Abstand (`BQL`, 10 s). Ebenso zählen die 60 s für eine Antwort ab dem
+  Senden der Abholung.
+- `BQ` trägt den Horizont des Fragenden: ab wann er behält (`bank.logDays`, Realm-Uhr), wie viele Einträge er hat, sein
+  ältester Eintrag, und statt der Übersicht je Tab die Einträge je Tag (Realm-Uhr, zwei Ziffern zur Basis 36, so viele
+  Tage wie in eine Nachricht passen, höchstens 120). Der Offizier schickt einen Tag, wenn er dort mehr hat und auch über
+  den Tag und seine beiden Nachbarn mehr (ein Eintrag auf der anderen Seite von Mitternacht), Tage neuer als die
+  Übersicht, und ältere nur, wenn sie älter als der älteste des Fragenden sind. Nie, was der Fragende sofort verwirft:
+  älter als sein Horizont, oder außerhalb seiner neuesten 1000 (Tage der Reihe nach, solange Platz ist). Ein
+  Mischen zählt nur Einträge, die nach dem Kürzen bleiben; bringt eine Runde nichts Neues, endet die Abholung.
+- Wer kein Protokoll führt (`bank.log` aus), fragt `?C`: nur nach der Zählung.
+- Ein Empfänger, dessen Roster nicht lesbar ist (Kampfsperre, noch nicht geladen), hält die Teile eines `BE` oder
+  `BC` unter dem rohen Absender und prüft ihn einmal je Satz (mit dem ersten Teil) über `ns.TrustWait`; ein Satz, der
+  auf die Prüfung wartet, bleibt bis zu 60 s länger offen. Ein Offizier, dessen Roster beim Lesen der Bank noch nicht
+  gebaut ist, sendet, sobald es seinen Rang sagt.
+- Nur ein geflüsterter Satz beantwortet eine Abholung; ein Gildensatz desselben Offiziers beendet sie nicht.
+- Antworten eines Offiziers: einem Fragenden höchstens 13 in 10 Minuten (ein ganzer Abgleich: 12 Runden und die
+  Zählung), allen zusammen höchstens 40; ein Fragender ohne Rest bekommt auch kein Angebot. 12 statt 10 Runden, weil
+  eine Runde den Tag, den die vorige geteilt hat, noch einmal ganz schickt; ein Protokoll von 1000 Einträgen kommt so
+  ganz an.
+- Seite Gildenbank > Protokoll: der Link "Jetzt abgleichen" in der Zeile des Abgleichs fragt sofort (D-167), höchstens
+  einmal in der Minute; der Tooltip nennt die Grenzen und die Wartezeit.
+- Namen werden auf 48 Bytes an einer Zeichengrenze gekürzt (UTF-8). Bestand zeigt eine empfangene Zählung auch, wenn
+  der Empfänger noch kein Raidmaterial gelernt hat (die Gegenstände der Zählung sind dann die Liste).
+- Grenze: die Tageszählung umfasst alle Tabs; fehlt dem Fragenden an einem Tag ein Eintrag, während er dort einen
+  anderen hat, den der Offizier nicht hat, bleibt die Lücke bis zum nächsten eigenen Lesen. Bei `bank.logDays` über
+  etwa 95 Tagen reicht die Übersicht nicht bis zum Horizont; ältere Einträge kommen nur, wenn sie älter als der älteste
+  des Fragenden sind.

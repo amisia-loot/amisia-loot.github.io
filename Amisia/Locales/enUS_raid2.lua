@@ -1826,4 +1826,9 @@ L["Abgleich mit der Gilde ist aus (Einstellungen > Gildenbank)."] = "Sharing wit
 L["Abgeglichen mit der Gilde · zuletzt von %s um %s"] = "Shared with the guild · last from %s at %s"
 L["Abgleich mit der Gilde an · noch nichts von einem Offizier gehört."] = "Sharing with the guild on · nothing heard from an officer yet."
 L["erhalten von %s"] = "received from %s"
+L["Gildenbank: Offiziere gefragt; was dir fehlt, kommt in etwa einer Minute."] = "Guild bank: officers asked; what you lack arrives in about a minute."
+L["Gildenbank: gerade erst gefragt, wieder in %d s."] = "Guild bank: just asked, again in %d s."
+L["Fragt die Offiziere der Gilde jetzt nach Protokolleinträgen und einer Zählung, die dir fehlen. Höchstens einmal in der Minute; jeder Offizier gibt dir höchstens einen ganzen Abgleich in zehn Minuten."] = "Asks the guild's officers now for log entries and a count you lack. At most once a minute; each officer gives you at most one whole transfer in ten minutes."
+L["Wieder möglich in %d s."] = "Possible again in %d s."
+L["Noch keine eigenen Raidmaterialien; die Liste ist die der Zählung. "] = "No raid materials of your own yet; the list is the count's. "
 end)

@@ -5135,3 +5135,15 @@ eigenen Lesen. Ein Lesen mit mehr als 120 neuen Einträgen schickt nur die neues
 nach dem nächsten Login.
 **Durchgesetzt durch:** `tests/test_bank_share.lua`, `tests/test_bank_log.lua`,
 `tools/tests/test_contracts.py::test_the_gap_of_every_kind_is_the_documented_one`.
+
+Nachtrag 2026-11-26 (Prüfung der Logik): Die Abholung fragt nach Tagen statt nach Tabs: `BQ` trägt den Horizont des
+Fragenden (ab wann er behält, wie viele er hat, sein ältester Eintrag) und seine Einträge je Tag der Realm-Uhr; der
+Offizier schickt nur Tage, an denen er mehr hat (auch über die Nachbartage), und nie, was der Fragende sofort verwirft
+(Horizont, die 1000er-Grenze). Ein Mischen zählt nur, was bleibt; eine Runde ohne Neues beendet die Abholung. Die 12 s
+für die Angebote zählen ab dem echten Senden des `?`, eine geflüsterte Abholung hat ihren eigenen Abstand (`BQL`).
+`?C` fragt nur nach der Zählung (`bank.log` aus). Empfänger mit unlesbarem Roster halten `BE`/`BC` und prüfen den
+Absender einmal je Satz; nur ein geflüsterter Satz beantwortet eine Abholung. Budget je Offizier: einem Fragenden ein
+ganzer Abgleich (13 Antworten) in 10 Minuten, allen 40; 12 Runden. Klickweg: "Jetzt abgleichen" auf Gildenbank >
+Protokoll (D-167). Folge statt der Lücke "gleich viele, andere Einträge im selben Bereich": eine Lücke bleibt nur, wenn
+der Fragende am selben Tag einen anderen Eintrag hat, den der Offizier nicht hat (die Tageszählung umfasst alle Tabs),
+oder wenn sie jenseits einer Übersicht von etwa 95 Tagen liegt.

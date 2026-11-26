@@ -62,6 +62,11 @@ end
 -- The oldest end of a window kept (bank.logDays).
 local function keepFrom() return now() - (tonumber(ns.Get("bank.logDays")) or 90) * DAY end
 
+-- What this client keeps (BankShare.lua asks only for that): the oldest end of a window kept (own clock)
+-- and the most entries kept.
+ns.BANK_LOG_CAP = CAP
+function ns.BankLogKeepFrom() return keepFrom() end
+
 -- By age (bank.logDays) and size (the newest 1000).
 local function prune()
     if not DB then return end
@@ -98,7 +103,8 @@ end)
 -- one within the read (two equal entries of the read stay two); a match narrows the saved window to
 -- the overlap; slack: seconds two windows may miss each other (SLACK for the own reads). by: who
 -- reported the read (nil for an own read, a name for one heard from the guild, BankShare.lua), kept
--- on the new entries as r. Returns the new entries.
+-- on the new entries as r. Returns the new entries that are still kept after prune() (bank.logDays and
+-- the cap of 1000): an entry pruned at once is no new entry (BankShare.lua's rounds stop on none).
 local function mergeWindows(rows, at, slack, by)
     local bySig = {}
     for _, e in ipairs(DB.bankLog.list) do
@@ -131,7 +137,13 @@ local function mergeWindows(rows, at, slack, by)
             end
         end
     end
-    if #added > 0 then prune() end
+    if #added > 0 then
+        prune()
+        local kept, out = {}, {}
+        for _, e in ipairs(DB.bankLog.list) do kept[e] = true end
+        for _, e in ipairs(added) do if kept[e] then out[#out + 1] = e end end
+        added = out
+    end
     return added
 end
 
@@ -169,10 +181,26 @@ end
 -- Reading the client's logs
 ---------------------------------------------------------------------------
 local function plain(v) return ns.Plain and ns.Plain(v) or v end
+-- At most max bytes of s, never inside a character of several bytes (UTF-8): a lead byte whose
+-- character the cut would split goes with its continuation bytes.
+local function cutUtf8(s, max)
+    if #s <= max then return s end
+    s = s:sub(1, max)
+    local i = #s
+    while i > 0 and s:byte(i) >= 0x80 and s:byte(i) < 0xC0 do i = i - 1 end
+    if i > 0 and s:byte(i) >= 0xC0 then
+        local lead = s:byte(i)
+        local need = lead >= 0xF0 and 4 or lead >= 0xE0 and 3 or 2
+        if #s - i + 1 < need then s = s:sub(1, i - 1) end
+    end
+    return s
+end
+
 local function cleanName(n)
     n = plain(n)
     if type(n) ~= "string" or n == "" then return "?" end
-    return (n:gsub("[%c|]", ""):sub(1, 48))
+    n = cutUtf8((n:gsub("[%c|]", "")), 48)
+    return n ~= "" and n or "?"
 end
 local function cleanKind(y)
     y = plain(y)

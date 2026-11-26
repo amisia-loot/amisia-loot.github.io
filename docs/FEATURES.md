@@ -1441,10 +1441,10 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Braucht: Gilde
 - Prüfung: Wenn ein Offizier die Gildenbank öffnet und neue Einträge liest, dann stehen sie beim zweiten Spieler unter Gildenbank > Protokoll, mit "Gemeldet von <Offizier>" im Tooltip und "Abgeglichen mit der Gilde · zuletzt von <Offizier>" unter den Filtern.
 - Prüfung: Wenn danach ein zweiter Offizier die Bank öffnet, dann steht beim dritten Spieler jeder Eintrag nur einmal.
-- Prüfung: Wenn ein Spieler einloggt, der offline war, während ein Offizier an der Bank war, dann hat er nach etwa einer Minute dessen Einträge.
+- Prüfung: Wenn ein Spieler einloggt, der offline war, während ein Offizier an der Bank war, dann hat er nach etwa einer Minute dessen Einträge; ein Klick auf "Jetzt abgleichen" unter Gildenbank > Protokoll fragt sofort ("Offiziere gefragt" im Chat, ein zweiter Klick gleich danach sagt, wann es wieder geht).
 - Prüfung: Wenn ein Offizier die Gildenbank zählt, dann zeigt Gildenbank > Bestand beim zweiten Spieler "Gezählt am ... von <Offizier> ... · erhalten von <Offizier>".
 - Prüfung: Wenn du unter Einstellungen > Gildenbank "Gildenbank-Protokoll mit der Gilde abgleichen" ausschaltest, dann zeigt das Protokoll "Abgleich mit der Gilde ist aus" und es kommt nichts mehr an.
-- Notiz: DECISIONS D-171, Spec `docs/specs/2026-11-26-gildenbank-abgleich.md` (Nutzer 2026-11-26: "ja bau"). Senden nur Offiziere (die Tab-Rechte fremder Ränge sind nicht prüfbar); TBC und Forever (Era hat keine Gildenbank). Nachrichten BE, BQ, BH, BC.
+- Notiz: DECISIONS D-171, Spec `docs/specs/2026-11-26-gildenbank-abgleich.md` (Nutzer 2026-11-26: "ja bau"). Senden nur Offiziere (die Tab-Rechte fremder Ränge sind nicht prüfbar); TBC und Forever (Era hat keine Gildenbank). Nachrichten BE, BQ, BH, BC. Nachtrag 2026-11-26 nach einer Prüfung der Logik: Abholung nach Tagen und Horizont des Fragenden, Budget je Fragendem, Halten bei unlesbarem Roster, Link "Jetzt abgleichen".
 
 ### F-237 Seite Amisia-Versionen: wer Amisia hat und welche Version
 - Version: 2.111.0

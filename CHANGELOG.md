@@ -11,7 +11,8 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
     Amisia user of the guild; a player who logs in later fetches what is missing from one officer. The log on
     Guild bank > Log shows them like your own, with "Reported by" in each entry's tooltip and a line saying who
     shared last; Stock says who the count came from. Only officers send, checked against your own guild roster.
-    Settings > Guild bank > "Share the guild bank log with the guild" (on) switches it off.
+    Settings > Guild bank > "Share the guild bank log with the guild" (on) switches it off; "Sync now" on the
+    log's sharing line asks the officers at once.
 
 ## [v2.111.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.111.0) (2026-11-25)
 

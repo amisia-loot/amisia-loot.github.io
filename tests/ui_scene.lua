@@ -841,7 +841,8 @@ S.STATES = {
     { page = "talents", name = "talents-plan", open = function() NS.ShowTalents(NS.Talents.Encode(S.priestPlan())) end },
     { page = "bank", name = "bank-stock", open = function() NS.ShowBank("bestand") end },
     { page = "bank", name = "bank-needs", open = function() NS.ShowBank("bedarf") end },
-    { page = "bank", name = "bank-log", open = function() NS.ShowBank("log") end },
+    -- the scene has no guild bank API: the link "Jetzt abgleichen" of the sharing line shows as on TBC and Forever
+    { page = "bank", name = "bank-log", open = function() NS.BankShareCanAsk = function() return true, 0 end; NS.ShowBank("log") end },
     { page = "bank", name = "bank-text", open = function() NS.ShowBank("text") end },
     { page = "points", name = "points-paste", open = function() NS.ShowPoints("paste") end },
     { page = "settings", name = "settings-lootrules", open = function() NS.ShowSettingsSection("lootrules") end },
