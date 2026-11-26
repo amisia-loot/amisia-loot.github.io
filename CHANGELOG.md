@@ -5,6 +5,14 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(bank): the guild bank log and the last count reach everyone in the guild (F-238)
+
+    When an officer opens the guild bank, the log entries that were new and the material count go to every
+    Amisia user of the guild; a player who logs in later fetches what is missing from one officer. The log on
+    Guild bank > Log shows them like your own, with "Reported by" in each entry's tooltip and a line saying who
+    shared last; Stock says who the count came from. Only officers send, checked against your own guild roster.
+    Settings > Guild bank > "Share the guild bank log with the guild" (on) switches it off.
+
 ## [v2.111.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.111.0) (2026-11-25)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.110.0...v2.111.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

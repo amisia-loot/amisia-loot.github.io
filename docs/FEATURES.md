@@ -1435,6 +1435,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-10-12-raid-check.md, Teil C; DECISIONS D-46. Nachrichten IV/IQ, gespeichert in AmisiaDB.raidcheck. Einstellung "Raid-IDs der Gilde mitteilen" (an); nur Offiziere sehen die Raid-IDs anderer, jeder seine eigenen (`/amisia raidcheck`). Die Reset-Zeit ist die, die das Spiel pro ID nennt (Forevers Regeln sind vor 2026-12-09 unbekannt, Prüfung 17 der Spec).
 
 ## Addon: Gilde
+### F-238 Gildenbank-Protokoll und Zählung mit der Gilde abgleichen
+- Version: 2.112.0
+- Status: gebaut
+- Braucht: Gilde
+- Prüfung: Wenn ein Offizier die Gildenbank öffnet und neue Einträge liest, dann stehen sie beim zweiten Spieler unter Gildenbank > Protokoll, mit "Gemeldet von <Offizier>" im Tooltip und "Abgeglichen mit der Gilde · zuletzt von <Offizier>" unter den Filtern.
+- Prüfung: Wenn danach ein zweiter Offizier die Bank öffnet, dann steht beim dritten Spieler jeder Eintrag nur einmal.
+- Prüfung: Wenn ein Spieler einloggt, der offline war, während ein Offizier an der Bank war, dann hat er nach etwa einer Minute dessen Einträge.
+- Prüfung: Wenn ein Offizier die Gildenbank zählt, dann zeigt Gildenbank > Bestand beim zweiten Spieler "Gezählt am ... von <Offizier> ... · erhalten von <Offizier>".
+- Prüfung: Wenn du unter Einstellungen > Gildenbank "Gildenbank-Protokoll mit der Gilde abgleichen" ausschaltest, dann zeigt das Protokoll "Abgleich mit der Gilde ist aus" und es kommt nichts mehr an.
+- Notiz: DECISIONS D-171, Spec `docs/specs/2026-11-26-gildenbank-abgleich.md` (Nutzer 2026-11-26: "ja bau"). Senden nur Offiziere (die Tab-Rechte fremder Ränge sind nicht prüfbar); TBC und Forever (Era hat keine Gildenbank). Nachrichten BE, BQ, BH, BC.
+
 ### F-237 Seite Amisia-Versionen: wer Amisia hat und welche Version
 - Version: 2.111.0
 - Status: gebaut

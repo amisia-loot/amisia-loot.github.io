@@ -4,7 +4,8 @@
 --   Bedarf    the needs the officers set (minimum and target) against the last count, coloured by
 --             the shortfall, with the pledges; officers set needs, everybody pledges ("Spenden
 --             zusagen") or takes a pledge back
---   Protokoll the saved guild bank log (BankLog.lua) with filters by tab, kind and a search
+--   Protokoll the saved guild bank log (BankLog.lua) with filters by tab, kind and a search; the entries
+--             the guild's officers shared (BankShare.lua) among the own, "gemeldet von" in each tooltip
 --   Text      the shortfalls as text for the guild chat or Discord, to copy
 local ADDON, ns = ...
 ns.Load(function()
@@ -13,8 +14,8 @@ local W, T = ns.W, ns.Theme
 
 local box   -- the link box of the editor, for the shift-click hook below
 local BANK_ROWS = 17      -- 26 (chips) + 62 (state, editor) + 17 * 22 = 462 of 478 px
--- the log: 18 rows of 22 under the filters and the column heads (44 + 396 of the view's 452)
-local NEED_ROWS, PLEDGE_ROWS, LOG_ROWS = 8, 7, 18
+-- the log: 17 rows of 22 under the filters, the line of the guild's sharing and the column heads (64 + 374 of the view's 452)
+local NEED_ROWS, PLEDGE_ROWS, LOG_ROWS = 8, 7, 17
 local VIEWS = { bestand = true, bedarf = true, log = true, text = true }
 local view                -- the chosen view; nil: by the officer view
 
@@ -110,7 +111,8 @@ local function refreshStock(f, on)
         local hiddenTabs = (bank.total or 0) - (bank.tabs or 0)
         f.state:SetText(head .. L["Gezählt am %s von %s · %d von %d sichtbaren Tabs mit Gegenständen%s"]:format(
             ns.FmtDate(bank.at) .. " " .. date("%H:%M", bank.at), bank.by or "?", bank.filled or 0, bank.tabs or 0,
-            hiddenTabs > 0 and (" · " .. T.ORANGE .. L["%d Tabs nicht sichtbar"]:format(hiddenTabs) .. "|r") or ""))
+            hiddenTabs > 0 and (" · " .. T.ORANGE .. L["%d Tabs nicht sichtbar"]:format(hiddenTabs) .. "|r") or "")
+            .. (bank.via and (" · " .. L["erhalten von %s"]:format(bank.via)) or ""))
     end
     local counts = bank and bank.counts or {}
     local items = {}
@@ -332,7 +334,7 @@ local LOG_COLS = { { "when", 6, 84, L["Zeit"], font = T.FONT.hint }, { "text", 9
 local function buildLog(f)
     -- the filters, the log
     local G = W.Page(f, { view = true })
-    G:Bands({ "row" })
+    G:Bands({ "row", "line" })
     G.tab = W.Choice(G, 120, function(v)
         logFilter.tab = v
         ns.Refresh()
@@ -350,8 +352,19 @@ local function buildLog(f)
     end, L["Name oder Gegenstand"])
     G.state = W.Text(G, T.FONT.hint)
     G:Place(1, { G.tab, G.kind, G.search, { G.state, fill = true } })
+    -- the sharing with the guild (BankShare.lua): who sent the last entries, or that it is off
+    G.share = G:Line(2)
     G:Columns(LOG_COLS)
-    G.list = G:List(LOG_ROWS, 22, function(r) W.Cells(r, LOG_COLS) end, function(r, e)
+    G.list = G:List(LOG_ROWS, 22, function(r)
+        W.Cells(r, LOG_COLS)
+        -- who read the entry, and the window its time lies in
+        W.Tooltip(r, L["Eintrag"], function(self)
+            local e = self.item
+            if not e then return "" end
+            local who = e.r and L["Gemeldet von %s"]:format(e.r) or L["Selbst gelesen"]
+            return who .. "\n" .. L["Zwischen %s und %s"]:format(ns.FmtDayTime(e.lo), ns.FmtDayTime(e.hi))
+        end)
+    end, function(r, e)
         -- the latest moment it can have happened; "~" when the window is wider than two hours
         r.when:SetText((e.hi - e.lo > 7200 and "~" or "") .. ns.FmtDayTime(e.hi))
         local text = ns.BankLogText(e)
@@ -385,6 +398,14 @@ local function refreshLog(f, on)
     G.list:SetItems(list)
     G.state:SetText(log.at and L["%d von %d · gelesen %s"]:format(#list, #log.list, ns.FmtDayTime(log.at))
         or L["%d Einträge"]:format(#log.list))
+    local got, shared = ns.BankShareState()
+    if not shared then
+        G.share:SetText(T.GREY .. L["Abgleich mit der Gilde ist aus (Einstellungen > Gildenbank)."] .. "|r")
+    elseif got then
+        G.share:SetText(L["Abgeglichen mit der Gilde · zuletzt von %s um %s"]:format(got.by, ns.FmtDayTime(got.at)))
+    else
+        G.share:SetText(T.GREY .. L["Abgleich mit der Gilde an · noch nichts von einem Offizier gehört."] .. "|r")
+    end
     if #log.list == 0 then
         G.empty:Set(L["Noch kein Protokoll"], L["Öffne die Gildenbank; Amisia liest dann das Protokoll jedes Tabs, das du sehen darfst, und das Goldprotokoll."])
         G.empty:Show()

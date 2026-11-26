@@ -74,6 +74,7 @@ Raid\Stats.lua
 Raid\AwardHistory.lua
 Raid\BankNeeds.lua
 Raid\BankLog.lua
+Raid\BankShare.lua
 Raid\Need.lua
 Raid\LootRules.lua
 Raid\RollWindow.lua

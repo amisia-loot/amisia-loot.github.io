@@ -5102,3 +5102,36 @@ von vor F-209 hat keine Sprache ("-"). Mitglieder, die seit über 30 Tagen nicht
 "nichts gehört". Ein Link in der Zählzeile der Seite Mitglieder und Marken in der Seitenleiste gibt es nicht.
 **Durchgesetzt durch:** `tests/test_versions_page.lua`, `tests/test_version.lua`, `tests/test_pages.lua`,
 `tests/test_settings_pages.lua`.
+
+## D-171 Gildenbank-Abgleich: nur Offiziere senden, alle nehmen an, Realm-Uhr auf der Leitung
+
+**Datum:** 2026-11-26
+**Entscheidung:** F-238 (Spec `docs/specs/2026-11-26-gildenbank-abgleich.md`, `Amisia/Raid/BankShare.lua`). Das
+Gildenbank-Protokoll und die letzte Zählung gehen an jeden Amisia-Nutzer der Gilde: `BE` (die Einträge, die bei einem
+eigenen Lesen neu waren, höchstens die neuesten 120, an GUILD), `BC` (die Zählung, 5 s nach dem letzten Zählen),
+nach dem Login `BQ ?` an die Gilde, `BH` als geflüstertes Angebot der Offiziere mit mehr, dann holt der Client bei
+einem einzigen Offizier ab (`BQ L`/`C`/`LC` per Flüstern, Antwort höchstens 100 Einträge, bis zu 10 Runden).
+Senden darf nur ein Offizier (Offiziersrang wie beim Bedarf `GN`, Trust.lua); jeder Empfänger prüft den Absender im
+eigenen Roster (`ns.TrustWait` "officer"). Empfangene Einträge sind ein Lesen des Senders: BankLogs
+Eins-zu-eins-Abgleich, Überlappung (120 s Spielraum), Verengung, Deckel und `bank.logDays` gelten; ein neuer
+Eintrag trägt den Offizier als `r` ("Gemeldet von"). Zeiten auf der Leitung sind Realm-Uhr (`ns.ServerTime`), jeder
+Client speichert weiter seine eigene Uhr. Zählung: die neueste nach ihrer Zeit gewinnt. Nur GUILD und WHISPER;
+Kampfsperre wartet (ttl 900 s), Schlachtfeld nie (Comm); es fragt `ns.CommReady` und `bank.share` (D-165), nicht
+den Raid-Abgleich. `bank.share` (an) aus: nichts senden, nichts annehmen. `bank.log` aus: kein Protokoll, also auch
+nichts angenommen; `bank.count` aus: keine eigene Zählung, eine empfangene kommt an (sie speist den Bedarf). Der
+Einstellungsabschnitt Gildenbank ist jetzt für alle sichtbar.
+**Grund:** Nutzer 2026-11-26 ("ja bau"): wer sendet: "Mit Leserecht", wenn prüfbar, sonst Offiziere; wer sieht: alle.
+Prüfbar ist es nicht: die Tab-Rechte eines anderen Rangs gibt nur `GetGuildBankTabPermissions(tab)`, und zwar für den
+Rang, den `GuildControlSetRank` gewählt hat; diese Wahl gehört der Rangverwaltung des Spiels
+(Blizzard_GuildControlUI setzt sie selbst und zeigt die Bankrechte nur dem Gildenmeister, Forever und Classic Era
+gleich). Ein Umstellen durch Amisia könnte die Klicks eines Gildenmeisters im offenen Fenster auf den falschen Rang
+lenken, und ob der Client die Rechte fremder Ränge für Nicht-Gildenmeister überhaupt füllt, ist offen. Die
+Realm-Uhr, weil zwei PCs Minuten auseinander liegen können und die Fenster sonst nicht mehr passen; die Uhr des
+Senders beim Einreihen wäre falsch, sobald die Nachricht in der Sperre wartet.
+**Folge:** Ein Mitglied ohne Offiziersrang, das Tabs sehen darf, liest weiter nur für sich. Ein Eintrag zeigt den
+Offizier, von dem er kam, nicht unbedingt den ersten Leser. Die Abholung findet Lücken nach Anzahl je Tab und
+Bereich: hat ein Client gleich viele, aber andere Einträge im selben Bereich, bleibt die Lücke bis zum nächsten
+eigenen Lesen. Ein Lesen mit mehr als 120 neuen Einträgen schickt nur die neuesten; der Rest kommt bei der Abholung
+nach dem nächsten Login.
+**Durchgesetzt durch:** `tests/test_bank_share.lua`, `tests/test_bank_log.lua`,
+`tools/tests/test_contracts.py::test_the_gap_of_every_kind_is_the_documented_one`.

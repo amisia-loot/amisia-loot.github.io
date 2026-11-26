@@ -464,6 +464,8 @@ local function countBank(minFilled)
         total = tabs,
     }
     bankCounted = true
+    -- the count goes to the guild once the counting is over (BankShare.lua: officers, bank.share)
+    if ns.BankShareCounted then ns.BankShareCounted() end
     refresh()
 end
 
@@ -585,11 +587,14 @@ ns.RegisterSettings{ key = "record", label = L["Aufnahme"], order = 10, group = 
     { key = "record.nightStart", type = "time", label = L["Raidnacht beginnt um"], default = 6 * 60, expert = true,
       tip = L["Ein Raid vor dieser Uhrzeit zählt zur Nacht davor."] },
 }}
-ns.RegisterSettings{ key = "bank", label = L["Gildenbank"], order = 63, group = "guild", pages = { "bank" }, officer = true, items = {
+-- everyone's since F-238: the shared log and count reach every member, who may switch them off
+ns.RegisterSettings{ key = "bank", label = L["Gildenbank"], order = 63, group = "guild", pages = { "bank" }, items = {
     { key = "bank.count", type = "toggle", label = L["Beim Öffnen der Gildenbank zählen"], default = true,
       tip = L["Zählt die Gildenmaterialien in allen sichtbaren Tabs."] },
     { key = "bank.log", type = "toggle", label = L["Gildenbank-Protokoll mitschreiben"], default = true,
       tip = L["Liest beim Öffnen der Gildenbank das Protokoll jedes sichtbaren Tabs und das Goldprotokoll."] },
+    { key = "bank.share", type = "toggle", label = L["Gildenbank-Protokoll mit der Gilde abgleichen"], default = true,
+      tip = L["Offiziere senden neue Protokolleinträge und die letzte Zählung an alle Amisia-Nutzer der Gilde; jeder nimmt sie nur von Offizieren an. Aus: nichts senden, nichts annehmen."] },
     { key = "bank.logDays", type = "slider", label = L["Protokoll aufbewahren (Tage)"], default = 90, min = 14, max = 365, step = 1,
       tip = L["Ältere Einträge fallen heraus; höchstens 1000 Einträge."] },
     { key = "bank.pledgeDays", type = "slider", label = L["Spendenzusagen gelten (Tage)"], default = 7, min = 1, max = 30,

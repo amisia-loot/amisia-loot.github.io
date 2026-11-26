@@ -1,0 +1,104 @@
+# Spec: Gildenbank-Protokoll und Zählung mit der Gilde abgleichen
+
+Stand: 2026-11-26 · Status: freigegeben · Feature: F-238
+
+## Ziel
+
+Das Gildenbank-Protokoll (`Raid/BankLog.lua`, `AmisiaDB.bankLog`) und die letzte Zählung der Raidmaterialien
+(`Raid/Record.lua`, `AmisiaDB.bank`) liest heute nur, wer die Gildenbank selbst öffnet. Jeder Amisia-Nutzer der
+Gilde soll beides sehen, ohne an der Bank zu stehen: die Seite Gildenbank zeigt dieselben Einträge und dieselbe
+Zählung wie beim Offizier, der zuletzt dort war.
+
+## Was es tut
+
+- Ein Offizier öffnet die Gildenbank: die Einträge, die bei diesem Lesen neu waren, gehen an die Gilde (`BE`); seine
+  Zählung 5 Sekunden nach dem letzten Zählen (`BC`).
+- Nach dem Login fragt jeder Client (mit Gildenbank, also TBC und Forever) einmal die Gilde, wer Einträge oder eine
+  Zählung hat, die ihm fehlen (`BQ ?`); Offiziere mit mehr antworten mit einem Angebot (`BH`, Flüstern), der Client
+  holt es bei einem einzigen (dem mit den meisten Einträgen) per Flüstern ab (`BQ L`/`C`), in Runden von höchstens
+  100 Einträgen (bis zu 10 Runden).
+- Seite Gildenbank > Protokoll: die abgeglichenen Einträge stehen wie die eigenen; eine Zeile unter den Filtern
+  "Abgeglichen mit der Gilde · zuletzt von X um TT.MM. HH:MM" (oder dass der Abgleich aus ist); der Tooltip jedes
+  Eintrags sagt "Gemeldet von X" oder "Selbst gelesen" und das Zeitfenster.
+- Bestand: "Gezählt am ... von X ... · erhalten von Y", wenn die Zählung aus der Gilde kam.
+- Einstellung `bank.share` "Gildenbank-Protokoll mit der Gilde abgleichen" (an) im Abschnitt Gildenbank, der jetzt
+  für alle sichtbar ist.
+
+## Was es ausdrücklich nicht tut
+
+- Kein Senden durch Mitglieder ohne Offiziersrang, auch wenn ihr Rang Tabs sehen darf (siehe Entscheidungen 1).
+- Kein Weiterreichen fremder Zählungen oder Einträge unter fremdem Namen: ein Eintrag trägt den Offizier, von dem
+  er kam ("gemeldet von"), nicht den ursprünglichen Leser.
+- Nichts im Raid-, Gruppen- oder Instanzchat; keine Blobs; kein Abgleich der Spendenzusagen (die hat `GP`).
+- Keine Vollübertragung bei jeder Anmeldung: nur, was fehlt, gedeckelt.
+
+## Abläufe
+
+1. Offizier A öffnet die Bank. Amisia liest die Protokolle wie bisher; die neuen Einträge (höchstens die neuesten
+   120) gehen als ein Satz `BE` in Teilen an die Gilde. Jeder Empfänger prüft A im eigenen Roster (Offiziersrang),
+   setzt die Teile zusammen und mischt sie wie ein eigenes Lesen von A ein (Eins-zu-eins-Abgleich, Überlappung,
+   Verengung). Doppelte Einträge entstehen nicht, auch wenn B dasselbe Protokoll gleich danach liest.
+2. Mitglied C loggt ein. 40-70 s später `BQ ?` mit seiner Übersicht je Tab (Anzahl, neuester, ältester Eintrag) und
+   der Zeit seiner Zählung. Jeder Offizier rechnet, was C fehlt (neuer als C's neuester, mehr Einträge im Bereich als
+   C hat, älter als C's ältester) und flüstert ein Angebot. Nach 12 s wählt C den Offizier mit den meisten Einträgen
+   und den mit der neuesten Zählung und holt per Flüstern ab. Bringt eine Antwort "mehr" und etwas Neues, folgt nach
+   12 s die nächste Runde beim selben Offizier; antwortet er 60 s nicht, der nächste Anbieter.
+3. Zählung: der neueste Stand (nach seiner Zeit) gewinnt; ältere werden verworfen.
+
+## Abnahmekriterien
+
+- Wenn ein Offizier die Gildenbank öffnet und neue Einträge liest, dann stehen sie beim anderen Spieler unter
+  Gildenbank > Protokoll, mit "Gemeldet von <Offizier>" im Tooltip (braucht: Gilde, zwei Spieler).
+- Wenn zwei Offiziere nacheinander dasselbe Protokoll lesen, dann steht beim dritten Spieler jeder Eintrag nur einmal
+  (zwei gleiche Einzahlungen in derselben Stunde bleiben zwei) (braucht: Gilde, drei Spieler).
+- Wenn ein Spieler einloggt, der eine Weile offline war, dann hat er nach etwa einer Minute die Einträge, die ein
+  Offizier inzwischen gelesen hat, und unter den Filtern "Abgeglichen mit der Gilde · zuletzt von ..." (braucht: Gilde).
+- Wenn ein Offizier die Gildenbank zählt, dann zeigt Bestand beim anderen Spieler "Gezählt am ... von <Offizier> ...
+  · erhalten von <Offizier>" (braucht: Gilde).
+- Wenn ein Spieler `bank.share` ausschaltet, dann kommt bei ihm nichts mehr an und, als Offizier, geht nichts hinaus.
+
+## Sonderfälle
+
+- Bosskampf/Kampfsperre: die Nachrichten warten in Comms Warteschlange (ttl 900 s); im Schlachtfeld geht nichts.
+- Der Schalter "Sync" (Raid-Abgleich) hält nichts davon an (D-165): `ns.CommReady` und `bank.share`.
+- Zwei PCs mit verschiedener Uhrzeit: auf der Leitung stehen Zeiten der Realm-Uhr (`GetServerTime`); jeder Client
+  rechnet mit dem Unterschied seiner Uhr zur Realm-Uhr um. 120 s Spielraum beim Vergleich empfangener Fenster.
+- Classic Era hat keine Gildenbank: kein Client fragt dort, keiner hat Einträge.
+- Nachnamen (Forever): Namen mit Leerzeichen gehen als letztes Feld eines Eintrags; der Zähler mit `_`.
+- `bank.log` aus: kein Protokoll, also auch keine empfangenen Einträge (die Zählung kommt weiter an, sie speist den
+  Bedarf). `bank.count` aus: keine eigene Zählung, empfangene Zählungen kommen an.
+- Ein Eintrag, der beim Sender aus dem 90-Tage-Fenster oder der 1000er-Grenze fällt, fällt beim Empfänger ebenso.
+
+## Missbrauch/Vertrauen
+
+- Es zählt nur der Absender, den der Server setzt, und sein Rang im eigenen Roster (`ns.TrustWait` "officer"); ein
+  Mitglied, ein degradierter Offizier oder ein Fremder wird still verworfen.
+- Jedes Feld wird geprüft (Comm `VALID` und `decode`): Art aus einer festen Liste, Tab 0-9, Gold ohne Item, Verschieben
+  nur mit zwei Tabs, Alter höchstens 400 Tage, Fenster höchstens 8 Tage, Name 1-48 Bytes ohne Steuerzeichen und `|`,
+  Zeit höchstens eine Stunde voraus; ein falsches Feld verwirft die ganze Nachricht.
+- Deckel: 40 Teile je Satz, 2 offene Sätze je Absender, 6 insgesamt, 30 s Wartezeit je Teil; ein Antwortender gibt
+  höchstens 8 Antworten in 10 Minuten; der Empfang je Absender bleibt in Comms Grenzen (40 Nachrichten in 10 s,
+  20480 Bytes in 60 s); das Protokoll bleibt bei 1000 Einträgen.
+- Ein Offizier kann erfundene Einträge senden. Das kann er heute schon über die Website-Exporte nicht verhindern;
+  Offiziere sind vertraut (wie beim Bedarf, D-153 betrifft geteilte Daten ohne Rangprüfung).
+
+## Daten
+
+- Neue Nachrichten `BE`, `BQ`, `BH`, `BC` (Präfix `Amisia`, GUILD und WHISPER; Abstand `BQ` 10 s, sonst keiner),
+  `docs/ARCHITECTURE.md` "Message kinds".
+- `AmisiaDB.bankLog.got = {by, at, n}`, Eintragsfeld `r`; `AmisiaDB.bank.via`.
+- Einstellung `bank.share` (an); der Abschnitt `bank` ist nicht mehr nur für Offiziere.
+- Keine neue Exportzeile: empfangene Einträge gehen wie eigene als `BT` hinaus.
+
+## Offene Fragen
+
+Nichts.
+
+## Entscheidungen
+
+- 2026-11-26: Nutzer "ja bau" zum Abgleich von Protokoll und Zählung mit allen Amisia-Nutzern der Gilde.
+- 2026-11-26: Frage 1 (wer sendet): "Mit Leserecht", sonst Offiziere. Geprüft: der Client sagt die Tab-Rechte eines
+  anderen Rangs nur über `GetGuildBankTabPermissions(tab)` für den Rang, den `GuildControlSetRank` gewählt hat; diese
+  Wahl teilt sich Amisia mit der Rangverwaltung des Spiels (Blizzard_GuildControlUI setzt sie selbst und zeigt die
+  Bankrechte nur dem Gildenmeister). Nicht verlässlich für andere prüfbar -> Offiziersränge (D-171).
+- 2026-11-26: Frage 2 (wer sieht): alle mit Amisia in der Gilde; die Seite Gildenbank ist schon für alle da.

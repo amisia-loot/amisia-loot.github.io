@@ -30,7 +30,7 @@ local WAIT = 3                -- seconds a tab's log may take to answer
 local MONEY = 0               -- the money log's tab in the saved entries
 
 local DB
-local reading                 -- { queue = { tabs }, cur, token, readAt, added }
+local reading                 -- { queue = { tabs }, cur, token, readAt, added, new = { the new entries } }
 local openNow = false
 local token = 0
 
@@ -44,9 +44,10 @@ local function log()
     return DB.bankLog
 end
 
--- { list = { entry }, tabs = { [tab] = name }, at = last read, by = who read }. An entry:
--- { k = tab (0 money), y = kind, n = name, i = itemID (0 money), c = count or copper, a, b = the
--- tabs of a move, lo, hi = the time window, s = when it was first saved }.
+-- { list = { entry }, tabs = { [tab] = name }, at = last read, by = who read, got = { by, at } the last
+-- entries heard from the guild (BankShare.lua) }. An entry: { k = tab (0 money), y = kind, n = name,
+-- i = itemID (0 money), c = count or copper, a, b = the tabs of a move, lo, hi = the time window,
+-- s = when it was first saved, r = who reported it when it came from the guild (nil: an own read) }.
 function ns.BankLog() return log() end
 
 local function sig(e)
@@ -82,8 +83,10 @@ end
 function ns.BankLogLoaded(root)
     DB = root
     local b = type(root.bankLog) == "table" and root.bankLog or {}
+    local got = type(b.got) == "table" and type(b.got.by) == "string" and tonumber(b.got.at)
+        and { by = b.got.by, at = tonumber(b.got.at) } or nil
     root.bankLog = { list = type(b.list) == "table" and b.list or {}, tabs = type(b.tabs) == "table" and b.tabs or {},
-                     at = tonumber(b.at), by = type(b.by) == "string" and b.by or nil }
+                     at = tonumber(b.at), by = type(b.by) == "string" and b.by or nil, got = got }
     prune()
 end
 
@@ -91,23 +94,21 @@ ns.OnEvent("ADDON_LOADED", function(name)
     if name == ns.ADDON and AmisiaDB then ns.BankLogLoaded(AmisiaDB) end
 end)
 
--- Merges the rows of one read made at readAt: { k, y, n, i, c, a, b, ago = hours ago, fuzzy = older
--- than a month }. Returns how many entries are new.
-function ns.MergeBankLog(rows, readAt)
-    if not DB then return 0 end
-    readAt = math.floor(tonumber(readAt) or now())
+-- One read into the saved log: rows with their time windows lo..hi (local clock). Matching is one to
+-- one within the read (two equal entries of the read stay two); a match narrows the saved window to
+-- the overlap; slack: seconds two windows may miss each other (SLACK for the own reads). by: who
+-- reported the read (nil for an own read, a name for one heard from the guild, BankShare.lua), kept
+-- on the new entries as r. Returns the new entries.
+local function mergeWindows(rows, at, slack, by)
     local bySig = {}
     for _, e in ipairs(DB.bankLog.list) do
         local k = sig(e)
         bySig[k] = bySig[k] or {}
         table.insert(bySig[k], e)
     end
-    local used, added, limit = {}, 0, keepFrom()
+    local used, added, limit = {}, {}, keepFrom()
     for _, r in ipairs(rows) do
-        local ago = math.max(0, tonumber(r.ago) or 0)
-        local hi = readAt - ago * HOUR
-        local lo = hi - HOUR
-        if r.fuzzy then lo, hi = lo - FUZZ, math.min(readAt, hi + FUZZ) end
+        local lo, hi = r.lo, r.hi
         -- older than bank.logDays: prune would drop it at once (and it would count as new every time)
         if hi >= limit then
             local e = { k = r.k, y = r.y, n = r.n, i = r.i or 0, c = r.c or 0, a = r.a, b = r.b }
@@ -115,7 +116,7 @@ function ns.MergeBankLog(rows, readAt)
             for _, old in ipairs(bySig[sig(e)] or {}) do
                 if not used[old] then
                     local over = math.min(old.hi, hi) - math.max(old.lo, lo)
-                    if over >= -SLACK and (not best or over > bestOver) then best, bestOver = old, over end
+                    if over >= -slack and (not best or over > bestOver) then best, bestOver = old, over end
                 end
             end
             if best then
@@ -123,15 +124,45 @@ function ns.MergeBankLog(rows, readAt)
                 local nlo, nhi = math.max(best.lo, lo), math.min(best.hi, hi)
                 if nlo <= nhi then best.lo, best.hi = nlo, nhi end
             else
-                e.lo, e.hi, e.s = lo, hi, readAt
+                e.lo, e.hi, e.s, e.r = lo, hi, at, by
                 DB.bankLog.list[#DB.bankLog.list + 1] = e
                 used[e] = true
-                added = added + 1
+                added[#added + 1] = e
             end
         end
     end
-    if added > 0 then prune() end
+    if #added > 0 then prune() end
     return added
+end
+
+-- The rows of one read made at readAt (k, y, n, i, c, a, b, ago = hours ago, fuzzy = older than a
+-- month) as windows.
+local function windows(rows, readAt)
+    local out = {}
+    for _, r in ipairs(rows) do
+        local ago = math.max(0, tonumber(r.ago) or 0)
+        local hi = readAt - ago * HOUR
+        local lo = hi - HOUR
+        if r.fuzzy then lo, hi = lo - FUZZ, math.min(readAt, hi + FUZZ) end
+        out[#out + 1] = { k = r.k, y = r.y, n = r.n, i = r.i, c = r.c, a = r.a, b = r.b, lo = lo, hi = hi }
+    end
+    return out
+end
+
+-- Merges the rows of one read made at readAt: { k, y, n, i, c, a, b, ago = hours ago, fuzzy = older
+-- than a month }. Returns how many entries are new (and the new entries).
+function ns.MergeBankLog(rows, readAt)
+    if not DB then return 0, {} end
+    readAt = math.floor(tonumber(readAt) or now())
+    local added = mergeWindows(windows(rows, readAt), readAt, SLACK)
+    return #added, added
+end
+
+-- Merges the entries of a read another client reported (BankShare.lua): rows with lo..hi on the own
+-- clock, checked by the caller; slack in seconds; by the reporting name. Returns the new entries.
+function ns.MergeBankLogRead(rows, slack, by)
+    if not DB then return {} end
+    return mergeWindows(rows, now(), tonumber(slack) or SLACK, by)
 end
 
 ---------------------------------------------------------------------------
@@ -201,6 +232,8 @@ local function finish()
     DB.bankLog.at, DB.bankLog.by = r.readAt, ns.UnitFullName("player") or "?"
     if r.added > 0 then
         msg(L["Gildenbank-Protokoll: %d neue Einträge (%d gespeichert)."]:format(r.added, #DB.bankLog.list))
+        -- the new entries of this read go to the guild (BankShare.lua: officers, bank.share)
+        if ns.BankShareRead then ns.BankShareRead(r.new) end
     end
     if ns.Refresh then ns.Refresh() end
 end
@@ -213,7 +246,9 @@ local function readCurrent()
     if not r or not r.cur then return end
     local ok, rows = pcall(readTab, r.cur)
     if ok then
-        r.added = r.added + ns.MergeBankLog(rows, now())
+        local n, new = ns.MergeBankLog(rows, now())
+        r.added = r.added + n
+        for _, e in ipairs(new) do r.new[#r.new + 1] = e end
     else
         ns.ReportError(rows)
     end
@@ -252,7 +287,7 @@ local function start()
     end
     -- the money log needs no tab of its own
     queue[#queue + 1] = moneyTab()
-    reading = { queue = queue, readAt = now(), added = 0 }
+    reading = { queue = queue, readAt = now(), added = 0, new = {} }
     nextTab()
 end
 

@@ -36,7 +36,7 @@ local OPEN_PARTS, OPEN_BYTES = 90, 18000   -- parts and Base64 bytes of the open
 local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the guild are dropped unread
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart, and a guild
 -- queue state with a battleground that popped, was joined or declined (QW with a P, J or L entry: QWP, F-227) apart
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, ZQ = 30, NV = 8, AC = 300, PC = 60, OQ = 300, EA = 10, EQ = 300, TQ = 30, QW = 10, QWP = 1 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, ZQ = 30, NV = 8, AC = 300, PC = 60, OQ = 300, EA = 10, EQ = 300, TQ = 30, QW = 10, QWP = 1, BQ = 10 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
 -- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
@@ -478,6 +478,34 @@ local VALID = {
         return commaList(f[5], 8, needEntry, true)
     end,
     GQ = function(f) return #f >= 1 and isNum(f[1], 0, 4294967295) end,
+    -- guild bank sharing (BankShare.lua, F-238, D-171): BE <batch> <part> <parts> <base> <-|M> <entry>... with an
+    -- entry "<tab>:<kind letter>:<item>:<count>:<tab1tab2 or empty>:<age>:<width>:<name>" (numbers base 36, the name
+    -- 1-48 bytes); BQ <?|L|C|LC> <count at> <tab:n:newest:oldest>... (at most 10 tabs); BH <entries> <count at>;
+    -- BC <at> <part> <parts> <by> <tabs> <filled> <total> <id:count,...> (16 at most, base 36)
+    BE = function(f)
+        if #f < 6 or not isHex(f[1], 4) or not isNum(f[2], 1, 40) or not isNum(f[3], 1, 40) or tonumber(f[2]) > tonumber(f[3]) then return false end
+        if not isNum(f[4], 0, 4294967295) or (f[5] ~= "-" and f[5] ~= "M") then return false end
+        for i = 6, #f do
+            if #f[i] > 120 or not f[i]:match("^%d:[dwmrtbsnf]:[0-9a-z]+:[0-9a-z]+:%d*:[0-9a-z]+:[0-9a-z]+:[^%c|]+$") then return false end
+        end
+        return true
+    end,
+    BQ = function(f)
+        if #f < 2 or #f > 12 or not (f[1] == "?" or f[1] == "L" or f[1] == "C" or f[1] == "LC") or not isNum(f[2], 0, 4294967295) then return false end
+        for i = 3, #f do
+            local k, n, new, old = f[i]:match("^(%d):(%d+):([0-9a-z]+):([0-9a-z]+)$")
+            if not k or not isNum(n, 0, 9999) or #new > 7 or #old > 7 then return false end
+        end
+        return true
+    end,
+    BH = function(f) return #f >= 2 and isNum(f[1], 0, 9999) and isNum(f[2], 0, 4294967295) end,
+    BC = function(f)
+        if #f < 8 or not isNum(f[1], 0, 4294967295) or not isNum(f[2], 1, 5) or not isNum(f[3], 1, 5) or tonumber(f[2]) > tonumber(f[3]) then return false end
+        if f[4] == "" or #f[4] > 60 or f[4]:find("[%s%c,:|]") then return false end
+        if not isNum(f[5], 0, 99) or not isNum(f[6], 0, 99) or not isNum(f[7], 0, 99) then return false end
+        return commaList(f[8], 16, function(e) return e:match("^[0-9a-z]+:[0-9a-z]+$") ~= nil and #e <= 16 end)
+    end,
+
     GP = function(f) return #f >= 3 and isNum(f[1], 1, 9999999) and isNum(f[2], 0, 99999) and isNum(f[3], 0, 4294967295) end,
     -- loot rules (LootRules.lua): MR <rev> <part> <parts> <set by> <id:kind:value:target,...|->, an
     -- officer's set in at most 4 parts; MQ <rev> (who has a newer set)
