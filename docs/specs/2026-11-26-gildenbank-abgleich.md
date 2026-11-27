@@ -137,3 +137,34 @@ Eine Prüfung fand Lücken; behoben, jede mit einem Test in `tests/test_bank_sha
   anderen hat, den der Offizier nicht hat, bleibt die Lücke bis zum nächsten eigenen Lesen. Bei `bank.logDays` über
   etwa 95 Tagen reicht die Übersicht nicht bis zum Horizont; ältere Einträge kommen nur, wenn sie älter als der älteste
   des Fragenden sind.
+
+## Nachtrag 2 2026-11-27 (zweite Prüfung)
+
+Eine zweite Prüfung fand weitere Lücken; behoben, jede mit einem Test in `tests/test_bank_share.lua` (S1-S8):
+
+- S1: Ein Tag mit mehr als 100 Einträgen hielt die Abholung an (die Runde schickte nur Bekanntes, "nichts Neues"
+  beendete sie), und jede Runde schickte den Tag, den die vorige geteilt hatte, noch einmal. Jetzt trägt jede Abholung
+  einen Zeiger: das älteste Ende (Realm-Uhr, genau wie gesendet), das der Fragende in diesem Abgleich vom Offizier
+  bekam, und wie viele Einträge dieses Endes (`-` in der ersten Runde); der Offizier schickt nur, was danach kommt, und
+  jede Runde wiederholt die Übersicht der ersten. Ende: nichts mehr, der Zeiger steht, oder zwei Runden nacheinander
+  ohne Neues. 1000 Einträge zu 60 am Tag: 10 Runden, jeder Eintrag einmal. Eine Antwort hat höchstens 15 Teile (Comms
+  20480 Bytes in 60 s je Absender beim Empfänger), dafür bis zu 16 Runden.
+- S2: Zählungen mit steigender Zeit in der Kampfsperre belegten Trust.lua's 20 Warteplätze (die teilen sich
+  Raid-Abgleich, Würfelfenster und Bedarf). Jetzt prüft ein Empfänger einen rohen Absender einmal zur Zeit für alles,
+  was er offen hat; höchstens 6 gehaltene Zählungen; bei unlesbarem Roster hält er nur GUILD-Nachrichten (dort sendet
+  nur, wer in der Gilde ist) und das Flüstern des Offiziers, dessen Antwort er erwartet.
+- S3: Sätze von Mitgliedern ohne Offiziersrang blieben bis zu 30 s offen und sperrten die Plätze. Jetzt fallen sie mit
+  der Prüfung sofort, der Absender wird 30 s nicht gehört, und ein Platz bleibt dem abgeholten Offizier.
+- S4: Ein Satz in einer Sperre über 60 s fiel, die Einträge kamen erst beim nächsten Login. Jetzt fragt der Client nach
+  der Sperre einmal die Gilde (`BQ ?`, mit dessen Abstand).
+- S5: Das Budget zählt Teile statt Antworten (einem Fragenden 260 in 10 Minuten, allen 780), und eine Abholung wird nur
+  beantwortet, wenn der Offizier diesem Fragenden in den letzten 5 Minuten ein Angebot gab oder antwortete.
+- S6: "Jetzt abgleichen" während eines Abgleichs ließ zwei Abholungen zugleich laufen; die nächste Runde prüft jetzt
+  das Zeichen der Frage.
+- S7: Ein Lesen schickte Einträge, die ein späterer Tab desselben Lesens schon weggekürzt hatte (1000er-Grenze).
+- S8: Alte Einträge mit Fenstern über mehrere Tage zählen zwei Clients unter verschiedenen Tagen; jeder Login brachte
+  eine nutzlose Runde. Ein Offizier, dessen Abgleich nichts brachte, wird bei gleichem Angebot 6 Stunden nicht wieder
+  abgeholt (nur in dieser Sitzung gemerkt).
+- `BH` geht mit normalem Vorrang (klein, und die 12 s für die Angebote warten darauf); ein Client ohne Offiziersrang
+  prüft bei `BQ` niemanden.
+

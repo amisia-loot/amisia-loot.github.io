@@ -481,8 +481,9 @@ local VALID = {
     GQ = function(f) return #f >= 1 and isNum(f[1], 0, 4294967295) end,
     -- guild bank sharing (BankShare.lua, F-238, D-171): BE <batch> <part> <parts> <base> <-|M> <entry>... with an
     -- entry "<tab>:<kind letter>:<item>:<count>:<tab1tab2 or empty>:<age>:<width>:<name>" (numbers base 36, the name
-    -- 1-48 bytes); BQ <?|?C|L|C|LC> <count at> [<keep from> <entries> <oldest> <first day> <days> <counts|->]
-    -- (the horizon and the per-day counts, two base-36 digits a day, with "?", "L" and "LC"); BH <entries> <count at>;
+    -- 1-48 bytes); BQ <?|?C|L|C|LC> <count at> [<keep from> <entries> <oldest> <first day> <days> <counts|->
+    -- [<cursor>]] (the horizon and the per-day counts, two base-36 digits a day, with "?", "L" and "LC"; a pull's
+    -- cursor "<realm time>:<entries of that time>" or "-", the oldest entry received in this transfer); BH <entries> <count at>;
     -- BC <at> <part> <parts> <by> <tabs> <filled> <total> <id:count,...> (16 at most, base 36)
     BE = function(f)
         if #f < 6 or not isHex(f[1], 4) or not isNum(f[2], 1, 40) or not isNum(f[3], 1, 40) or tonumber(f[2]) > tonumber(f[3]) then return false end
@@ -500,7 +501,10 @@ local VALID = {
             or not isNum(f[6], 0, 99999) or not isNum(f[7], 1, 400) then
             return false
         end
-        return f[8] == "-" or (#f[8] % 2 == 0 and #f[8] <= 2 * tonumber(f[7]) and f[8]:match("^[0-9a-z]+$") ~= nil)
+        if not (f[8] == "-" or (#f[8] % 2 == 0 and #f[8] <= 2 * tonumber(f[7]) and f[8]:match("^[0-9a-z]+$") ~= nil)) then return false end
+        if f[9] == nil or f[9] == "-" then return true end
+        local hi, n = f[9]:match("^(%d+):(%d+)$")
+        return ask ~= "?" and hi ~= nil and isNum(hi, 0, 4294967295) and isNum(n, 0, 9999)
     end,
     BH = function(f) return #f >= 2 and isNum(f[1], 0, 9999) and isNum(f[2], 0, 4294967295) end,
     BC = function(f)

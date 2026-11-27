@@ -5147,3 +5147,23 @@ ganzer Abgleich (13 Antworten) in 10 Minuten, allen 40; 12 Runden. Klickweg: "Je
 Protokoll (D-167). Folge statt der Lücke "gleich viele, andere Einträge im selben Bereich": eine Lücke bleibt nur, wenn
 der Fragende am selben Tag einen anderen Eintrag hat, den der Offizier nicht hat (die Tageszählung umfasst alle Tabs),
 oder wenn sie jenseits einer Übersicht von etwa 95 Tagen liegt.
+
+Nachtrag 2026-11-27 (zweite Prüfung): Eine Abholung trägt einen Zeiger (`BQ` L/LC, Feld 9): das älteste Ende
+(Realm-Uhr, genau wie gesendet), das der Fragende in diesem Abgleich vom Offizier bekam, und wie viele Einträge dieses
+Endes; der Offizier schickt nur, was danach kommt (feste Reihenfolge, die Realm-Zeit seiner Einträge ruhig gehalten),
+und jede Runde wiederholt die Übersicht der ersten. So kommt kein Eintrag zweimal, und ein Tag mit mehr als 100
+Einträgen hält die Abholung nicht mehr an. Ende: der Offizier hat nichts mehr, der Zeiger steht, oder zwei Runden
+nacheinander bringen nichts (statt "eine Runde ohne Neues": die erste Runde eines großen Tages kann nur Bekanntes
+bringen); 16 Runden, eine Antwort höchstens 100 Einträge in 15 Teilen (Comms 20480 Bytes in 60 s je Absender beim
+Empfänger). Ein Offizier, dessen Abgleich nichts brachte, wird bei gleichem Angebot 6 Stunden nicht wieder abgeholt
+(alte Einträge mit Fenstern über mehrere Tage, bei zwei Clients unter verschiedenen Tagen gezählt). Budget nach Teilen:
+einem Fragenden 260 in 10 Minuten, allen 780; eine Abholung wird nur nach einem eigenen Angebot (`BH`) an diesen
+Fragenden beantwortet (5 Minuten, je Antwort verlängert); `BH` mit normalem Vorrang. Empfang: eine Prüfung je rohem
+Absender zur Zeit für alles, was er offen hat (Trust.lua's 20 Warteplätze teilen sich Raid-Abgleich, Würfelfenster und
+Bedarf); bei unlesbarem Roster nur GUILD-Sätze und das Flüstern des Offiziers, dessen Antwort erwartet wird; ein
+Absender ohne Offiziersrang verliert seine Sätze sofort und wird 30 s nicht gehört; ein Platz der 6 bleibt dem
+abgeholten Offizier; höchstens 6 gehaltene Zählungen. Fällt ein GUILD-Satz, weil die Prüfung nicht rechtzeitig
+entscheiden konnte (Sperre länger als 60 s), fragt der Client nach der Sperre einmal `BQ ?` (mit dessen Abstand).
+"Jetzt abgleichen" während eines Abgleichs beendet den alten (seine nächste Runde prüft das Zeichen der Frage). Ein
+Lesen schickt nur die neuen Einträge, die nach dem Kürzen bleiben. Kein Abstand je Art für `BC` (die Teile einer
+Zählung kommen zusammen; Comms Abstand gilt je Nachricht).

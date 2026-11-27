@@ -573,3 +573,253 @@ local stock = C(KIM, [[NS.ShowPage("bank"); local f = NS.PageFrame("bank"); f.vi
     return { f.state:GetText(), first and first:IsShown() and first.count:GetText() }]])
 assert(has(stock[1], "erhalten von"), "the received count shows: " .. tostring(stock[1]))
 assert(stock[2] ~= nil and stock[2] ~= "-", "with its counts: " .. tostring(stock[2]))
+
+---------------------------------------------------------------------------
+-- second review 2026-11-27 (regressions S1-S8): helpers
+---------------------------------------------------------------------------
+-- n deposits on tab 1 named pre..i on the realm day off days ago (i * 20 s apart), the first skip left out
+local function dayRows(skip, n, off, pre)
+    return ([[local skip, n, off, pre = %d, %d, %d, %q
+        local d = NS.ServerTime() - time()
+        local D = math.floor(NS.ServerTime() / 86400) * 86400 - d - off * 86400
+        local rows = {}
+        for i = skip + 1, n do rows[#rows + 1] = { k = 1, y = "deposit", n = pre .. i, i = 61001, c = i, lo = D + 60 + i * 20 - 3600, hi = D + 60 + i * 20 } end
+        NS.MergeBankLogRead(rows, 120, nil); return #NS.BankLog().list]]):format(skip, n, off, pre)
+end
+-- 1000 deposits, 60 a day over the last 17 days, named pre..i
+local function thousand(pre)
+    return ([[local d = NS.ServerTime() - time()
+        local D = math.floor(NS.ServerTime() / 86400) * 86400 - d
+        local rows = {}
+        for i = 1, 1000 do local day = math.floor((i - 1) / 60) + 1; local j = (i - 1) %% 60
+            rows[#rows + 1] = { k = 1, y = "deposit", n = %q .. i, i = 61001, c = i, lo = D - day * 86400 + 600 + j * 1000 - 3600, hi = D - day * 86400 + 600 + j * 1000 } end
+        NS.MergeBankLogRead(rows, 120, nil); return #NS.BankLog().list]]):format(pre)
+end
+local function pullsBy(from, name) return since(from, function(m) return m.kind == "BQ" and m.sender == name and m.chan == "WHISPER" end) end
+local function hasEntry(name, n) return C(name, ([[for _, e in ipairs(NS.BankLog().list) do if e.n == %q then return true end end return false]]):format(n)) end
+local function clearLogs() for _, n in ipairs(CLIENTS) do C(n, "AmisiaDB.bankLog.list = {}; return true") end end
+
+---------------------------------------------------------------------------
+-- S1: a day of more than 100 entries no longer ends a pull; the cursor sends no entry twice
+---------------------------------------------------------------------------
+BUS.tick(700)
+clearLogs()
+-- Vulo: 160 today and 50 yesterday; Lia: today's newest 150 only (the first round brings only entries she has)
+C(VULO, dayRows(0, 160, 0, "T"))
+C(VULO, dayRows(0, 50, 1, "Y"))
+C(LIA, dayRows(10, 160, 0, "T"))
+local s1 = #BUS.sent
+C(LIA, "NS.AskBankShare()")
+BUS.tick(400)
+assert(count(LIA) == 210, "S1: Lia has the oldest of the big day and the day before: " .. count(LIA) .. " of " .. count(VULO))
+assert(entriesTo(s1, LIA) <= 220, "S1: hardly an entry twice: " .. entriesTo(s1, LIA))
+-- a fresh Lia, one day of 150 entries and 50 the day before
+BUS.tick(700)
+clearLogs()
+C(VULO, dayRows(0, 150, 1, "T"))
+C(VULO, dayRows(0, 50, 2, "Y"))
+s1 = #BUS.sent
+C(LIA, "NS.AskBankShare()")
+BUS.tick(400)
+assert(count(LIA) == 200, "S1: a fresh asker gets a day of 150: " .. count(LIA))
+assert(entriesTo(s1, LIA) == 200, "S1: each entry once: " .. entriesTo(s1, LIA))
+-- 1000 entries, 60 a day: all of them, in at most MAX_ROUNDS pulls, each entry once
+BUS.tick(700)
+clearLogs()
+C(VULO, thousand("R"))
+s1 = #BUS.sent
+C(LIA, "NS.AskBankShare()")
+BUS.tick(900)
+assert(count(LIA) == 1000, "S1: the whole log of 1000: " .. count(LIA))
+assert(entriesTo(s1, LIA) <= 1100, "S1: at most a few twice: " .. entriesTo(s1, LIA))
+assert(pullsBy(s1, LIA) <= 16, "S1: within the rounds of one transfer: " .. pullsBy(s1, LIA))
+-- an answer stays within 15 parts (Comm's bytes a minute at the receiver)
+local perBatch = {}
+for i = s1 + 1, #BUS.sent do
+    local m = BUS.sent[i]
+    if m.kind == "BE" and m.target == LIA then local id = m.text:match("^1BE\t(%x+)"); perBatch[id] = (perBatch[id] or 0) + 1 end
+end
+for id, n in pairs(perBatch) do assert(n <= 15, "S1: batch " .. id .. " in at most 15 parts: " .. n) end
+assert(C(LIA, "NS.CommStats().limited") == 0, "S1: Lia never stopped hearing Vulo")
+-- the cursor goes on the wire; a bad one drops the pull
+local q
+for i = s1 + 1, #BUS.sent do
+    local m = BUS.sent[i]
+    if m.kind == "BQ" and m.sender == LIA and m.chan == "WHISPER" then q = m.text end
+end
+assert(q and q:match("\t%d+:%d+$"), "S1: a later pull carries the cursor: " .. tostring(q))
+local bad1 = C(VULO, "NS.CommStats().bad")
+C(LIA, [[local keep = NS.ServerTime() - 90 * 86400
+    NS.CommSend("BQ", { "L", "0", tostring(keep), "0", "0", tostring(math.floor(NS.ServerTime() / 86400)), "90", "-", "12x" }, "WHISPER", "Vulo Sturmwind", { key = "badcursor" })
+    return true]])
+BUS.tick(2)
+assert(C(VULO, "NS.CommStats().bad") == bad1 + 1, "S1: a malformed cursor is a bad message")
+
+---------------------------------------------------------------------------
+-- S2: a stream of counts in the lockdown holds one check per sender (Trust.lua's waiting list stays free)
+---------------------------------------------------------------------------
+BUS.tick(700)
+C(KIM, [[STUB.chatLock = true; STUB.fire('ADDON_RESTRICTION_STATE_CHANGED')
+    local orig = NS.TrustWait
+    _G.TW2 = 0
+    NS.TrustWait = function(name, need, fn) TW2 = TW2 + 1; return orig(name, need, fn) end
+    return true]])
+C(LIA, [[local base = NS.ServerTime()
+    for i = 1, 25 do NS.CommSend("BC", { tostring(base + i), "1", "1", "Lia", "1", "1", "1", "1:1" }, "GUILD", nil, { key = "bc" .. i }) end
+    return true]])
+BUS.tick(30)
+assert(C(KIM, "TW2") == 1, "S2: one check for Lia's 25 counts: " .. C(KIM, "TW2"))
+assert(C(KIM, [[local got = "pending"; NS.TrustWait("Vulo Sturmwind", "officer", function(ok) got = ok end); return tostring(got)]]) == "pending",
+    "S2: another feature's check still waits for the roster")
+-- a whisper of an officer this client does not pull is not held while the roster cannot be read
+local tw = C(KIM, "TW2")
+C(FRAK, ("NS.CommSend('BE', { 'beef', '1', '1', '%d', '-', '1:d:1bb5:k::0:2s0:Gefluestert' }, 'WHISPER', 'Kim Eisherz')"):format(C(FRAK, "NS.ServerTime()")))
+BUS.tick(2)
+assert(C(KIM, "TW2") == tw, "S2: a whisper not awaited is dropped in the lockdown")
+C(KIM, [[STUB.chatLock = false; STUB.fire('ADDON_RESTRICTION_STATE_CHANGED'); return true]])
+BUS.tick(70)
+assert(not hasEntry(KIM, "Gefluestert"), "S2: and never merged")
+assert(C(KIM, "AmisiaDB.bank == nil or AmisiaDB.bank.by ~= 'Lia'"), "S2: a member's count is not taken")
+
+---------------------------------------------------------------------------
+-- S3: batches of members are dropped at once and hold no slot; an officer's broadcast still arrives
+---------------------------------------------------------------------------
+BUS.tick(700)
+BUS.setGuild({ { name = VULO, rank = 1 }, { name = FRAK, rank = 2 }, { name = KIM, rank = 4 }, { name = LIA, rank = 4 },
+    { name = "Max", rank = 4 }, { name = "Moe", rank = 4 }, { name = "Mia", rank = 4 } })
+for _, n in ipairs(CLIENTS) do C(n, "STUB.fire('GUILD_ROSTER_UPDATE'); return true") end
+BUS.tick(15)
+local k3 = count(KIM)
+C(KIM, [[local base = NS.ServerTime()
+    for _, s in ipairs({ "Max", "Moe", "Mia" }) do
+        for b = 1, 2 do
+            STUB.fire("CHAT_MSG_ADDON", "Amisia", ("1BE\t%04x\t1\t1\t%d\t-\t1:d:1ekh:1::0:0:Spam%s%d"):format(b, base, s, b), "GUILD", s)
+        end
+    end
+    return true]])
+BUS.tick(1)
+assert(count(KIM) == k3, "S3: nothing of the members taken")
+C(VULO, [[local n, new = NS.MergeBankLog({ { k = 2, y = "deposit", n = "Legit", i = 61002, c = 1, ago = 0 } }, STUB.now)
+    return NS.BankShareRead(new)]])
+BUS.tick(10)
+assert(hasEntry(KIM, "Legit"), "S3: the officer's broadcast arrives after the members' batches")
+BUS.setGuild({ { name = VULO, rank = 1 }, { name = FRAK, rank = 2 }, { name = KIM, rank = 4 }, { name = LIA, rank = 4 } })
+for _, n in ipairs(CLIENTS) do C(n, "STUB.fire('GUILD_ROSTER_UPDATE'); return true") end
+BUS.tick(15)
+
+---------------------------------------------------------------------------
+-- S4: a lockdown longer than Trust.lua's wait: the batch falls, one question after it brings the entry
+---------------------------------------------------------------------------
+BUS.tick(700)
+C(KIM, [[STUB.chatLock = true; STUB.fire('ADDON_RESTRICTION_STATE_CHANGED'); return true]])
+C(VULO, [[local n, new = NS.MergeBankLog({ { k = 2, y = "deposit", n = "DuringBoss", i = 61002, c = 1, ago = 0 } }, STUB.now)
+    return NS.BankShareRead(new)]])
+BUS.tick(120)
+assert(not hasEntry(KIM, "DuringBoss"), "S4: not in the lockdown")
+local s4 = #BUS.sent
+C(KIM, [[STUB.chatLock = false; STUB.fire('ADDON_RESTRICTION_STATE_CHANGED'); return true]])
+BUS.tick(30)
+assert(hasEntry(KIM, "DuringBoss"), "S4: the entry arrives right after the lockdown")
+assert(since(s4, function(m) return m.kind == "BQ" and m.sender == KIM and m.chan == "GUILD" end) == 1, "S4: by one question")
+BUS.tick(120)
+assert(since(s4, function(m) return m.kind == "BQ" and m.sender == KIM and m.chan == "GUILD" end) == 1, "S4: and only one")
+
+---------------------------------------------------------------------------
+-- S5: a pull without an offer is not answered; the budget counts parts
+---------------------------------------------------------------------------
+BUS.tick(700)
+clearLogs()
+C(VULO, thousand(("N"):rep(30)))
+local pullFields = [[{ "L", "0", tostring(NS.ServerTime() - 90 * 86400), "0", "0", tostring(math.floor(NS.ServerTime() / 86400)), "90", "-", "-" }]]
+local s5 = #BUS.sent
+C(KIM, "NS.CommSend('BQ', " .. pullFields .. ", 'WHISPER', 'Vulo Sturmwind', { key = 'nooffer' })")
+BUS.tick(15)
+assert(entriesTo(s5, KIM) == 0, "S5: no answer without an offer")
+-- after a question (an offer), pulls repeating the first round: at most PARTS_PER_ASKER parts
+C(KIM, "AmisiaDB.bankLog.list = {}; return true")
+C(KIM, "NS.AskBankShare()")
+BUS.tick(3)
+C(KIM, "_G.ASK5 = NS.AskBankShare; NS.AskBankShare = function() return false end; return true")
+for _ = 1, 30 do
+    C(KIM, "NS.CommSend('BQ', " .. pullFields .. ", 'WHISPER', 'Vulo Sturmwind', { key = 'spam' })")
+    BUS.tick(11)
+end
+BUS.tick(60)
+C(KIM, "NS.AskBankShare = ASK5; return true")
+local parts5 = since(s5, function(m) return m.kind == "BE" and m.target == KIM end)
+assert(parts5 <= 260 and parts5 >= 200, "S5: one transfer's parts to a spamming asker: " .. parts5)
+-- another asker is still served
+C(LIA, "AmisiaDB.bankLog.list = {}; return true")
+local s5b = #BUS.sent
+C(LIA, "NS.AskBankShare()")
+BUS.tick(400)
+assert(entriesTo(s5b, LIA) > 0 and count(LIA) >= 500, "S5: another asker is still served: " .. count(LIA))
+
+---------------------------------------------------------------------------
+-- S6: asking again during a transfer never runs two pulls at once
+---------------------------------------------------------------------------
+BUS.tick(700)
+clearLogs()
+C(VULO, thousand("Q"))
+local s6 = #BUS.sent
+C(LIA, "NS.AskBankShare()")
+BUS.tick(65)
+C(LIA, "NS.AskBankShare()")
+BUS.tick(900)
+local last6, close6 = nil, 0
+for i = s6 + 1, #BUS.sent do
+    local m = BUS.sent[i]
+    if m.kind == "BQ" and m.sender == LIA and m.chan == "WHISPER" then
+        if last6 and m.t - last6 < 10 then close6 = close6 + 1 end
+        last6 = m.t
+    end
+end
+assert(close6 == 0, "S6: no two pulls within the officer's gap: " .. close6)
+assert(count(LIA) == 1000, "S6: and the log arrives: " .. count(LIA))
+
+---------------------------------------------------------------------------
+-- S7: a read sends only what it keeps (a later tab's merge pruned an earlier tab's new entry)
+---------------------------------------------------------------------------
+BUS.tick(700)
+clearLogs()
+C(VULO, [[local rows = {}
+    for i = 1, 999 do rows[#rows + 1] = { k = 2, y = "deposit", n = "Voll" .. i, i = 61001, c = i, ago = i } end
+    NS.MergeBankLog(rows, STUB.now)
+    -- tab 1 (read first): one entry older than all, tab 2: one newer than all
+    STUB.gblog[1] = { { "deposit", "Gekappt", STUB.ore, 1, nil, nil, 0, 0, 62, 12 } }
+    STUB.gblog[2] = { { "deposit", "Neu", STUB.ore, 1, nil, nil, 0, 0, 0, 0 } }
+    STUB.gbmoney = {}
+    return #NS.BankLog().list]])
+local s7 = #BUS.sent
+visit(VULO)
+assert(count(VULO) == 1000 and not hasEntry(VULO, "Gekappt"), "S7: the old entry fell to the cap")
+local names7 = {}
+for i = s7 + 1, #BUS.sent do
+    local m = BUS.sent[i]
+    if m.kind == "BE" and m.sender == VULO and m.chan == "GUILD" then for n in m.text:gmatch(":(%a+)\t?") do names7[n] = true end end
+end
+assert(names7.Neu and not names7.Gekappt, "S7: only the kept entry went to the guild")
+
+---------------------------------------------------------------------------
+-- S8: an officer whose transfer added nothing (old windows filed under other days) is not pulled again soon
+---------------------------------------------------------------------------
+BUS.tick(700)
+clearLogs()
+C(VULO, [[local d = NS.ServerTime() - time(); local D = math.floor(NS.ServerTime() / 86400) * 86400 - d
+    local rows = {}
+    for i = 1, 5 do rows[#rows + 1] = { k = 1, y = "deposit", n = "Weit" .. i, i = 61001, c = i, lo = D - 40 * 86400 + 600, hi = D - 34 * 86400 + 600 } end
+    NS.MergeBankLogRead(rows, 120, nil); return #NS.BankLog().list]])
+C(LIA, [[local d = NS.ServerTime() - time(); local D = math.floor(NS.ServerTime() / 86400) * 86400 - d
+    local rows = {}
+    for i = 1, 5 do rows[#rows + 1] = { k = 1, y = "deposit", n = "Weit" .. i, i = 61001, c = i, lo = D - 42 * 86400 + 600, hi = D - 37 * 86400 + 600 } end
+    NS.MergeBankLogRead(rows, 120, nil); return #NS.BankLog().list]])
+local s8 = #BUS.sent
+C(LIA, "NS.AskBankShare()")
+BUS.tick(120)
+assert(count(LIA) == 5 and pullsBy(s8, LIA) == 1, "S8: one useless round: " .. count(LIA) .. " " .. pullsBy(s8, LIA))
+s8 = #BUS.sent
+BUS.tick(61)
+C(LIA, "NS.AskBankShare()")
+BUS.tick(120)
+assert(since(s8, function(m) return m.kind == "BH" and m.target == LIA end) >= 1, "S8: Vulo offers again")
+assert(pullsBy(s8, LIA) == 0, "S8: but is not pulled again with the same offer")

@@ -260,8 +260,12 @@ local function finish()
     DB.bankLog.at, DB.bankLog.by = r.readAt, ns.UnitFullName("player") or "?"
     if r.added > 0 then
         msg(L["Gildenbank-Protokoll: %d neue Einträge (%d gespeichert)."]:format(r.added, #DB.bankLog.list))
-        -- the new entries of this read go to the guild (BankShare.lua: officers, bank.share)
-        if ns.BankShareRead then ns.BankShareRead(r.new) end
+        -- the new entries of this read go to the guild (BankShare.lua: officers, bank.share), only those still kept
+        -- (a later tab's merge may have pruned an earlier tab's new entry: the cap of 1000)
+        local kept, new = {}, {}
+        for _, e in ipairs(DB.bankLog.list) do kept[e] = true end
+        for _, e in ipairs(r.new) do if kept[e] then new[#new + 1] = e end end
+        if ns.BankShareRead then ns.BankShareRead(new) end
     end
     if ns.Refresh then ns.Refresh() end
 end
