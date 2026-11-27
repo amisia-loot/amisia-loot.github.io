@@ -7,8 +7,11 @@ local _, ns = ...
 
 ns.LazyData("WHATSNEW", [=[
 return {
-version="2.111.0",
+version="2.112.0",
 versions={
+{"2.112.0",{
+{"F-238","Gildenbank-Protokoll und Zählung mit der Gilde abgleichen","The guild bank log and the last count reach everyone in the guild","all"},
+}},
 {"2.111.0",{
 {"F-237","Seite Amisia-Versionen: wer Amisia hat und welche Version","A page of its own shows who runs Amisia and which version","all"},
 }},
@@ -22,9 +25,6 @@ versions={
 }},
 {"2.108.0",{
 {"F-200","Einstellungen: Reiter in der Seitenleiste wie im Hauptfenster","Switches are easier to find","all"},
-}},
-{"2.107.1",{
-{"F-134","Dungeon-Quests: Status-Symbole und Karte","Hide completed dungeon quests","dungeons"},
 }},
 },
 }

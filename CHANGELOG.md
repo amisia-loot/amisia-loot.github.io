@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.112.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.112.0) (2026-11-27)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.111.0...v2.112.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(bank): the guild bank log and the last count reach everyone in the guild (F-238)
 
     When an officer opens the guild bank, the log entries that were new and the material count go to every
