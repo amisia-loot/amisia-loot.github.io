@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.113.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.113.0) (2026-11-27)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.112.0...v2.113.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(professions): new Amisia users see the guild's professions within minutes (F-240)
 
     Until now a new user waited up to an hour for each member's next announcement, and never saw members who play

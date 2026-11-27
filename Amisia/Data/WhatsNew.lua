@@ -7,8 +7,14 @@ local _, ns = ...
 
 ns.LazyData("WHATSNEW", [=[
 return {
-version="2.112.0",
+version="2.113.0",
 versions={
+{"2.113.0",{
+{"F-240","Rezepte der Gilde schneller und vollständiger","New Amisia users see the guild's professions within minutes","forever"},
+{"F-239","Vorlagen im Ausrüstungsplaner","Templates in the gear planner fill every slot at once","gear"},
+{"F-185","Layer erkennen und in der Gilde wechseln","Layer helping and the layer bar are off by default","forever"},
+{"F-149","Ausrüstungsplaner: Modell mit Plätzen, Vorschläge je Platz, Sets in der Leiste","The planner's model can wear your wishlist","gear"},
+}},
 {"2.112.0",{
 {"F-238","Gildenbank-Protokoll und Zählung mit der Gilde abgleichen","The guild bank log and the last count reach everyone in the guild","all"},
 }},
@@ -22,9 +28,6 @@ versions={
 {"2.109.0",{
 {"F-234","Alles mit Klicks erreichbar: Befehle sind nur Abkürzungen","Every feature can be reached by clicks, commands are shortcuts","all"},
 {"F-231","Gildenaufträge","Guild orders and cooldowns in the side bar and the overview","forever"},
-}},
-{"2.108.0",{
-{"F-200","Einstellungen: Reiter in der Seitenleiste wie im Hauptfenster","Switches are easier to find","all"},
 }},
 },
 }
