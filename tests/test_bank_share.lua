@@ -971,3 +971,39 @@ assert(since(t5, function(m) return m.kind == "BQ" and m.sender == LIA and m.cha
     "T5: a fresh question before moving on to Vulo")
 assert(since(t5, function(m) return m.kind == "BQ" and m.sender == LIA and m.target == VULO end) >= 1, "T5: Vulo pulled")
 assert(count(LIA) == 1000, "T5: and Vulo answers: " .. count(LIA))
+
+---------------------------------------------------------------------------
+-- "?" entries (older versions saved them for rows read before the client had the name): never sent, dropped
+-- when received, the rest of the message kept
+---------------------------------------------------------------------------
+BUS.tick(700)
+clearLogs()
+local q0 = #BUS.sent
+C(VULO, [[local t = time()
+    local e = { k = 0, y = "deposit", n = "?", i = 0, c = 50000, lo = t - 7200, hi = t - 3600, s = t }
+    table.insert(AmisiaDB.bankLog.list, e)
+    return NS.BankShareRead({ e })]])
+BUS.tick(3)
+assert(since(q0, function(m) return m.kind == "BE" and m.sender == VULO end) == 0, "a \"?\" entry is not sent")
+-- an older version's batch with a "?" entry: the named entry of it is taken, the "?" not
+local qb = C(KIM, "NS.ServerTime()")
+C(VULO, ("NS.CommSend('BE', { 'beef', '1', '1', '%d', '-', '0:d:0:2::0:2s0:?', '1:d:1bb5:k::0:2s0:Benannt' }, 'GUILD')"):format(qb))
+BUS.tick(3)
+for _, name in ipairs({ KIM, LIA }) do
+    local got = C(name, [[local out = {}; for _, e in ipairs(NS.BankLog().list) do out[#out + 1] = e.n end; return table.concat(out, ",")]])
+    assert(got == "Benannt", name .. ": the named entry only: " .. got)
+end
+-- what Vulo offers a fresh asker leaves the "?" out: Lia lacks nothing from him but the named one she has
+C(LIA, "AmisiaDB.bankLog.list = {}; return true")
+C(VULO, [[table.insert(AmisiaDB.bankLog.list, { k = 1, y = "deposit", n = "Benannt", i = 61001, c = 20, lo = time() - 3600, hi = time(), s = time() }); return true]])
+local q1 = #BUS.sent
+C(LIA, "NS.AskBankShare(true)")
+BUS.tick(60)
+local wire = {}
+for i = q1 + 1, #BUS.sent do
+    local m = BUS.sent[i]
+    if m.kind == "BE" and m.sender == VULO then wire[#wire + 1] = m.text end
+end
+assert(not has(table.concat(wire, "\n"), ":?"), "no \"?\" on the wire: " .. table.concat(wire, "\n"))
+assert(C(LIA, [[for _, e in ipairs(NS.BankLog().list) do if e.n == "?" then return false end end; return #NS.BankLog().list == 1]]),
+    "Lia got the named entry, not the \"?\"")

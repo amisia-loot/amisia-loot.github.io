@@ -29,7 +29,9 @@
 -- Times on the wire are the realm's clock (ns.ServerTime), so two PCs with clocks apart still match; every
 -- client keeps its own clock in AmisiaDB (the difference is added on the way out and taken off on the way in).
 -- Received entries are a read of the sender: BankLog.lua's one-to-one match, the overlap, the narrowing, the cap
--- and bank.logDays hold for them; a new one keeps the sender as r ("gemeldet von" on the Bank page).
+-- and bank.logDays hold for them; a new one keeps the sender as r ("gemeldet von" on the Bank page). An entry
+-- named "?" (a row the client gave without a name, BankLog.lua: a deleted character, or older versions' twins) is never sent,
+-- does not count in the per-day summary, and is left out when received (the rest of the message holds).
 local ADDON, ns = ...
 ns.Load(function()
 local DELTA_CAP = 120         -- entries one read sends to the guild at most (the newest)
@@ -183,13 +185,16 @@ end)
 -- Entries on the wire
 ---------------------------------------------------------------------------
 -- A name on the wire: no control characters or bars, 1-48 bytes (BankLog.lua cuts read names at 48 bytes
--- on a character's boundary).
+-- on a character's boundary); never "?", the name of a row the client gave without one (BankLog.lua: it takes
+-- the name when a later read has it, older versions' twins are dropped).
 local function cleanName(n)
     if type(n) ~= "string" then return nil end
     n = n:gsub("[%c|]", "")
-    if n == "" or #n > 48 then return nil end
+    if n == "" or #n > 48 or n == "?" then return nil end
     return n
 end
+-- Whether an own entry may go to the guild (and counts in the summary of what this client holds).
+local function shareable(e) return e.n ~= "?" end
 
 local function encode(e, base)
     local code = KIND_CODE[e.y]
@@ -204,7 +209,8 @@ local function encode(e, base)
     return ("%d:%s:%s:%s:%s:%s:%s:%s"):format(e.k, code, b36(e.i or 0), b36(e.c or 0), ab, b36(base - hi), b36(hi - lo), name)
 end
 
--- One entry of a BE back as a row on the own clock, or nil when a field is off.
+-- One entry of a BE back as a row on the own clock, or nil when a field is off; false for an entry named "?"
+-- (left out: the rest of the message holds).
 local function decode(text, base)
     local k, code, i, c, ab, age, width, name = text:match("^(%d):(%l):([0-9a-z]+):([0-9a-z]+):(%d*):([0-9a-z]+):([0-9a-z]+):(.+)$")
     k = tonumber(k)
@@ -212,6 +218,7 @@ local function decode(text, base)
     if not k or not y then return nil end
     i, c = num36(i, 0, 9999999), num36(c, 0, 2147483647)
     age, width = num36(age, 0, MAX_AGE), num36(width, 0, MAX_WIDTH)
+    if name == "?" then return false end
     name = cleanName(name)
     if not i or not c or not age or not width or not name then return nil end
     if k == 0 then
@@ -297,7 +304,7 @@ end
 function ns.BankShareRead(list)
     if not ready() or not logOn() or type(list) ~= "table" or #list == 0 then return false end
     local out = {}
-    for _, e in ipairs(list) do if not e.r then out[#out + 1] = e end end
+    for _, e in ipairs(list) do if not e.r and shareable(e) then out[#out + 1] = e end end
     table.sort(out, newestFirst)
     -- the newest DELTA_CAP; the rest reaches the others when they ask after their next login
     for i = #out, DELTA_CAP + 1, -1 do out[i] = nil end
@@ -584,8 +591,8 @@ ns.CommOn("BE", function(sender, f, chan)
     local rows = {}
     for i = 6, #f do
         local e = decode(f[i], base)
-        if not e then return end
-        rows[#rows + 1] = e
+        if e == nil then return end
+        if e then rows[#rows + 1] = e end
     end
     -- the parts of a batch are held under the raw sender while it is checked (the roster may be unreadable for a
     -- while: the lockdown, not loaded yet)
@@ -670,8 +677,12 @@ local function summaryFields(fixed)
     local per, oldest = {}, nil
     for _, e in ipairs(list) do
         local hi = e.hi + d
-        local day = dayOf(hi)
-        per[day] = (per[day] or 0) + 1
+        -- a "?" entry does not count for its day: an officer holding its named twin sends that, which takes
+        -- the "?" entry's place (BankLog.lua)
+        if shareable(e) then
+            local day = dayOf(hi)
+            per[day] = (per[day] or 0) + 1
+        end
         if not oldest or hi < oldest then oldest = hi end
     end
     local first = dayOf(ns.ServerTime())
@@ -721,7 +732,7 @@ local function lacking(theirs)
     local byDay, newer, older = {}, {}, {}
     for _, e in ipairs(ns.BankLog().list) do
         local hi = e.hi + d
-        if hi >= theirs.keep + KEEP_MARGIN then
+        if shareable(e) and hi >= theirs.keep + KEEP_MARGIN then
             local day = dayOf(hi)
             if day > first then
                 newer[#newer + 1] = e

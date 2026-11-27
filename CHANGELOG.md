@@ -5,6 +5,15 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- fix(bank): no more "?" twins in the guild bank log when it is read before the names are known (F-033)
+
+    Opening the guild bank right after logging in could save money and item entries as "? deposits: 5g" next to
+    the same entry with the player's name, so the log showed more entries than the game. A tab whose names are
+    still missing is now read once more a moment later; only rows still without a name after that are kept as "?"
+    (as the game shows "Unknown"), and they take the name when a later visit brings it. Existing "?" entries that
+    have a named twin are removed once when you log in, "?" entries are no longer shared with the guild, and ones
+    received from older versions are ignored.
+
 ## [v2.112.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.112.0) (2026-11-27)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.111.0...v2.112.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

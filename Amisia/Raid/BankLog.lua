@@ -14,8 +14,20 @@
 -- stay two entries, because both are in every read. A match narrows the saved window to the
 -- overlap. Limits: an entry that left the client's short log (the server keeps the newest few per
 -- tab) while an identical one came in within the same hour is taken for the old one; a changed
--- character name or "Unknown" for a deleted one counts as another name; month-old entries read
--- for the first time match with three days of slack.
+-- character name counts as another name; month-old entries read for the first time match with
+-- three days of slack.
+--
+-- Names: on an early read the client may not have the players' names yet (nil or "", the name its
+-- own log shows as UNKNOWN; a deleted character's entries come the same way, the game cannot tell
+-- them apart). A tab with such a row is left out at first and asked once more after a short wait
+-- (RETRY); rows still without a name after that second query are saved as "?" (the game shows
+-- UNKNOWN for them too). When the bank closes before the second query, they are left out (the names
+-- were most likely still loading). A "?" entry and a named one of the same tab, kind, item, count and
+-- move tabs match regardless of the name, both ways (a named row gives a saved "?" its name; a "?"
+-- row matches a saved named entry), so a later read with the name brings no twin. On load a "?"
+-- entry with such a named twin is dropped (the twins older versions saved; one to one, the slack of a
+-- guild read; once per saved log, bankLog.named); a "?" without one stays. "?" entries never go to
+-- the guild (BankShare.lua).
 --
 -- Kept: entries younger than bank.logDays (90 by default), at most 1000 (the oldest go first).
 local ADDON, ns = ...
@@ -27,10 +39,16 @@ local HOUR, DAY = 3600, 86400
 local SLACK = 60              -- seconds of clock slack when two windows are compared
 local FUZZ = 3 * DAY          -- either way, for entries older than a month
 local WAIT = 3                -- seconds a tab's log may take to answer
+local RETRY = 1.5             -- seconds before a tab with rows lacking a name is asked once more
+local NONAME = "?"            -- the name older versions saved for a row the client gave without one
+local TWIN_SLACK = 120        -- seconds two windows may miss each other when a "?" entry meets its named twin
 local MONEY = 0               -- the money log's tab in the saved entries
 
 local DB
-local reading                 -- { queue = { tabs }, cur, token, readAt, added, new = { the new entries } }
+-- { queue = { tabs }, cur, readAt, added, new = { the new entries }, retried = { [tab] = true } (to be asked once
+-- more for rows without a name), pause (the tab waiting for that second query), again = { [tab] = true } (the
+-- second query went: rows still without a name are kept as "?") }
+local reading
 local openNow = false
 local token = 0
 
@@ -45,13 +63,15 @@ local function log()
 end
 
 -- { list = { entry }, tabs = { [tab] = name }, at = last read, by = who read, got = { by, at } the last
--- entries heard from the guild (BankShare.lua) }. An entry: { k = tab (0 money), y = kind, n = name,
+-- entries heard from the guild (BankShare.lua), named = true once the "?" twins of older versions are
+-- dropped }. An entry: { k = tab (0 money), y = kind, n = name,
 -- i = itemID (0 money), c = count or copper, a, b = the tabs of a move, lo, hi = the time window,
 -- s = when it was first saved, r = who reported it when it came from the guild (nil: an own read) }.
 function ns.BankLog() return log() end
 
-local function sig(e)
-    return table.concat({ e.k, e.y, (e.n or "?"):lower(), e.i or 0, e.c or 0, e.a or 0, e.b or 0 }, "\a")
+-- The fields an entry is matched by; loose: without the name (a "?" entry meets its named twin).
+local function sig(e, loose)
+    return table.concat({ e.k, e.y, loose and "" or (e.n or NONAME):lower(), e.i or 0, e.c or 0, e.a or 0, e.b or 0 }, "\a")
 end
 
 local function valid(e)
@@ -85,14 +105,60 @@ local function prune()
     DB.bankLog.list = keep
 end
 
+-- A "?" entry (saved by an older version from a row read before the client had the name) whose named
+-- twin is saved too: the same tab, kind, item, count and move tabs, the windows overlapping (TWIN_SLACK).
+-- One "?" per named entry; the named one keeps the overlap. A "?" without a twin stays. Run once per saved
+-- log (bankLog.named).
+local function dropNamelessTwins()
+    local named, loose = {}, false
+    for _, e in ipairs(DB.bankLog.list) do
+        if e.n == NONAME then
+            loose = true
+        else
+            local k = sig(e, true)
+            named[k] = named[k] or {}
+            table.insert(named[k], e)
+        end
+    end
+    if not loose then return end
+    local used, keep = {}, {}
+    for _, e in ipairs(DB.bankLog.list) do
+        local twin
+        if e.n == NONAME then
+            local bestOver
+            for _, o in ipairs(named[sig(e, true)] or {}) do
+                if not used[o] then
+                    local over = math.min(o.hi, e.hi) - math.max(o.lo, e.lo)
+                    if over >= -TWIN_SLACK and (not twin or over > bestOver) then twin, bestOver = o, over end
+                end
+            end
+        end
+        if twin then
+            used[twin] = true
+            local nlo, nhi = math.max(twin.lo, e.lo), math.min(twin.hi, e.hi)
+            if nlo <= nhi then twin.lo, twin.hi = nlo, nhi end
+        else
+            keep[#keep + 1] = e
+        end
+    end
+    DB.bankLog.list = keep
+end
+
 function ns.BankLogLoaded(root)
     DB = root
     local b = type(root.bankLog) == "table" and root.bankLog or {}
     local got = type(b.got) == "table" and type(b.got.by) == "string" and tonumber(b.got.at)
         and { by = b.got.by, at = tonumber(b.got.at) } or nil
     root.bankLog = { list = type(b.list) == "table" and b.list or {}, tabs = type(b.tabs) == "table" and b.tabs or {},
-                     at = tonumber(b.at), by = type(b.by) == "string" and b.by or nil, got = got }
+                     at = tonumber(b.at), by = type(b.by) == "string" and b.by or nil, got = got,
+                     named = b.named == true or nil }
     prune()
+    -- once: since this version a "?" entry and its named twin match in the merge (no new twins), and a named
+    -- entry that took one twin must not take another on the next load
+    if not root.bankLog.named then
+        dropNamelessTwins()
+        root.bankLog.named = true
+    end
 end
 
 ns.OnEvent("ADDON_LOADED", function(name)
@@ -106,11 +172,30 @@ end)
 -- on the new entries as r. Returns the new entries that are still kept after prune() (bank.logDays and
 -- the cap of 1000): an entry pruned at once is no new entry (BankShare.lua's rounds stop on none).
 local function mergeWindows(rows, at, slack, by)
-    local bySig = {}
+    -- bySig: the saved entries by their fields; nameless: the "?" entries by their fields without the name;
+    -- loose: all entries by their fields without the name (for a "?" row)
+    local bySig, nameless, loose = {}, {}, {}
     for _, e in ipairs(DB.bankLog.list) do
         local k = sig(e)
         bySig[k] = bySig[k] or {}
         table.insert(bySig[k], e)
+        k = sig(e, true)
+        loose[k] = loose[k] or {}
+        table.insert(loose[k], e)
+        if e.n == NONAME then
+            nameless[k] = nameless[k] or {}
+            table.insert(nameless[k], e)
+        end
+    end
+    local function closest(list, lo, hi, used)
+        local best, bestOver
+        for _, old in ipairs(list or {}) do
+            if not used[old] then
+                local over = math.min(old.hi, hi) - math.max(old.lo, lo)
+                if over >= -slack and (not best or over > bestOver) then best, bestOver = old, over end
+            end
+        end
+        return best
     end
     local used, added, limit = {}, {}, keepFrom()
     for _, r in ipairs(rows) do
@@ -118,12 +203,14 @@ local function mergeWindows(rows, at, slack, by)
         -- older than bank.logDays: prune would drop it at once (and it would count as new every time)
         if hi >= limit then
             local e = { k = r.k, y = r.y, n = r.n, i = r.i or 0, c = r.c or 0, a = r.a, b = r.b }
-            local best, bestOver
-            for _, old in ipairs(bySig[sig(e)] or {}) do
-                if not used[old] then
-                    local over = math.min(old.hi, hi) - math.max(old.lo, lo)
-                    if over >= -slack and (not best or over > bestOver) then best, bestOver = old, over end
-                end
+            local best = closest(bySig[sig(e)], lo, hi, used)
+            if not best and e.n ~= NONAME then
+                -- a saved "?" entry: the named row gives it its name
+                best = closest(nameless[sig(e, true)], lo, hi, used)
+                if best then best.n = e.n end
+            elseif not best then
+                -- a "?" row (no name even after the second query): a saved named entry is the same one
+                best = closest(loose[sig(e, true)], lo, hi, used)
             end
             if best then
                 used[best] = true
@@ -196,11 +283,14 @@ local function cutUtf8(s, max)
     return s
 end
 
+-- A name as the client gives it, or nil when it gives none yet (nil, "", secret, its UNKNOWNOBJECT or
+-- UNKNOWN: the names arrive a moment after the log; a deleted character's entries look the same).
 local function cleanName(n)
     n = plain(n)
-    if type(n) ~= "string" or n == "" then return "?" end
+    if type(n) ~= "string" then return nil end
     n = cutUtf8((n:gsub("[%c|]", "")), 48)
-    return n ~= "" and n or "?"
+    if n == "" or n == NONAME or n == _G.UNKNOWNOBJECT or n == _G.UNKNOWN then return nil end
+    return n
 end
 local function cleanKind(y)
     y = plain(y)
@@ -213,27 +303,32 @@ local function agoHours(y, m, d, h)
     return ((y * 365 + m * 30 + d) * 24 + h), (y > 0 or m > 0)
 end
 
--- The rows of one tab's log (or the money log) as the client has them now.
-local function readTab(tab)
-    local rows = {}
+-- The rows of one tab's log (or the money log) as the client has them now, and how many rows came
+-- without a name: left out, or kept as "?" with keepNameless (after the second query).
+local function readTab(tab, keepNameless)
+    local rows, nameless = {}, 0
     if tab == moneyTab() then
         local num, get = api("GetNumGuildBankMoneyTransactions"), api("GetGuildBankMoneyTransaction")
-        if not num or not get then return rows end
+        if not num or not get then return rows, 0 end
         local ok, n = pcall(num)
         n = ok and tonumber(plain(n)) or 0
         for i = 1, math.min(n, 100) do
             local okRow, kind, name, amount, y, m, d, h = pcall(get, i)
             kind = okRow and cleanKind(kind)
-            if kind then
+            name = kind and (cleanName(name) or (keepNameless and NONAME))
+            if kind and name == NONAME then nameless = nameless + 1 end
+            if kind and not name then
+                nameless = nameless + 1
+            elseif kind then
                 local ago, fuzzy = agoHours(y, m, d, h)
-                rows[#rows + 1] = { k = MONEY, y = kind, n = cleanName(name), i = 0, c = math.max(0, math.floor(tonumber(plain(amount)) or 0)),
+                rows[#rows + 1] = { k = MONEY, y = kind, n = name, i = 0, c = math.max(0, math.floor(tonumber(plain(amount)) or 0)),
                                     ago = ago, fuzzy = fuzzy }
             end
         end
-        return rows
+        return rows, nameless
     end
     local num, get = api("GetNumGuildBankTransactions"), api("GetGuildBankTransaction")
-    if not num or not get then return rows end
+    if not num or not get then return rows, 0 end
     local ok, n = pcall(num, tab)
     n = ok and tonumber(plain(n)) or 0
     for i = 1, math.min(n, 100) do
@@ -241,16 +336,20 @@ local function readTab(tab)
         kind = okRow and cleanKind(kind)
         link = plain(link)
         local id = type(link) == "string" and tonumber(link:match("item:(%d+)")) or nil
-        if kind and id then
+        name = kind and id and (cleanName(name) or (keepNameless and NONAME))
+        if kind and id and name == NONAME then nameless = nameless + 1 end
+        if kind and id and not name then
+            nameless = nameless + 1
+        elseif kind and id then
             if ns.RememberItem then ns.RememberItem(id, link, ns.LinkQuality and ns.LinkQuality(link)) end
             local ago, fuzzy = agoHours(y, m, d, h)
-            local e = { k = tab, y = kind, n = cleanName(name), i = id, c = math.max(1, math.floor(tonumber(plain(cnt)) or 1)),
+            local e = { k = tab, y = kind, n = name, i = id, c = math.max(1, math.floor(tonumber(plain(cnt)) or 1)),
                         ago = ago, fuzzy = fuzzy }
             if kind == "move" then e.a, e.b = tonumber(plain(t1)), tonumber(plain(t2)) end
             rows[#rows + 1] = e
         end
     end
-    return rows
+    return rows, nameless
 end
 
 local function finish()
@@ -270,13 +369,28 @@ local function finish()
     if ns.Refresh then ns.Refresh() end
 end
 
-local nextTab
+local nextTab, query
 
--- The current tab answered (or the wait is over): read it, then ask for the next one.
+-- The current tab answered (or the wait is over): read it, then ask for the next one. Rows without a
+-- name: the tab is asked once more after RETRY (the bank still open); after that second query they are
+-- kept as "?"; when the bank closed before it, they are left out.
 local function readCurrent()
     local r = reading
-    if not r or not r.cur then return end
-    local ok, rows = pcall(readTab, r.cur)
+    if not r or not r.cur or r.pause then return end
+    local ok, rows, nameless = pcall(readTab, r.cur, r.again[r.cur])
+    if ok and nameless and nameless > 0 and openNow and not r.retried[r.cur] then
+        local tab = r.cur
+        r.retried[tab], r.pause = true, tab
+        token = token + 1
+        local mine = token
+        C_Timer.After(RETRY, function()
+            if reading == r and r.cur == tab and r.pause == tab and token == mine then
+                r.pause, r.again[tab] = nil, true
+                query(r, tab)
+            end
+        end)
+        return
+    end
     if ok then
         local n, new = ns.MergeBankLog(rows, now())
         r.added = r.added + n
@@ -288,6 +402,16 @@ local function readCurrent()
     nextTab()
 end
 
+-- Asks for one tab's log; its answer (GUILDBANKLOG_UPDATE) or the end of WAIT reads it.
+query = function(r, tab)
+    token = token + 1
+    local mine = token
+    pcall(QueryGuildBankLog, tab)
+    C_Timer.After(WAIT, function()
+        if reading == r and r.cur == tab and token == mine then readCurrent() end
+    end)
+end
+
 nextTab = function()
     local r = reading
     if not r then return end
@@ -295,12 +419,7 @@ nextTab = function()
     local tab = table.remove(r.queue, 1)
     if not tab then return finish() end
     r.cur = tab
-    token = token + 1
-    local mine = token
-    pcall(QueryGuildBankLog, tab)
-    C_Timer.After(WAIT, function()
-        if reading == r and r.cur == tab and token == mine then readCurrent() end
-    end)
+    query(r, tab)
 end
 
 local function start()
@@ -319,7 +438,7 @@ local function start()
     end
     -- the money log needs no tab of its own
     queue[#queue + 1] = moneyTab()
-    reading = { queue = queue, readAt = now(), added = 0, new = {} }
+    reading = { queue = queue, readAt = now(), added = 0, new = {}, retried = {}, again = {} }
     nextTab()
 end
 
@@ -335,6 +454,7 @@ local function closed()
     if reading then
         -- what came in so far is kept; the rest waits for the next visit
         reading.queue = {}
+        reading.pause = nil
         if reading.cur then readCurrent() else finish() end
     end
 end

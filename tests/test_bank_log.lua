@@ -189,3 +189,150 @@ for i = 1, 1100 do many[i] = row("Masse" .. i, 61001, 1, 0) end
 NS.MergeBankLog(many, STUB.now)
 assert(#NS.BankLog().list == 1000, "capped: " .. #NS.BankLog().list)
 NS.Reset("bank.logDays")
+
+---------------------------------------------------------------------------
+-- names the client does not have yet: the tab is asked once more, rows still without a name wait
+---------------------------------------------------------------------------
+AmisiaDB.bankLog = nil
+NS.BankLogLoaded(AmisiaDB)
+STUB.gbTabs = { { "Mats", true } }
+STUB.gblog = { {
+    { "deposit", nil, ore, 20, nil, nil, 0, 0, 0, 2 },
+    { "deposit", "Fraktur", cloth, 3, nil, nil, 0, 0, 0, 4 },
+} }
+-- the client's word for a name it does not know (GlobalStrings) counts as none
+UNKNOWNOBJECT = UNKNOWNOBJECT or "Unbekannt"
+STUB.gbmoney = { { "deposit", "", 50000, 0, 0, 1, 15 }, { "deposit", UNKNOWNOBJECT, 2, 0, 0, 10, 0 } }
+local function step(s) STUB.tick(s) end
+STUB.logQueries = {}
+STUB.fire("GUILDBANKFRAME_OPENED")
+step(0.6)
+assert(table.concat(STUB.logQueries, ",") == "1", table.concat(STUB.logQueries, ","))
+STUB.fire("GUILDBANKLOG_UPDATE")
+step(0.2)
+assert(#NS.BankLog().list == 0, "a tab with a nameless row waits for a second query")
+-- the client's answers to the first query still coming in change nothing while it waits
+STUB.fire("GUILDBANKLOG_UPDATE")
+step(0.3)
+assert(#NS.BankLog().list == 0 and #STUB.logQueries == 1)
+-- the names arrive; the tab is asked once more
+STUB.gblog[1][1][2] = "Abunazir Jr"
+step(1.3)
+assert(table.concat(STUB.logQueries, ",") == "1,1", "asked once more: " .. table.concat(STUB.logQueries, ","))
+STUB.fire("GUILDBANKLOG_UPDATE")
+step(0.2)
+assert(#NS.BankLog().list == 2, "both item rows, with names: " .. #NS.BankLog().list)
+-- the money log: its names stay missing after the second query, those rows are kept as "?" (as the game shows
+-- UNKNOWN for them: a deleted character)
+assert(table.concat(STUB.logQueries, ",") == "1,1,9", table.concat(STUB.logQueries, ","))
+STUB.fire("GUILDBANKLOG_UPDATE")
+step(0.2)
+step(1.5)
+assert(table.concat(STUB.logQueries, ",") == "1,1,9,9", "the money log once more: " .. table.concat(STUB.logQueries, ","))
+STUB.fire("GUILDBANKLOG_UPDATE")
+step(0.2)
+step(5)
+STUB.fire("GUILDBANKFRAME_CLOSED")
+assert(#STUB.logQueries == 4, "once more only, never a third time: " .. #STUB.logQueries)
+local unnamed = 0
+for _, e in ipairs(NS.BankLog().list) do
+    assert(e.n ~= UNKNOWNOBJECT and e.n ~= "", "the client's word is no name: " .. e.n)
+    if e.n == "?" then unnamed = unnamed + 1; assert(e.k == 0, "only the money rows") end
+end
+assert(#NS.BankLog().list == 4 and unnamed == 2, "after the second query, the nameless rows as \"?\": " .. #NS.BankLog().list)
+-- the next visit (an hour later) has the names: the "?" entries take them; nothing doubled
+STUB.now = STUB.now + 3600
+STUB.gblog[1][1][10], STUB.gblog[1][2][10] = 3, 5
+STUB.gbmoney = { { "deposit", "Abunazir Jr", 50000, 0, 0, 1, 16 }, { "deposit", "Fraktur Winterkirsch", 2, 0, 0, 10, 1 } }
+openBank()
+assert(#NS.BankLog().list == 4, "still four entries: " .. #NS.BankLog().list)
+local money2 = {}
+for _, e in ipairs(NS.BankLog().list) do if e.k == 0 then money2[#money2 + 1] = e.n end end
+table.sort(money2)
+assert(table.concat(money2, ",") == "Abunazir Jr,Fraktur Winterkirsch", "renamed: " .. table.concat(money2, ","))
+-- and a visit where the name is missing again even after the second query: the "?" row is the named entry
+STUB.now = STUB.now + 60
+STUB.gbmoney[1][2] = nil
+openBank()
+assert(table.concat(STUB.logQueries, ",") == "1,9,9", "the money log asked twice: " .. table.concat(STUB.logQueries, ","))
+assert(#NS.BankLog().list == 4, "a \"?\" row matches the named entry: " .. #NS.BankLog().list)
+for _, e in ipairs(NS.BankLog().list) do assert(e.n ~= "?", "the named entry keeps its name") end
+-- the bank closed while a tab waits for its second query: the named rows are kept, the nameless left out (the
+-- names were loading), no second query
+AmisiaDB.bankLog = nil
+NS.BankLogLoaded(AmisiaDB)
+STUB.gblog = { { { "deposit", nil, ore, 1, nil, nil, 0, 0, 0, 0 }, { "deposit", "Kimtaro", ore, 2, nil, nil, 0, 0, 0, 0 } } }
+STUB.gbmoney = {}
+STUB.logQueries = {}
+STUB.fire("GUILDBANKFRAME_OPENED")
+step(0.6)
+STUB.fire("GUILDBANKLOG_UPDATE")
+step(0.2)
+STUB.fire("GUILDBANKFRAME_CLOSED")
+step(5)
+assert(#STUB.logQueries == 1 and #NS.BankLog().list == 1 and NS.BankLog().list[1].n == "Kimtaro",
+    "closed while waiting: the named row kept, no second query: " .. #STUB.logQueries .. " " .. #NS.BankLog().list)
+
+---------------------------------------------------------------------------
+-- "?" entries of older versions: a named read gives them the name; on load their named twins replace them
+---------------------------------------------------------------------------
+AmisiaDB.bankLog = nil
+NS.BankLogLoaded(AmisiaDB)
+local R = math.floor(STUB.now)
+table.insert(NS.BankLog().list, { k = 0, y = "deposit", n = "?", i = 0, c = 50000, lo = R - 40 * 3600, hi = R - 39 * 3600, s = R - 86400 })
+assert(NS.MergeBankLog({ { k = 0, y = "deposit", n = "Abunazir Jr", i = 0, c = 50000, ago = 39 } }, R + 1800) == 0,
+    "a named read matches the \"?\" entry")
+local only = NS.BankLog().list
+assert(#only == 1 and only[1].n == "Abunazir Jr", "it takes the name: " .. only[1].n)
+assert(only[1].lo == R + 1800 - 40 * 3600 and only[1].hi == R - 39 * 3600, ("and the window narrows to the overlap: %d %d"):format(only[1].lo - R, only[1].hi - R))
+-- a named entry of the same name still comes first; a second "?" row stays matched one to one
+table.insert(NS.BankLog().list, { k = 0, y = "deposit", n = "?", i = 0, c = 50000, lo = R - 40 * 3600, hi = R - 39 * 3600, s = R })
+assert(NS.MergeBankLog({ { k = 0, y = "deposit", n = "Abunazir Jr", i = 0, c = 50000, ago = 39 },
+                         { k = 0, y = "deposit", n = "Chorf", i = 0, c = 50000, ago = 39 } }, R) == 0, "two rows, two entries")
+local names = {}
+for _, e in ipairs(NS.BankLog().list) do names[#names + 1] = e.n end
+table.sort(names)
+assert(table.concat(names, ",") == "Abunazir Jr,Chorf", table.concat(names, ","))
+
+-- the screenshot of 2026-11-27 (read at 13:28): the money log with seven entries, Amisia had nine
+AmisiaDB.bankLog = nil
+NS.BankLogLoaded(AmisiaDB)
+local H = 3600
+local function ent(n, c, hi, w, y) return { k = 0, y = y or "deposit", n = n, i = 0, c = c, lo = hi - (w or H), hi = hi, s = R } end
+local saved = {
+    ent("Vuloo", 30000, R - 14 * H - 46 * 60),        -- "vor 14 Stunden": 26.11. 22:42
+    ent("Abunazir Jr", 50000, R - 39 * H),             -- "vor 1 Tag": 25.11. 22:28
+    ent("?", 50000, R - 38 * H - 60),                  -- its twin from the nameless read: 25.11. 23:27
+    ent("Chorf", 50000, R - 41 * H - 46 * 60),         -- "vor 1 Tag": 25.11. 19:42
+    ent("Anna", 7, R - 145 * H - 46 * 60),             -- "vor 6 Tagen": 21.11. 11:42
+    ent("Anna", 8, R - 161 * H - 1 * 60),              -- 20.11. 20:27
+    ent("Kimtaro", 9, R - 205 * H - 9 * 60),           -- "vor 8 Tagen": 19.11. 00:19
+    ent("Fraktur Winterkirsch", 2, R - 258 * H - 9 * 60), -- "vor 10 Tagen": 16.11. 19:19
+    ent("?", 2, R - 258 * H - 3 * 60),                 -- its twin: 16.11. 19:25
+    -- a month old on both sides: the six-day windows overlap
+    ent("Lia", 4, R - 40 * 24 * H, 6 * 24 * H + H, "repair"),
+    ent("?", 4, R - 38 * 24 * H, 6 * 24 * H + H, "repair"),
+    -- no named twin (another amount, or another tab): stays
+    ent("?", 10000, R - 30 * H, H, "withdraw"),
+    { k = 1, y = "deposit", n = "?", i = 61001, c = 2, lo = R - 260 * H, hi = R - 258 * H, s = R },
+    -- two "?" of one amount and one named entry: one goes, one stays (one to one)
+    ent("Vuloo", 77, R - 50 * H),
+    ent("?", 77, R - 50 * H + 600),
+    ent("?", 77, R - 50 * H + 1200),
+}
+AmisiaDB.bankLog = { list = saved, tabs = {} }
+NS.BankLogLoaded(AmisiaDB)
+local left = {}
+for _, e in ipairs(NS.BankLog().list) do left[#left + 1] = e.n .. ":" .. e.c end
+table.sort(left)
+assert(#NS.BankLog().list == 12, "the twins are gone: " .. table.concat(left, ","))
+local q2 = 0
+for _, e in ipairs(NS.BankLog().list) do
+    if e.n == "?" then q2 = q2 + 1; assert(e.c == 10000 or e.c == 2 or e.c == 77, "kept: " .. e.c) end
+    if e.n == "Abunazir Jr" then assert(e.hi == R - 39 * H and e.lo == R - 39 * H - 60, "the overlap: " .. (e.hi - e.lo)) end
+end
+assert(q2 == 3, "the \"?\" without a named twin stay: " .. q2)
+-- once per saved log: Vuloo's 77 took one twin, the next load does not take the other
+assert(AmisiaDB.bankLog.named == true)
+NS.BankLogLoaded(AmisiaDB)
+assert(#NS.BankLog().list == 12, "loading again changes nothing: " .. #NS.BankLog().list)

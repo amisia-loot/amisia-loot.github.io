@@ -5179,3 +5179,16 @@ auseinander (Comms 20480 Bytes in 60 s je Absender beim Empfänger mit Rand). Vo
 Angebot älter als 4 Minuten ist, fragt der Client die Gilde noch einmal (statt die Annahmefrist beim Offizier zu
 verlängern: die Frist bleibt an ein frisches Angebot gebunden). Die Frage nach einer Sperre wartet 5 s und bis zu 30 s
 nach dem Namen verteilt, nur in einer Gilde.
+
+Nachtrag 4 2026-11-27 (Namen beim frühen Lesen, BankLog): Liest Amisia das Protokoll, bevor der Client die Namen hat,
+kommt der Name als nil oder "" (das Spiel selbst zeigt dafür UNKNOWN; die Einträge gelöschter Charaktere kommen genauso,
+unterscheidbar sind sie nicht). Bisher wurde daraus "?", das spätere Lesen mit Namen passte nicht dazu, und beide
+blieben (Meldung 2026-11-27: 9 statt 7 Goldeinträge). Jetzt: ein Tab mit einer namenlosen Zeile wird nach 1,5 s noch
+einmal abgefragt (einmal); was danach noch keinen Namen hat, wird als "?" gespeichert (das Spiel zeigt dafür
+UNKNOWN, etwa bei gelöschten Charakteren); schließt die Bank vor der zweiten Abfrage, fehlen die namenlosen Zeilen in
+diesem Lesen (die Namen luden wohl noch). Ein "?"-Eintrag und ein benannter mit gleichem Tab, Art, Gegenstand, Anzahl
+und Verschiebe-Tabs passen unabhängig vom Namen zueinander, in beide Richtungen (der benannte gibt dem "?" seinen
+Namen), so entsteht kein Zwilling mehr; beim Laden fällt ein "?"-Eintrag mit benanntem Zwilling (eins zu eins,
+120 s Spielraum) einmal je gespeichertem Protokoll weg (`bankLog.named`), einer ohne Zwilling bleibt. "?"-Einträge
+gehen nie an die Gilde (`BE`), empfangene "?"-Einträge fallen weg (der Rest der Nachricht bleibt) und zählen nicht in
+der Tagesübersicht von `BQ`. Folge: Einträge gelöschter Charaktere bleiben als "?" (nur lokal, nicht geteilt).
