@@ -804,7 +804,8 @@ LY._loadSeen = loadSeen   -- for the tests: a /reload
 -- Two sections (D-166): what Amisia does for others and for you ("Layer: Helfen"), and what stands on the
 -- screen ("Layer: Anzeige"); the keys stay layer.*.
 ns.RegisterSettings{ key = "layer", label = L["Layer: Helfen"], order = 65, group = "guild", forever = true, items = {
-    { key = "layer.answer", type = "toggle", label = L["Layer-Anfragen der Gilde beantworten"], default = true,
+    -- D-172: off by default; only with it on does a login turn "Helfen" on
+    { key = "layer.answer", type = "toggle", label = L["Layer-Anfragen der Gilde beantworten"], default = false,
       tip = L["Fragt ein Gildenmitglied mit Amisia nach einem anderen Layer und bist du in derselben Zone auf einem anderen, sagt dein Amisia ihm leise deinen Layer. Nichts geht in den Chat."] },
     { key = "layer.chat", type = "toggle", label = L["Auch auf Chat-Anfragen aus der Gilde reagieren"], default = true,
       tip = L["Schreibt ein Gildenmitglied eine kurze Bitte wie \"inv layer\" in den Gildenchat oder flüstert sie dir (so fragen andere Layer-Addons), behandelt Amisia sie wie eine Bitte aus Amisia: dieselbe Frage oder Einladung, dieselben Grenzen. Nur wenn die Gildenliste dieselbe Zone nennt, lädt Amisia ohne Frage ein. Öffentliche Kanäle liest Amisia nur mit \"Auch Spielern außerhalb der Gilde helfen\"."] },
@@ -840,8 +841,8 @@ ns.RegisterSettings{ key = "layer", label = L["Layer: Helfen"], order = 65, grou
 ns.RegisterSettings{ key = "layerview", label = L["Layer: Anzeige"], order = 66, group = "guild", forever = true, items = {
     { key = "layer.chip", type = "toggle", label = L["Layer-Chip zeigen"], default = false,
       tip = L["Ein kleiner Kasten mit deinem Layer (\"Layer B\") bleibt auf dem Bildschirm; ziehen verschiebt ihn, ein Klick öffnet das Fenster Layer. Nicht in Instanzen."] },
-    -- F-221: the bar of its own, from the start
-    { key = "layer.bar", type = "toggle", label = L["Leiste zeigen"], default = true,
+    -- F-221: the bar of its own; D-172: off by default
+    { key = "layer.bar", type = "toggle", label = L["Leiste zeigen"], default = false,
       tip = L["Eine kleine Leiste mit deinem Layer und darunter dem Stand (Helfen, Frage, Neustart) bleibt auf dem Bildschirm, auch ohne das Fenster. Klick: das Fenster Layer. Rechtsklick auf das Symbol: die Layer der Zone. Rechtsklick sonst: ausblenden."] },
     { key = "layer.barOneLine", type = "toggle", label = L["Leiste in einer Zeile"], default = false,
       tip = L["Die Leiste Layer zeigt Layer und Stand nebeneinander, flacher."] },

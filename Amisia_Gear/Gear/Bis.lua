@@ -392,7 +392,8 @@ function ns.BisFor(class, spec, level, opts)
     local o = {
         class = class, spec = spec or (Gear.Specs(class)[1] or {}).key, kind = opts.kind or ns.Get("bis.kind") or "Speedrun",   -- l10n-ok: setting key
         faction = opts.faction, level = math.max(1, math.min(tonumber(level) or 1, Gear.Cap())),
-        sources = opts.sources or sourceState(), prof = "all", plan = opts.plan or "auto", exclude = opts.exclude,
+        sources = opts.sources or sourceState(), prof = opts.prof or "all", skills = opts.skills, plan = opts.plan or "auto",
+        exclude = opts.exclude,
     }
     scoringOpts(o)
     if opts.tie ~= nil then o.tie = opts.tie end
@@ -880,6 +881,66 @@ function ns.BisSetPick(slotKey, item)
     t[slotKey] = id
     ns.Fire("BIS_CHANGED", "pick")
     return true
+end
+
+-- Whether item id may be the own pick of a row for the spec in use (F-239): what ns.BisSetPick checks, at the own
+-- level (a pick the character cannot wear yet would go unused, ownPicks), and the weapon plan as ownPicks applies
+-- it; mh: the group of the weapon hand's item beside it (a two-hander leaves no shield hand). true, or nil and the
+-- reason (German).
+function ns.BisCanPick(slotKey, id, mh)
+    local _, class = UnitClass("player")
+    local ok, why = pickFits(slotKey, id, { class = class, spec = ns.BisSpec(),
+        level = math.max(1, math.min(tonumber(UnitLevel("player")) or 1, Gear.Cap())) })
+    if not ok then return nil, why end
+    local c = ns.BisChar()
+    local plan = c and c.plan or "auto"
+    local g = ns.BisGroup(id)
+    local notPlan = L["Passt nicht zum Waffenplan"]
+    if slotKey == "MAINHAND" and ((g == "2H" and plan ~= "auto" and plan ~= "2H") or (g ~= "2H" and plan == "2H")) then
+        return nil, notPlan
+    end
+    if slotKey == "OFFHAND" then
+        local weapon = g == "1H" or g == "OHW"
+        if plan == "2H" or mh == "2H" or (weapon and plan == "SHIELD") or (not weapon and plan == "DW") then return nil, notPlan end
+    end
+    return true
+end
+
+-- Sets several own picks of the spec in use at once (F-239, the planner's templates): map { [slotKey] = id }.
+-- replace: the rows the map leaves out lose their pick too; else only rows without a pick take one. Every item
+-- is checked by ns.BisCanPick; the same ring or trinket twice only once (as ns.BisSetPick). Nothing changes when
+-- nothing fits (then no BIS_CHANGED). Returns the count set and { { slot, id, why } } of the refused, or nil and
+-- the reason.
+function ns.BisSetPicks(map, replace, level)
+    local c = ns.BisChar()
+    if not c then return nil, L["Amisia ist noch nicht geladen."] end
+    local spec = ns.BisSpec()
+    if not spec then return nil, L["Keine Gewichtung."] end
+    local old = type(c.pick) == "table" and type(c.pick[spec]) == "table" and c.pick[spec] or {}
+    local t = {}
+    if not replace then for k, v in pairs(old) do t[k] = v end end
+    local n, refused = 0, {}
+    local mh = map.MAINHAND and ns.BisGroup(map.MAINHAND)
+    for _, sl in ipairs(Gear.SLOTS) do
+        local id = map[sl.key]
+        if id and (replace or t[sl.key] == nil) then
+            local twin = PICK_TWIN[sl.key]
+            local ok, why = ns.BisCanPick(sl.key, id, sl.key == "OFFHAND" and mh or nil)
+            if ok and twin and t[twin] == id then ok, why = nil, L["Steht schon im anderen Platz."] end
+            if ok then
+                t[sl.key] = id
+                n = n + 1
+            else
+                refused[#refused + 1] = { slot = sl.key, id = id, why = why }
+            end
+        end
+    end
+    if n == 0 then return 0, refused end
+    c.pick = type(c.pick) == "table" and c.pick or {}
+    c.pick[spec] = next(t) and t or nil
+    if not next(c.pick) then c.pick = nil end
+    ns.Fire("BIS_CHANGED", "pick")
+    return n, refused
 end
 
 -- The ids of the own picks the options use, as a set (empty without).

@@ -1926,7 +1926,8 @@ eine neue erste Seite "Ausrüstungsplaner" (`UI/Pages/Planner.lua`, Schlüssel `
     (`Gear/Enchants.lua`, `E.Icon`); ein Klick listet die passenden Verzauberungen als Menü (ein Klick darin setzt das
     Kartenziel wie im Fenster). Ohne Item oder ohne passende Verzauberung kein Quadrat. Geplante Verzauberungen
     speichert Amisia nicht;
-  - unten rechts "Zurücksetzen": nach einer Frage (`W.Confirm`) alle eigenen Wahlen der Spezialisierung weg.
+  - unten rechts "Zurücksetzen": nach einer Frage (`W.Confirm`) alle eigenen Wahlen der Spezialisierung weg. Seit
+    F-239 (D-173) steht dort der rote Knopf "Vorlagen"; "Zurücksetzen" ist der letzte Punkt seines Menüs.
 - **Rechts** in der Kopfzeile die Reiter "Vorschläge | Wunschliste", das Warnzeichen des Clients nur, solange eine
   eigene Wahl nicht genutzt wird (Waffenplan, tragbar; Tooltip nennt die Plätze, ein Klick wählt den ersten) und das
   Suchfeld über alle Items (`ns.Catalog.Search`). Darunter der Name des gewählten Platzes, die Stufen "[von] - [bis]" und
@@ -2041,7 +2042,7 @@ entfällt; alles davon steht auf der Seite Ausrüstungsplaner (D-77) im Hauptfen
   Quadrats neben dem Platz mit ihrem Zuwachs; "Dungeon-Drops nahe deiner Stufe" entfallen als eigener Block (Dungeon-Items
   tragen in den Vorschlägen das Dungeon-Symbol und "Dungeon - Boss"); das Feld "Item-Link oder ID" ist das Suchfeld (auch
   Shift-Klick auf einen Link).
-- **Unter dem Modell:** "Ziele | Angelegt" (`settings.bis.planWorn`) und die Wertung "Wertung N · +N" über ihrem Balken; der
+- **Unter dem Modell:** "Ziele | Angelegt | Wunsch" (`settings.bis.planDoll`, bis 2.112.0 `planWorn`; "Wunsch" seit 2026-11-27: je Platz der erste Wunsch nach Priorität, dann der neueste, sonst das Angelegte; der Klick öffnet rechts die Wunschliste, nach Ort gruppiert (Raid/Dungeon, Beruf, Zone), der Ort mit den meisten offenen Wünschen zuerst, jeder Wunsch unter dem ersten seiner Orte, damit man sieht, wo sich ein Lauf lohnt) und die Wertung "Wertung N · +N" über ihrem Balken; der
   Tooltip nennt jetzt, "Bestes auf Stufe N" und die sechs größten Wertänderungen.
 - **Kopf:** Waffenplan, Spielstil und "Warum?" stecken in "Optionen" (Menü und Tooltip), weil die Breite neben den drei Reitern
   und dem Suchfeld nicht reicht.
@@ -2053,7 +2054,7 @@ entfällt; alles davon steht auf der Seite Ausrüstungsplaner (D-77) im Hauptfen
   eine Seite umzubauen wäre ein eigener Schritt: 820 × 640 mit eigener Spaltenansicht); sie öffnet über "Tabelle" auf der Seite
   Ausrüstung und `/amisia gear`, ihre Zeile in der Leiste fällt weg.
 - **Gespeichert:** `settings.goalWindow` und `ui.goalScale` fallen weg (Schritt 3 von `Core/Migrate.lua`); neu
-  `settings.bis.planFilter` und `planWorn`.
+  `settings.bis.planFilter` und `planWorn` (seit 2026-11-27 `planDoll`, ein altes `planWorn` gilt als "worn").
 
 **Grund:** Nutzer 2026-11-08 nach dem Öffnen des Fensters, mit dem Foto des Reiters Armory: "ich will kein extra Fenster, will
 es so wie hier in dem 1 Fenster".
@@ -4592,6 +4593,11 @@ von `Data/GearData.lua`), `tools/tests/test_contracts.py::test_every_generated_f
 `tools/tests/test_build_gear.py::test_web_entries_become_records_of_our_kinds`,
 `tools/tests/test_build_gear.py::test_web_sources_never_give_a_holiday_item_a_source`. Wowhead bleibt verboten.
 
+**Nachtrag 2026-11-27 (F-239):** `tools/build_bis.py` liest die englischen Itemnamen aus dem QuestieDB-Cache
+(`questie_data.item_names`, nur Text, nichts läuft), um die Namen (Slugs) der WoWSims-Dateien `.gear.siml` in
+Item-IDs zu übersetzen; nach GearWeights.lua kommen nur die IDs, nichts von QuestieDB selbst. Geladen wird QuestieDB
+weiter nur von `build.py questie`; `test_contracts.py` (`QUESTIE_READERS`) nennt `build_bis.py` als Leser.
+
 ## D-158 Ein Modul je Reiter: Ausrüstung, Dungeons & Raids, Talente; Raid, Berufe, Gilde im Kern
 
 **Datum:** 2026-11-20
@@ -4759,6 +4765,9 @@ Umschalter, das Fenster), `tools/tests/test_score_parity.py::test_an_own_set_sco
 `tools/tests/test_contracts.py::test_no_tool_fetches_from_the_forbidden_sites` (WoWSims nur über
 `tools/wowsims_weights.py`, kein Icy Veins), `tools/tests/test_contracts.py::test_every_generated_file_names_its_generator_and_sources`
 (WoWSims im Kopf nur mit MIT und `LICENSES/WoWSims-MIT.txt`).
+
+**Nachtrag 2026-11-27 (F-239, D-173):** Der WoWSims-Download liefert jetzt auch die Ausrüstungs-Sets (`SETS` in
+`GearWeights.lua`, die "Bekannten Sets" der Planer-Vorlagen), nicht nur die Gewichte-Vorlagen; MIT wie dort.
 
 ## D-162 Berufe der Gilde: Zählung wie "Hergestellt von", Rezept-Wunsch privat, Rückwärtsindex erst bei Bedarf
 
@@ -5192,3 +5201,65 @@ Namen), so entsteht kein Zwilling mehr; beim Laden fällt ein "?"-Eintrag mit be
 120 s Spielraum) einmal je gespeichertem Protokoll weg (`bankLog.named`), einer ohne Zwilling bleibt. "?"-Einträge
 gehen nie an die Gilde (`BE`), empfangene "?"-Einträge fallen weg (der Rest der Nachricht bleibt) und zählen nicht in
 der Tagesübersicht von `BQ`. Folge: Einträge gelöschter Charaktere bleiben als "?" (nur lokal, nicht geteilt).
+
+## D-172 Layer standardmäßig aus
+
+**Datum:** 2026-11-27
+**Entscheidung:** `layer.answer` ("Layer-Anfragen der Gilde beantworten") und `layer.bar` ("Leiste zeigen") sind
+standardmäßig aus (der Chip war es schon). "Helfen" geht beim Login nur an, solange `layer.answer` an ist; nach einem
+`/reload` gilt es nur mit `layer.answer`. Schaltet der Spieler "Helfen" im Fenster an, geht `layer.answer` mit an,
+damit es beim nächsten Login wieder hilft. Die übrigen Layer-Schalter (Chat-Anfragen, ohne Frage einladen,
+Einladung annehmen) bleiben, wie sie sind: ohne `layer.answer` und "Helfen" beantwortet Amisia keine Bitte und lädt
+niemanden ein; die stille Zonenfrage (`ZQ`) bekommt weiter die Antwort mit dem eigenen Layer und "hilft nicht" (D-141),
+damit der Fragende weiß, wer schon auf seinem Layer ist. Der Schalter wirkt sofort: an schaltet "Helfen" an (außer es
+wurde für diese Sitzung ausgeschaltet), aus schaltet es aus.
+Wer die Schalter einmal selbst gesetzt hat, behält seinen Wert.
+**Grund:** Nutzer 2026-11-27: "layer standart mäßig aus", auf die Frage was genau: "Alles aus" (Leiste und Anfragen
+beantworten).
+**Folge:** Ändert D-139 (Helfen nach jedem Login an) und D-146 (Leiste von Anfang an). Wer nie einen Schalter
+geändert hat, hilft nach dem Update niemandem mehr, bis er Helfen anschaltet; das Fragen selbst (Layer wechseln)
+geht weiter ohne Schalter, nur helfen ihm weniger Spieler.
+
+## D-173 Vorlagen im Planer füllen die eigenen Wahlen; fremde BiS-Listen nur eingefügt
+
+**Datum:** 2026-11-27
+**Entscheidung:** F-239 (Spec `docs/specs/2026-11-27-vorlagen.md`, `Amisia_Gear/Gear/Templates.lua`). Das Menü
+"Vorlagen" des Planers schreibt die eigenen Wahlen der Spezialisierung in Gebrauch (D-55) über `ns.BisSetPicks`;
+es gibt keine gespeicherten Pläne daneben und keinen neuen `AmisiaDB`-Schlüssel. Stufen-Pläne und "Pre-Raid (BiS)"
+sind Amisias eigene Rechnung (`ns.BisFor`; Pre-Raid auf der Höchststufe ohne Raid-Drops). "Bekannte Sets" sind die
+Pre-Raid-Sets von WoWSims Forever (MIT, wie die Gewichte-Vorlagen von D-161). BiS-Listen von Wowhead, Icy Veins oder
+Klassen-Discords kommen nur über "Liste einfügen ...": der Spieler kopiert sie selbst, Amisia liest den Text
+(Links, IDs, `item=`, Namen) und lädt nichts. Ersetzen fragt vorher; "Leere Plätze füllen" ersetzt nichts. Eine
+eingefügte Liste wird nicht gespeichert. Der Knopf "Vorlagen" sitzt unten rechts im linken Feld an der Stelle von
+"Zurücksetzen", das als letzter Punkt in sein Menü wandert: im Kopf rechts ließ er dem Suchfeld 9 px (Layoutprüfung).
+**Grund:** Nutzer 2026-11-27 mit dem Bild eines Vorlagen-Menüs: "können wir auch so ein Templates dropdown menü
+machen und dort auch die bis listen von wowhead icy veins und class discord adden?"; auf die Frage nach den Quellen
+"WoWSims + Einfügen", zur Spec "Passt, bauen". Wowhead sperrt KI-Agenten (D-03, D-157); die Bedingungen von Icy
+Veins waren nicht lesbar; Discord ist nicht abrufbar.
+**Folge:** Wer eine Liste wieder braucht, fügt sie erneut ein. Itemnamen werden in der Sprache des Clients gesucht;
+Namen, die der Client noch nicht kennt, kommen nach und nach (die Vorschau liest dann neu).
+
+## D-174 Rezepte: Frage beim Login und Weitergeben von Gehörtem erster Hand
+
+**Datum:** 2026-11-27
+**Entscheidung:** F-240 (Spec `docs/specs/2026-11-27-rezepte-abgleich.md`, `Amisia/Gear/Crafters.lua`). Ein Client,
+der heute noch keinen Sender gehört hat, fragt 60-120 s nach dem Login einmal die Gilde (`PH`); jedes Mitglied, das
+teilt, antwortet 5-60 s später mit seinem `PV` per Flüstern und der Zahl der Hersteller, die es weitergeben kann
+(höchstens einmal je Fragendem in der Stunde, zehn Fragende in der Stunde). Danach holt der Fragende wie bisher, in
+der Stunde danach bis zu 40 Mal, und bei den zwei Antwortenden mit den meisten das Weitergegebene (`PQ` Format `R`).
+Weitergegeben wird nur, was ein Hersteller selbst an den Weitergebenden geschickt hat, höchstens 14 Tage alt, nur
+Namen aus dessen Roster, nie die eigenen Charaktere und nie Weitergegebenes (keine Ketten). Der Empfänger nimmt es
+nur für Mitglieder seines Rosters, nicht für eigene Charaktere und nicht für die Charaktere des Weitergebenden
+(die kommen wie bisher), mit dem Tag, an dem der Hersteller selbst gesendet hat, nie über einen Eintrag, den der Hersteller selbst geschickt
+hat, und über einen weitergegebenen nur, wenn er neuer ist; der eigene Eintrag des Herstellers ersetzt es immer (sein
+nächstes `PV` holt neu, auch bei gleichem Fingerabdruck). Ein Bitset eines anderen Rezept-Index wird beim Weitergeben
+verworfen und lässt den Weitergebenden nicht neu fragen. Die Seite Berufe zeigt "laut X, Stand vor
+N Tagen". Das ändert die Regel von F-035 "das Wort eines anderen Mitglieds über jemand anderen wird nie übernommen"
+für Gehörtes erster Hand. Ein `PQ` an denselben Sender wartet die 60 s, die dessen Client zwischen zwei Anfragen
+verlangt; das geflüsterte `PV` hat einen eigenen Takt neben dem der Gilde (`PVW`).
+**Grund:** Nutzer 2026-11-27: "kannst du checken wenn ich neue leute das addon runterladen warum sie berufe von
+gildenmitgliedern nicht sehen"; Befund: kein Fragen beim Login (bis zu einer Stunde Warten) und nur direkt vom
+Hersteller (wer nie gleichzeitig online ist, bleibt unsichtbar). Auf "was ist die beste lösung": beides in zwei
+Schritten; zur Spec "Passt, bauen" (jedes Mitglied gibt weiter, 14 Tage, höchstens einmal am Tag fragen).
+**Folge:** Ein Mitglied könnte einem anderen falsche Rezepte zuschreiben; es bleibt sichtbar ("laut X"), altert mit
+dem echten Tag und weicht dem eigenen Eintrag des Herstellers. Alte Clients verwerfen `PH` und das Format `R`.

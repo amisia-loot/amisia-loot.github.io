@@ -6,6 +6,8 @@
 -- group by itself (F-229: always, layer.leaveSeconds after the join) and only that group. Udo outside the guild gets nothing; a
 -- foreign prefix is ignored; the host's limits (once a minute per player, six in ten minutes).
 local A, V, K, U = "Anna Bergmann", "Vulo Sturmwind", "Kai Lindner", "Udo Fremd"
+-- D-172: helping is off by default; these clients help
+for _, n in ipairs({ A, V, K, U }) do C(n, "NS.Set('layer.answer', true); NS.LayerChange.SetHosting(true)") end
 BUS.setGuild({ { A, 3 }, { V, 3 }, { K, 3 } })
 local function guid(zone, npc, spawn) return ("Creature-0-%d-0-5250-%d-%s"):format(zone, npc, spawn) end
 -- F-221: three creatures of a layer (a known layer changes on 3 of the last 5, an unknown one on 2)

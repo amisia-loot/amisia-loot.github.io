@@ -253,7 +253,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du "Einladung erbitten" klickst, dann fragt das Mitglied "<Name> möchte auf deinen Layer wechseln (Layer B). Einladen?"; nach "Einladen" nimmt dein Amisia die Einladung von selbst an (Chatzeile "Einladung von ... angenommen (Layer-Wechsel).").
 - Prüfung: Wenn du danach in der Gruppe einen NPC ins Ziel nimmst, dann steht "Gewechselt: Layer B" im Chat und im Fenster; "Gruppe verlassen" verlässt die Gruppe, mit "Gruppe nach dem Wechsel verlassen" geht Amisia nach 30 Sekunden selbst (bitte melden, wenn der Layer gleich bleibt: dann steht nach einer Minute "Kein Wechsel").
 - Prüfung: Wenn ein Gildenmitglied in deiner Zone 'inv layer' in den Gildenchat schreibt, dann fragt Amisia "<Name> bittet im Chat um einen Layer-Wechsel. Einladen?"; "Im Gildenchat fragen" im Fenster öffnet die Chatzeile mit "/g inv layer", und nach dem Abschicken nimmt Amisia eine Minute lang die Einladung eines Gildenmitglieds an.
-- Notiz: Spec `docs/specs/2026-11-12-layer.md`; DECISIONS D-117. Ungeprüft: ob die Zonen-Kennung in den Kreatur-GUIDs auf dem Forever-Client die Layer trennt wie auf den anderen Classic-Clients, ob ein Addon dort einladen, annehmen und verlassen darf (`/amisia selbsttest gruppe`: "Layer: Wechsel in der Gilde", "Layer: Kreatur-GUID") und wie lange die Kennungen leben (Amisia vergisst sie nach 6 Stunden und bei `/reload`).
+- Notiz: Spec `docs/specs/2026-11-12-layer.md`; DECISIONS D-117. Ungeprüft: ob die Zonen-Kennung in den Kreatur-GUIDs auf dem Forever-Client die Layer trennt wie auf den anderen Classic-Clients, ob ein Addon dort einladen, annehmen und verlassen darf (`/amisia selbsttest gruppe`: "Layer: Wechsel in der Gilde", "Layer: Kreatur-GUID") und wie lange die Kennungen leben (Amisia vergisst sie nach 6 Stunden und bei `/reload`). Seit 2026-11-27 (D-172) standardmäßig aus: ohne geänderte Schalter keine Leiste und "Helfen: AUS" nach dem Login; ein Klick auf "Helfen" schaltet es an, auch für die nächsten Logins.
 - Notiz: Läuft neben anderen Layer-Addons: eigenes Präfix und eigene Nachrichten (YQ, YA, YI) zwischen Amisia-Clients; die Chat-Bitten anderer Layer-Addons ("inv layer") versteht Amisia nur im Gildenchat und im Flüstern von Gildenmitgliedern, Zahlen darin zählen nicht.
 
 ### F-184 Leistung messen: wo Amisia Rechenzeit braucht
@@ -707,7 +707,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du den Reiter Ausrüstung öffnest, dann siehst du zuerst den Ausrüstungsplaner: links dein Modell auf dem Bild der Anprobe (beim breiteren Fenster breiter) mit acht Plätzen links (mit Hemd und Wappenrock), acht rechts und den Waffen darunter, oben dein Name, deine Stufe und die Spezialisierung zum Wählen.
 - Prüfung: Wenn du einen Platz anklickst, dann zeigt die Liste rechts seine Vorschläge mit Symbol, Name in Qualitätsfarbe (Questbelohnung mit gelbem "!"), "Stufe 25 · Dungeon - Boss", "Stufe 32 · Schneiderei 150" oder "Quest: Titel", Zuwachs in Prozent ("neu" ohne angelegtes Item), Quellsymbol (Beruf: sein Symbol) und grauem Stern; "Quellen" schaltet Quellen ab; "Alle" oder andere Stufen zeigen die Items dieses Bereichs, "Alle Items suchen ..." findet Items nach Namen. Ein epischer Weltdrop (als Schattenpriester ab Stufe 57 in der Haupthand "Hand von Edgar dem Seltsamen") steht dort mit orangem "Weltdrop" hinter dem Namen und im Tooltip "Epischer Weltdrop: ..."; dein Ziel am Modell bleibt ein gezielt erreichbares Item; "Optionen" > "Epische Weltdrops vorschlagen" schaltet das aus.
 - Prüfung: Wenn du eine Zeile anklickst, dann wird sie deine Wahl für den Platz und steht am Modell; ein zweiter Klick hebt sie auf, "Zurücksetzen" fragt erst und nimmt dann alle deine Wahlen weg; der Stern wird beim Klick gold und das Item steht unter "Wunschliste".
-- Prüfung: Wenn du "Ziele" wählst, dann stehen "N/17 Ziele", der Balken, die Filter und deine Plätze nach Abschnitt; ein Klick auf einen Platz zeigt seine Vorschläge, oben "Deine Wahl" mit X und "Übernehmen". Unter dem Modell wechseln "Ziele | Angelegt", die Wertung zeigt im Tooltip das Beste und die Wertänderungen; das Quadrat neben einem Platz listet die Verzauberungen.
+- Prüfung: Wenn du "Ziele" wählst, dann stehen "N/17 Ziele", der Balken, die Filter und deine Plätze nach Abschnitt; ein Klick auf einen Platz zeigt seine Vorschläge, oben "Deine Wahl" mit X und "Übernehmen". Unter dem Modell wechseln "Ziele | Angelegt | Wunsch" (Wunsch: je Platz dein wichtigster Wunsch, angelegt grün umrandet, in der Tasche mit gelbem Punkt; ohne Wunsch das Angelegte; rechts öffnet sich die Wunschliste nach Quelle, z. B. "Stratholme · 2 Wünsche" vor "Lederverarbeitung · 1 Wunsch", Erhaltene unter "Schon da"), die Wertung zeigt im Tooltip das Beste und die Wertänderungen; das Quadrat neben einem Platz listet die Verzauberungen.
 - Prüfung: Wenn du links unter den Seiten auf "Dungeon-Sets" (oder Raid-, PvP-, Handwerks-, Welt-Sets, Ruf) klickst, dann stehen rechts die Sets dieser Art; ein Klick öffnet ein Set, der Reiter "Vorschläge" führt zurück.
 - Notiz: Spec docs/specs/2026-11-08-hub-reiter.md; D-77. Im Spiel prüfen: der Hintergrund der Anprobe deiner Rasse und das Warnzeichen. Seit 2026-11-20 epische Weltdrops in den Vorschlägen (`bis.epicWorld`, D-59 Nachtrag).
 
@@ -1435,6 +1435,26 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Notiz: Spec docs/specs/2026-10-12-raid-check.md, Teil C; DECISIONS D-46. Nachrichten IV/IQ, gespeichert in AmisiaDB.raidcheck. Einstellung "Raid-IDs der Gilde mitteilen" (an); nur Offiziere sehen die Raid-IDs anderer, jeder seine eigenen (`/amisia raidcheck`). Die Reset-Zeit ist die, die das Spiel pro ID nennt (Forevers Regeln sind vor 2026-12-09 unbekannt, Prüfung 17 der Spec).
 
 ## Addon: Gilde
+### F-240 Rezepte der Gilde schneller und vollständiger
+- Version: 2.113.0
+- Status: gebaut
+- Braucht: Gilde
+- Prüfung: Wenn du Amisia neu installierst und dich einloggst, während Gildenmitglieder mit Amisia online sind, dann siehst du nach höchstens 5 Minuten deren Berufe auf der Seite Berufe (Gilde).
+- Prüfung: Wenn ein Mitglied gerade offline ist, das ein anderes Online-Mitglied in den letzten 14 Tagen gehört hat, dann siehst du nach höchstens 5 Minuten auch dessen Berufe, mit "laut <Name>".
+- Prüfung: Wenn dieses Mitglied später selbst online kommt, dann verschwindet "laut <Name>" und es steht sein eigener Stand da.
+- Prüfung: Wenn du dich zweimal am selben Tag einloggst, dann fragt Amisia beim zweiten Mal nicht noch einmal.
+- Notiz: Spec docs/specs/2026-11-27-rezepte-abgleich.md (freigegeben 2026-11-27).
+
+### F-239 Vorlagen im Ausrüstungsplaner
+- Version: 2.113.0
+- Status: gebaut
+- Prüfung: Wenn du im Planer "Vorlagen" > "Stufe 40" wählst, dann steht an jedem Platz mit einem Item bis Stufe 40 dieses Item als deine Wahl, und das Modell trägt sie.
+- Prüfung: Wenn du schon eigene Wahlen hast und "Pre-Raid (BiS)" wählst, dann fragt Amisia erst; mit "Nein" bleibt alles.
+- Prüfung: Wenn du "Leere Plätze füllen" wählst, dann bleiben deine Wahlen, und nur die Plätze ohne eigene Wahl bekommen eine.
+- Prüfung: Wenn du als Magier "WoWSims Forever: Arkan Pre-BiS" wählst, dann stehen die Items dieses Sets an ihren Plätzen; was dein Client nicht kennt, nennt die Chatzeile als "passen nicht".
+- Prüfung: Wenn du unter "Liste einfügen ..." eine Liste mit Item-Links und einer Zeile Unsinn einfügst, dann erkennt die Vorschau die Links, nennt die Unsinnszeile als unbekannt, und "Übernehmen" setzt nur die erkannten.
+- Notiz: Spec docs/specs/2026-11-27-vorlagen.md (freigegeben 2026-11-27).
+
 ### F-238 Gildenbank-Protokoll und Zählung mit der Gilde abgleichen
 - Version: 2.112.0
 - Status: gebaut

@@ -4,6 +4,9 @@
 -- the chat lockdown or from a secret GUID; a zone change makes the layer unknown; old ids fall out;
 -- letters by ascending id per map; the throttle of mouseover and name plates; the window, the chip and the
 -- slash command; the self-test row.
+-- D-172: helping is off by default; this test helps
+NS.Set("layer.answer", true)
+NS.LayerChange.SetHosting(true)
 local LY = NS.Layer
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function guid(zone, npc, spawn, kind) return ("%s-0-%d-0-5250-%d-%s"):format(kind or "Creature", zone, npc, spawn) end
@@ -172,11 +175,13 @@ assert(AmisiaLayerChip:IsShown() and AmisiaLayerChip.text:GetText() == "Layer A"
 F:Hide()
 AmisiaLayerChip:Click()
 assert(F:IsShown(), "a click on the chip opens the window")
--- F-221: the bar stands by itself from the start (layer.bar): "Layer A" over the state; a click opens and closes
+-- F-221: the bar stands by itself once layer.bar is on (off by default, D-172): "Layer A" over the state; a click opens and closes
 -- the window; the "-" folds the window to it (F-204)
 local LW = NS.LayerWindow
+assert(NS.Get("layer.bar") == false and NS.Get("layer.barShade") == 55, "the bar off (D-172), 55 % by default")
+assert(not (AmisiaLayerMiniBar and AmisiaLayerMiniBar:IsShown()), "no bar by default")
+NS.Set("layer.bar", true)
 local bar = AmisiaLayerMiniBar
-assert(NS.Get("layer.bar") == true and NS.Get("layer.barShade") == 55, "the bar on, 55 % by default")
 assert(bar and bar:IsShown() and F:IsShown(), "the bar beside the window")
 assert(bar.name:GetText() == "Layer A" and bar.sub:GetText() == "|cff4fbf7aHelfen|r", tostring(bar.sub:GetText()))
 bar:Click()

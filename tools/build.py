@@ -30,10 +30,11 @@ questie  downloads QuestieDB's WoW Forever data (data/Forever/*.lua, LICENSE.md,
          QuestieDB's GitHub repository, GPL-3.0, D-157) through the GitHub API into ~/addons/_cache/questiedb
          (tools/questie_data.py), one request at a time. data reads that cache only and never downloads it;
          without it the gear build has no QuestieDB sources.
-wowsims  downloads the WoWSims presets for WoW Forever (ui/specs/*/*/presets.ts, the classes' *_ep.ts, LICENSE of
-         github.com/wowsims/forever, MIT, F-230, D-161) through the GitHub API into ~/addons/_cache/wowsims
-         (tools/wowsims_weights.py), one request at a time; by hand before a release. data reads that cache only
-         (the weight templates SIM of GearWeights.lua) and never downloads it; without it there are no templates.
+wowsims  downloads the WoWSims presets for WoW Forever (ui/specs/*/*/presets.ts, the classes' *_ep.ts, the gear_sets,
+         proto/common.proto, LICENSE of github.com/wowsims/forever, MIT, F-230, F-239, D-161) through the GitHub API
+         into ~/addons/_cache/wowsims (tools/wowsims_weights.py), one request at a time; by hand before a release.
+         data reads that cache only (the weight templates SIM and the gear sets SETS of GearWeights.lua) and never
+         downloads it; without it there are no templates and no sets.
 web      fetches the item pages of the fan sites (tools/web_sources.py, D-157 step 2) for the items no other
          source explains (Amisia_Gear/Data/GearNoSource.lua) into ~/addons/_cache/web/<site>, within their
          robots.txt and terms: one request at a time, 3 s apart, a cached page never again, a stop on 403/429;

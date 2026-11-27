@@ -4,6 +4,9 @@
 -- alone is no success, a restart that kept the layer is "not moved", three old creatures after five seconds are
 -- "not moved" (leaving at 15 s), the real leader is the host, a verdict after the group ended, leaving only from
 -- a helper who answered; warnings on invites. The guild's tagged line; the commands; the saved lists.
+-- D-172: helping is off by default; this test helps
+NS.Set("layer.answer", true)
+NS.LayerChange.SetHosting(true)
 local SW, LY, LW, LF = NS.LayerChange, NS.Layer, NS.LayerWindow, NS.LayerForeign
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function guid(server, npc, spawn) return ("Creature-0-%d-0-5250-%d-%s"):format(server, npc, spawn) end

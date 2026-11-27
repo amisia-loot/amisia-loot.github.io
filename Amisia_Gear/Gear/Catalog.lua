@@ -314,9 +314,48 @@ function C.Search(text, lo, hi, o)
     return out, n, nMissing
 end
 
+-- The gear data's items by folded name, built once per data and arrived name (namesVersion) for a pasted list
+-- (F-239); names the client lacks are asked for, ASK_MAX per build.
+local nameIndex, indexKey
+local function byName()
+    local d = ns.Data("GEAR")
+    local key = tostring(d) .. ":" .. namesVersion
+    if nameIndex and indexKey == key then return nameIndex end
+    local dataN = type(GetLocale) == "function" and GetLocale() == "deDE" and type(d.N) == "table" and d.N or nil
+    local idx, asked = {}, 0
+    for id in pairs(d.I or {}) do
+        local f = nameOf(id, dataN)
+        if f then
+            local t = idx[f]
+            if not t then
+                t = {}
+                idx[f] = t
+            end
+            t[#t + 1] = id
+        elseif missing[id] == "ask" and asked < ASK_MAX then
+            asked = asked + 1
+            askName(id)
+        end
+    end
+    for _, t in pairs(idx) do table.sort(t) end
+    nameIndex, indexKey = idx, key
+    return idx
+end
+
+-- The items of the gear data whose whole name is text (umlauts and case do not matter), for a pasted list
+-- (F-239): their ids, and whether asked names are still on their way (C.NamesPending).
+function C.FindName(text)
+    local q = ns.Fold(text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if q == "" or not ns.HasData("GEAR") then return {}, false end
+    local out = {}
+    for i, id in ipairs(byName()[q] or {}) do out[i] = id end
+    return out, C.NamesPending()
+end
+
 -- Test hook: forget the set list.
 function C._reset()
     all, allKey, levelAll, levelKey = nil, nil, nil, nil
     names, folded, missing, kept, namesVersion = {}, {}, {}, nil, 0
+    nameIndex, indexKey = nil, nil
 end
 end)

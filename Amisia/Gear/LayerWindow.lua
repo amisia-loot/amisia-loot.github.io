@@ -322,6 +322,10 @@ end
 -- The grey line under the buttons: helping on or off, paused, or waiting out the invite limit (pause seconds);
 -- refresh: the world restart's text (F-220); why: the pause's reason.
 function LW.HostText(on, helping, pause, refresh, why)
+    if not on and not ns.Get("layer.answer") then
+        -- D-172: off by default; the switch turns it on for the next logins too
+        return L["Helfen aus: Amisia lädt niemanden ein und beantwortet keine Bitten um eine Einladung. Ein Klick schaltet es an, auch für die nächsten Logins."]
+    end
     if not on then return L["Helfen aus: Amisia antwortet niemandem und lädt niemanden ein, bis du es wieder anschaltest oder dich neu einloggst."] end
     if refresh then return L["%s: Helfen lädt bis nach dem Neustart der Welt niemanden ein."]:format(refresh) end
     if (tonumber(pause) or 0) > 0 then

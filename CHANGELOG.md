@@ -5,6 +5,40 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(professions): new Amisia users see the guild's professions within minutes (F-240)
+
+    Until now a new user waited up to an hour for each member's next announcement, and never saw members who play
+    at other times. Now a client that heard nobody today asks the guild once shortly after logging in; everyone
+    online answers within a minute, and two of them also pass on the recipes of members they heard themselves in the
+    last 14 days. Those show "laut <Name>, Stand vor N Tagen" on the Berufe page until that member is online and
+    sends their own. "/amisia hersteller" shows the question and the counts.
+
+- feat(gear): templates in the gear planner fill every slot at once (F-239)
+
+    The gear planner has a "Vorlagen" menu next to "Optionen": "Leere Plätze füllen" puts Amisia's suggestion
+    into every slot without your own pick; "Plan erstellen" sets the best reachable item per slot for your level,
+    level 20, 30, 40, 50 or 55, or pre-raid (level 60 without raid drops), with your sources and weapon plan;
+    "Bekannte Sets" offers the pre-raid sets of the WoWSims simulation for your class; "Liste einfügen ..." takes
+    a BiS list you copy from Discord, Icy Veins or Wowhead (item links, item IDs, addresses with item=12345 or item
+    names) and shows a preview first. Replacing your own picks asks first; you can change any slot afterwards.
+
+- feat(layer): layer helping and the layer bar are off by default (F-185)
+
+    Amisia no longer answers layer requests or shows the layer bar unless you turn them on. Click "Helfen" in the
+    Layer window (or turn on "Layer-Anfragen der Gilde beantworten" and "Leiste zeigen" in the settings) and it
+    stays on after the next login. Asking for a layer change yourself works as before. If you changed these
+    settings yourself, your choice is kept.
+
+- feat(gear): the planner's model can wear your wishlist (F-149)
+
+    Under the model in the gear planner, "Wunsch" joins "Ziele" and "Angelegt": each slot shows your most
+    important wish for it (by priority, then the newest; the second ring and trinket too), and what you wear
+    where you have no wish. A wish you already wear has a green frame, one in your bags or bank a yellow dot.
+    "Wunsch" also opens the wishlist beside it, now grouped by where the wishes come from: the raid, dungeon,
+    profession or zone with the most of your open wishes comes first, each with its count, so you see where a
+    run pays off most; an item from several places stands under the one with the most. Wishes you already
+    have are listed last under "Schon da".
+
 - fix(bank): no more "?" twins in the guild bank log when it is read before the names are known (F-033)
 
     Opening the guild bank right after logging in could save money and item entries as "? deposits: 5g" next to

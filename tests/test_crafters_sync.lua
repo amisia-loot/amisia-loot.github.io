@@ -29,6 +29,7 @@ for _, name in ipairs(CLIENTS) do
         STUB.instance = { name = "Durotar", type = "none", id = 0 }
         STUB.combat = false
         AmisiaDB.drops.me = %q
+        NS.CRAFTERS_LIMITS.helloMin = 1e9   -- the question after the login (F-240): tests/test_crafters_hello.lua
         assert(NS.SetAlts("#AMISIA-ALTS 1 forever 2026-10-06\nA Vulo_Zweit Vulo_Sturmwind\n#END"))
         STUB.fire("GUILD_ROSTER_UPDATE")]]):format(ME[name]))
 end

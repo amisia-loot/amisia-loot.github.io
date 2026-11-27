@@ -168,7 +168,7 @@ local function ids()
     local out = {}
     for _, e in ipairs(f.list.items) do
         out[#out + 1] = tostring(e.id or (e.set and ("set" .. e.set.id)) or (e.pickRow and "pick") or (e.header and e.header.key)
-            or (e.goal and e.key) or "note")
+            or (e.goal and e.key) or (e.wishHead and ("@" .. e.label)) or "note")
     end
     return table.concat(out, ",")
 end
@@ -212,7 +212,16 @@ rowOf(406):Click()
 assert(NS.BisPick("HEAD") == 406, "the beginner's helm is the own pick")
 assert(d.slots.HEAD.item.id == 406, "and on the doll")
 assert(rowOf(406).sel:IsShown() and has(rowOf(406).name:GetText(), "auctionhouse-icon-favorite"), "marked with the star")
-assert(f.reset:IsEnabled(), "Zurücksetzen while a pick is there")
+-- the menu of the button "Vorlagen" (F-239; "Zurücksetzen" is its last entry): its last entry
+local function resetEntry()
+    f.tpl:Click()
+    local last
+    for _, b in ipairs(AmisiaMenu.buttons) do if b:IsShown() then last = b end end
+    AmisiaMenu:Hide()
+    return last
+end
+local re = resetEntry()
+assert(plain(re.label:GetText()) == "Zurücksetzen" and re:GetScript("OnClick") ~= nil, "Zurücksetzen while a pick is there")
 -- "Deine Wahl": the pick, overtaken by the better helm: Übernehmen; the red X lifts it
 local pr = f.list.rows[1]
 assert(has(plain(pr.name:GetText()), "Deine Wahl: Anfängerhelm") and pr.del:IsShown(), plain(pr.name:GetText()))
@@ -227,7 +236,7 @@ assert(NS.BisPick("HEAD") == nil, "the red X lifts it")
 rowOf(406):Click()
 rowOf(406):Click()
 assert(NS.BisPick("HEAD") == nil and d.slots.HEAD.item.id == 402, "a second click lifts it")
-assert(not f.reset:IsEnabled(), "nothing to reset")
+assert(resetEntry():GetScript("OnClick") == nil, "nothing to reset: grey")
 
 ---------------------------------------------------------------------------
 -- the star: on the wish list and off again; the wish list tab
@@ -236,10 +245,11 @@ rowOf(402).star:Click()
 assert(NS.BisChar().wish[402], "the star puts it on the wish list")
 assert(rowOf(402).star.on, "the star gold")
 f.tabWish:Click()
-assert(f.tabWish.on and not f.tabSuggest.on and ids() == "402", "the wish list: " .. ids())
+assert(f.tabWish.on and not f.tabSuggest.on and ids() == "@Stratholme,402", "the wish list by source: " .. ids())
 assert(has(f.title:GetText(), "Wunschliste (1)"), f.title:GetText())
-assert(has(plain(f.list.rows[1].sub:GetText()), "Kopf"), "the wish's slot in its line")
-f.list.rows[1].star:Click()
+assert(has(plain(f.list.rows[1].sub:GetText()), "1 Wunsch"), plain(f.list.rows[1].sub:GetText()))
+assert(has(plain(f.list.rows[2].sub:GetText()), "Kopf"), "the wish's slot in its line")
+f.list.rows[2].star:Click()
 assert(not NS.BisChar().wish[402] and ids() == "note", "off the list: " .. ids())
 assert(has(plain(f.list.rows[1].name:GetText()), "Noch keine Wünsche"), "the empty list says so")
 f.tabSuggest:Click()
@@ -377,9 +387,29 @@ d.slots.HEAD:Click()
 ---------------------------------------------------------------------------
 assert(f.showGoals.on and not f.showWorn.on and d.model.undressed, "the targets on the model")
 f.showWorn:Click()
-assert(AmisiaDB.settings.bis.planWorn and f.showWorn.on and not d.model.undressed and d.slots.HEAD.item.link == LINKS[410], "what is worn")
+assert(AmisiaDB.settings.bis.planDoll == "worn" and f.showWorn.on and not d.model.undressed and d.slots.HEAD.item.link == LINKS[410], "what is worn")
 f.showGoals:Click()
-assert(not AmisiaDB.settings.bis.planWorn and d.slots.HEAD.item.id == 402, "the targets again")
+assert(not AmisiaDB.settings.bis.planDoll and d.slots.HEAD.item.id == 402, "the targets again")
+-- Wunsch: per slot the wish of the highest priority, else what is worn; a worn wish green
+assert(NS.WishAdd(401, 1) and NS.WishAdd(406, 3) and NS.WishAdd(405) and NS.WishAdd(403) and NS.WishAdd(402, 1))
+f.showWish:Click()
+assert(AmisiaDB.settings.bis.planDoll == "wish" and f.showWish.on and not f.showGoals.on and not f.showWorn.on, "the wishes")
+-- beside it the wish list by source: Stratholme has two open wishes, the Kern and the leather recipe
+-- one each (by name), the worn chest is already yours
+assert(f.tabWish.on and ids() == "@Stratholme,406,402,@Geschmolzener Kern,401,@Lederverarbeitung,405,@Schon da,403", ids())
+assert(has(plain(f.list.rows[1].sub:GetText()), "2 Wünsche"), plain(f.list.rows[1].sub:GetText()))
+assert(has(plain(f.list.rows[7].sub:GetText()), "Lederverarbeitung"), plain(f.list.rows[7].sub:GetText()))
+assert(d.slots.HEAD.item.id == 406 and d.slots.HEAD.item.wish, "the head's first wish by priority: " .. tostring(d.slots.HEAD.item.id))
+assert(d.slots.LEGS.item.id == 405 and d.slots.CHEST.item.id == 403 and d.slots.WRIST.item.link == LINKS[407], "wishes, and what is worn where none is")
+assert(d.slots.CHEST.dot.vis ~= false and d.model.undressed, "the worn wish marked, the model dressed in the wishes")
+for _, id in ipairs({ 401, 402, 405, 406, 403 }) do NS.WishRemove(id) end
+assert(d.slots.HEAD.item.link == LINKS[410], "no wish: what is worn")
+-- an older saved planWorn is Angelegt
+AmisiaDB.settings.bis.planDoll, AmisiaDB.settings.bis.planWorn = nil, true
+NS.Refresh()
+assert(f.showWorn.on and not f.showWish.on, "planWorn of before")
+f.showGoals:Click()
+assert(AmisiaDB.settings.bis.planDoll == nil and AmisiaDB.settings.bis.planWorn == nil and f.showGoals.on, "the targets again")
 assert(has(plain(f.score.text:GetText()), "Wertung "), plain(f.score.text:GetText()))
 local stip = tipOf(function() f.score.scripts.OnEnter(f.score) end)
 assert(has(stip, "jetzt ") and has(stip, "Bestes auf Stufe 58") and has(stip, "Wertänderungen"), stip)
@@ -408,7 +438,10 @@ f.tabSuggest:Click()
 ---------------------------------------------------------------------------
 NS.BisSetPick("HEAD", 406)
 NS.BisSetPick("CHEST", 403)
-f.reset:Click()
+f.tpl:Click()
+local last
+for _, b in ipairs(AmisiaMenu.buttons) do if b:IsShown() then last = b end end
+last:Click()
 local ask = _G.AmisiaConfirmFrame
 assert(ask and ask:IsShown() and NS.BisPick("HEAD") == 406, "a question first")
 ask.ok:Click()
@@ -440,7 +473,7 @@ NS.Theme.PAGE_W_NOW = NS.Theme.PAGE_W
 NS.W.FitWidths()
 assert(f.panel:GetWidth() == LW)
 assert(PL.DOLL_Y + P.MODEL_H + P.WEAPON_GAP + P.SLOT + PL.SWITCH_GAP + NS.Theme.CHIP_H <= NS.Theme.PAGE_H - PL.PAD - NS.Theme.BUTTON_H,
-    "doll and switch above Zurücksetzen")
+    "doll and switch above Vorlagen")
 -- NS.ShowPlanner opens a view
 NS.ShowPlanner("wish")
 assert(NS.CurrentPage() == "planner" and f.tabWish.on)

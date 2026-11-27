@@ -297,6 +297,36 @@ def load(base=QUESTIE_CACHE):
     return out
 
 
+ITEM_LINE = re.compile(r"^\[(\d+)\]\s*=\s*\{'((?:[^'\\]|\\.)*)'(.*)\},?\s*$", re.M)
+
+
+def item_names(base=QUESTIE_CACHE):
+    """{item id: (English name, item level)} of the weapons and armour in QuestieDB's item file, read as text line by
+    line (nothing runs; the gear sets of tools/wowsims_weights.py name their items, F-239); {} without a download."""
+    path = os.path.join(base, *QUESTIE_PATH.split('/'), FILES['item'])
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding='utf-8', errors='replace') as fh:
+        text = fh.read()
+    out = {}
+    for m in ITEM_LINE.finditer(text):
+        fields, depth, cur = [], 0, ''
+        for ch in m.group(3).lstrip(','):
+            if ch == ',' and depth == 0:
+                fields.append(cur.strip())
+                cur = ''
+                continue
+            depth += (ch == '{') - (ch == '}')
+            cur += ch
+        fields.append(cur.strip())
+        # fields after the name: itemLevel is the 8th (QuestieDB.itemKeys 9), class the 11th (12)
+        if len(fields) < 11 or not fields[10].isdigit() or int(fields[10]) not in GEAR_CLASSES:
+            continue
+        ilvl = int(fields[7]) if fields[7].isdigit() else 0
+        out[int(m.group(1))] = (m.group(2).replace("\\'", "'"), ilvl)
+    return out
+
+
 def area_zones(*dirs):
     """{AreaTable id: uiMapID} from the client tables: an area's own map (UiMapAssignment, the first
     assignment), else its parent area's, up the chain. QuestieDB names zones by area, the gear data by uiMapID."""

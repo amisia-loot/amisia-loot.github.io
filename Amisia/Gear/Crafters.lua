@@ -18,11 +18,21 @@
 -- the lowest priority of the queue within fixed byte caps. A search on the professions page asks the heard
 -- crafters of its hits whose list is older than 3 days and who are online now at once (Cr.AskOld, the same PQ).
 --
+-- F-240 (spec docs/specs/2026-11-27-rezepte-abgleich.md, D-174): a client that heard no sender today asks the guild
+-- once, 60 to 120 s after the login (PH); every member that shares answers it 5 to 60 s later with its PV by
+-- whisper, which also names how many crafters it heard first-hand (each once an hour per asker, ten askers an hour);
+-- for the hour after the question the asker may pull pqBoost times. From the two answerers with the most it pulls
+-- those (PQ format R): the crafters that sent themselves to the answerer within relayDays, standing in its roster,
+-- never the answerer's own and never what was passed on (no chains). A passed-on crafter keeps the day it sent
+-- itself and the answerer (via, relay = true); one that sent itself is never replaced by one passed on that is not
+-- newer, and replaces it always.
+--
 -- Crafter protocol 1. Older clients do not know PV and drop it as an unknown message; they never send
--- PQ, so nothing else reaches them.
+-- PQ, so nothing else reaches them. PH and the format R are additions within protocol 1: an older client drops
+-- PH (an unknown kind) and the format R (Comm's PQ check); R is only asked of an answer that named its count.
 --
 -- AmisiaDB.crafters = { v = 1, src = { [lower sender] = { d = digest, at = day, f = "L" (lists) } },
---   c = { [name] = { via = sender, self = true (the crafter sent it), seen = day,
+--   c = { [name] = { via = sender, self = true (the crafter sent it), relay = true (passed on by via, F-240), seen = day,
 --   p = { [skill] = { r = rank, m = max, h = index checksum, b = bitset hex | l = "spell,spell,..." } } } } }
 -- AmisiaDB.prof.guild = { [own character] = guild name } (which guild an own character's recipes go to)
 local ADDON, ns = ...
@@ -62,6 +72,16 @@ local LIM = {
     askPerMinute = 6,                   -- asks of a search in a minute
     askGap = 60,                        -- seconds between two requests to one crafter (the receiver's gap for PQ)
     askScan = 200,                      -- hits of a search looked at
+    -- F-240: the question after the login (PH) and the answers to it
+    helloMin = 60, helloSpread = 60,    -- the question 60 to 120 s after the login, once a session
+    helloKeep = 600,                    -- seconds a whispered PV is taken as an answer to it
+    replyMin = 5, replySpread = 55,     -- an answer 5 to 60 s after the question
+    replyGap = 3600, replyPerHour = 10, -- one answer per asker in an hour, ten askers in an hour
+    pqBoost = 40,                       -- requests in the hour after the own question (else pqPerHour)
+    -- F-240: passing on what a crafter sent itself (the format R)
+    relayDays = 14,                     -- heard first-hand within 14 days
+    relayPick = 2,                      -- the answerers with the most asked for them
+    relayMax = 40,                      -- crafters in one R answer at most
 }
 ns.CRAFTERS_LIMITS = LIM
 
@@ -70,7 +90,7 @@ local KEY_PREFIX = "0000-00-01:"
 
 local stats = { bytes = 0, pv = 0, pq = 0, pw = 0, served = 0, blobs = 0, crafters = 0, bad = 0, unasked = 0, refused = 0,
                 outsider = 0, kept = 0, mismatch = 0, pulls = 0, busy = 0, other = 0, pruned = 0, missed = 0, foreign = 0,
-                capped = 0, unknown = 0, searched = 0 }
+                capped = 0, unknown = 0, searched = 0, ph = 0, phHeard = 0, replies = 0, relayed = 0, relayServed = 0 }
 local pqTimes = {}
 local asked = {}          -- nonce -> { low, f, at }
 local peers = {}          -- { name, low, d, n, at, nb, f, retry }
@@ -82,6 +102,14 @@ local partsLog = {}
 local firstAt, lastPV, lastD
 local nonceSeq
 local askedAt = {}        -- lower name -> GetTime() of the last request to it
+-- F-240: the own question after the login and the answers to others' questions
+local helloAt, helloSent  -- when the own question goes (set at the login); GetTime() it went, false: not needed
+local boostUntil = 0      -- until then pqBoost requests in the hour
+local offers = {}         -- lower name -> { name, n }: answerers of the own question and how many they pass on
+local relayPicked, relayPickedN = false, 0
+local replies = {}        -- answers waiting: { name, low, at }
+local repliedAt = {}      -- lower name -> GetTime() of the last answer to its question
+local replyTimes = {}     -- GetTime() of the answers of the last hour
 local searchAsks = {}     -- GetTime() of the search's requests of the last minute
 local asking = {}         -- lower name -> GetTime() until which a search's request to it waits for its answer
 
@@ -481,8 +509,9 @@ end
 ---------------------------------------------------------------------------
 local function queuePeer(name, d, n, nb, f, retry)
     local low = name:lower()
+    -- one waiting pull per sender, and apart from it one of what it passes on (format R, F-240)
     for i, p in ipairs(peers) do
-        if p.low == low then table.remove(peers, i) break end
+        if p.low == low and (p.f == "R") == (f == "R") then table.remove(peers, i) break end
     end
     peers[#peers + 1] = { name = name, low = low, d = d, n = n or 0, at = now(), nb = nb or now(), f = f, retry = retry or 0 }
     while #peers > LIM.peersMax do
@@ -517,11 +546,13 @@ local function startNext()
     for i = #peers, 1, -1 do
         if t - peers[i].at > LIM.peerKeep then table.remove(peers, i) end
     end
+    -- not within the receiver's gap for PQ after the last request to it (a pull of what it passes on follows one of
+    -- its own crafters, F-240)
     for i, p in ipairs(peers) do
-        if p.nb <= t then ready[#ready + 1] = i end
+        if p.nb <= t and not (askedAt[p.low] and t - askedAt[p.low] < LIM.askGap + 2) then ready[#ready + 1] = i end
     end
     if #ready == 0 then return end
-    if hourCount() >= LIM.pqPerHour then
+    if hourCount() >= (now() < boostUntil and LIM.pqBoost or LIM.pqPerHour) then
         debugLine(L["Anfragen der Stunde erreicht."])
         return
     end
@@ -529,8 +560,8 @@ local function startNext()
     local p = table.remove(peers, i)
     local s = store(false)
     local src = s and s.src[p.low]
-    if src and src.d == p.d then return end   -- pulled meanwhile
-    local f = p.f or (src and src.f) or "B"
+    if p.f ~= "R" and src and src.d == p.d then return end   -- pulled meanwhile
+    local f = p.f == "R" and "R" or p.f or (src and src.f) or "B"
     local nonce = nextNonce()
     if not send("PQ", { tostring(ns.CRAFT_PROTO), f, tostring(nonce) }, "WHISPER", p.name) then return end
     pqTimes[#pqTimes + 1] = t
@@ -547,12 +578,14 @@ local function touch(low)
     local d = today()
     if s.src[low] then s.src[low].at = d end
     for _, c in pairs(s.c) do
-        if type(c) == "table" and type(c.via) == "string" and c.via:lower() == low then c.seen = d end
+        if type(c) == "table" and type(c.via) == "string" and c.via:lower() == low and not c.relay then c.seen = d end
     end
 end
 
 ns.CommOn("PV", function(sender, f, chan)
-    if chan ~= "GUILD" then return end
+    -- F-240: by whisper only as an answer to the own question, with the count of crafters passed on
+    local answer = chan == "WHISPER" and helloSent and now() - helloSent <= LIM.helloKeep
+    if chan ~= "GUILD" and not answer then return end
     if tonumber(f[1]) ~= ns.CRAFT_PROTO then
         stats.other = stats.other + 1
         return
@@ -570,9 +603,23 @@ ns.CommOn("PV", function(sender, f, chan)
             return
         end
         local low = name:lower()
+        local relayN = answer and tonumber(f[4]) or nil
+        if relayN and relayN > 0 and relayN <= 999 and relayN == math.floor(relayN) then
+            offers[low] = { name = name, n = relayN }
+            -- an answer after the pick: pulled too while fewer than relayPick were picked
+            if relayPicked and relayPickedN < LIM.relayPick then
+                relayPickedN = relayPickedN + 1
+                queuePeer(name, "relay", relayN, now() + math.random() * LIM.pullJitter, "R")
+            end
+        end
         local s = store(false)
         local src = s and s.src[low]
-        if src and src.d == d then return touch(low) end
+        -- the sender's own entry passed on by someone else (F-240): its own word is pulled, whatever the digest
+        local relayed = false
+        for cname, c in pairs(s and s.c or {}) do
+            if type(cname) == "string" and cname:lower() == low and type(c) == "table" and c.relay then relayed = true end
+        end
+        if src and src.d == d and not relayed then return touch(low) end
         if n == 0 or (pull and pull.low == low) then return end
         queuePeer(name, d, n, now() + math.random() * LIM.pullJitter, src and src.f)
     end)
@@ -692,7 +739,7 @@ local function apply(senderName, low, list, tbl)
     -- what this sender gave already (a cut answer keeps it): counted against the caps per sender
     local held, heldN, heldBytes = {}, 0, 0
     for name, c in pairs(s.c) do
-        if type(c) == "table" and type(c.via) == "string" and c.via:lower() == low then
+        if type(c) == "table" and type(c.via) == "string" and c.via:lower() == low and not c.relay then
             held[name], heldN, heldBytes = Cr.Bytes(c), heldN + 1, heldBytes + Cr.Bytes(c)
         end
     end
@@ -745,7 +792,9 @@ local function apply(senderName, low, list, tbl)
     end
     if not tbl.m then
         for name, c in pairs(s.c) do
-            if not names[name] and type(c) == "table" and type(c.via) == "string" and c.via:lower() == low then s.c[name] = nil end
+            if not names[name] and type(c) == "table" and type(c.via) == "string" and c.via:lower() == low and not c.relay then
+                s.c[name] = nil
+            end
         end
     end
     local src = s.src[low] or {}
@@ -755,6 +804,111 @@ local function apply(senderName, low, list, tbl)
     Cr.Prune()
     changed()
     return mismatch
+end
+
+-- F-240: an answer in the format R checked whole: { v = 1, d, f = "R", m, c = { { name, { { skill, rank, max, index
+-- checksum, bitset hex | { spell steps } } }, age in days 0..relayDays } } }; at most relayMax crafters; one bad
+-- field drops the whole answer. Returns { { name, p, age } }.
+local function checkRelay(tbl)
+    if type(tbl) ~= "table" or tbl.v ~= 1 or not isHex8(tbl.d) or tbl.f ~= "R" or (tbl.m ~= nil and tbl.m ~= 1) then return nil end
+    for k in pairs(tbl) do
+        if not BLOB_KEYS[k] then return nil end
+    end
+    local c = tbl.c
+    if c == nil then return {} end
+    if type(c) ~= "table" then return nil end
+    local n = #c
+    if n > LIM.relayMax or size(c) ~= n then return nil end
+    local out, names = {}, {}
+    for i = 1, n do
+        local x = c[i]
+        if type(x) ~= "table" or size(x) ~= 3 or not validName(x[1]) or type(x[2]) ~= "table" or not int(x[3], 0, LIM.relayDays) then
+            return nil
+        end
+        local low = x[1]:lower()
+        if names[low] then return nil end
+        names[low] = true
+        local profs, np = x[2], #x[2]
+        if np < 1 or np > LIM.profMax or size(profs) ~= np then return nil end
+        local p = {}
+        for j = 1, np do
+            local e = profs[j]
+            if type(e) ~= "table" or size(e) ~= 5 then return nil end
+            local skill, rank, max, h, data = e[1], e[2], e[3], e[4], e[5]
+            if not int(skill, 1, 99999) or p[skill] or not int(rank, 0, 999) or not int(max, 0, 999) or not isHex8(h) then return nil end
+            if type(data) == "string" then
+                if #data > LIM.bitsMax or #data % 2 ~= 0 or not data:match("^%x*$") then return nil end
+                p[skill] = { r = rank, m = max, h = h:lower(), b = data:lower() }
+            else
+                local list = checkSteps(data)
+                if not list then return nil end
+                p[skill] = { r = rank, m = max, h = h:lower(), l = list }
+            end
+        end
+        out[#out + 1] = { name = x[1], p = p, age = x[3] }
+    end
+    return out
+end
+
+-- F-240: takes the crafters a sender passed on: each must stand in the guild, be none of the own characters and
+-- not the sender's (those come the usual way); one is kept with the day it sent itself, unless the store has it
+-- from that day or later; the sender's passed-on crafters stay within viaBytes. Returns how many were taken.
+local function applyRelay(senderName, low, list)
+    local s = store(true)
+    local d, n = today(), 0
+    local own = {}
+    for _, c in ipairs(Cr.Own()) do own[c.name:lower()] = true end
+    local heldBytes = 0
+    for _, c in pairs(s.c) do
+        if type(c) == "table" and c.relay and type(c.via) == "string" and c.via:lower() == low then heldBytes = heldBytes + Cr.Bytes(c) end
+    end
+    for _, x in ipairs(list) do
+        local cl = x.name:lower()
+        if own[cl] then
+            stats.kept = stats.kept + 1
+        elseif sameAccount(senderName, x.name) then
+            stats.foreign = stats.foreign + 1
+        elseif ns.IsVerifiedMember(x.name) ~= true then
+            stats.outsider = stats.outsider + 1
+        else
+            for skill, p in pairs(x.p) do
+                if p.l then
+                    local l = knownList(skill, p.l)
+                    if l then p.l = l else x.p[skill] = nil end
+                elseif dataBuilt() then
+                    -- a bitset of another recipe index is of no use here (and asking the passer for lists would not
+                    -- change what it passes on)
+                    local ix = indexOf(skill)
+                    if ix and (ix.hash ~= p.h or not fromBits(ix, p.b)) then x.p[skill] = nil end
+                end
+            end
+            local seen = d - x.age
+            local cur = s.c[x.name]
+            local curSeen = type(cur) == "table" and int(cur.seen, 0, 999999) and cur.seen or nil
+            if next(x.p) == nil then
+                stats.unknown = stats.unknown + 1
+            elseif (type(cur) == "table" and cur.self) or (curSeen and curSeen >= seen) then
+                -- what the crafter sent itself is never replaced by a word passed on; else the newer stays
+                stats.kept = stats.kept + 1
+            else
+                local mineBefore = type(cur) == "table" and cur.relay and type(cur.via) == "string" and cur.via:lower() == low
+                local bytes = Cr.Bytes(x)
+                if heldBytes - (mineBefore and Cr.Bytes(cur) or 0) + bytes > LIM.viaBytes then
+                    stats.capped = stats.capped + 1
+                else
+                    heldBytes = heldBytes - (mineBefore and Cr.Bytes(cur) or 0) + bytes
+                    s.c[x.name] = { via = senderName, relay = true, seen = seen, p = x.p }
+                    n = n + 1
+                end
+            end
+        end
+    end
+    local src = s.src[low]
+    if type(src) == "table" then src.r = d else s.src[low] = { at = d, r = d } end
+    stats.relayed = stats.relayed + n
+    Cr.Prune()
+    changed()
+    return n
 end
 
 ns.CommOnBlob("PK", function(sender, tbl, chan, key)
@@ -774,7 +928,8 @@ ns.CommOnBlob("PK", function(sender, tbl, chan, key)
     asked[nonce] = nil
     asking[low] = nil
     local mine = pull and pull.nonce == nonce
-    local list = checkBlob(tbl, ask)
+    local list
+    if ask.f == "R" then list = checkRelay(tbl) else list = checkBlob(tbl, ask) end
     if not list then
         stats.bad = stats.bad + 1
         debugLine(L["Ungültige Rezeptdaten verworfen."])
@@ -783,6 +938,11 @@ ns.CommOnBlob("PK", function(sender, tbl, chan, key)
     end
     stats.blobs = stats.blobs + 1
     if not AmisiaDB or not ns.Get("crafters.share") then
+        if mine then pull = nil end
+        return
+    end
+    if ask.f == "R" then
+        applyRelay(name, low, list)
         if mine then pull = nil end
         return
     end
@@ -866,6 +1026,8 @@ local function wire(f, list, n)
     return t
 end
 
+local fitRelay, relayCount, hello, replyDue, pickRelays   -- F-240, below (they read the roster)
+
 -- The most crafters that pack into maxParts: table and packed text, or nil.
 local function fit(f, maxParts)
     local list = Cr.Own()
@@ -915,7 +1077,8 @@ local function serveOne()
         debugLine(L["Sendegrenze erreicht."])
         return sendPW(s.name, s.low, LIM.doneWait)
     end
-    local tbl, packed = fit(s.f, maxParts)
+    local tbl, packed
+    if s.f == "R" then tbl, packed = fitRelay(maxParts) else tbl, packed = fit(s.f, maxParts) end
     if not tbl then return sendPW(s.name, s.low, LIM.busyWait) end
     local parts = math.ceil(#packed / 200)
     local estimate = #packed + parts * PART_OVERHEAD
@@ -927,6 +1090,7 @@ local function serveOne()
     if not ok then return end
     charge(bytes or estimate, s.low)
     stats.served = stats.served + 1
+    if s.f == "R" then stats.relayServed = stats.relayServed + 1 end
     lastBlob, a.served = t, t
     partsLog[#partsLog + 1] = { t, n or parts }
 end
@@ -949,6 +1113,9 @@ local function tick()
     end
     if not pull then startNext() end
     announce()
+    hello()
+    replyDue()
+    pickRelays()
     serveOne()
     for k, a in pairs(asked) do
         if t - a.at > LIM.askKeep then asked[k] = nil end
@@ -1007,6 +1174,186 @@ local function roster()
     for _, m in ipairs(list) do rosterMap[m.name:lower()] = m end
     return rosterMap
 end
+
+---------------------------------------------------------------------------
+-- F-240: what this client passes on (format R), the own question after the login and the answers to others'
+---------------------------------------------------------------------------
+
+-- The crafters that sent themselves to this client within relayDays and stand in the roster, none of the own
+-- characters, never one passed on: { { name, c, age } }, the newest first.
+local function relayList()
+    local s, r = store(false), roster()
+    if not s or not r then return {} end
+    local d = today()
+    local own = {}
+    for _, c in ipairs(Cr.Own()) do own[c.name:lower()] = true end
+    local list = {}
+    for name, c in pairs(s.c) do
+        if type(name) == "string" and type(c) == "table" and c.self and not c.relay and int(c.seen, 0, 999999)
+            and d - c.seen <= LIM.relayDays and d >= c.seen and not own[name:lower()] and r[name:lower()] and type(c.p) == "table" then
+            list[#list + 1] = { name = name, c = c, age = d - c.seen }
+        end
+    end
+    table.sort(list, function(a, b)
+        if a.age ~= b.age then return a.age < b.age end
+        return a.name < b.name
+    end)
+    return list
+end
+
+relayCount = function() return math.min(#relayList(), 999) end
+
+-- The answer in the format R: the first n crafters of list, each profession as it is stored (a bitset with its
+-- index checksum, or the spell list as steps with the checksum 00000000).
+local function wireRelay(list, n)
+    local t = { v = 1, d = Cr.Digest(), f = "R", c = {} }
+    for i = 1, n do
+        local x = list[i]
+        local skills = {}
+        for skill, p in pairs(x.c.p) do
+            if validProf(skill, p) then skills[#skills + 1] = skill end
+        end
+        table.sort(skills)
+        local profs = {}
+        for k = 1, math.min(#skills, LIM.profMax) do
+            local skill = skills[k]
+            local p = x.c.p[skill]
+            if p.b then
+                profs[#profs + 1] = { skill, p.r, p.m or 0, p.h, p.b }
+            else
+                local steps, at = {}, 0
+                for id in p.l:gmatch("%d+") do
+                    id = tonumber(id)
+                    if id > at and #steps < LIM.knownMax then
+                        steps[#steps + 1] = id - at
+                        at = id
+                    end
+                end
+                profs[#profs + 1] = { skill, p.r, p.m or 0, "00000000", steps }
+            end
+        end
+        if #profs > 0 then t.c[#t.c + 1] = { x.name, profs, x.age } end
+    end
+    if n < #list then t.m = 1 end
+    if #t.c == 0 then t.c = nil end
+    return t
+end
+
+-- The most of them that pack into maxParts: table and packed text, or nil.
+fitRelay = function(maxParts)
+    local list = relayList()
+    local n = math.min(#list, LIM.relayMax)
+    while n >= 0 do
+        local tbl = wireRelay(list, n)
+        local packed = ns.CommPack(tbl)
+        if not packed then return nil end
+        if math.ceil(#packed / 200) <= maxParts then return tbl, packed end
+        n = n > 8 and math.floor(n * 0.75) or n - 1
+    end
+    return nil
+end
+
+-- Whether this client heard any sender today (then it does not ask after the login).
+local function heardToday()
+    local s, d = store(false), today()
+    for _, src in pairs(s and s.src or {}) do
+        if type(src) == "table" and (src.at == d or src.r == d) then return true end
+    end
+    return false
+end
+
+-- the spread from the client's own id, as the first announcement takes it (no draw of math.random at the login)
+ns.OnEvent("PLAYER_LOGIN", function()
+    if helloAt then return end
+    local dd = ns.DropsDB and ns.DropsDB()
+    local spread = dd and type(dd.me) == "string" and tonumber(dd.me:sub(5, 8), 16) or 0
+    helloAt = now() + LIM.helloMin + spread % (LIM.helloSpread + 1)
+end)
+
+-- The own question (PH), once a session, only without a sender heard today.
+hello = function()
+    if helloSent ~= nil or not helloAt or now() < helloAt or not canTalk() then return end
+    if heardToday() then
+        helloSent = false
+        return
+    end
+    local s, n = store(false), 0
+    for _ in pairs(s and s.c or {}) do n = n + 1 end
+    if send("PH", { tostring(ns.CRAFT_PROTO), tostring(math.min(n, 999)) }, "GUILD", nil, "PH") then
+        helloSent = now()
+        boostUntil = helloSent + 3600
+    end
+end
+
+-- After the answers: what the answerers with the most pass on is pulled (format R), relayPick of them.
+pickRelays = function()
+    if relayPicked or not helloSent or now() < helloSent + LIM.replyMin + LIM.replySpread + 15 then return end
+    relayPicked = true
+    local list = {}
+    for _, o in pairs(offers) do list[#list + 1] = o end
+    table.sort(list, function(a, b)
+        if a.n ~= b.n then return a.n > b.n end
+        return a.name < b.name
+    end)
+    for i = 1, math.min(LIM.relayPick, #list) do
+        queuePeer(list[i].name, "relay", list[i].n, now() + math.random() * LIM.pullJitter, "R")
+    end
+    relayPickedN = math.min(LIM.relayPick, #list)
+end
+
+-- Another member's question: an answer (the own PV by whisper with the count passed on) 5 to 60 s later, once an
+-- hour per asker and replyPerHour askers an hour; nothing without anything to give.
+ns.CommOn("PH", function(sender, f, chan)
+    if chan ~= "GUILD" then return end
+    if tonumber(f[1]) ~= ns.CRAFT_PROTO then
+        stats.other = stats.other + 1
+        return
+    end
+    if not AmisiaDB or not ns.Get("crafters.share") then return end
+    local name = ns.TrustName(sender)
+    if not name then
+        stats.refused = stats.refused + 1
+        return
+    end
+    stats.phHeard = stats.phHeard + 1
+    ns.TrustWait(name, "member", function(ok)
+        if not ok then
+            stats.refused = stats.refused + 1
+            return
+        end
+        local low = name:lower()
+        if repliedAt[low] and now() - repliedAt[low] < LIM.replyGap then return end
+        for _, r in ipairs(replies) do
+            if r.low == low then return end
+        end
+        replies[#replies + 1] = { name = name, low = low, at = now() + LIM.replyMin + math.random() * LIM.replySpread }
+    end)
+end)
+
+replyDue = function()
+    if #replies == 0 or not canTalk() then return end
+    local t = now()
+    local keep = {}
+    for _, at in ipairs(replyTimes) do
+        if t - at < 3600 then keep[#keep + 1] = at end
+    end
+    replyTimes = keep
+    for i, r in ipairs(replies) do
+        if r.at <= t then
+            table.remove(replies, i)
+            if #replyTimes >= LIM.replyPerHour then return end
+            local d, n = Cr.Digest()
+            local relayN = relayCount()
+            if n == 0 and relayN == 0 then return end
+            if send("PV", { tostring(ns.CRAFT_PROTO), tostring(n), d, tostring(relayN) }, "WHISPER", r.name, nil, r.low) then
+                repliedAt[r.low] = t
+                replyTimes[#replyTimes + 1] = t
+                stats.replies = stats.replies + 1
+            end
+            return
+        end
+    end
+end
 ns.OnEvent("GUILD_ROSTER_UPDATE", function() rosterAt = nil end)
 
 local function decode(skill, p)
@@ -1024,14 +1371,15 @@ end
 local function build()
     if index and index.gen == gen then return index end
     local bySpell = {}
-    local function add(name, rank, own, spell)
+    -- via, age: a crafter passed on (F-240), by whom and how many days ago it sent itself
+    local function add(name, rank, own, spell, via, age)
         local e = bySpell[spell]
         if not e then
             e = {}
             bySpell[spell] = e
         end
         local cur = e[name]
-        if not cur or rank > cur.rank then e[name] = { rank = rank, own = own } end
+        if not cur or rank > cur.rank then e[name] = { rank = rank, own = own, via = via, age = age } end
     end
     if ns.HasData("PROFESSIONS") then
         local own = {}
@@ -1049,10 +1397,13 @@ local function build()
                 for skill, p in pairs(c.p) do
                     local spells = decode(skill, p)
                     if not spells then
-                        -- the bitset fits other data: that sender is asked for lists next time
-                        stale(c.via:lower())
+                        -- the bitset fits other data: that sender is asked for lists next time (not a passer, F-240:
+                        -- its lists would not change what it passes on)
+                        if not c.relay then stale(c.via:lower()) end
                     else
-                        for _, spell in ipairs(spells) do add(name, p.r, false, spell) end
+                        local via = c.relay and c.via or nil
+                        local age = via and int(c.seen, 0, 999999) and math.max(0, today() - c.seen) or nil
+                        for _, spell in ipairs(spells) do add(name, p.r, false, spell, via, age) end
                     end
                 end
             end
@@ -1062,7 +1413,8 @@ local function build()
     return index
 end
 
--- The crafters of entries { [name] = { rank, own } } as a sorted list { { name, rank, own, online } }:
+-- The crafters of entries { [name] = { rank, own, via, age } } as a sorted list { { name, rank, own, online, via, age } }
+-- (via: passed on by that member, F-240):
 -- online first (when the roster says so), then the higher rank, then the name; a heard crafter that
 -- left the guild (the roster can be read and lacks it) is left out.
 local function sorted(entries)
@@ -1071,7 +1423,7 @@ local function sorted(entries)
     for name, e in pairs(entries or {}) do
         local m = r and r[name:lower()]
         if e.own or not r or m then
-            out[#out + 1] = { name = name, rank = e.rank, own = e.own or false, online = m and m.online or false }
+            out[#out + 1] = { name = name, rank = e.rank, own = e.own or false, online = m and m.online or false, via = e.via, age = e.age }
         end
     end
     table.sort(out, function(a, b)
@@ -1126,6 +1478,15 @@ function Cr.ForItem(item)
         end
     end
     return sorted(merged)
+end
+
+-- F-240: "laut Vulo, Stand vor 3 Tagen" of a crafter passed on (an entry of Cr.ForSpell or Cr.Professions), nil
+-- for one heard from itself.
+function Cr.ViaText(c)
+    if type(c) ~= "table" or type(c.via) ~= "string" then return nil end
+    local age = tonumber(c.age)
+    if age and age > 0 then return L["laut %s, Stand vor %d Tagen"]:format(c.via, age) end
+    return L["laut %s, Stand von heute"]:format(c.via)
 end
 
 -- "Anna (300), Bob (275)" of a sorted list, at most max names and "+n" for the rest; online names
@@ -1309,7 +1670,7 @@ local profsCache          -- { gen, own (the list of Cr.Own it read), day, map }
 
 -- The professions of every crafter Amisia knows, the own characters of this guild and the heard
 -- ones: [lower name] = { { skill, rank, max, known = recipes known, age = days since it was read or
--- heard (nil: unknown), own } } by skill line. Built again after a change of the crafters or the day.
+-- heard (nil: unknown), own, relay, via (passed on by that member, F-240) } } by skill line. Built again after a change of the crafters or the day.
 function Cr.Professions()
     local own, d = Cr.Own(), today()
     local c = profsCache
@@ -1344,7 +1705,8 @@ function Cr.Professions()
                     n = hexBits(p.b)
                 end
                 list[#list + 1] = { skill = skill, rank = p.r, max = p.m or 0, known = n,
-                                    age = int(e.seen, 0, 999999) and math.max(0, d - e.seen) or nil, own = false }
+                                    age = int(e.seen, 0, 999999) and math.max(0, d - e.seen) or nil, own = false,
+                                    relay = e.relay or nil, via = e.relay and e.via or nil }
             end
             if #list > 0 then map[low] = list end
         end
@@ -1398,7 +1760,7 @@ function Cr.KnownOf(name, skill)
                 local spells = decode(skill, p)
                 if not spells then
                     why = "foreign"
-                    if type(c.via) == "string" then stale(c.via:lower()) end
+                    if type(c.via) == "string" and not c.relay then stale(c.via:lower()) end
                 elseif #spells == 0 and p.b and hexBits(p.b) > 0 then
                     why = "nodata"
                 else
@@ -1500,5 +1862,9 @@ ns.RegisterSlash("hersteller", { en = "crafters", desc = L["Stand des Rezept-Aus
     local st = ns.CraftersStats()
     ns.msg(L["Hersteller: %d eigene, %d aus der Gilde. Gelernt %d, gesendet %d Bytes. Teilen %s."]:format(#Cr.Own(), n,
         st.crafters, st.bytes, ns.Get("crafters.share") and L["an"] or L["aus"]))
+    -- F-240: the question after the login, the answers, what was passed on
+    ns.msg(L["Login-Frage %s, %d Antworten gegeben, %d Hersteller weitergegeben bekommen, %d Mal weitergegeben."]:format(
+        helloSent and L["gestellt"] or (helloSent == false and L["nicht nötig"] or L["noch nicht"]), st.replies, st.relayed,
+        st.relayServed))
 end })
 end)

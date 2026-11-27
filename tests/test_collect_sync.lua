@@ -17,6 +17,7 @@ local function setup(name)
     C(name, ([[STUB.instance = { name = "Durotar", type = "none", id = 0 }
         STUB.combat = false
         AmisiaDB.drops.me = %q
+        NS.CRAFTERS_LIMITS.helloMin = 1e9   -- not the recipes' question after the login (F-240)
         STUB.fire("GUILD_ROSTER_UPDATE")]]):format(ME[name]))
 end
 -- records: list of { kind, id, record }, quests written in the exchange's layout (version 2, heard)

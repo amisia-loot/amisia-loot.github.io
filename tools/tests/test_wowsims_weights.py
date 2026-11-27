@@ -77,11 +77,14 @@ def test_every_template_fits_amisia():
     assert not (set(ws.STAT_KEY) & ws.SKIPPED)
 
 
-def test_the_download_keeps_the_presets_and_the_licence_only():
+def test_the_download_keeps_the_presets_the_gear_sets_and_the_licence_only():
     assert ws.kept('ui/specs/priest/dps/presets.ts') and ws.kept('LICENSE')
     assert ws.kept('ui/specs/druid/feral_ep.ts')
     assert not ws.kept('ui/specs/priest/dps/apls/default.apl.json')
-    assert not ws.kept('ui/specs/priest/dps/gear_sets/p1.gear.json')
+    # the gear sets (F-239) and the proto with their slot order
+    assert ws.kept('ui/specs/priest/dps/gear_sets/p1.gear.json') and ws.kept('ui/specs/mage/dps/gear_sets/preraidFire.gear.json')
+    assert ws.kept('ui/specs/hunter/dps/gear_sets/prebis_weave.gear.siml') and ws.kept('proto/common.proto')
+    assert not ws.kept('ui/specs/priest/dps/gear_sets/notes.md') and not ws.kept('ui/specs/priest/dps/builds/x.build.json')
     assert not ws.kept('sim/priest/shadow.go') and not ws.kept('README.md')
     assert not ws.kept('ui/specs/priest/dps/sim.tsx')
 
@@ -160,3 +163,113 @@ def test_the_real_download_reads():
     shadow = next(t for t in sims['PRIEST'] if t['name'] == 'Schatten')
     assert shadow['spec'] == 'shadow' and shadow['w']['SP'] == 1 and shadow['w']['HIT'] > 1
     assert sum(len(v) for v in sims.values()) >= 20
+
+
+# ---------------------------------------------------------------- gear sets (F-239)
+NAMES = {15411: 'Mark of Fordring', 12640: 'Lionheart Helm', 19587: "Forest Stalker's Bracers",
+         19589: "Forest Stalker's Bracers", 19590: "Forest Stalker's Bracers", 15063: 'Devilsaur Gauntlets',
+         99063: 'Devilsaur Gauntlets', 22086: 'Soulforge Belt', 226994: 'Soulforge Belt',
+         10388: 'Masterwork Legplates', 21477: "Don Julio's Band"}
+LEVELS = {19587: 65, 19589: 55, 19590: 45, 22086: 65, 226994: 60}
+
+
+def test_the_slot_order_is_the_sims_item_slot():
+    """SLOT_ORDER is ItemSlot of proto/common.proto, checked against the download when this machine has one."""
+    assert ws.SLOT_ORDER[0] == 'HEAD' and ws.SLOT_ORDER[14] == 'MAINHAND' and len(ws.SLOT_ORDER) == 17
+    assert set(ws.SIML_SLOT.values()) == set(ws.SLOT_ORDER)
+    proto = os.path.join(ws.WOWSIMS_CACHE, 'proto', 'common.proto')
+    if os.path.exists(proto):
+        with open(proto, encoding='utf-8') as fh:
+            text = fh.read()
+        body = text[text.index('enum ItemSlot {'):]
+        body = body[:body.index('}')]
+        import re
+        names = re.findall(r'ItemSlot(\w+)\s*=\s*(\d+)', body)
+        assert [n.upper() for n, _ in names] == list(ws.SLOT_ORDER)
+        assert [int(i) for _, i in names] == list(range(17))
+
+
+def test_the_gear_presets_are_read_as_text():
+    got = ws.parse_gear_presets(read('ui', 'specs', 'mage', 'dps', 'presets.ts'))
+    assert got == [('Preraid', 'Arcane', './gear_sets/preraid.gear.json', 'PreRaidArcaneGearJson'),
+                   ('Preraid', 'Fire', './gear_sets/preraidFire.gear.json', 'PreRaidFireGearJson'),
+                   ('Preraid', 'Frost', './gear_sets/preraidFrost.gear.json', 'PreRaidFrostGearJson'),
+                   ('Preraid', 'Arcane', None, 'DefaultsJson.player.equipment'),
+                   ('Odd', None, './gear_sets/preraidFire.gear.json', 'PreRaidFireGearJson')]
+    # the options as a const of the file and as an object over several lines
+    got = ws.parse_gear_presets(read('ui', 'specs', 'warrior', 'dps', 'presets.ts'))
+    assert [(g[0], g[1]) for g in got] == [('Pre-BiS', 'Fury'), ('Pre-BiS', 'Arms')]
+
+
+def test_a_gear_json_lists_its_items_in_slot_order():
+    items = ws.parse_gear_json(read('ui', 'specs', 'mage', 'dps', 'gear_sets', 'preraid.gear.json'))
+    # empty slots and id 0 left out
+    assert items == {'HEAD': 10041, 'NECK': 18691, 'CHEST': 14152, 'MAINHAND': 22799, 'RANGED': 13938}
+
+
+def test_a_gear_siml_names_its_items():
+    assert ws.slug("Don Julio's Band") == 'don_julios_band' and ws.slug('Thunderfury, Blessed Blade') == 'thunderfury_blessed_blade'
+    items, missing = ws.parse_gear_siml(read('ui', 'specs', 'warrior', 'dps', 'gear_sets', 'prebis_arms.gear.siml'),
+                                        ws.item_slugs(NAMES), known={15411}, levels=LEVELS)
+    assert items == {'HEAD': 12640, 'NECK': 15411,
+                     'WRIST': 19587,      # one name in three item levels: the highest
+                     'HANDS': 15063,      # _<id> picks among the name's items
+                     'WAIST': 22086,      # _ilvl<N> picks the item level
+                     'LEGS': 10388,       # the random suffix is dropped
+                     'FINGER1': 21477}
+    assert missing == ['main_hand something_nobody_knows']
+
+
+def test_load_sets_maps_the_presets_by_hand(capsys):
+    sets = ws.load_sets(FIXTURE, NAMES, (), LEVELS)
+    assert list(sets) == ['WARRIOR', 'MAGE'], "in the classes' order"
+    assert sets['MAGE'] == [
+        {'name': 'Arkan Pre-BiS', 'spec': 'arcane',
+         'items': {'HEAD': 10041, 'NECK': 18691, 'CHEST': 14152, 'MAINHAND': 22799, 'RANGED': 13938}},
+        {'name': 'Feuer Pre-BiS', 'spec': 'fire',
+         'items': {'HEAD': 10041, 'NECK': 18691, 'CHEST': 14152, 'FINGER1': 942, 'FINGER2': 1156}}]
+    assert [(t['name'], t['spec']) for t in sets['WARRIOR']] == [('Furor Pre-BiS', 'dps'), ('Waffen Pre-BiS', 'dps')]
+    assert sets['WARRIOR'][0]['items'] == {'HEAD': 12640, 'MAINHAND': 12940, 'OFFHAND': 12939}
+    err = capsys.readouterr().err
+    assert 'the same items as "Arkan Pre-BiS"' in err
+    assert '"Odd" has no name in SET_NAMES' in err and 'DefaultsJson.player.equipment' in err
+    assert 'no item for main_hand something_nobody_knows' in err
+    # without item names a .gear.siml is left out, a .gear.json still reads
+    sets = ws.load_sets(FIXTURE, None, (), None, quiet=True)
+    assert [t['name'] for t in sets['WARRIOR']] == ['Furor Pre-BiS']
+
+
+def test_every_set_fits_amisia():
+    """Every mapped spec is one of Amisia's, every set name short enough for the menu."""
+    import build_bis as bb
+    specs = {(c, k) for c, k, *_ in bb.SPECS}
+    for folder, (cls, spec, labels) in ws.SET_NAMES.items():
+        assert cls in ws.CLASS_ORDER, folder
+        for de, own in labels.values():
+            assert (own or spec) is None or (cls, own or spec) in specs, (folder, de)
+            assert len(de) <= 28, de
+
+
+def test_the_sets_stand_in_the_weights_file_with_their_source():
+    import build_bis as bb
+    sets = ws.load_sets(FIXTURE, NAMES, (), LEVELS, quiet=True)
+    conv = bb.Conv({})
+    result = {}
+    for cls, key, name, role, model, p in bb.SPECS:
+        w = {'AP': 1} if model != 'caster' else {'SP': 1}
+        result[(cls, key)] = ([w] * len(bb.BRACKETS), [w] * len(bb.BRACKETS), [{}] * len(bb.BRACKETS))
+    text = bb.render_weights(result, conv, {'built': 'x', 'sim_commit': '0123456789abcdef'}, None, None, sets)
+    head = [line for line in text.splitlines() if line.startswith('-- SETS')]
+    assert head and 'WoWSims' in head[0] and '0123456789' in head[0]
+    flat = text.replace(' ', '')
+    assert 'SETS={' in flat and 'SIM={' not in flat
+    assert '{name="Arkan Pre-BiS",spec="arcane",items={HEAD=10041,NECK=18691,CHEST=14152,MAINHAND=22799,RANGED=13938}},'.replace(' ', '') in flat
+    assert 'SETS' not in bb.render_weights(result, conv, {'built': 'x'}, None, None, None)
+
+
+@pytest.mark.skipif(not os.path.exists(os.path.join(ws.WOWSIMS_CACHE, 'ui', 'specs', 'mage', 'dps', 'gear_sets')),
+                    reason='no WoWSims gear sets on this machine')
+def test_the_real_gear_sets_read():
+    sets = ws.load_sets(quiet=True)
+    arcane = next(t for t in sets['MAGE'] if t['name'] == 'Arkan Pre-BiS')
+    assert arcane['spec'] == 'arcane' and len(arcane['items']) >= 15

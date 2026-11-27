@@ -524,6 +524,16 @@ local function guildText(spell, offline)
     end
     local text = #shown > 0 and Cr.Text(shown, 12, true) or (GREY .. L["Gerade niemand online."] .. "|r")
     if hidden > 0 then text = text .. "\n" .. GREY .. L["%d offline"]:format(hidden) .. "|r" end
+    -- the crafters passed on by another member (F-240): by whom, and how old
+    local viaN = 0
+    for _, c in ipairs(shown) do
+        local via = Cr.ViaText and Cr.ViaText(c)
+        if via then
+            viaN = viaN + 1
+            if viaN <= 3 then text = text .. "\n" .. GREY .. ("%s: %s"):format(c.name, via) .. "|r" end
+        end
+    end
+    if viaN > 3 then text = text .. "\n" .. GREY .. L["%d weitere weitergegeben"]:format(viaN - 3) .. "|r" end
     -- the crafters a search asked for a fresh list (F-035)
     local asking = {}
     for _, c in ipairs(makers) do
@@ -1979,6 +1989,9 @@ local function memberHead(v, name)
         if p.skill == v and ns.MembersProfParts then
             local skill, recipes, age = ns.MembersProfParts(p)
             line = table.concat({ L["Skill: %s"]:format(skill), recipes, age }, " · ")
+            -- passed on by another member (F-240)
+            local via = Cr.ViaText and Cr.ViaText(p)
+            if via then line = line .. " · " .. via end
         end
     end
     return L["%s - Rezepte von %s"]:format(name, member.name), line,

@@ -4,6 +4,9 @@
 -- automatic invite only when the roster names the own zone; a YI and a chat line of one member make one
 -- question; "Im Gildenchat fragen" opens the chat box with the setting's text; afterwards only a guild
 -- member's invite is accepted; public channels are never read.
+-- D-172: helping is off by default; this test helps
+NS.Set("layer.answer", true)
+NS.LayerChange.SetHosting(true)
 local SW, LY = NS.LayerChange, NS.Layer
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 

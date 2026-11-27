@@ -112,8 +112,9 @@ assert(NS.BisChar().wish[274998], "the star works on it")
 local w = NS.Wishes()[1]
 assert(w.id == 274998 and w.src == "Quelle unbekannt" and w.slotKey == "MAINHAND", tostring(w.src))
 f.tabWish:Click()
-assert(ids() == "274998", ids())
-local wr = f.list.rows[1]
+-- under the group "Quelle unbekannt" (the wish list by source)
+assert(ids() == "note,274998" and f.list.items[1].wishHead and f.list.items[1].label == "Quelle unbekannt", ids())
+local wr = f.list.rows[2]
 assert(has(plain(wr.sub:GetText()), "Quelle unbekannt") and wr.srcQ:IsShown(), plain(wr.sub:GetText()))
 f.tabSuggest:Click()
 NS.WishRemove(274998)

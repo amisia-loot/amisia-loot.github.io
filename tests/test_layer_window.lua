@@ -5,6 +5,8 @@
 -- takes no request and no chat line, closes an open question and is on again after a reset; the count of
 -- this session's helping.
 local A, V, Lk, K = "Anna Bergmann", "Vulo Sturmwind", "Lena Kraus", "Kai Lindner"
+-- D-172: helping is off by default; these clients help
+for _, n in ipairs({ A, V, Lk, K }) do C(n, "NS.Set('layer.answer', true); NS.LayerChange.SetHosting(true)") end
 BUS.setGuild({ { A, 3 }, { V, 3 }, { Lk, 3 }, { K, 3 } })
 local function guid(zone, npc, spawn) return ("Creature-0-%d-0-5250-%d-%s"):format(zone, npc, spawn) end
 local function world(name, zone)

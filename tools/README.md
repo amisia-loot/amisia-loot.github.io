@@ -38,8 +38,8 @@ python3 tools/build.py perf [--sv FILE] [--rows N]
   from what is on disk, so the same files give the same data.
 - `questie` downloads QuestieDB's Forever data into `~/addons/_cache/questiedb` (`questie_data.py`, below;
   D-157). `data` only reads that cache.
-- `wowsims` downloads the WoWSims presets for WoW Forever into `~/addons/_cache/wowsims` (`wowsims_weights.py`,
-  below; F-230, D-161). By hand before a release when the templates should change, not in the automatic run;
+- `wowsims` downloads the WoWSims presets and gear sets for WoW Forever into `~/addons/_cache/wowsims`
+  (`wowsims_weights.py`, below; F-230, F-239, D-161). By hand before a release when the templates should change, not in the automatic run;
   `data` only reads that cache.
 - `web [--site SITE] [--limit N] [--parse]` fetches the fan sites' item pages for the items no other source
   explains into `~/addons/_cache/web/<site>` and parses them into `~/addons/_cache/web/<site>.json`
@@ -667,7 +667,7 @@ python3 tools/build.py questie      # = tools/questie_data.py [--dest DIR] [--re
 Tests: `tools/tests/test_questie_data.py` (a cut of the files in their format under
 `tools/tests/fixtures/questiedb`, the sandbox, the download without network).
 
-## wowsims_weights.py: templates of the own weights from the WoWSims simulation (F-230, D-161)
+## wowsims_weights.py: weight templates and gear sets from the WoWSims simulation (F-230, F-239, D-161)
 
 ```
 python3 tools/build.py wowsims      # = tools/wowsims_weights.py [--dest DIR] [--ref master]
@@ -675,7 +675,9 @@ python3 tools/build.py wowsims      # = tools/wowsims_weights.py [--dest DIR] [-
 
 - Downloads from `github.com/wowsims/forever` (branch `master`, MIT) through the GitHub API (the token of `gh`), one
   request after the other with a pause of a second, only `ui/specs/<class>/<spec>/presets.ts`, the weights a class
-  shares (`ui/specs/<class>/*_ep.ts`, e.g. `druid/feral_ep.ts` for the bear and the cat) and `LICENSE`, into
+  shares (`ui/specs/<class>/*_ep.ts`, e.g. `druid/feral_ep.ts` for the bear and the cat), the gear sets
+  (`ui/specs/<class>/<spec>/gear_sets/*.gear.json` and `*.gear.siml`), `proto/common.proto` (the slot order) and
+  `LICENSE`, into
   `~/addons/_cache/wowsims` (`$AMISIA_WOWSIMS_CACHE`) with the commit in `COMMIT`; files an older download had and
   the repository no longer has are removed. Never committed, never fetched by `build.py data`.
 - `parse_presets()` reads the TypeScript as text, never runs it: each `makePresetEpWeights('<name>', ...)` with a
@@ -691,9 +693,24 @@ python3 tools/build.py wowsims      # = tools/wowsims_weights.py [--dest DIR] [-
   `Amisia/Data/GearWeights.lua` (header: the source, the commit, `LICENSES/WoWSims-MIT.txt`). A missing download
   prints a note and writes no `SIM`. The 2026-11-22 download (3289d8314f): 26 templates for 12 of the 18 specs of
   the simulation (no mage, warlock, holy and protection paladin, restoration shaman and druid yet).
+- Gear sets (F-239, the planner's "Bekannte Sets"): `parse_gear_presets()` reads each
+  `makePresetGear('<label>', X[, { group: '...' } | OPTIONS_CONST])` and the `import X from './gear_sets/...'`
+  lines; a call whose gear is no gear_sets file (`X.player.equipment` of a build) is left out with a log line.
+  `SET_NAMES` maps spec folder, label and option group to Amisia's class and spec and a German name (its English
+  one in `Amisia_Gear/Locales/enUS_gear.lua`); a preset not named there is left out with a log line. A `.gear.json`
+  lists `{"id": N}` or `{}` in WoWSims' ItemSlot order (`SLOT_ORDER`, HEAD .. RANGED as in `proto/common.proto`;
+  the test checks it against the download); empty slots and id 0 are left out. A `.gear.siml` names its items
+  (`<slot>  <item slug>[ <suffix>][ + <enchant>]`): `slug()` of the English names `build_bis.gear_set_names` reads
+  from disk (QuestieDB's item file as text, `questie_data.item_names`, then the client's ItemSparse over it) leads
+  to the id; `_<id>` and `_ilvl<N>` pick among items of one name, then the planner's items, then the highest item
+  level; a slug no name explains is left out with a log line (the set keeps its other slots). A set with the same
+  items as an earlier one of its class is left out. `load_sets()` gives `{class: [{name, spec, items = {slot: id}}]}`;
+  `build_bis.py` writes it as `SETS` into `GearWeights.lua`. The 2026-11-27 download (3b9c125a9b): 29 sets for all
+  nine classes, 15 slots of the `.gear.siml` sets without an item (names not on disk).
 
 Tests: `tools/tests/test_wowsims_weights.py` (a cut of the files under `tools/tests/fixtures/wowsims`, the mapping
-against Amisia's specs and keys, the download without network, the header).
+against Amisia's specs and keys, the download without network, the header; the gear sets: a `.gear.json`, a
+`.gear.siml`, options as a const and inline, the slot order against `proto/common.proto`).
 
 ## web_sources.py: item sources from fan sites (D-157, step 2)
 
@@ -1010,7 +1027,8 @@ Inputs:
   base stock, and the SavedVariables: the random suffixes the collector saw (`scan.suffix`) and the
   item scan (`scan.items`) of planner items and picks GearData.lua has no `ST` for (the check below).
 - The WoWSims download (`wowsims_weights.py`, `--wowsims DIR`): its weight templates go into `GearWeights.lua` as
-  `SIM` (F-230, D-161), apart from Amisia's own weights, which never read them. `point_weights` turns an own set
+  `SIM` (F-230, D-161), apart from Amisia's own weights, which never read them; its gear sets as `SETS` (F-239),
+  the `.gear.siml` items named through `gear_set_names` (QuestieDB's item names and ItemSparse, on disk only). `point_weights` turns an own set
   per point into the weights per percent at a level as `Gear.PointWeights` does
   (`tools/tests/test_score_parity.py::test_an_own_set_scores_alike`).
 - **Conversions** (agility and intellect per percent crit, rating per percent, mana per spirit) are

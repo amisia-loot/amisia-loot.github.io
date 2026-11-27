@@ -137,3 +137,17 @@ def test_areas_become_maps_through_their_parents(tmp_path):
 def test_the_real_download_reads():
     db = questie_data.load()
     assert len(db['items']) > 1000 and len(db['npcs']) > 500 and len(db['quests']) > 300
+
+
+def test_the_item_names_are_read_as_text(tmp_path):
+    """The English names and item levels of the weapons and armour, for the WoWSims gear sets (F-239)."""
+    folder = tmp_path / 'data' / 'Forever'
+    folder.mkdir(parents=True)
+    (folder / 'foreverItemDB.lua').write_text(
+        "QuestieDB.itemData = [[return {\n"
+        "[15411] = {'Mark of Fordring',nil,nil,nil,nil,{5944},nil,nil,63,0,0,4,0},\n"
+        "[38] = {'Recruit\\'s Shirt',nil,nil,nil,nil,nil,nil,nil,1,0,0,4,0},\n"
+        "[2589] = {'Linen Cloth',{1,2},nil,nil,nil,nil,nil,nil,5,0,0,7,0},\n"
+        "}]]\n", encoding='utf-8')
+    assert questie_data.item_names(str(tmp_path)) == {15411: ('Mark of Fordring', 63), 38: ("Recruit's Shirt", 1)}
+    assert questie_data.item_names(str(tmp_path / 'none')) == {}

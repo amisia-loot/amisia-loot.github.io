@@ -26,6 +26,7 @@ Gear\GuildWishes.lua
 Gear\Compare.lua
 Gear\Catalog.lua
 Gear\Enchants.lua
+Gear\Templates.lua
 UI\Pages\Gear.lua
 UI\GearDoll.lua
 UI\Pages\Planner.lua

@@ -466,8 +466,9 @@ def test_no_tool_fetches_from_the_forbidden_sites():
     assert web_sources.SITES['metaforge']['disallow'] == ('/api/wardogs/map/',)
 
 
-# the tools that may read QuestieDB (D-157): its reader and the gear build; build.py only runs the reader's download
-QUESTIE_READERS = {'questie_data.py', 'build_gear.py', 'build.py'}
+# the tools that may read QuestieDB (D-157): its reader and the gear build; build.py only runs the reader's download;
+# build_bis.py only its item names (questie_data.item_names) for the WoWSims gear sets' .gear.siml files (F-239)
+QUESTIE_READERS = {'questie_data.py', 'build_gear.py', 'build.py', 'build_bis.py'}
 
 
 def test_questie_data_only_through_its_reader():

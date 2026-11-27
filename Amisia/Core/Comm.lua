@@ -37,7 +37,7 @@ local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the gu
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart, and a guild
 -- queue state with a battleground that popped, was joined or declined (QW with a P, J or L entry: QWP, F-227) apart,
 -- and a guild bank pull by whisper (BQ L/C/LC: BQL, F-238) apart from the question to the guild (BQ ? / ?C)
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PQ = 60, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, ZQ = 30, NV = 8, AC = 300, PC = 60, OQ = 300, EA = 10, EQ = 300, TQ = 30, QW = 10, QWP = 1, BQ = 10, BQL = 10 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PVW = 60, PQ = 60, PH = 300, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, ZQ = 30, NV = 8, AC = 300, PC = 60, OQ = 300, EA = 10, EQ = 300, TQ = 30, QW = 10, QWP = 1, BQ = 10, BQL = 10 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
 -- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
@@ -468,8 +468,11 @@ local VALID = {
                          and isNum(f[5], 0, 4294967295) end,
     -- recipe exchange (Gear/Crafters.lua): PV <crafter proto> <crafters> <digest>; PQ <crafter proto>
     -- <format B|L> <request number>; PW <seconds> (busy)
-    PV = function(f) return #f >= 3 and isNum(f[1], 0, 9) and isNum(f[2], 0, 99) and isHex(f[3], 8) end,
-    PQ = function(f) return #f >= 3 and isNum(f[1], 0, 9) and (f[2] == "B" or f[2] == "L") and isNum(f[3], 1, 999999) end,
+    PV = function(f) return #f >= 3 and isNum(f[1], 0, 9) and isNum(f[2], 0, 99) and isHex(f[3], 8) and (f[4] == nil or isNum(f[4], 0, 999)) end,
+    PQ = function(f) return #f >= 3 and isNum(f[1], 0, 9) and (f[2] == "B" or f[2] == "L" or f[2] == "R") and isNum(f[3], 1, 999999) end,
+    -- F-240: PH <crafter proto> <crafters heard> (the question after the login); PV's 4th field (whispered answer):
+    -- crafters passed on; PQ format R
+    PH = function(f) return #f >= 2 and isNum(f[1], 0, 9) and isNum(f[2], 0, 999) end,
     PW = function(f) return #f >= 1 and isNum(f[1], 1, 3600) end,
     -- guild bank needs (BankNeeds.lua): GN <rev> <part> <parts> <set by> <id:min:target,...|->;
     -- GQ <rev> (who has a newer list); GP <itemID> <count> <epoch> (a pledge, 0 takes it back)
@@ -1318,7 +1321,9 @@ local function onMessage(prefix, text, chan, sender)
     stats.received = stats.received + 1
     debugLine("< " .. sender .. " " .. describe(kind, fields))
     local gapKey = (kind == "RQ" and fields[5] == "G") and "RQG" or (kind == "QW" and queueNews(fields)) and "QWP"
-        or (kind == "BQ" and fields[1]:sub(1, 1) ~= "?") and "BQL" or kind
+        or (kind == "BQ" and fields[1]:sub(1, 1) ~= "?") and "BQL"
+        -- F-240: the whispered answer to a PH (a 4th field) has its own gap beside the guild's announcement
+        or (kind == "PV" and fields[4] ~= nil) and "PVW" or kind
     local gap = KIND_GAP[gapKey]
     if gap then
         local t = now()

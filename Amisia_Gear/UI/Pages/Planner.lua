@@ -3,15 +3,20 @@
 -- into it, D-80). Left a panel on the dressing room's background of the own race: at its top the own
 -- name, level and the gear page's spec picker; the doll (UI/GearDoll.lua, ns.GoalsKit, T.PLANNER.DOLL):
 -- the model between two columns of eight slots as on the character frame, the weapons under it, each
--- slot the target (the own pick first, D-55) or with "Angelegt" what is worn, in its quality's frame
+-- slot the target (the own pick first, D-55), with "Angelegt" what is worn, with "Wunsch" the wish, in its quality's frame
 -- (green: worn), beside it a square with the enchantment on the worn item or "+" (a click lists what
--- fits with its gain); under it the switch Ziele | Angelegt, the score ("Wertung 350 · +130" over its
--- bar, the tooltip: now, the best at the level, the six biggest stat changes) and "Zurücksetzen".
+-- fits with its gain); under it the switch Ziele | Angelegt | Wunsch (the wishes: per slot the first by
+-- priority, else what is worn), the score ("Wertung 350 · +130" over its
+-- bar, the tooltip: now, the best at the level, the six biggest stat changes) and the red button "Vorlagen"
+-- (Gear/Templates.lua, F-239: fill the empty rows, a plan per level, Pre-Raid, the simulation's sets, a pasted list;
+-- last "Zurücksetzen", which was the button here before).
 -- Right the tabs Vorschläge | Ziele | Wunschliste, a warning while an own pick is not used,
 -- "Optionen" (weapon plan, sources, play style; its tooltip: why these weights) and the search box
 -- (names, or an item link or id: that item as the own pick); under them the slot's name, "Stufe [lo]
 -- - [hi]", Meine Stufe | Alle (Ziele: "N/17 Ziele" over its bar and the filters); the list: icon,
--- name, "Stufe N · source", the gain, the source's symbol and the wish star. Vorschläge starts with
+-- name, "Stufe N · source", the gain, the source's symbol and the wish star; Wunschliste groups the wishes
+-- by where they come from (raid, dungeon, profession, zone), the place with the most first ("Wunsch" under
+-- the doll opens it). Vorschläge starts with
 -- "Deine Wahl" (the own pick with its X, "Überholt ... Übernehmen", "Passt nicht zum Waffenplan") and
 -- ends with "+ N weitere ohne bekannte Quelle" when scanned gear of unknown source passes the list's
 -- filters (Gear/NoSource.lua, F-175, D-107): a click (the setting bis.noSource, also under "Optionen")
@@ -19,7 +24,7 @@
 -- a click on a row makes it the own pick of its slot (again: lifts it). Ziele lists the slots by
 -- section; a click shows that slot's suggestions. The side bar's marks are the catalog's set
 -- categories (Gear/Catalog.lua): one shows that category's sets in the list instead. State in
--- settings.bis (planSlot, planTab, planLo, planHi, planFilter, planWorn); the set category, the open
+-- settings.bis (planSlot, planTab, planLo, planHi, planFilter, planDoll); the set category, the open
 -- set and the search text only in memory. Nothing is sent.
 local ADDON, ns = ...
 ns.Load(function()
@@ -64,8 +69,19 @@ local function filter()
     local v = state().planFilter
     return FILTER_OK[v] and v or "all"
 end
--- the doll: the targets, or what is worn ("Angelegt")
-local function dollMode() return state().planWorn and "worn" or "goals" end
+-- the doll: the targets, what is worn ("Angelegt") or the wishes ("Wunsch"); an older saved
+-- planWorn is "Angelegt"
+local DOLL_MODES = { worn = true, wish = true }
+local function dollMode()
+    local st = state()
+    if DOLL_MODES[st.planDoll] then return st.planDoll end
+    return st.planWorn and "worn" or "goals"
+end
+local function setDollMode(m)
+    local st = state()
+    st.planDoll, st.planWorn = DOLL_MODES[m] and m or nil, nil
+    ns.Refresh()
+end
 local function shownTab()
     local t = state().planTab
     return TABS[t] and t or "suggest"
@@ -133,6 +149,98 @@ local function measured(id, o, slotKey)
         e.slotKey, e.why = slotKey, sk
     end
     return e
+end
+
+-- Where a source is, as a group of the wish list: { key, label, art }: the raid or dungeon, the
+-- profession, else the zone (quests, vendors, rares, world drops), else the source's own text.
+local function wishPlace(rec)
+    local k = rec[1]
+    if k == "D" or k == "X" then
+        local key = Gear.PlaceOf(rec)
+        if key then return key, Gear.PlaceName(rec) or "?", k end
+    elseif k == "C" then
+        return "C:" .. tostring(rec[2]), Gear.PROFESSIONS[rec[2]] or tostring(rec[2]), k
+    end
+    local key = Gear.PlaceOf(rec)
+    local z = key and tonumber(key:match("^Z:(%-?%d+)$"))
+    if z then return key, Gear.ZoneName(z) or key, k end
+    local text = Gear.SourceText(rec, true)
+    if text and text ~= "" then return "T:" .. text, text, k end
+    return nil
+end
+
+-- The wishes by where they come from (the own sources, else all): each place counts a wish once,
+-- the places with the most open wishes first; every wish stands under the first of its places in
+-- that order, a wish of unknown source under "Quelle unbekannt", the wishes you have at the end
+-- under "Schon da". Rows: a head { wishHead, label, count, art }, then its wishes.
+local function wishRows(o)
+    local list = ns.Wishes()
+    local count, label, art, placesOf, recOf = {}, {}, {}, {}, {}
+    for _, w in ipairs(list) do
+        local keys, seen = {}, {}
+        recOf[w.id] = seen
+        if not w.owned then
+            local recs = Gear.Sources(w.id, o)
+            if #recs == 0 then recs = Gear.Sources(w.id) end
+            for _, rec in ipairs(recs) do
+                local key, text, kind = wishPlace(rec)
+                if key and not seen[key] then
+                    seen[key] = rec
+                    keys[#keys + 1] = key
+                    count[key] = (count[key] or 0) + 1
+                    label[key] = label[key] or text
+                    art[key] = art[key] or kind
+                end
+            end
+        end
+        placesOf[w.id] = keys
+    end
+    local function before(a, b)
+        if count[a] ~= count[b] then return count[a] > count[b] end
+        if label[a] ~= label[b] then return label[a] < label[b] end
+        return a < b
+    end
+    local groups, order = {}, {}
+    local function add(key, w)
+        if not groups[key] then
+            groups[key] = {}
+            order[#order + 1] = key
+        end
+        local g = groups[key]
+        g[#g + 1] = w
+        -- the row names the source at its group's place
+        w.rec = recOf[w.id][key]
+    end
+    for _, w in ipairs(list) do
+        local keys = placesOf[w.id]
+        if w.owned then
+            add("~owned", w)
+        elseif #keys == 0 then
+            add("~unknown", w)
+        else
+            table.sort(keys, before)
+            add(keys[1], w)
+        end
+    end
+    local LAST = { ["~unknown"] = 1, ["~owned"] = 2 }
+    table.sort(order, function(a, b)
+        if LAST[a] or LAST[b] then return (LAST[a] or 0) < (LAST[b] or 0) end
+        local na, nb = #groups[a], #groups[b]
+        if na ~= nb then return na > nb end
+        return before(a, b)
+    end)
+    local rows = {}
+    for _, key in ipairs(order) do
+        local g = groups[key]
+        local text = key == "~owned" and L["Schon da"] or key == "~unknown" and L["Quelle unbekannt"] or label[key]
+        rows[#rows + 1] = { wishHead = true, label = text, count = #g, art = art[key] }
+        for _, w in ipairs(g) do
+            local e = measured(w.id, o, w.slotKey)
+            e.slotName, e.rec = w.slot, w.rec
+            rows[#rows + 1] = e
+        end
+    end
+    return rows, #list
 end
 
 -- The suggestions of a slot in the level range: up to the own level the slot's ranking (the own
@@ -239,12 +347,9 @@ local function listRows(res, o, chosen, lo, hi)
         end
         if #rows == 0 then rows[1] = { note = L["Keine Sets dieser Art auf Stufe %d-%d."]:format(lo, hi) } end
     elseif shownTab() == "wish" then
-        for _, w in ipairs(ns.Wishes()) do
-            local e = measured(w.id, o, w.slotKey)
-            e.slotName = w.slot
-            rows[#rows + 1] = e
-        end
-        title = L["Wunschliste (%d)"]:format(#rows)
+        local n
+        rows, n = wishRows(o)
+        title = L["Wunschliste (%d)"]:format(n)
         if #rows == 0 then rows[1] = { note = L["Noch keine Wünsche: der Stern einer Zeile merkt ein Item."] } end
     elseif shownTab() == "goals" then
         local p = ns.BisProgress(res)
@@ -454,7 +559,7 @@ local function fillRow(r, e)
         if e.stored then right = right + T.RESET + PL.END end
         if e.take then right = right + r.take:GetWidth() + PL.END end
         textRight(r, right)
-    elseif e.header or e.note or e.more then
+    elseif e.header or e.note or e.more or e.wishHead then
         textRight(r, PL.END)
     else
         textRight(r, r.textR)
@@ -470,6 +575,13 @@ local function fillRow(r, e)
     if e.goal then
         hideItemParts(r)
         return fillGoalRow(r, e, o)
+    end
+    if e.wishHead then
+        hideItemParts(r)
+        r.name:SetText(T.GOLD_TEXT .. e.label .. "|r")
+        r.sub:SetText(GREY .. (e.count == 1 and L["1 Wunsch"] or L["%d Wünsche"]:format(e.count)) .. "|r")
+        if e.art then setArt(r.src, PL.SRC_ICONS[e.art]) end
+        return
     end
     if e.note then
         hideItemParts(r)
@@ -494,7 +606,7 @@ local function fillRow(r, e)
     end
     setIcon(r, e.id)
     local own = e.pickSlot ~= nil and ns.BisPick(e.pickSlot) == e.id
-    local rec = firstSource(e.id, o)
+    local rec = e.rec or firstSource(e.id, o)
     local mark = rec and rec[1] == "Q" and (" " .. PL.QUEST_MARK) or ""
     -- an epic world drop (D-59 Nachtrag): its tag after the name
     if e.world then mark = mark .. "  " .. T.ORANGE .. L["Weltdrop"] .. "|r" end
@@ -511,7 +623,7 @@ end
 
 local function rowTip(self)
     local e = self.item
-    if not e or e.note or e.header then return end
+    if not e or e.note or e.header or e.wishHead then return end
     if e.more then
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine(e.on and L["ohne bekannte Quelle ausblenden"] or L["Items ohne bekannte Quelle"], 1, 0.82, 0)
@@ -549,7 +661,7 @@ end
 
 local function rowClick(self, button)
     local e = self.item
-    if not e or e.note or e.header then return end
+    if not e or e.note or e.header or e.wishHead then return end
     if e.more then
         NSR.SetOn(not e.on)
         return
@@ -1239,19 +1351,34 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
         f.doll:SetPoint("TOPLEFT", PL.PAD, -PL.DOLL_Y)
         f.doll.SetDollWidth(leftW() - 2 * PL.PAD)
         f.doll.doneEdge = true
-        f.reset = W.Button(f.panel, L["Zurücksetzen"], PL.RESET_W, resetPicks)
-        W.FitChip(f.reset, PL.RESET_W)
-        f.reset:SetPoint("BOTTOMRIGHT", f.panel, "BOTTOMRIGHT", -PL.PAD, PL.PAD)
-        -- under the weapons the switch Ziele | Angelegt, at the bottom left the score
-        f.showGoals = W.Tab(f.panel, L["Ziele"], function() state().planWorn = nil; ns.Refresh() end)
-        f.showWorn = W.Tab(f.panel, L["Angelegt"], function() state().planWorn = true; ns.Refresh() end)
+        -- "Vorlagen" (F-239): a whole set of own picks in one go; its last entry "Zurücksetzen" (before F-239 the
+        -- button here) takes every own pick away
+        f.tpl = W.Button(f.panel, L["Vorlagen"], PL.RESET_W, function(self)
+            local out = ns.GearTemplates.MenuEntries()
+            out[#out + 1] = { L["Zurücksetzen"], hasPicks(ns.BisOpts()) and resetPicks or nil,
+                tip = L["Deine eigenen Wahlen dieser Spezialisierung entfernen."] }
+            W.Menu(self, out, { width = PL.TEMPLATE_MENU_W })
+        end)
+        W.FitChip(f.tpl, PL.RESET_W)
+        f.tpl:SetPoint("BOTTOMRIGHT", f.panel, "BOTTOMRIGHT", -PL.PAD, PL.PAD)
+        -- under the weapons the switch Ziele | Angelegt | Wunsch, at the bottom left the score
+        f.showGoals = W.Tab(f.panel, L["Ziele"], function() setDollMode("goals") end)
+        f.showWorn = W.Tab(f.panel, L["Angelegt"], function() setDollMode("worn") end)
+        f.showWish = W.Tab(f.panel, L["Wunsch##Knopf"], function()
+            -- the wish list beside it, by where the wishes come from
+            state().planTab = "wish"
+            setCat, openSet, query = nil, nil, ""
+            setDollMode("wish")
+        end)
         W.Tooltip(f.showGoals, L["Ziele"], L["Das Modell trägt deine Ziele."])
         W.Tooltip(f.showWorn, L["Angelegt"], L["Das Modell trägt, was du angelegt hast."])
+        W.Tooltip(f.showWish, L["Wunsch##Knopf"], L["Das Modell trägt deine Wunschliste: je Platz den wichtigsten Wunsch, sonst was du angelegt hast. Rechts die Wünsche nach Quelle, die mit den meisten zuerst."])
         W.FitChip(f.showGoals)
         W.FitChip(f.showWorn)
+        W.FitChip(f.showWish)
         buildScore(f)
         f.score:SetPoint("BOTTOMLEFT", f.panel, "BOTTOMLEFT", PL.PAD, PL.PAD)
-        W.Tooltip(f.reset, L["Zurücksetzen"], L["Deine eigenen Wahlen dieser Spezialisierung entfernen."])
+        W.Tooltip(f.tpl, L["Vorlagen"], L["Alle Plätze auf einmal füllen: das Beste für eine Stufe, Pre-Raid, ein Set der Simulation oder eine eingefügte BiS-Liste. Danach kannst du jeden Platz ändern. Zuletzt: Zurücksetzen."])
         -- the list in the right half, down to the page's bottom
         f:Footer({ { "help", help = true } })
         f.help:SetText(L["Klick auf einen Platz: seine Vorschläge. Klick auf eine Zeile: deine Wahl für den Platz, nochmal: aufheben. Stern: Wunschliste. Das Quadrat neben einem Platz: die Verzauberung."])
@@ -1263,10 +1390,10 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
             f.headLeft:SetWidth(lw)
             f.room:SetWidth(lw)
             f.doll.SetDollWidth(lw - 2 * PL.PAD)
-            local sw = f.showGoals:GetWidth() + T.TAB_GAP + f.showWorn:GetWidth()
-            W.Row(f.panel, { f.showGoals, f.showWorn }, T.TAB_GAP, math.floor((lw - sw) / 2),
+            local sw = f.showGoals:GetWidth() + T.TAB_GAP + f.showWorn:GetWidth() + T.TAB_GAP + f.showWish:GetWidth()
+            W.Row(f.panel, { f.showGoals, f.showWorn, f.showWish }, T.TAB_GAP, math.floor((lw - sw) / 2),
                 -(PL.DOLL_Y + PL.DOLL.MODEL_H + PL.DOLL.WEAPON_GAP + PL.DOLL.SLOT + PL.SWITCH_GAP))
-            f.score:SetWidth(lw - 2 * PL.PAD - f.reset:GetWidth() - LAY.ITEM_GAP)
+            f.score:SetWidth(lw - 2 * PL.PAD - f.tpl:GetWidth() - LAY.ITEM_GAP)
             f.list:ClearAllPoints()
             f.list:SetPoint("TOPLEFT", lw + PL.GAP, f.top)
             f.list:SetWidth((T.PAGE_W_NOW or T.PAGE_W) - lw - PL.GAP - T.SCROLL_ROOM)
@@ -1292,12 +1419,12 @@ ns.RegisterPanel{ key = "planner", label = L["Ausrüstungsplaner"], sub = L["Dei
         DK.dress(f.doll, res, m)
         f.showGoals:SetOn(m == "goals")
         f.showWorn:SetOn(m == "worn")
+        f.showWish:SetOn(m == "wish")
         fillScore(f, res, o)
         local ench = enchAll()
         for key, b in pairs(f.doll.slots) do
             if b.ench then fillEnch(b.ench, ench[key]) end
         end
-        f.reset:SetEnabled(hasPicks(o))
         local rows, title = listRows(res, o, chosen, lo, hi)
         fillRange(f, lo, hi, title, res)
         f.list.opts = o

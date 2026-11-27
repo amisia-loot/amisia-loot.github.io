@@ -795,6 +795,13 @@ T.SRIMPORT = {
 -- (Vorlage, Einfügen, Kopieren, Amisias Zahlen übernehmen), the weighting; the list of the weights (ROWS rows of
 -- ROW_H: the name LABEL_X in, the number box BOX_W wide at the right; "Weitere Werte" folds the rest), the help
 -- (TEXT_H, two lines) and the result line at the bottom. Content T.WINDOW_PAD from both edges.
+-- The window "Liste einfügen" of the planner's templates (F-239, Gear/Templates.lua): the hint, the text box, the
+-- preview (one line per row and what was not taken, PREVIEW_LINES at most), the buttons.
+T.TEMPLATES = {
+    PASTE_W = 480, PASTE_H = 560, HINT_Y = -30, HINT_H = 30, BOX_Y = -64, BOX_H = 130,
+    PREVIEW_Y = -204, PREVIEW_H = 310, PREVIEW_LINES = 24, BUTTON_Y = 12, BUTTON_W = 110,
+}
+
 -- PASTE_*: the window "Gewichte einfügen" / "kopieren": the hint, the text, the preview, the buttons.
 T.WEIGHTS = {
     W = 440, H = 580,
@@ -952,10 +959,11 @@ T.PLANNER = {
         RIGHT = { "HANDS", "WAIST", "LEGS", "FEET", "FINGER1", "FINGER2", "TRINKET1", "TRINKET2" },
         BOTTOM_ROW = { "MAINHAND", "OFFHAND", "RANGED" },
     },
-    -- under the doll (D-80): the switch Ziele | Angelegt centred SWITCH_GAP under the weapons, at the
+    -- under the doll (D-80): the switch Ziele | Angelegt | Wunsch centred SWITCH_GAP under the weapons, at the
     -- bottom left the score ("Wertung 350 · +130", SCORE_W at most) over its bar (SCORE_BAR_H, the
     -- line at "jetzt" MARK_W), "Zurücksetzen" at the right
     SWITCH_GAP = 4, SCORE_BAR_H = 3, MARK_W = 2,
+    TEMPLATE_MENU_W = 300,   -- the menu "Vorlagen" (F-239): wide enough for "WoWSims Forever: <set>"
     SCORE_BAR = { 0.31, 0.82, 0.42, 0.9 }, SCORE_BAR_BG = { 0, 0, 0, 0.5 },
     DOWN_COLOR = { 0.88, 0.34, 0.29 },   -- a stat that falls (T.RED as a colour)
     -- the tab Ziele (D-80): "4/17 Ziele" over the bar of 17 parts (PROG_W wide, BAR_H high) in the

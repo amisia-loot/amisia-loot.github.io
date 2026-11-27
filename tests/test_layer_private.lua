@@ -9,6 +9,9 @@ _G.GetBuildInfo = function() return "1.60.1", "71037", "Nov 20 2026", STUB.toc e
 -- 15 s after the join is "not moved". The hour's limit of ten moves (per character, through /reload and login),
 -- no ask in a fight and 6 s after it, dead or on a flight path; a fight ends the search. The number through a
 -- /reload, never a login. The ask's "r2" read and sent; no blind invite; the event field; the saved keys cleaned.
+-- D-172: helping is off by default; this test helps
+NS.Set("layer.answer", true)
+NS.LayerChange.SetHosting(true)
 local SW, LY, LW, LF = NS.LayerChange, NS.Layer, NS.LayerWindow, NS.LayerForeign
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 local function guid(server, npc, spawn, zuid) return ("Creature-0-%d-0-%d-%d-%s"):format(server, zuid or 5250, npc, spawn) end

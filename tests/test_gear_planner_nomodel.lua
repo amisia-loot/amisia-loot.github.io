@@ -21,7 +21,10 @@ local n = 0
 for _ in pairs(d.slots) do n = n + 1 end
 assert(n == 19, "the slots all the same")
 f.showWorn:Click()
+f.showWish:Click()
+assert(f.tabWish.on, "Wunsch opens the wish list")
 f.showGoals:Click()
+f.tabGoals:Click()
 assert(f.list.items[1].header, "the goals list works")
 
 -- without gear data: a chat line

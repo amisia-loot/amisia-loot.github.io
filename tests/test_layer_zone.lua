@@ -8,6 +8,8 @@
 -- player: Amisia leaves after 15 s; "Helfen" off takes the guests out; bad and foreign ZQ/ZA; the offline line;
 -- the commands; the saved list cleaned on load.
 local A, U, K, Lk = "Anna Bergmann", "Udo Fremd", "Kai Lindner", "Lena Kraus"
+-- D-172: helping is off by default; these clients help
+for _, n in ipairs({ A, U, K, Lk }) do C(n, "NS.Set('layer.answer', true); NS.LayerChange.SetHosting(true)") end
 local function guid(zone, npc, spawn) return ("Creature-0-%d-0-5250-%d-%s"):format(zone, npc, spawn) end
 local function world(name, zone)
     C(name, ([[STUB.instance = { name = "Elwynn Forest", type = "none", id = 0 }

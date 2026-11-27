@@ -4,7 +4,8 @@ Source: https://github.com/wowsims/forever (branch master), MIT licence; Amisia 
 Amisia/LICENSES/THIRD-PARTY.md and ships its licence text as Amisia/LICENSES/WoWSims-MIT.txt.
 
 refresh() (`python3 tools/build.py wowsims`) downloads through the GitHub API, one request after the other, only
-the files ui/specs/<class>/<spec>/presets.ts, the weights a class shares (ui/specs/<class>/*_ep.ts) and
+the files ui/specs/<class>/<spec>/presets.ts, the weights a class shares (ui/specs/<class>/*_ep.ts), the gear sets
+(ui/specs/<class>/<spec>/gear_sets/*.gear.json and *.gear.siml), proto/common.proto (the slot order) and
 the repository's LICENSE into ~/addons/_cache/wowsims (or
 $AMISIA_WOWSIMS_CACHE), outside the repo. `build.py data` never downloads: load() reads the cache, and a missing
 cache means no templates (a printed note).
@@ -15,6 +16,12 @@ every `[Stat.<name>]: <number>` / `[PseudoStat.<name>]: <number>` pair, and maps
 (STAT_KEY). WoWSims' weights are per point of a stat, the same unit Amisia's own weights (AmisiaDB.weights) use;
 in Forever one rating point counts for weapons and spells alike, so the simulation's hit, crit and haste go to
 Amisia's one key each. Which spec of the simulation is which of Amisia's stands by hand in SPECS.
+
+The gear sets (F-239): parse_gear_presets() reads the calls `PresetUtils.makePresetGear('<label>', X[, options])` and
+the `import X from './gear_sets/<file>.gear.json|.gear.siml'` lines; load_sets() maps label and option group by hand
+(SET_NAMES) to a German name and Amisia's spec. A .gear.json lists item ids in WoWSims' ItemSlot order (SLOT_ORDER);
+a .gear.siml names its items in words, which go to ids through English item names the caller hands in (build_bis
+gear_set_names: English item names on disk). An item no name explains is left out with a log line.
 """
 import json
 import os
@@ -29,11 +36,14 @@ WOWSIMS_REPO = 'wowsims/forever'
 WOWSIMS_LICENSE = 'MIT'
 WOWSIMS_SOURCE = f'WoWSims for WoW Forever (github.com/{WOWSIMS_REPO}, {WOWSIMS_LICENSE}; see LICENSES/THIRD-PARTY.md)'
 USER_AGENT = 'Amisia-build-tool/1.0 (tools/wowsims_weights.py; +https://amisia-loot.github.io)'
-KEEP_FILES = ('LICENSE',)
+# proto/common.proto: the ItemSlot order of a gear set's items (SLOT_ORDER below)
+KEEP_FILES = ('LICENSE', 'proto/common.proto')
 PAUSE = 1.0   # seconds between two requests
 PRESETS = re.compile(r'^ui/specs/[a-z_]+/[a-z_]+/presets\.ts$')
 # a class's shared weights that its specs' presets import (druid/feral_ep.ts: the bear's and the cat's)
 SHARED_EP = re.compile(r'^ui/specs/[a-z_]+/[a-z_]+_ep\.ts$')
+# the gear sets the presets import (F-239): a spec's own and a class's shared folder (ui/specs/warrior/shared/...)
+GEAR_SET_FILE = re.compile(r'^ui/specs/[a-z_]+/[a-z_]+/gear_sets/[\w.-]+\.gear\.(?:json|siml)$')
 
 
 def log(*a):
@@ -42,7 +52,8 @@ def log(*a):
 
 def kept(path):
     """Whether refresh() downloads a file of the repository."""
-    return path in KEEP_FILES or bool(PRESETS.match(path)) or bool(SHARED_EP.match(path))
+    return (path in KEEP_FILES or bool(PRESETS.match(path)) or bool(SHARED_EP.match(path))
+            or bool(GEAR_SET_FILE.match(path)))
 
 
 def _token():
@@ -288,6 +299,216 @@ def load(base=WOWSIMS_CACHE, quiet=False):
     return {c: sims[c] for c in CLASS_ORDER if c in sims}
 
 
+# ---------------------------------------------------------------- gear sets (F-239)
+# WoWSims' ItemSlot (proto/common.proto, checked against the download): the order of a .gear.json's items, as
+# Amisia's slot names (Gear.lua)
+SLOT_ORDER = ('HEAD', 'NECK', 'SHOULDER', 'BACK', 'CHEST', 'WRIST', 'HANDS', 'WAIST', 'LEGS', 'FEET', 'FINGER1',
+              'FINGER2', 'TRINKET1', 'TRINKET2', 'MAINHAND', 'OFFHAND', 'RANGED')
+# a .gear.siml names its slots in words
+SIML_SLOT = {'head': 'HEAD', 'neck': 'NECK', 'shoulder': 'SHOULDER', 'back': 'BACK', 'chest': 'CHEST',
+             'wrist': 'WRIST', 'hands': 'HANDS', 'waist': 'WAIST', 'legs': 'LEGS', 'feet': 'FEET',
+             'finger1': 'FINGER1', 'finger2': 'FINGER2', 'trinket1': 'TRINKET1', 'trinket2': 'TRINKET2',
+             'main_hand': 'MAINHAND', 'off_hand': 'OFFHAND', 'ranged': 'RANGED'}
+
+# The simulation's gear presets (makePresetGear '<label>' with its option group, or None) -> per spec folder
+# Amisia's class, spec key and per preset the German name the addon shows ("Bekannte Sets", its English one in
+# Amisia_Gear/Locales/enUS_gear.lua) with an own spec key or None. A preset not named here is left out with a log line.
+SET_NAMES = {
+    'warrior/dps': ('WARRIOR', 'dps', {('Pre-BiS', 'Fury'): ('Furor Pre-BiS', None),
+                                       ('Pre-BiS', 'Arms'): ('Waffen Pre-BiS', None),
+                                       ('Pre-BiS', 'Fury 2H'): ('Furor Zweihand Pre-BiS', None)}),
+    'warrior/protection': ('WARRIOR', 'tank', {('Pre-BiS', 'Offensive'): ('Schutz offensiv', None),
+                                               ('Pre-BiS', 'Balanced'): ('Schutz ausgewogen', None)}),
+    'paladin/retribution': ('PALADIN', 'ret', {('Holy Shock', None): ('Vergeltung Heiliger Schock', None),
+                                               ('Default', None): ('Vergeltung Pre-BiS', None)}),
+    'paladin/holy': ('PALADIN', 'holy', {('Default', None): ('Heilig Pre-BiS', None)}),
+    'paladin/protection': ('PALADIN', 'tank', {('Default', None): ('Schutz Pre-BiS', None)}),
+    'hunter/dps': ('HUNTER', 'dps', {('Pre-BiS', 'Weave'): ('Jäger Weben Pre-BiS', None),
+                                     ('Pre-BiS (Cheap)', 'Weave'): ('Jäger Weben günstig', None),
+                                     ('Pre-BiS', 'Turret'): ('Jäger stationär Pre-BiS', None),
+                                     ('Pre-BiS (Cheap)', 'Turret'): ('Jäger stationär günstig', None),
+                                     ('Pre-BiS', 'Melee'): ('Jäger Nahkampf Pre-BiS', None),
+                                     ('Pre-BiS (Cheap)', 'Melee'): ('Jäger Nahkampf günstig', None)}),
+    'rogue/dps': ('ROGUE', 'dps', {('Slow Main Hand', None): ('Kampf Finsterer Stoß', None),
+                                   ('Backstab Combat', None): ('Kampf Dolche', None),
+                                   ('Backstab Subtlety', None): ('Täuschung', None),
+                                   ('Mutilate', None): ('Meucheln', None)}),
+    'priest/healer': ('PRIEST', None, {('Pre-raid', None): ('Heiler Pre-BiS', None)}),
+    'shaman/elemental': ('SHAMAN', 'ele', {('Budget', None): ('Elementar günstig', None)}),
+    'mage/dps': ('MAGE', None, {('Preraid', 'Arcane'): ('Arkan Pre-BiS', 'arcane'),
+                                ('Preraid', 'Fire'): ('Feuer Pre-BiS', 'fire'),
+                                ('Preraid', 'Frost'): ('Frost Pre-BiS', 'frost')}),
+    'warlock/dps': ('WARLOCK', None, {('Aff (Wrack)', None): ('Gebrechen (Wrack)', 'affli'),
+                                      ('Destro', None): ('Zerstörung', 'destro'),
+                                      ('SM/Ruin', None): ('SM/Ruin', None),
+                                      ('Demo (Fire Brand)', None): ('Dämonologie Feuerbrand', None),
+                                      ('Demo (Shadow Brand)', None): ('Dämonologie Schattenbrand', None)}),
+    'druid/feralcat': ('DRUID', 'feral', {('Pre-raid', None): ('Katze Pre-BiS', None)}),
+}
+
+GEAR_IMPORT = re.compile(r"^import\s+(\w+)\s+from\s+'([^']*gear_sets/[\w.-]+\.gear\.(?:json|siml))'\s*;?", re.M)
+GEAR_CALL = re.compile(r"makePresetGear\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*([\w.]+)\s*")
+GROUP = re.compile(r"\bgroup\s*:\s*'((?:[^'\\]|\\.)*)'")
+
+
+def slug(name):
+    """An item name as WoWSims writes it in a .gear.siml: lower case, apostrophes dropped, every other run of
+    signs one underscore ("Don Julio's Band" -> don_julios_band)."""
+    s = re.sub(r"['’]", '', (name or '').lower())
+    return re.sub(r'[^a-z0-9]+', '_', s).strip('_')
+
+
+def item_slugs(names):
+    """{slug: [item ids]} of {item id: English name} (ItemSparse Display_lang)."""
+    out = {}
+    for iid, name in names.items():
+        if name:
+            out.setdefault(slug(name), []).append(iid)
+    return out
+
+
+def _options(text, rest, start):
+    """The option group of a makePresetGear call: rest is the text after its second argument (start: its offset in
+    text); an inline object or a `const NAME = { ... }` of the same file."""
+    m = re.match(r',\s*', rest)
+    if not m:
+        return None
+    after = rest[m.end():]
+    if after.startswith('{'):
+        body = _span(text, start + m.end()) or ''
+    else:
+        ident = re.match(r'(\w+)', after)
+        if not ident:
+            return None
+        d = re.search(r'\bconst\s+' + re.escape(ident.group(1)) + r'\s*(?::\s*[\w.<>]+\s*)?=\s*\{', text)
+        body = (_span(text, d.end() - 1) or '') if d else ''
+    g = GROUP.search(body)
+    return g.group(1).replace("\\'", "'") if g else None
+
+
+def parse_gear_presets(text):
+    """[(label, group or None, relative gear set path or None, variable)] of the makePresetGear calls of one
+    presets.ts, in the file's order; the path is None when the call's gear is no imported gear_sets file (a build's
+    `X.player.equipment`)."""
+    imports = {m.group(1): m.group(2) for m in GEAR_IMPORT.finditer(text)}
+    out = []
+    for m in GEAR_CALL.finditer(text):
+        label = m.group(1).replace("\\'", "'")
+        var = m.group(2)
+        group = _options(text, text[m.end():], m.end())
+        out.append((label, group, imports.get(var), var))
+    return out
+
+
+def parse_gear_json(text):
+    """{slot: item id} of a .gear.json ({"items": [{"id": N, ...} or {}, ...]} in SLOT_ORDER); empty slots and id 0
+    left out."""
+    data = json.loads(text)
+    out = {}
+    for slot, it in zip(SLOT_ORDER, data.get('items') or []):
+        iid = it.get('id') if isinstance(it, dict) else None
+        if isinstance(iid, int) and iid > 0:
+            out[slot] = iid
+    return out
+
+
+def parse_gear_siml(text, slugs, known=(), levels=None):
+    """({slot: item id}, [unresolved]) of a .gear.siml: `<slot>  <item slug>[ <suffix>][ + <enchant> ...]` lines. The
+    slug goes to an item id through slugs ({slug: [ids]}); a trailing `_<id>` picks that id among the name's items,
+    a trailing `_ilvl<N>` the name's items of item level N (levels: {id: item level}); a slug several items share
+    takes the one in known (the planner's items), then the one of the highest item level, else it stays unresolved.
+    A random suffix (`of_magic`) is dropped:
+    the planner picks the item."""
+    out, missing = {}, []
+    known = set(known or ())
+    levels = levels or {}
+    for line in text.splitlines():
+        parts = line.split()
+        if len(parts) < 2 or parts[0] not in SIML_SLOT:
+            continue
+        item = line.split('+', 1)[0].split()[1]
+        ids = list(slugs.get(item) or [])
+        tail = re.match(r'^(.*)_(ilvl)?(\d+)$', item)
+        if not ids and tail:
+            base_ids = slugs.get(tail.group(1)) or []
+            n = int(tail.group(3))
+            ids = [i for i in base_ids if (levels.get(i) == n if tail.group(2) else i == n)]
+        if len(ids) > 1:
+            ids = [i for i in ids if i in known] or ids
+        if len(ids) > 1 and levels:
+            # one name in several item levels (Forest Stalker's Bracers 45/55/65): a pre-raid set means the highest
+            top = max(levels.get(i, 0) for i in ids)
+            ids = [i for i in ids if levels.get(i, 0) == top]
+        if len(ids) == 1:
+            out[SIML_SLOT[parts[0]]] = ids[0]
+        else:
+            missing.append(f'{parts[0]} {item}' + (f' ({len(ids)} items of that name)' if ids else ''))
+    return out, missing
+
+
+def load_sets(base=WOWSIMS_CACHE, names=None, known=(), levels=None, quiet=False):
+    """{class: [{'name': German name, 'spec': Amisia's spec key or None, 'items': {slot: item id}}, ...]} of the gear
+    presets in the cache, in SET_NAMES' order per class and the file's order per folder; None (with a note) when
+    there is no download. names: {item id: English name} (the client's ItemSparse) for the .gear.siml files, which
+    name their items; without it those sets are left out. known: the planner's item ids (a name several items
+    share); levels: {item id: item level} (a name with `_ilvl<N>`). A set with the same items as an earlier one of its class is left out (the first name kept)."""
+    root = os.path.join(base, 'ui', 'specs')
+    if not os.path.isdir(root):
+        if not quiet:
+            log(f'no WoWSims download in {base} (python3 tools/build.py wowsims): no gear sets')
+        return None
+    slugs = item_slugs(names) if names else None
+    sets = {}
+    for folder, (cls, spec, labels) in SET_NAMES.items():
+        here = os.path.join(root, *folder.split('/'))
+        path = os.path.join(here, 'presets.ts')
+        if not os.path.exists(path):
+            log(f'WoWSims: {folder}/presets.ts is missing')
+            continue
+        with open(path, encoding='utf-8') as fh:
+            text = fh.read()
+        for label, group, rel, var in parse_gear_presets(text):
+            key = (label, group)
+            shown = label + (f' [{group}]' if group else '')
+            if key not in labels:
+                if not quiet:
+                    log(f'WoWSims {folder}: gear preset "{shown}" has no name in SET_NAMES: left out')
+                continue
+            if not rel:
+                if not quiet:
+                    log(f'WoWSims {folder} {shown}: its gear ({var}) is no gear_sets file: left out')
+                continue
+            file = os.path.normpath(os.path.join(here, rel))
+            if not file.startswith(root + os.sep) or not os.path.exists(file):
+                log(f'WoWSims {folder} {shown}: {rel} is missing: left out')
+                continue
+            with open(file, encoding='utf-8') as fh:
+                body = fh.read()
+            if file.endswith('.json'):
+                items = parse_gear_json(body)
+            elif slugs is None:
+                if not quiet:
+                    log(f'WoWSims {folder} {shown}: {rel} names its items, no item names to read it: left out')
+                continue
+            else:
+                items, missing = parse_gear_siml(body, slugs, known, levels)
+                for why in missing:
+                    if not quiet:
+                        log(f'WoWSims {folder} {shown}: no item for {why}')
+            if not items:
+                continue
+            de, own_spec = labels[key]
+            lst = sets.setdefault(cls, [])
+            twin = next((e for e in lst if e['items'] == items or e['name'] == de), None)
+            if twin:
+                if not quiet:
+                    log(f'WoWSims {folder} {shown}: the same ' + ('items' if twin['items'] == items else 'name')
+                        + f' as "{twin["name"]}", the first kept')
+                continue
+            lst.append({'name': de, 'spec': own_spec or spec, 'items': items})
+    return {c: sets[c] for c in CLASS_ORDER if c in sets}
+
+
 def main(argv=None):
     import argparse
     ap = argparse.ArgumentParser(description='Download the WoWSims Forever presets into the cache (F-230, D-161).')
@@ -299,6 +520,13 @@ def main(argv=None):
     if sims:
         for cls in sorted(sims):
             log(f'  {cls}: ' + ', '.join(t['name'] for t in sims[cls]))
+    # the gear sets (F-239) as build.py data will read them (item names from the disk, never the network)
+    import build_bis
+    import client_tables
+    names, levels = build_bis.gear_set_names(client_tables.default_dir())
+    sets = load_sets(args.dest, names, (), levels, quiet=True)
+    for cls in sorted(sets or {}):
+        log(f'  sets {cls}: ' + ', '.join(f'{t["name"]} ({len(t["items"])})' for t in sets[cls]))
 
 
 if __name__ == '__main__':

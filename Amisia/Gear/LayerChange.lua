@@ -181,7 +181,7 @@ local chatAt         -- asker: time of the own "Im Gildenchat fragen" or "Im Kan
 local chatAll        -- asker: the request went to a channel, so anyone's invite counts
 local othersAt       -- host: time of the last question or invite for a player outside the guild
 local lastCall       -- { kind = "invite"|"accept"|"leave", at }: the newest call the client may block
-local hosting = true -- "Helfen" (F-214): off until the next login
+local hosting = false -- "Helfen" (F-214): off until the next login; on at a login with layer.answer (D-172)
 local helped = { asked = 0, invited = 0, joined = 0 }
 local auto           -- "Layer wechseln": { req, target, picking, picked, none }
 local question       -- host: { frame, fn } the open "... Einladen?"
@@ -713,11 +713,13 @@ local function goOff()
 end
 
 -- Switches the helping (F-229: off is off; nothing holds it on). Off lasts through /reload until the next login.
+-- On also turns layer.answer on (D-172: helping is off by default, the switch is how it is turned on for good).
 -- Returns hosting.
 function SW.SetHosting(on)
     on = on and true or false
     local hd = helpDB()
     if hd then hd.off = (not on) or nil end
+    if on and not ns.Get("layer.answer") then ns.Set("layer.answer", true) end
     if on then hosting = true else goOff() end
     changed()
     return hosting
@@ -752,14 +754,36 @@ local function loadHelp()
     if type(AmisiaDB) ~= "table" then return end
     SW.LoadedHelp(AmisiaDB)
     local hd = AmisiaDB.layerHelp
-    hosting = not (hd and hd.off)
+    hosting = not (hd and hd.off) and ns.Get("layer.answer") == true
 end
 
--- A real login turns Helfen on; a /reload keeps it as it was.
+-- The setting layer.answer (D-172) switches Helfen at once: on turns it on (unless it was turned off for this
+-- session), off turns it off.
+ns.Listen("SETTING", function(path)
+    if path ~= "layer.answer" then return end
+    local on = ns.Get("layer.answer") == true
+    local hd = helpDB()
+    if on and not hosting and not (hd and hd.off) then
+        hosting = true
+        changed()
+    elseif not on and hosting then
+        goOff()
+        changed()
+    end
+end)
+
+-- A real login turns Helfen on while layer.answer is on (off by default, D-172); a /reload keeps it as it was.
 ns.OnEvent("PLAYER_ENTERING_WORLD", function(initial)
     if ns.Plain(initial) ~= true then return end
     local hd = helpDB()
     if hd then hd.off = nil end
+    if not ns.Get("layer.answer") then
+        if hosting then
+            hosting = false
+            changed()
+        end
+        return
+    end
     if not hosting then
         hosting = true
         changed()

@@ -2,7 +2,7 @@
 -- until 2.64.0 the window "Ausrüstungsziele"): the own character as a DressUpModel between the slot
 -- columns as on the character frame (drag turns, the wheel zooms, a right click resets; without the
 -- model's methods the slots alone and "Modell nicht verfügbar"), the weapons under it, each slot the
--- target (ns.BisTargets: the own pick first, D-55) or what is worn in its quality's frame; the slots
+-- target (ns.BisTargets: the own pick first, D-55), the own wish or what is worn in its quality's frame; the slots
 -- of the goals list by section with the targets got, the raid check's enchant test, the weapon plan's
 -- text. Everything comes from ns.BisTargets; nothing is sent or saved here.
 local ADDON, ns = ...
@@ -62,12 +62,46 @@ local function slotArt(key)
     return PL.SLOT_ART[key]
 end
 
--- What a slot of the doll shows: { id, link (worn), target (an option of the targets) } or nil.
-local function shownItem(res, key, m)
+-- The wishes the doll wears ("Wunsch"): per slot the first wish by priority, then the newest (rings
+-- and trinkets fill their second row too); a two-hander keeps the off hand free and gives way to an
+-- off hand wished higher. { [slotKey] = id, OFFHAND = false (kept free) }.
+local SECOND = { FINGER1 = "FINGER2", TRINKET1 = "TRINKET2" }
+local function wishSlots()
+    local c = ns.BisChar()
+    local ids = {}
+    for id in pairs(c and type(c.wish) == "table" and c.wish or {}) do ids[#ids + 1] = id end
+    table.sort(ids, function(a, b)
+        local ea, eb = c.wish[a], c.wish[b]
+        local pa, pb = tonumber(ea.prio) or 2, tonumber(eb.prio) or 2
+        if pa ~= pb then return pa > pb end
+        local ta, tb = tonumber(ea.t) or 0, tonumber(eb.t) or 0
+        if ta ~= tb then return ta > tb end
+        return a < b
+    end)
+    local out = {}
+    for _, id in ipairs(ids) do
+        local group = ns.BisGroup(id)
+        local key = group and Gear.CAP_ROW[group]
+        if key and out[key] ~= nil and SECOND[key] then key = SECOND[key] end
+        if key and out[key] == nil then
+            if group == "2H" then
+                if out.OFFHAND == nil then out[key], out.OFFHAND = id, false end
+            else
+                out[key] = id
+            end
+        end
+    end
+    return out
+end
+
+-- What a slot of the doll shows: { id, link (worn), target (an option of the targets), wish } or nil.
+local function shownItem(res, key, m, wishes)
     local target = res[key] and res[key][1]
     local link = wornLink(key)
     if m == "goals" and target then return { id = target.id, target = target } end
     if m == "goals" and key == "OFFHAND" and res.plan == "2H" then return nil end
+    if m == "wish" and wishes and wishes[key] then return { id = wishes[key], wish = true } end
+    if m == "wish" and wishes and wishes[key] == false then return nil end
     if link then return { id = ns.ItemID(link), link = link } end
     return nil
 end
@@ -329,12 +363,13 @@ local function tryOn(model, link, hand)
     pcall(model.TryOn, model, link)
 end
 
--- Dresses the model for the mode: what is worn ("worn"), or undressed with the targets, the worn
--- item where a slot has none ("goals"). Only when what it wears changes (every item answer dressing
--- it anew made it flicker).
+-- Dresses the model for the mode: what is worn ("worn"), or undressed with the targets ("goals") or
+-- the wishes ("wish"), the worn item where a slot has none. Only when what it wears changes (every
+-- item answer dressing it anew made it flicker).
 local function dress(d, res, m)
     local model = d.model
     if not model then return end
+    local wishes = m == "wish" and wishSlots() or nil
     local links, key = {}, { m }
     for _, k in ipairs(d.extras or {}) do
         local link = wornLink(k)
@@ -344,7 +379,7 @@ local function dress(d, res, m)
         end
     end
     for _, sl in ipairs(TRY_ORDER) do
-        local item = shownItem(res, sl.key, m)
+        local item = shownItem(res, sl.key, m, wishes)
         if item then
             local link = item.link or (item.id and K.linkOf(item.id))
             links[#links + 1] = { link, HAND[sl.key] }
@@ -355,21 +390,35 @@ local function dress(d, res, m)
     if d.dressed == k then return end
     d.dressed = k
     call(model, "SetUnit", "player")
-    if m == "goals" then
+    if m ~= "worn" then
         call(model, "Undress")
         for _, e in ipairs(links) do tryOn(model, e[1], e[2]) end
     end
 end
 
--- Fills the doll's slots for the mode (goals or worn): the chosen one gold, the state dot (green
--- worn, yellow in bag or bank); a slot whose target is worn a green frame. Returns the progress
--- (ns.BisProgress).
+-- Fills the doll's slots for the mode (goals, worn or wish): the chosen one gold, the state dot (green
+-- worn, yellow in bag or bank); a slot whose target is worn a green frame. With the wishes the dot
+-- and the frame are the wish's own. Returns the progress (ns.BisProgress).
 local function fillDoll(d, res, m, chosen)
     local p = ns.BisProgress(res)
+    local wishes = m == "wish" and wishSlots() or nil
     for key, b in pairs(d.slots) do
+        local item = shownItem(res, key, m, wishes)
+        if item and item.wish then
+            local own = ns.BisOwned(item.id)
+            local st = own == "worn" and "done" or (own == "bag" or own == "bank") and "bag" or nil
+            fillSlot(b, item, key == chosen, st and PL.STATE_COLOR[st] or nil)
+            if st == "done" and key ~= chosen then
+                local c = PL.STATE_COLOR.done
+                setRing(b, c[1], c[2], c[3])
+            end
+        else
+            local st = p.slot[key]
+            local hasTarget = res[key] and res[key][1]
+            fillSlot(b, item, key == chosen, m ~= "wish" and hasTarget and (st == "done" or st == "bag") and PL.STATE_COLOR[st] or nil)
+        end
         local st = p.slot[key]
         local hasTarget = res[key] and res[key][1]
-        fillSlot(b, shownItem(res, key, m), key == chosen, hasTarget and (st == "done" or st == "bag") and PL.STATE_COLOR[st] or nil)
         if m == "goals" and hasTarget and st == "done" and key ~= chosen then
             local c = PL.STATE_COLOR.done
             setRing(b, c[1], c[2], c[3])

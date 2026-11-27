@@ -5,6 +5,9 @@
 -- own line, a secret line, an instance and the guild chat of a non-member give nothing. "Im Kanal fragen"
 -- opens the chat box with "/<channel> <text>" and then anyone's invite is the swap; after "Im
 -- Gildenchat fragen" a stranger's still is not. The trace counts calls, blocks, joins and request lines.
+-- D-172: helping is off by default; this test helps
+NS.Set("layer.answer", true)
+NS.LayerChange.SetHosting(true)
 local SW, LY, LW = NS.LayerChange, NS.Layer, NS.LayerWindow
 local function has(t, part) return type(t) == "string" and t:find(part, 1, true) ~= nil end
 

@@ -7,6 +7,8 @@
 -- host: heard/same, the invite and its limits, bad lines, flood, the other addon loaded, helping off, skip near,
 -- the world restart. The layer is the GUID's server part; guild last; the self-test line; the offline line.
 local A, U, K = "Anna Bergmann", "Udo Fremd", "Kai Lindner"
+-- D-172: helping is off by default; these clients help
+for _, n in ipairs({ A, U, K }) do C(n, "NS.Set('layer.answer', true); NS.LayerChange.SetHosting(true)") end
 local P = C(A, "NS.LayerForeign.PREFIX")
 assert(type(P) == "string" and P ~= "" and P ~= "Amisia")
 local function guid(server, npc, spawn, zuid) return ("Creature-0-%d-0-%d-%d-%s"):format(server, zuid or 5250, npc, spawn) end
