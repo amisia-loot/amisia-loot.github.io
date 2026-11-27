@@ -823,3 +823,151 @@ C(LIA, "NS.AskBankShare()")
 BUS.tick(120)
 assert(since(s8, function(m) return m.kind == "BH" and m.target == LIA end) >= 1, "S8: Vulo offers again")
 assert(pullsBy(s8, LIA) == 0, "S8: but is not pulled again with the same offer")
+
+---------------------------------------------------------------------------
+-- third review 2026-11-27 (regressions T1-T5)
+---------------------------------------------------------------------------
+-- T1: rounds through a day the asker already holds are not dry: the transfer goes on to the entries it lacks;
+-- the Bank page's link pulls an officer barren from an earlier transfer
+BUS.tick(700)
+clearLogs()
+-- Vulo: 300 on a day and 50 the day before; Lia: 299 of the big day (all but its oldest)
+C(VULO, dayRows(0, 300, 1, "T"))
+C(VULO, dayRows(0, 50, 2, "Y"))
+C(LIA, dayRows(1, 300, 1, "T"))
+local t1 = #BUS.sent
+C(LIA, "NS.AskBankShare()")
+BUS.tick(400)
+assert(count(LIA) == 350 and hasEntry(LIA, "T1") and hasEntry(LIA, "Y1"),
+    "T1: the oldest of the big day and the day before arrive: " .. count(LIA))
+assert(entriesTo(t1, LIA) == 350, "T1: each entry once: " .. entriesTo(t1, LIA))
+-- the barren officer of S8 again: not pulled by the login's question, pulled by the link "Jetzt abgleichen"
+BUS.tick(700)
+clearLogs()
+C(VULO, [[local d = NS.ServerTime() - time(); local D = math.floor(NS.ServerTime() / 86400) * 86400 - d
+    local rows = {}
+    for i = 1, 5 do rows[#rows + 1] = { k = 1, y = "deposit", n = "Weit" .. i, i = 61001, c = i, lo = D - 40 * 86400 + 600, hi = D - 34 * 86400 + 600 } end
+    NS.MergeBankLogRead(rows, 120, nil); return #NS.BankLog().list]])
+C(LIA, [[local d = NS.ServerTime() - time(); local D = math.floor(NS.ServerTime() / 86400) * 86400 - d
+    local rows = {}
+    for i = 1, 5 do rows[#rows + 1] = { k = 1, y = "deposit", n = "Weit" .. i, i = 61001, c = i, lo = D - 42 * 86400 + 600, hi = D - 37 * 86400 + 600 } end
+    NS.MergeBankLogRead(rows, 120, nil); return #NS.BankLog().list]])
+C(LIA, "NS.AskBankShare()")
+BUS.tick(120)
+t1 = #BUS.sent
+C(LIA, "NS.AskBankShare()")
+BUS.tick(120)
+assert(pullsBy(t1, LIA) == 0, "T1: barren after the useless transfer")
+t1 = #BUS.sent
+C(LIA, [[NS.ShowPage("bank"); local f = NS.PageFrame("bank"); f.views.log:Click(); f.log.shareNow:Click(); return true]])
+BUS.tick(120)
+assert(pullsBy(t1, LIA) == 1, "T1: the link pulls the barren officer: " .. pullsBy(t1, LIA))
+
+---------------------------------------------------------------------------
+-- T2: the officer's log changes during a transfer (an own read narrows an entry already sent): nothing skipped
+---------------------------------------------------------------------------
+BUS.tick(700)
+clearLogs()
+C(VULO, [[local d = NS.ServerTime() - time(); local D = math.floor(NS.ServerTime() / 86400) * 86400 - d - 86400
+    local rows = {}
+    for i = 1, 250 do rows[#rows + 1] = { k = 1, y = "deposit", n = "H" .. i, i = 61001, c = i, lo = D + 7200 - 3600, hi = D + 7200 } end
+    NS.MergeBankLogRead(rows, 120, nil); return #NS.BankLog().list]])
+local t2 = #BUS.sent
+C(LIA, "NS.AskBankShare()")
+local guard = 0
+while entriesTo(t2, LIA) == 0 and guard < 60 do BUS.tick(1); guard = guard + 1 end
+BUS.tick(2)
+-- H1 went first (equal ends: by name); Vulo's next read narrows it
+C(VULO, [[for _, e in ipairs(NS.BankLog().list) do if e.n == "H1" then e.hi = e.hi - 600 end end return true]])
+BUS.tick(400)
+local missing2 = {}
+for i = 1, 250 do if not hasEntry(LIA, "H" .. i) then missing2[#missing2 + 1] = "H" .. i end end
+assert(#missing2 == 0, "T2: none skipped: " .. table.concat(missing2, ","))
+assert(entriesTo(t2, LIA) == 250, "T2: each once: " .. entriesTo(t2, LIA))
+
+---------------------------------------------------------------------------
+-- T3: the question after a lockdown waits a spread by name; no timer outside a guild
+---------------------------------------------------------------------------
+BUS.tick(700)
+local spread3 = C(KIM, "NS.Spread(30, NS.UnitFullName('player'))")
+assert(spread3 > 0, "T3: Kim's spread is not zero: " .. spread3)
+C(KIM, [[_G.DELAYS = {}; _G.CT3 = C_Timer.After
+    C_Timer.After = function(d, fn) DELAYS[#DELAYS + 1] = d; return CT3(d, fn) end
+    STUB.chatLock = true; STUB.fire('ADDON_RESTRICTION_STATE_CHANGED'); return true]])
+C(VULO, [[local n, new = NS.MergeBankLog({ { k = 2, y = "deposit", n = "Spread3", i = 61002, c = 1, ago = 0 } }, STUB.now)
+    return NS.BankShareRead(new)]])
+BUS.tick(120)
+local function delayed(d) return C(KIM, ("for _, v in ipairs(DELAYS) do if math.abs(v - %f) < 0.01 then return true end end return false"):format(d)) end
+-- out of the guild for a moment: the end of the lockdown starts nothing
+C(KIM, [[_G.IG3 = NS.InGuild; NS.InGuild = function() return false end; DELAYS = {}
+    STUB.chatLock = false; STUB.fire('ADDON_RESTRICTION_STATE_CHANGED'); return true]])
+BUS.tick(1)
+assert(not delayed(5 + spread3) and not delayed(5), "T3: no question timer outside a guild")
+C(KIM, [[NS.InGuild = IG3; STUB.chatLock = true; STUB.fire('ADDON_RESTRICTION_STATE_CHANGED'); return true]])
+BUS.tick(1)
+local t3 = #BUS.sent
+C(KIM, [[DELAYS = {}; STUB.chatLock = false; STUB.fire('ADDON_RESTRICTION_STATE_CHANGED'); return true]])
+BUS.tick(1)
+assert(delayed(5 + spread3), "T3: the question waits 5 s and Kim's spread")
+assert(not delayed(5), "T3: not the fixed 5 s")
+BUS.tick(4 + spread3 - 1)
+assert(since(t3, function(m) return m.kind == "BQ" and m.sender == KIM and m.chan == "GUILD" end) == 0, "T3: not before the spread")
+BUS.tick(60)
+assert(hasEntry(KIM, "Spread3"), "T3: the entry arrives after it")
+C(KIM, "C_Timer.After = CT3; return true")
+
+---------------------------------------------------------------------------
+-- T4: the next officer gets its own rounds (an overall cap stays); one officer's minute stays below Comm's limit
+---------------------------------------------------------------------------
+BUS.tick(700)
+clearLogs()
+C(VULO, thousand(("N"):rep(30)))
+C(FRAK, thousand(("N"):rep(30)))
+local t4 = #BUS.sent
+C(LIA, "NS.AskBankShare()")
+-- Frak (first by name at equal offers) answers six rounds, then falls silent
+guard = 0
+while pullsBy(t4, LIA) < 6 and guard < 300 do BUS.tick(1); guard = guard + 1 end
+local first4 = since(t4, function(m) return m.kind == "BQ" and m.sender == LIA and m.target == FRAK end)
+assert(first4 == 6, "T4: Frak pulled first: " .. first4)
+BUS.tick(8)
+C(FRAK, "_G.OFF4 = NS.SelfIsOfficer; NS.SelfIsOfficer = function() return false end; return true")
+BUS.tick(800)
+C(FRAK, "NS.SelfIsOfficer = OFF4; return true")
+local fromVulo = since(t4, function(m) return m.kind == "BQ" and m.sender == LIA and m.target == VULO end)
+-- (whole days again where Lia holds part of one: a few short of 1000 within Vulo's 18 rounds)
+assert(count(LIA) >= 950, "T4: Vulo nearly finishes the log in rounds of his own: " .. count(LIA) .. " (" .. fromVulo .. " pulls)")
+assert(fromVulo > 12 and pullsBy(t4, LIA) <= 36, "T4: more than the rounds Frak left, within the cap: " .. fromVulo)
+local msgs4 = {}
+for i = t4 + 1, #BUS.sent do
+    local m = BUS.sent[i]
+    if m.sender == VULO and (m.target == LIA or m.chan == "GUILD") then msgs4[#msgs4 + 1] = m end
+end
+local max4 = 0
+for i = 1, #msgs4 do
+    local b = 0
+    for j = i, #msgs4 do if msgs4[j].t - msgs4[i].t < 60 then b = b + #msgs4[j].text end end
+    if b > max4 then max4 = b end
+end
+assert(max4 < 17000, "T4: Vulo's largest minute to Lia stays clearly below 20480 bytes: " .. max4)
+assert(C(LIA, "NS.CommStats().limited") == 0, "T4: Lia never stopped hearing an officer")
+
+---------------------------------------------------------------------------
+-- T5: moving on to an officer whose offer ran out asks the guild afresh first
+---------------------------------------------------------------------------
+BUS.tick(700)
+clearLogs()
+C(VULO, thousand(("N"):rep(30)))
+C(FRAK, thousand(("N"):rep(30)))
+local t5 = #BUS.sent
+C(LIA, "NS.AskBankShare()")
+guard = 0
+while pullsBy(t5, LIA) < 16 and guard < 600 do BUS.tick(1); guard = guard + 1 end
+BUS.tick(8)
+C(FRAK, "_G.OFF5 = NS.SelfIsOfficer; NS.SelfIsOfficer = function() return false end; return true")
+BUS.tick(800)
+C(FRAK, "NS.SelfIsOfficer = OFF5; return true")
+assert(since(t5, function(m) return m.kind == "BQ" and m.sender == LIA and m.chan == "GUILD" end) == 2,
+    "T5: a fresh question before moving on to Vulo")
+assert(since(t5, function(m) return m.kind == "BQ" and m.sender == LIA and m.target == VULO end) >= 1, "T5: Vulo pulled")
+assert(count(LIA) == 1000, "T5: and Vulo answers: " .. count(LIA))

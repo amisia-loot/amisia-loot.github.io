@@ -366,7 +366,7 @@ local function buildLog(f)
     -- abgleichen" asks the officers at once (the question after the login, D-167), once a minute
     G.share = W.Text(G, T.FONT.hint)
     G.shareNow = W.Link(G, L["Jetzt abgleichen"], function()
-        local ok, why, left = ns.AskBankShare()
+        local ok, why, left = ns.AskBankShare(true)
         if ok then
             ns.msg(L["Gildenbank: Offiziere gefragt; was dir fehlt, kommt in etwa einer Minute."])
         elseif why == "wait" then

@@ -5167,3 +5167,15 @@ entscheiden konnte (Sperre länger als 60 s), fragt der Client nach der Sperre e
 "Jetzt abgleichen" während eines Abgleichs beendet den alten (seine nächste Runde prüft das Zeichen der Frage). Ein
 Lesen schickt nur die neuen Einträge, die nach dem Kürzen bleiben. Kein Abstand je Art für `BC` (die Teile einer
 Zählung kommen zusammen; Comms Abstand gilt je Nachricht).
+
+Nachtrag 3 2026-11-27 (dritte Prüfung): Eine Runde ohne Neues zählt nicht als leer, solange der Zeiger in einem Tag
+steht, für den die Übersicht des Fragenden mindestens so viele Einträge nennt, wie für ihn bisher kamen (der Offizier
+geht durch Bekanntes); die 6-Stunden-Sperre nur, wenn der Offizier nichts mehr hatte, und "Jetzt abgleichen" fragt
+auch einen gesperrten. Der Offizier friert bei der ersten Abholung nach seinem Angebot ein, was dem Fragenden fehlt,
+und antwortet den späteren Runden daraus nach Position (der Zeiger prüft sie; ein eigenes Lesen während des Abgleichs
+überspringt so nichts); die Liste fällt mit einer neuen Frage, der letzten Antwort oder dem Ablauf des Angebots. Jeder
+Offizier hat eigene 18 Runden, eine Frage höchstens 36; eine Antwort höchstens 14 Teile, Abholungen mindestens 15 s
+auseinander (Comms 20480 Bytes in 60 s je Absender beim Empfänger mit Rand). Vor dem Wechsel zu einem Offizier, dessen
+Angebot älter als 4 Minuten ist, fragt der Client die Gilde noch einmal (statt die Annahmefrist beim Offizier zu
+verlängern: die Frist bleibt an ein frisches Angebot gebunden). Die Frage nach einer Sperre wartet 5 s und bis zu 30 s
+nach dem Namen verteilt, nur in einer Gilde.

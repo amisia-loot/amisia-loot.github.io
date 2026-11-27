@@ -168,3 +168,32 @@ Eine zweite Prüfung fand weitere Lücken; behoben, jede mit einem Test in `test
 - `BH` geht mit normalem Vorrang (klein, und die 12 s für die Angebote warten darauf); ein Client ohne Offiziersrang
   prüft bei `BQ` niemanden.
 
+## Nachtrag 3 2026-11-27 (dritte Prüfung)
+
+Eine dritte Prüfung fand weitere Lücken; behoben, jede mit einem Test in `tests/test_bank_share.lua` (T1-T5):
+
+- T1: Zwei Runden ohne Neues beendeten einen Abgleich, auch wenn der Offizier nur durch einen Tag ging, den der
+  Fragende schon hatte (299 von 300 an einem Tag: die beiden ersten Runden brachten nur Bekanntes, der älteste Eintrag
+  und der Tag davor kamen nie), und die 6-Stunden-Sperre für einen nutzlosen Offizier hielt danach jeden neuen Versuch
+  auf. Jetzt zählt eine Runde nicht als leer, solange der Zeiger in einem Tag steht, für den die Übersicht des
+  Fragenden (die der ersten Runde) mindestens so viele Einträge nennt, wie für ihn bisher kamen; gesperrt wird ein
+  Offizier nur, wenn er nichts mehr hatte (nicht, wenn die Runden oder die Regel der leeren Runden den Abgleich
+  beendeten); "Jetzt abgleichen" fragt auch einen gesperrten.
+- T2: Änderte sich das Protokoll des Offiziers während eines Abgleichs (ein eigenes Lesen engt ein schon geschicktes
+  Fenster ein), konnte der Zeiger einen Eintrag überspringen. Jetzt friert der Offizier bei der ersten Abholung nach
+  seinem Angebot die Liste dessen ein, was dem Fragenden fehlt (Kopien, feste Reihenfolge), und beantwortet die
+  späteren Runden daraus nach Position; der Zeiger prüft die Position (stimmt er nicht, etwa nach einer verlorenen
+  Antwort, zählt der Offizier ab dem Zeiger in der eingefrorenen Liste). Die Liste fällt mit einer neuen Frage, mit der
+  letzten Antwort oder sobald das Angebot nicht mehr gilt (5 Minuten).
+- T3: Die Frage nach einer Sperre ging bei allen zur selben Sekunde (5 s fest). Jetzt 5 s und bis zu 30 s mehr, nach
+  dem eigenen Namen verteilt; nach dem Ende der Sperre nur, wenn etwas fiel und der Spieler in einer Gilde ist.
+- T4: Der nächste Offizier teilte sich die Runden mit dem vorigen. Jetzt hat jeder Offizier eigene 18 Runden, eine
+  Frage höchstens 36. Eine Antwort hat höchstens 14 Teile, und zwischen zwei Abholungen liegen mindestens 15 s (vier
+  Runden in der Minute): eine Minute eines Offiziers bleibt beim Empfänger klar unter Comms 20480 Bytes (im Test mit
+  langen Namen und einem Gildensatz dazwischen unter 17000). 18 Runden zu 14 Teilen passen ins Budget je Fragendem
+  (260 Teile).
+- T5: Das Angebot des nächsten Offiziers konnte beim Wechsel abgelaufen sein (5 Minuten ab seinem `BH`). Jetzt fragt
+  der Fragende die Gilde vor dem Wechsel noch einmal (`BQ ?`, mit dessen Abstand), wenn das Angebot älter als
+  4 Minuten ist; die schon versuchten Offiziere und die Runden der Frage bleiben.
+- Grenze: Ein Protokoll von 1000 Einträgen mit sehr langen Namen (30 Zeichen) passt nicht in die 18 Runden eines
+  Offiziers (etwa 840 kommen); der Rest kommt mit der nächsten Frage.

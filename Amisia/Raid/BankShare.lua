@@ -34,15 +34,19 @@ local ADDON, ns = ...
 ns.Load(function()
 local DELTA_CAP = 120         -- entries one read sends to the guild at most (the newest)
 local ANSWER_CAP = 100        -- entries one pulled answer sends at most (the rest on the next round)
-local ANSWER_PARTS = 15       -- parts of one pulled answer at most: 15 * 250 bytes, a round at most every 12 s,
-                              -- stay below Comm's 20480 bytes a minute from one sender at the receiver
+local ANSWER_PARTS = 14       -- parts of one pulled answer at most: 14 * 250 bytes, at most four rounds a minute
+                              -- (PULL_PACE), stay clearly below Comm's 20480 bytes a minute from one sender at the
+                              -- receiver (room for the officer's own guild broadcast)
 local MAX_PARTS = 40          -- parts of one batch
 local MAX_COUNT_PARTS = 5
 local PER_COUNT_PART = 16     -- materials in one BC part (16 * 12 bytes + the head stay below 250)
 -- pulls per transfer: a pull carries a cursor (the oldest entry received in this transfer), so no round sends an
--- entry twice; 1000 entries (the log's cap) with names of about 15 bytes fill 14 answers of 15 parts, two to spare
-local MAX_ROUNDS = 16
-local DRY_ROUNDS = 2          -- rounds in a row that add nothing end a transfer (the asker had them all)
+-- entry twice; 1000 entries (the log's cap) with names of about 15 bytes fill 15 answers of 14 parts, three to spare
+-- (18 * 14 parts stay within one asker's budget, PARTS_PER_ASKER)
+local MAX_ROUNDS = 18          -- rounds from one officer
+local MAX_TOTAL = 2 * MAX_ROUNDS  -- rounds of one question over all officers it moves on to
+local DRY_ROUNDS = 2          -- rounds in a row that add nothing end a transfer (the asker had them all), not
+                              -- counted while the cursor walks through a day the asker holds at least as many of
 local BARREN_FOR = 6 * 3600   -- seconds an officer whose last transfer added nothing is not pulled again while
                               -- its offer stays the same (windows of old entries filed under other days)
 local ASK_AFTER, ASK_SPREAD = 40, 30   -- the question after the login
@@ -51,16 +55,19 @@ local ASK_TTL = 120           -- seconds a question or a pull waits in the own q
 local OFFER_WAIT = 12         -- seconds the asker collects the offers (BH), counted from the moment the "?" went
                               -- out (more than the receivers' gap of BQ, so the first pull never falls to it)
 local PULL_WAIT = 60          -- seconds a pulled answer may take, from the moment the pull went, before the next offer
-local NEXT_ROUND = 12         -- seconds between two rounds of one transfer
+local NEXT_ROUND = 12         -- seconds between an answer and the next round of one transfer
+local PULL_PACE = 15          -- seconds between two pulls of one transfer at least (four rounds a minute)
 local PART_WAIT = 30          -- seconds a batch waits for its next part
 local TRUST_WAIT = 60         -- seconds more a batch waits while its sender cannot be checked yet (Trust.lua WAIT_FOR)
 local OPEN_PER_SENDER, OPEN_ALL = 2, 6  -- open batches (and held counts); one of OPEN_ALL kept for the officer pulled
 local REJECT_FOR = 30         -- seconds a sender that is no officer is not heard (its batches hold no slot)
-local MISSED_ASK = 5          -- seconds after the lockdown before a question for what fell while it lasted
+local MISSED_ASK, MISSED_SPREAD = 5, 30  -- seconds after the lockdown (and up to 30 more, spread by name) before a
+                              -- question for what fell while it lasted (a whole raid leaves it at once)
 local ANSWER_WINDOW = 600     -- the parts this client sends as an officer's answers, per ten minutes:
 local PARTS_PER_ASKER = 260   -- to one asker at most one whole transfer (MAX_ROUNDS answers and the count)
 local PARTS_ALL = 780         -- to everybody together (three whole transfers)
 local OFFER_VALID = 300       -- seconds after an offer (BH) or the last answer in which a pull of that asker is answered
+local OFFER_MARGIN = 60       -- an asker moving on to an offer older than OFFER_VALID less this asks the guild afresh
 local MAX_DAYS = 120          -- days of an asker's summary at most (the message's room sets fewer)
 local KEEP_MARGIN = 300       -- seconds an entry must lie inside the asker's horizon (it moves on while it waits)
 local COUNT_WAIT = 5          -- seconds after the last count before it goes (the count runs on every tab's answer)
@@ -69,6 +76,8 @@ local FUTURE = 3600           -- a time this far ahead of the own clock drops th
 local MAX_AGE = 400 * 86400   -- an entry's age at most
 local MAX_WIDTH = 8 * 86400   -- an entry's window at most (a month-old entry: an hour and six days)
 local TTL = 900               -- seconds a message waits in the queue (the lockdown) before it falls
+local DAY = 86400
+local function dayOf(t) return math.floor(t / DAY) end
 
 local KIND_CODE = { deposit = "d", withdraw = "w", move = "m", repair = "r", withdrawForTab = "t", buyTab = "b",
                     depositSummary = "s", buyRename = "n", refundRename = "f" }
@@ -84,6 +93,11 @@ local counts = {}             -- raw sender (lower case) -> { at, n, parts, got,
 local answered = {}           -- { t = GetTime(), n = parts } of the pulled answers given (all askers)
 local served = {}             -- asker (lower case) -> { at = GetTime() of the first answer, n = parts } in the window
 local offered = {}            -- asker (lower case) -> GetTime() of the offer (BH) or the last answer to it
+-- asker (lower case) -> { list, pos, low, lowN }: what it lacked at the first pull after the offer (frozen copies,
+-- newest first), how many of them went, and the cursor the asker holds after them; the later rounds go on by
+-- position, so a log that changes meanwhile (an own read narrowing an entry) skips nothing. Dropped with a new
+-- question, the last answer, or once the offer is no longer valid.
+local snaps = {}
 local checking = {}           -- raw sender (lower case) -> true while its one ns.TrustWait runs
 local rejected = {}           -- raw sender (lower case) -> GetTime() until which its BE and BC are dropped
 local missed = false          -- a guild batch or count fell while its sender could not be checked (the lockdown)
@@ -92,11 +106,14 @@ local offers                  -- the asker's offers: { [name] = { n, c } } while
 -- until countUntil), at (a token while
 -- the answer is awaited), tried = { [name] = true }, ask (the question's token), summary (the fields of the first
 -- pull from name, the same in every round), low/lowN (the cursor: the oldest realm time received from name and how
--- many entries of that time), dry (rounds in a row that added nothing), added (entries this transfer added)
-local pull = { rounds = 0 }
+-- many entries of that time), dry (rounds in a row that added nothing), added (entries this transfer added),
+-- theirs (summary read back), perDay (entries received from name per realm day), rounds (pulls of name), total
+-- (pulls of the question), lastAt (GetTime() of the last pull), manual (the Bank page's link: barren is ignored)
+local pull = { rounds = 0, total = 0 }
 local barren = {}             -- officer (lower case) -> { t = GetTime(), n = its offer } when a transfer added nothing
 local countTimer = 0
 local askToken = 0
+local askedAt                 -- GetTime() of the last question to the guild
 
 local function now() return math.floor(time()) end
 -- The difference of the realm clock to the own, held steady (GetServerTime and time() tick apart, so the plain
@@ -232,43 +249,47 @@ local function newestFirst(a, b)
 end
 
 -- Sends entries (newest first) as one batch in at most maxParts parts (MAX_PARTS); more: the sender has more for
--- this asker. Returns whether it went and the parts sent.
+-- this asker. Returns whether it went, the parts sent and how many entries of list it covers (the ones that went
+-- and the ones before them that cannot go on the wire; 0 when it did not go).
 local function sendBatch(list, chan, target, more, maxParts)
     local base = ns.ServerTime()
-    local fields = {}
-    for _, e in ipairs(list) do
+    local fields, at = {}, {}
+    for i, e in ipairs(list) do
         local text = encode(e, base)
-        if text then fields[#fields + 1] = text end
+        if text then fields[#fields + 1] = text; at[#fields] = i end
     end
-    if #fields == 0 then return false, 0 end
+    if #fields == 0 then return false, 0, 0 end
     batchSeq = batchSeq % 65535 + 1
     local batch = ("%04x"):format(batchSeq)
     -- pack: the head "1BE\t<batch>\t<part>\t<parts>\t<base>\t<flag>" takes at most 4 + 5 + 3 + 3 + 11 + 2 bytes
-    local parts, cur, size = {}, {}, 0
+    local parts, cur, size, last = {}, {}, 0, {}
     local room = ns.COMM_MAX_TEXT - 30
-    for _, f in ipairs(fields) do
+    for n, f in ipairs(fields) do
         if size + #f + 1 > room and #cur > 0 then
             parts[#parts + 1] = cur
             cur, size = {}, 0
         end
         cur[#cur + 1] = f
+        last[#parts + 1] = at[n]
         size = size + #f + 1
     end
     if #cur > 0 then parts[#parts + 1] = cur end
     local limit = math.min(MAX_PARTS, maxParts or MAX_PARTS)
-    if limit < 1 then return false, 0 end
+    if limit < 1 then return false, 0, 0 end
+    local covers = #list
     if #parts > limit then
         for p = #parts, limit + 1, -1 do parts[p] = nil end
         more = true
+        covers = last[limit]
     end
     for p, chunk in ipairs(parts) do
         local msg = { batch, tostring(p), tostring(#parts), tostring(base), more and "M" or "-" }
         for _, f in ipairs(chunk) do msg[#msg + 1] = f end
         local ok = ns.CommSend("BE", msg, chan, target,
             { key = "BE:" .. batch .. ":" .. p, ttl = TTL, low = chan == "WHISPER" or nil })
-        if not ok then return false, p - 1 end
+        if not ok then return false, p - 1, 0 end
     end
-    return true, #parts
+    return true, #parts, covers
 end
 
 -- After an own read (BankLog.lua): the entries that were new go to the guild (once the roster tells the
@@ -315,7 +336,7 @@ local function noteMissed()
     if missed then return end
     missed = true
     if not ns.ChatLocked() then
-        C_Timer.After(MISSED_ASK, function() if missed and not ns.ChatLocked() then ns.BankShareAskMissed() end end)
+        C_Timer.After(MISSED_ASK + ns.Spread(MISSED_SPREAD, me()), function() if missed and not ns.ChatLocked() then ns.BankShareAskMissed() end end)
     end
 end
 
@@ -335,8 +356,8 @@ end
 ns.OnEvent("ADDON_RESTRICTION_STATE_CHANGED", function()
     -- read the state after the dispatch (it is not final during it)
     C_Timer.After(0, function()
-        if missed and not ns.ChatLocked() then
-            C_Timer.After(MISSED_ASK, function() if missed and not ns.ChatLocked() then ns.BankShareAskMissed() end end)
+        if missed and inGuild() and not ns.ChatLocked() then
+            C_Timer.After(MISSED_ASK + ns.Spread(MISSED_SPREAD, me()), function() if missed and not ns.ChatLocked() then ns.BankShareAskMissed() end end)
         end
     end)
 end)
@@ -376,7 +397,22 @@ local function advance(rows)
     end
     local moved = low ~= pull.low or lowN ~= pull.lowN
     pull.low, pull.lowN = low, lowN
+    pull.perDay = pull.perDay or {}
+    for _, e in ipairs(rows) do
+        local day = dayOf(e.w)
+        pull.perDay[day] = (pull.perDay[day] or 0) + 1
+    end
     return moved
+end
+
+-- Whether the cursor still lies in a day the asker's own summary (of the first round) holds at least as many
+-- entries of as came from the officer for it so far: the officer walks through entries the asker had already,
+-- the ones it lacks of that day may still come (a round adding nothing there is no dry round).
+local function inKnownDay()
+    if not pull.low or not pull.theirs then return false end
+    local day = dayOf(pull.low)
+    local theirs = pull.theirs.counts[day] or 0
+    return theirs > 0 and theirs >= ((pull.perDay or {})[day] or 0)
 end
 
 local function finishBatch(name, set)
@@ -393,12 +429,19 @@ local function finishBatch(name, set)
         pull.at = nil
         local moved = advance(rows)
         pull.added = (pull.added or 0) + #added
-        pull.dry = #added > 0 and 0 or (pull.dry or 0) + 1
-        if set.more and moved and pull.dry < DRY_ROUNDS and pull.rounds < MAX_ROUNDS then
+        if #added > 0 then
+            pull.dry = 0
+        elseif not (set.more and inKnownDay()) then
+            pull.dry = (pull.dry or 0) + 1
+        end
+        if set.more and moved and pull.dry < DRY_ROUNDS and pull.rounds < MAX_ROUNDS and pull.total < MAX_TOTAL then
             local token = pull.ask
-            C_Timer.After(NEXT_ROUND, function() if pull.ask == token then askAgain(name) end end)
+            -- at most four rounds a minute (the receiver's bytes a minute from one sender)
+            local wait = math.max(NEXT_ROUND, PULL_PACE - (GetTime() - (pull.lastAt or 0)))
+            C_Timer.After(wait, function() if pull.ask == token then askAgain(name) end end)
         else
-            if pull.added == 0 then
+            -- barren only when the officer had nothing more (not a transfer cut short by its rounds or the dry rule)
+            if pull.added == 0 and not set.more then
                 local o = offers and offers[pull.name]
                 barren[pull.name:lower()] = { t = GetTime(), n = o and o.n or -1 }
             end
@@ -611,8 +654,6 @@ end)
 ---------------------------------------------------------------------------
 -- What a client holds, what another lacks
 ---------------------------------------------------------------------------
-local DAY = 86400
-local function dayOf(t) return math.floor(t / DAY) end
 local function pair36(n)
     n = math.max(0, math.min(1295, n))
     local hi, lo = math.floor(n / 36), n % 36
@@ -736,20 +777,40 @@ local function readCursor(v)
     return tonumber(hi), tonumber(n)
 end
 
--- The entries of a list (newest first, newestFirst) after a pull's cursor: older than its time, and of that
--- time those after the first n (the asker has them from an earlier round of this transfer).
-local function afterCursor(list, low, lowN)
-    if not low then return list end
-    local d, out, same = skew(), {}, 0
-    for _, e in ipairs(list) do
-        -- the end as the wire carries it: base - floor(base - hi) with base a whole second (encode)
-        local hi = math.ceil(e.hi + d)
-        if hi < low then
-            out[#out + 1] = e
-        elseif hi == low then
+-- The end of an entry as the wire carries it: base - floor(base - hi) with base a whole second (encode).
+local function wireEnd(e) return math.ceil(e.hi + skew()) end
+
+-- Where the entries of a list (newest first, newestFirst) after a pull's cursor start: the first older than its
+-- time, or of that time the one after the first n (the asker has them from an earlier round of this transfer).
+local function cursorStart(list, low, lowN)
+    if not low then return 1 end
+    local same = 0
+    for i, e in ipairs(list) do
+        local hi = wireEnd(e)
+        if hi < low then return i end
+        if hi == low then
             same = same + 1
-            if same > lowN then out[#out + 1] = e end
+            if same > lowN then return i end
         end
+    end
+    return #list + 1
+end
+
+-- The entries of list from index i on (at most n).
+local function slice(list, i, n)
+    local out = {}
+    for j = i, math.min(#list, i + n - 1) do out[#out + 1] = list[j] end
+    return out
+end
+
+-- A frozen copy of the entries an asker lacks (the snapshot of its transfer): an own read changing an entry
+-- meanwhile changes neither the order nor the ends the cursor counts.
+local function freeze(list)
+    local out = {}
+    for i, e in ipairs(list) do
+        local c = {}
+        for k, v in pairs(e) do c[k] = v end
+        out[i] = c
     end
     return out
 end
@@ -787,7 +848,7 @@ local function pickOffer(field, tried)
     local best, bestV
     for name, o in pairs(offers or {}) do
         local v = o[field]
-        if v > 0 and not (tried and tried[name:lower()]) and not (field == "n" and isBarren(name, o))
+        if v > 0 and not (tried and tried[name:lower()]) and not (field == "n" and not pull.manual and isBarren(name, o))
             and (not best or v > bestV or (v == bestV and name < best)) then
             best, bestV = name, v
         end
@@ -795,42 +856,77 @@ local function pickOffer(field, tried)
     return best, bestV
 end
 
+local decide
+
+-- The question again while moving on to an officer whose offer is about to run out (OFFER_VALID at the officer):
+-- the offers are collected afresh, the officers tried and the rounds of the question stay.
+local function renew()
+    local token = pull.ask
+    local left = askedAt and ASK_GAP - (GetTime() - askedAt) or 0
+    if left > 0 then
+        C_Timer.After(left + 1, function() if pull.ask == token and not pull.name then renew() end end)
+        return
+    end
+    if not ready() then return end
+    askedAt = GetTime()
+    askToken = askToken + 1
+    local mine = askToken
+    offers = {}
+    pull.ask, pull.name, pull.at = mine, nil, nil
+    sendAsk("?", "GUILD", nil, function()
+        C_Timer.After(OFFER_WAIT, function() if mine == askToken then decide() end end)
+    end)
+end
+
 -- Pulls the log from name (a whisper "L"); PULL_WAIT after the pull went without an answer (or when it never
--- went) the next offer is tried. A new officer starts a new cursor and summary.
+-- went) the next offer is tried. A new officer starts a new cursor and summary, and its own MAX_ROUNDS.
 local function pullFrom(name)
     local token = {}
     if not (pull.name and ns.SameName(pull.name, name)) then
-        pull.summary, pull.low, pull.lowN, pull.dry, pull.added = nil, nil, 0, 0, 0
+        pull.summary, pull.theirs, pull.perDay, pull.low, pull.lowN, pull.dry, pull.added = nil, nil, nil, nil, 0, 0, 0
+        pull.rounds = 0
     end
     pull.name, pull.at = name, token
     pull.tried = pull.tried or {}
     pull.tried[name:lower()] = true
     pull.rounds = pull.rounds + 1
+    pull.total = (pull.total or 0) + 1
+    pull.lastAt = GetTime()
     local function timeout()
         if pull.at ~= token or not pull.name then return end
         pull.name, pull.at = nil, nil
         local nextName = pickOffer("n", pull.tried)
-        if nextName and pull.rounds < MAX_ROUNDS then pullFrom(nextName) end
+        if not nextName or pull.total >= MAX_TOTAL then return end
+        if GetTime() - (offers[nextName].t or 0) > OFFER_VALID - OFFER_MARGIN then
+            renew()
+        else
+            pullFrom(nextName)
+        end
     end
     local cursor = pull.low and ("%d:%d"):format(pull.low, pull.lowN or 0) or nil
     local _, summary = sendAsk(pull.count and "LC" or "L", "WHISPER", name, function() C_Timer.After(PULL_WAIT, timeout) end,
         pull.summary, cursor)
+    if summary and not pull.theirs then
+        local f = { "L", "0" }
+        for _, v in ipairs(summary) do f[#f + 1] = v end
+        pull.theirs = readSummary(f)
+    end
     pull.summary = summary
     pull.count = nil
     C_Timer.After(ASK_TTL + PULL_WAIT, timeout)
 end
 
 askAgain = function(name)
-    if not ready() or not logOn() or pull.rounds >= MAX_ROUNDS then
+    if not ready() or not logOn() or pull.rounds >= MAX_ROUNDS or pull.total >= MAX_TOTAL then
         pull.name = nil
         return
     end
     pullFrom(name)
 end
 
-local function decide()
+decide = function()
     if not offers or not ready() then return end
-    local logName = logOn() and pickOffer("n") or nil
+    local logName = logOn() and pickOffer("n", pull.tried) or nil
     local countName, countAt = pickOffer("c")
     if countName and countAt <= ownCountAt() then countName = nil end
     pull.countName, pull.countUntil = countName, countName and GetTime() + ASK_TTL + PULL_WAIT or nil
@@ -845,9 +941,9 @@ end
 
 -- "Who has entries or a count I lack?" to the guild (after the login; also from the Bank page's link "Jetzt
 -- abgleichen", once in ASK_GAP). The offers are collected for OFFER_WAIT from the moment the question went out.
+-- manual: the link (an officer barren from an earlier transfer is pulled anyway).
 -- Returns true, or false and the reason: "off" (no guild, no bank, sharing off) or "wait" with the seconds left.
-local askedAt
-function ns.AskBankShare()
+function ns.AskBankShare(manual)
     if not ready() or not hasBank() then return false, "off" end
     if askedAt and GetTime() - askedAt < ASK_GAP then return false, "wait", math.ceil(ASK_GAP - (GetTime() - askedAt)) end
     askedAt = GetTime()
@@ -855,7 +951,7 @@ function ns.AskBankShare()
     local mine = askToken
     offers = {}
     -- a new question ends the transfer before (its next round and its timeouts check these tokens)
-    pull = { rounds = 0, tried = {}, ask = mine }
+    pull = { rounds = 0, total = 0, tried = {}, ask = mine, manual = manual and true or nil }
     local ok = sendAsk("?", "GUILD", nil, function()
         C_Timer.After(OFFER_WAIT, function() if mine == askToken then decide() end end)
     end)
@@ -883,6 +979,9 @@ local function partsLeft(key)
     end
     answered = keep
     for k, s in pairs(served) do if t - s.at >= ANSWER_WINDOW then served[k] = nil end end
+    -- offers no longer valid, and the snapshots of their transfers
+    for k, at in pairs(offered) do if t - at >= OFFER_VALID then offered[k] = nil end end
+    for k in pairs(snaps) do if not offered[k] then snaps[k] = nil end end
     return math.max(0, math.min(PARTS_ALL - all, PARTS_PER_ASKER - (served[key] and served[key].n or 0)))
 end
 local function tookParts(key, n)
@@ -906,6 +1005,8 @@ ns.CommOn("BQ", function(sender, f, chan)
         return
     end
     local key = name:lower()
+    -- a new question: a new offer, a new transfer
+    if question then snaps[key] = nil end
     -- a pull is answered only after an own offer to this asker (its question came first)
     if not question and not (offered[key] and GetTime() - offered[key] < OFFER_VALID) then return end
     local theirs
@@ -918,9 +1019,10 @@ ns.CommOn("BQ", function(sender, f, chan)
         -- an asker whose budget is used up gets neither an offer nor an answer
         local left = partsLeft(key)
         if left <= 0 then return end
-        local entries = (theirs and logOn()) and lacking(theirs) or {}
+        local function lacks() return (theirs and logOn()) and lacking(theirs) or {} end
         local mineAt = ownCountAt()
         if question then
+            local entries = lacks()
             local n, c = math.min(#entries, 9999), mineAt > theirCount and mineAt or 0
             if n == 0 and c == 0 then return end
             C_Timer.After(0.5 + ns.Spread(4, me()), function()
@@ -936,13 +1038,43 @@ ns.CommOn("BQ", function(sender, f, chan)
             local _, n = sendCount("WHISPER", sender, left)
             used = used + n
         end
-        if ask:find("L", 1, true) then
-            entries = afterCursor(entries, readCursor(f[9]))
-            if #entries > 0 then
-                local more = #entries > ANSWER_CAP
-                for i = #entries, ANSWER_CAP + 1, -1 do entries[i] = nil end
-                local _, n = sendBatch(entries, "WHISPER", sender, more, math.min(ANSWER_PARTS, left - used))
+        if ask:find("L", 1, true) and logOn() then
+            local low, lowN = readCursor(f[9])
+            local snap, list, start = snaps[key]
+            if not low then
+                -- the first round: what the asker lacks now, frozen for the rounds after it
+                snap = { list = freeze(lacks()), pos = 0 }
+                snaps[key] = snap
+                list, start = snap.list, 1
+            elseif snap then
+                -- by position; the cursor checks it (an answer the asker did not get: from its cursor in the snapshot)
+                list = snap.list
+                start = (snap.low == low and snap.lowN == lowN) and snap.pos + 1 or cursorStart(list, low, lowN)
+            else
+                -- no snapshot (a reload since the first round): the log as it is now, after the cursor
+                list = lacks()
+                start = cursorStart(list, low, lowN)
+            end
+            local rest = #list - start + 1
+            if rest > 0 then
+                local went, n, covers = sendBatch(slice(list, start, ANSWER_CAP), "WHISPER", sender, rest > ANSWER_CAP,
+                    math.min(ANSWER_PARTS, left - used))
                 used = used + n
+                if snap and went then
+                    -- the cursor the asker holds after this answer (the entries that went on the wire)
+                    snap.low, snap.lowN = low, lowN or 0
+                    for j = start, start + covers - 1 do
+                        local e = list[j]
+                        if encode(e, 0) then
+                            local w = wireEnd(e)
+                            if w == snap.low then snap.lowN = snap.lowN + 1 else snap.low, snap.lowN = w, 1 end
+                        end
+                    end
+                    snap.pos = start + covers - 1
+                    if snap.pos >= #list then snaps[key] = nil end
+                end
+            elseif snap then
+                snaps[key] = nil
             end
         end
         if used > 0 then
@@ -958,7 +1090,7 @@ ns.CommOn("BH", function(sender, f, chan)
     if not name then return end
     local n, c = tonumber(f[1]), tonumber(f[2])
     ns.TrustWait(name, "officer", function(ok)
-        if ok and offers then offers[name] = { n = n, c = c } end
+        if ok and offers then offers[name] = { n = n, c = c, t = GetTime() } end
     end)
 end)
 
