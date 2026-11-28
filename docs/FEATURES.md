@@ -834,6 +834,7 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du im Suchfeld "dkp" tippst, dann findet die Suche die Seite Punkte; bei "version" steht auch die Gruppe "Befehle", und ein Klick schreibt den Befehl in die Chatzeile.
 - Notiz: DECISIONS D-45. Items nur mit Namen, die der Client schon kennt (keine Frage an den Server); die Spielersuche gibt es nur in der Offiziersansicht (D-36).
 - Notiz: 2.57.0: Stichwörter auf Deutsch und Englisch ("dkp" findet Punkte, "wegpunkt" die Karte), Gruppe "Befehle" (ab 3 Zeichen, ein Klick schreibt den Befehl in die Chatzeile), Tooltip am Suchfeld, Treffer behalten beim Auffrischen ihre Scrollstelle.
+- Prüfung: Wenn du "vancleef" tippst, dann steht unter "Bosse" Edwin VanCleef und ein Klick öffnet die Todesminen bei ihm; "ausrustung" (ohne ü) findet die Seite Ausrüstung, "schmied" unter "Berufe" die Schmiedekunst, und Enter öffnet den ersten Treffer (2.114.0).
 - Notiz: 2026-11-28 geprüft und erweitert: Umlaute und Groß-/Kleinschreibung egal ("ausrustung" findet "Ausrüstung"), neue Gruppen Berufe, Bosse und Quests, deutsche Itemnamen der Ausrüstungsdaten auch für Items, die der Client noch nicht kennt, Stichwörter für Ausrüstungsplaner, Aufrufe, Werkzeuge und Amisia-Versionen, Enter öffnet den ersten Treffer.
 
 ### F-002 Einheitliches Seitengerüst
