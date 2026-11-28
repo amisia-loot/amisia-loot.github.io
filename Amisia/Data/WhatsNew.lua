@@ -7,8 +7,11 @@ local _, ns = ...
 
 ns.LazyData("WHATSNEW", [=[
 return {
-version="2.113.0",
+version="2.114.0",
 versions={
+{"2.114.0",{
+{"F-095","Suchfeld oben links im Hauptfenster","The search box finds bosses, dungeon quests and professions, ignores umlauts, and Enter opens the first hit","all"},
+}},
 {"2.113.0",{
 {"F-240","Rezepte der Gilde schneller und vollständiger","New Amisia users see the guild's professions within minutes","forever"},
 {"F-239","Vorlagen im Ausrüstungsplaner","Templates in the gear planner fill every slot at once","gear"},
@@ -24,10 +27,6 @@ versions={
 {"2.110.0",{
 {"F-235","Lauf-Fenster: Beutewert, Ruf, gelernte Rare","The run window counts loot value and reputation and learns rares","dungeons"},
 {"F-236","Neuigkeiten nach einem Update","A window shows what is new after an update","all"},
-}},
-{"2.109.0",{
-{"F-234","Alles mit Klicks erreichbar: Befehle sind nur Abkürzungen","Every feature can be reached by clicks, commands are shortcuts","all"},
-{"F-231","Gildenaufträge","Guild orders and cooldowns in the side bar and the overview","forever"},
 }},
 },
 }
