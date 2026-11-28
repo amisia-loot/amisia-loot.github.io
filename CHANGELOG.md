@@ -5,6 +5,20 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(search): the search box finds bosses, dungeon quests and professions, ignores umlauts, and Enter opens the first hit (F-095)
+
+    Typing a boss name ("vancleef") opens the dungeon at that boss, a quest title opens its path on the Dungeons page,
+    and a profession name ("schmied") opens it on the Berufe page. Umlauts and case no longer matter ("ausrustung"
+    finds "Ausrüstung"), items from the gear data are found by their German name even before the client knows them,
+    and the planner, calls, tools and versions pages have search words of their own. Enter in the box opens the
+    first hit.
+
+- fix(professions): the route's shopping list counts the bolts you already hold (F-137)
+
+    The levelling route turns intermediates such as Bolts of Linen Cloth into their cloth. Bolts you already had in
+    your bags, bank or on a twink were ignored, so the list asked for cloth you did not need. Held intermediates are
+    now used first: their cloth leaves the list and they show up as a row of their own.
+
 ## [v2.113.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.113.0) (2026-11-27)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.112.0...v2.113.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

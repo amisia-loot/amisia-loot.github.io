@@ -38,7 +38,7 @@ assert(#NS.Search("") == 0 and #NS.Search("r") == 0 and #NS.Search(" c ") == 0, 
 assert(NS.DataBuilt().GEAR == nil and rawget(NS, "GEAR") == nil, "one character builds nothing")
 -- two characters: pages, settings, dungeons, players; items only from the names Amisia knows once the gear is built
 local g = NS.Search("ra")
-assert(keys(g) == "pages settings dungeons players", keys(g))
+assert(keys(g) == "pages settings dungeons bosses players", keys(g))
 assert(has(texts(group(g, "pages")), "Raids") and has(texts(group(g, "pages")), "Raid-Log"), texts(group(g, "pages")))
 assert(NS.DataBuilt().GEAR == nil and rawget(NS, "GEAR") == nil, "two characters build no gear data")
 -- at most 8 per group

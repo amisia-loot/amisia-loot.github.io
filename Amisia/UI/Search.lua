@@ -1,7 +1,8 @@
 -- The main window's search (D-45): what the search box over the page list finds, grouped "Seiten",
 -- "Einstellungen" (a section by its name or its tab's, e.g. "Allgemein", then the single settings),
--- "Rezepte" (every recipe of the profession data by the client's spell name), "Dungeons", "Items",
--- "Spieler", "Befehle"; pages and settings sections also by their keywords (PAGE_WORDS,
+-- "Berufe" (a profession by its name), "Rezepte" (every recipe of the profession data by the client's spell name),
+-- "Dungeons", "Bosse" (the facts' names and the loot data's, each with its dungeon), "Quests" (the dungeon quests by
+-- their title), "Items", "Spieler", "Befehle"; case and umlauts do not matter (norm: "rustung" finds "Rüstung"); pages and settings sections also by their keywords (PAGE_WORDS,
 -- SECTION_WORDS: "dkp" finds the page Punkte). UI/MainFrame.lua shows the hits in place of the page list and
 -- runs a hit's action on a click; an item hit opens a menu (Search.ItemMenu: roll round for officers, map target,
 -- wish list, link). Kept fast: nothing at all under T.MAIN.SEARCH_MIN characters,
@@ -22,8 +23,15 @@ ns.SearchIndex = Search
 Search.ITEM_MIN = 3        -- characters before the gear data may be built for the item names
 Search.KEEP = 60           -- seconds an index is kept before it is built again
 
+-- Matching ignores case and umlauts (ä a, ö o, ü u, ß ss): "rustung" and "rüstung" both find "Rüstung".
+local function norm(text)
+    if type(text) ~= "string" then return "" end
+    return (ns.Fold(text):gsub("\195\164", "a"):gsub("\195\182", "o"):gsub("\195\188", "u"):gsub("\195\159", "ss"))
+end
+Search.Norm = norm
+
 local function hit(text, q)
-    return type(text) == "string" and ns.Fold(text):find(q, 1, true) ~= nil
+    return type(text) == "string" and norm(text):find(q, 1, true) ~= nil
 end
 
 local function now() return GetTime and GetTime() or 0 end
@@ -51,7 +59,7 @@ local function itemIndex(withGear)
         local name = type(e) == "table" and e.n
         if type(id) == "number" and type(name) == "string" and name ~= "" and name ~= ("Item " .. id) then
             seen[id] = true
-            out[#out + 1] = { id = id, name = name, low = ns.Fold(name), q = tonumber(e.q) }
+            out[#out + 1] = { id = id, name = name, low = norm(name), q = tonumber(e.q) }
         end
     end
     local cached = C_Item and C_Item.IsItemDataCachedByID
@@ -61,9 +69,20 @@ local function itemIndex(withGear)
                 local name, _, q = itemInfo(id)
                 if type(name) == "string" and name ~= "" then
                     seen[id] = true
-                    out[#out + 1] = { id = id, name = name, low = ns.Fold(name), q = q }
+                    out[#out + 1] = { id = id, name = name, low = norm(name), q = q }
                 end
             end
+        end
+    end
+    -- on a German client the gear data's names (as the scan saw them) for the items the client does not hold
+    -- yet: found at once, no server question (as the planner's search, Catalog.lua)
+    local dataN = type(gear) == "table" and type(gear.N) == "table" and type(gear.I) == "table" and type(GetLocale) == "function"
+        and GetLocale() == "deDE" and gear.N or nil
+    for id, name in pairs(dataN or {}) do
+        if type(id) == "number" and not seen[id] and type(name) == "string" and name ~= "" and gear.I[id] then
+            seen[id] = true
+            local row = gear.I[id]
+            out[#out + 1] = { id = id, name = name, low = norm(name), q = tonumber(row[5]) }
         end
     end
     items, itemsAt, itemsGear = out, now(), gear
@@ -145,7 +164,7 @@ local function playerIndex()
     local out, byLow = {}, {}
     local function add(name, class)
         if type(name) ~= "string" or name == "" or name == "-" then return end
-        local low = ns.Fold(name)
+        local low = norm(name)
         local e = byLow[low]
         if not e then
             e = { name = name, low = low }
@@ -202,7 +221,7 @@ local function recipeIndex()
         for _, r in ipairs(Pr.Recipes(skill)) do
             local name = Pr.SpellName(r.spell) or (r.item > 0 and Pr.ItemInfo(r.item)) or nil
             if type(name) == "string" and name ~= "" then
-                out[#out + 1] = { name = name, low = ns.Fold(name), skill = skill, spell = r.spell, learn = r.learn }
+                out[#out + 1] = { name = name, low = norm(name), skill = skill, spell = r.spell, learn = r.learn }
             end
         end
     end
@@ -247,7 +266,7 @@ local function dungeonHits(q)
     for _, e in ipairs(Dn.Facts() or {}) do
         if type(e) == "table" and type(e.key) == "string" then
             local name = Dn.Name(e)
-            local low = ns.Fold(name)
+            local low = norm(name)
             -- the client's name and the fact's (an English name on a German client) both find it
             if low:find(q, 1, true) or hit(e.name, q) then
                 found[#found + 1] = { name = name, low = low, key = e.key, kind = e.kind }
@@ -261,6 +280,150 @@ local function dungeonHits(q)
         out[i] = { text = e.name,
             tip = e.kind == "raid" and L["Raid. Öffnet ihn auf der Seite Raids."] or L["Dungeon. Öffnet ihn auf der Seite Dungeons."],
             run = function() if ns.ShowDungeon then ns.ShowDungeon(e.key) end end }
+    end
+    return out
+end
+
+-- The professions by their name or key ("Schneiderei", "tailoring"): a click opens the profession on the page
+-- Berufe. From Search.ITEM_MIN characters (only then may the profession data be built).
+local function professionHits(q)
+    if #q < Search.ITEM_MIN then return {} end
+    local page = ns.Panel and ns.Panel("professions")
+    local Pr = ns.Prof
+    if not page or not ns.Visible(page) or not Pr or not Pr.Available() then return {} end
+    local out = {}
+    for _, skill in ipairs(Pr.Skills()) do
+        if #out >= M.RES_MAX then break end
+        local name, key = Pr.Name(skill), Pr.Key(skill)
+        if hit(name, q) or (type(key) == "string" and norm(key):sub(1, #q) == q) then
+            out[#out + 1] = { text = name, tip = L["Beruf. Öffnet ihn auf der Seite Berufe."],
+                run = function() if ns.ShowProfessions then ns.ShowProfessions(key or name) end end }
+        end
+    end
+    return out
+end
+
+-- The bosses of the dungeons and raids: the names of the facts (English) and those of the loot data (the
+-- client's language, as the scan saw them), each with its dungeon and its place in the game's order. A click
+-- opens the dungeon at that boss.
+local bosses, bossesFacts, bossesGear
+local function bossIndex()
+    local F = ns.DUNGEON_FACTS
+    local list = type(F) == "table" and type(F.list) == "table" and F.list or nil
+    local gear = rawget(ns, "GEAR")
+    if bosses and bossesFacts == list and bossesGear == gear then return bosses end
+    local out, seen, byKey = {}, {}, {}
+    local function add(name, f, i)
+        if type(name) ~= "string" or name == "" then return end
+        local low = norm(name)
+        local id = f.key .. "\1" .. low
+        if seen[id] then return end
+        seen[id] = true
+        out[#out + 1] = { name = name, low = low, key = f.key, fact = f, i = i }
+    end
+    for _, f in ipairs(list or {}) do
+        if type(f) == "table" and type(f.key) == "string" then
+            byKey[f.key] = f
+            for i, name in ipairs(type(f.order) == "table" and f.order or {}) do add(name, f, i) end
+        end
+    end
+    local Dn = ns.Dungeons
+    if type(gear) == "table" and type(gear.S) == "table" and Dn and Dn.SourceKey then
+        for _, rec in ipairs(gear.S) do
+            if type(rec) == "table" and (rec[1] == "D" or rec[1] == "X") and type(rec[3]) == "string" and rec[3] ~= "Trash" then
+                local key = Dn.SourceKey(rec)
+                local f = key and byKey[key]
+                if f then
+                    local npc = Dn.BossNpc and Dn.BossNpc(key, rec[3])
+                    local at
+                    for i, n in ipairs(type(f.npcs) == "table" and f.npcs or {}) do
+                        if npc and n == npc then at = i break end
+                    end
+                    add(rec[3], f, at)
+                end
+            end
+        end
+    end
+    bosses, bossesFacts, bossesGear = out, list, gear
+    return out
+end
+
+local function bossHits(q)
+    local page = ns.Panel and ns.Panel("dungeons")
+    local Dn = ns.Dungeons
+    if not page or not ns.Visible(page) or not Dn then return {} end
+    local found = {}
+    for _, e in ipairs(bossIndex()) do
+        if e.low:find(q, 1, true) then found[#found + 1] = e end
+    end
+    table.sort(found, byStart(q))
+    local out = {}
+    for i = 1, math.min(#found, M.RES_MAX) do
+        local e = found[i]
+        local where = Dn.Name and Dn.Name(e.fact) or e.key
+        out[i] = { text = e.name, tip = L["Boss in %s. Öffnet die Instanz bei ihm."]:format(where),
+            run = function()
+                if e.i and ns.ShowDungeonBoss then ns.ShowDungeonBoss(e.key, e.i)
+                elseif ns.ShowDungeon then ns.ShowDungeon(e.key) end
+            end }
+    end
+    return out
+end
+
+-- The dungeon quests by their title in the client's language (the game's, else the quest scan's) or the data's
+-- English one; a click opens the quest's path on the page Dungeons. From Search.ITEM_MIN characters.
+local quests, questsData, questsAt
+local function questIndex()
+    local d = ns.DUNGEON_QUESTS
+    if type(d) ~= "table" or type(d.D) ~= "table" or type(d.Q) ~= "table" then return {} end
+    if quests and questsData == d and now() - questsAt < 5 * Search.KEEP then return quests end
+    local QL = _G.C_QuestLog
+    local title = type(QL) == "table" and QL.GetTitleForQuestID
+    local out, seen = {}, {}
+    for dkey, list in pairs(d.D) do
+        for _, qid in ipairs(type(list) == "table" and list or {}) do
+            local rec = d.Q[qid]
+            if type(rec) == "table" and not seen[qid] then
+                seen[qid] = true
+                local name
+                if type(title) == "function" then
+                    local ok, t = pcall(title, qid)
+                    t = ok and ns.Plain(t) or nil
+                    if type(t) == "string" and t ~= "" then name = t end
+                end
+                name = name or (ns.ScannedQuestTitle and ns.ScannedQuestTitle(qid)) or rec[1]
+                if type(name) == "string" and name ~= "" then
+                    local en = type(rec[1]) == "string" and rec[1] ~= name and norm(rec[1]) or nil
+                    out[#out + 1] = { name = name, low = norm(name), en = en, key = dkey, qid = qid }
+                end
+            end
+        end
+    end
+    quests, questsData, questsAt = out, d, now()
+    return out
+end
+
+local function questHits(q)
+    if #q < Search.ITEM_MIN then return {} end
+    local page = ns.Panel and ns.Panel("dungeons")
+    local Dn = ns.Dungeons
+    if not page or not ns.Visible(page) or not Dn then return {} end
+    local found = {}
+    for _, e in ipairs(questIndex()) do
+        if e.low:find(q, 1, true) or (e.en and e.en:find(q, 1, true)) then found[#found + 1] = e end
+    end
+    table.sort(found, byStart(q))
+    local facts = {}
+    for _, f in ipairs(Dn.Facts and Dn.Facts() or {}) do
+        if type(f) == "table" and type(f.key) == "string" then facts[f.key] = f end
+    end
+    local out = {}
+    for i = 1, math.min(#found, M.RES_MAX) do
+        local e = found[i]
+        local f = facts[e.key]
+        local where = f and Dn.Name and Dn.Name(f) or e.key
+        out[i] = { text = e.name, tip = L["Quest für %s. Öffnet ihren Weg auf der Seite Dungeons."]:format(where),
+            run = function() if ns.ShowDungeonQuest then ns.ShowDungeonQuest(e.key, e.qid) end end }
     end
     return out
 end
@@ -299,6 +462,10 @@ Search.PAGE_WORDS = {
     about = "hilfe help befehle commands version",   -- l10n-ok: search words
     feedback = "bug fehler wunsch melden report",   -- l10n-ok: search words
     raidnote = "notiz note cooldowns cds einteilung assignments",   -- l10n-ok: search words
+    planner = "bis planer planner ausrüstung gear modell model vorlagen templates ziele goals wunsch wish",   -- l10n-ok: search words
+    calls = "lfg gruppe group suchen looking anmeldung signup aufruf call",   -- l10n-ok: search words
+    tools = "werkzeuge tools scan drops",   -- l10n-ok: search words
+    versions = "version versionen addon update wer who",   -- l10n-ok: search words
 }
 Search.SECTION_WORDS = {
     points = "dkp epgp punkte points",   -- l10n-ok: search words
@@ -321,7 +488,7 @@ local function wordHit(text, q)
     local words = folded[text]
     if not words then
         words = {}
-        for w in ns.Fold(text):gmatch("%S+") do words[#words + 1] = w end
+        for w in norm(text):gmatch("%S+") do words[#words + 1] = w end
         folded[text] = words
     end
     for _, w in ipairs(words) do
@@ -359,6 +526,15 @@ local function pageHits(q)
     return out
 end
 
+-- A setting by its label, tip, key or a choice's text (as ns.SettingHits, with the umlauts folded).
+local function settingHit(it, q)
+    if hit(it.label, q) or hit(it.tip, q) or hit(it.key, q) then return true end
+    for _, c in ipairs(type(it.values) == "table" and it.values or {}) do
+        if type(c) == "table" and hit(c[2], q) then return true end
+    end
+    return false
+end
+
 local function settingHits(q)
     local out = {}
     -- the sections first: by their name or their tab's ("Allgemein", "Raid", ...)
@@ -377,7 +553,7 @@ local function settingHits(q)
         if ns.Visible(section) then
             for _, it in ipairs(section.items) do
                 if #out >= M.RES_MAX then return out end
-                if it.key and it.label and it.type ~= "desc" and ns.Visible(it) and ns.SettingHits(it, q) then
+                if it.key and it.label and it.type ~= "desc" and ns.Visible(it) and settingHit(it, q) then
                     -- "label · Section": a sub-switch ("Ton", "Fenster zeigen") keeps its context (D-166); the
                     -- label first, so a narrow row cuts the section, not the switch
                     out[#out + 1] = { text = it.label .. " · " .. section.label,
@@ -431,13 +607,16 @@ end
 -- The hits of text: { { key, label, hits = { { text, label, tip, item, run } } } },
 -- the groups without a hit left out; nothing under SEARCH_MIN characters.
 function ns.Search(text)
-    local q = ns.Fold(tostring(text or ""):match("^%s*(.-)%s*$") or "")
+    local q = norm(tostring(text or ""):match("^%s*(.-)%s*$") or "")
     if #q < M.SEARCH_MIN then return {} end
     local groups = {
         { key = "pages", label = L["Seiten"], find = pageHits },
         { key = "settings", label = L["Einstellungen"], find = settingHits },
+        { key = "professions", label = L["Berufe"], find = professionHits },
         { key = "recipes", label = L["Rezepte"], find = recipeHits },
         { key = "dungeons", label = "Dungeons", find = dungeonHits },
+        { key = "bosses", label = L["Bosse"], find = bossHits },
+        { key = "quests", label = L["Quests"], find = questHits },
         { key = "items", label = "Items", find = itemHits },
         { key = "players", label = L["Spieler##Suche"], find = playerHits },
         { key = "commands", label = L["Befehle"], find = commandHits },
@@ -456,7 +635,10 @@ function ns.Search(text)
 end
 
 -- for the tests: forget the indexes
-function Search._reset() items, itemsAt, itemsGear, players, playersAt, recipes, recipesData = nil, nil, nil, nil, nil, nil, nil end
+function Search._reset()
+    items, itemsAt, itemsGear, players, playersAt, recipes, recipesData = nil, nil, nil, nil, nil, nil, nil
+    bosses, bossesFacts, bossesGear, quests, questsData, questsAt = nil, nil, nil, nil, nil, nil
+end
 
 ns.Listen("DATA_CHANGED", function() players = nil end)
 end)

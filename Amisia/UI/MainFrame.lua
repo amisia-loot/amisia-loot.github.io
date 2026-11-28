@@ -750,7 +750,7 @@ local function showResults()
     results:SetItems(rows)
     -- under ITEM_MIN characters items, recipes and commands are not searched yet: the hint says so
     local itemMin = ns.SearchIndex.ITEM_MIN
-    noHits:SetText(#query < itemMin and L["Nichts gefunden. Items, Rezepte und Befehle ab %d Zeichen."]:format(itemMin)
+    noHits:SetText(#query < itemMin and L["Nichts gefunden. Berufe, Rezepte, Quests, Items und Befehle ab %d Zeichen."]:format(itemMin)
         or L["Nichts gefunden."])
     noHits:SetShown(#rows == 0)
 end
@@ -1250,12 +1250,26 @@ local function build()
     search:SetPoint("RIGHT", feedBtn, "LEFT", -2 * M.HBTN_GAP, 0)
     search:HookScript("OnTextChanged", function(self) setQuery(self:GetText()) end)
     search:SetScript("OnEscapePressed", function() ns.ClearSearch() end)
+    -- Enter: the first hit, as a click on it (an item: its link into the chat line, as Shift-click)
+    search:SetScript("OnEnterPressed", function(self)
+        local first
+        local text = (self:GetText() or ""):match("^%s*(.-)%s*$") or ""
+        for _, grp in ipairs(#text >= M.SEARCH_MIN and ns.Search(text) or {}) do
+            first = first or grp.hits[1]
+        end
+        if not (first and first.run) then
+            self:ClearFocus()
+            return
+        end
+        ns.ClearSearch()
+        first.run()
+    end)
     if search.clearButton then search.clearButton:HookScript("OnClick", function() ns.ClearSearch() end) end
     -- what the box finds and from how many characters
     search:HookScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
         GameTooltip:AddLine(L["Suchen"], 1, 0.82, 0)
-        GameTooltip:AddLine(L["Ab %d Zeichen: Seiten, Einstellungen, Dungeons und in der Offiziersansicht Spieler. Ab %d Zeichen auch Items, Rezepte und Befehle. Stichwörter finden die passende Seite, z. B. \"dkp\" die Punkte. Escape leert das Feld."]
+        GameTooltip:AddLine(L["Ab %d Zeichen: Seiten, Einstellungen, Dungeons, Bosse und in der Offiziersansicht Spieler. Ab %d Zeichen auch Berufe, Rezepte, Quests, Items und Befehle. Groß- und Kleinschreibung und Umlaute sind egal, Stichwörter finden die passende Seite (z. B. \"dkp\" die Punkte). Enter öffnet den ersten Treffer, Escape leert das Feld."]
             :format(M.SEARCH_MIN, ns.SearchIndex.ITEM_MIN), 0.85, 0.85, 0.85, true)
         GameTooltip:Show()
     end)

@@ -648,10 +648,13 @@ L["Seite im Reiter %s."] = "Page in the tab %s."
 L["Einstellungen, Reiter %s. Öffnet den Abschnitt."] = "Settings, tab %s. Opens the section."
 -- UI/Search.lua, UI/MainFrame.lua: commands, the box's tooltip, the line under two characters
 L["Ein Klick schreibt den Befehl in die Chatzeile."] = "A click writes the command into the chat line."
-L["Ab %d Zeichen: Seiten, Einstellungen, Dungeons und in der Offiziersansicht Spieler. Ab %d Zeichen auch Items, Rezepte und Befehle. Stichwörter finden die passende Seite, z. B. \"dkp\" die Punkte. Escape leert das Feld."] = "From %d characters: pages, settings, dungeons and, in the officer view, players. From %d characters also items, recipes and commands. Keywords find the matching page, e.g. \"dkp\" the points. Escape clears the box."
+L["Ab %d Zeichen: Seiten, Einstellungen, Dungeons, Bosse und in der Offiziersansicht Spieler. Ab %d Zeichen auch Berufe, Rezepte, Quests, Items und Befehle. Groß- und Kleinschreibung und Umlaute sind egal, Stichwörter finden die passende Seite (z. B. \"dkp\" die Punkte). Enter öffnet den ersten Treffer, Escape leert das Feld."] = "From %d characters: pages, settings, dungeons, bosses and in the officer view players. From %d characters also professions, recipes, quests, items and commands. Case and umlauts do not matter, keywords find the right page (e.g. \"dkp\" the points). Enter opens the first hit, Escape clears the box."
 L["Noch 1 Zeichen für die Suche"] = "1 more character to search"
 L["Noch %d Zeichen für die Suche"] = "%d more characters to search"
-L["Nichts gefunden. Items, Rezepte und Befehle ab %d Zeichen."] = "Nothing found. Items, recipes and commands from %d characters."
+L["Nichts gefunden. Berufe, Rezepte, Quests, Items und Befehle ab %d Zeichen."] = "Nothing found. Professions, recipes, quests, items and commands from %d characters."
+L["Beruf. Öffnet ihn auf der Seite Berufe."] = "Profession. Opens it on the Professions page."
+L["Boss in %s. Öffnet die Instanz bei ihm."] = "Boss in %s. Opens the instance at this boss."
+L["Quest für %s. Öffnet ihren Weg auf der Seite Dungeons."] = "Quest for %s. Opens its path on the Dungeons page."
 
 -- Core/Feedback.lua, UI/Pages/Feedback.lua (F-130)
 L["%d neue Meldungen (%d Bug, %d Wunsch). Seite Feedback."] = "%d new reports (%d bug, %d wish). Feedback page."
