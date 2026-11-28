@@ -5,6 +5,11 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- data(data): add the save file of 2026-11-28
+
+    The newest save data is built in: 40 new item sources (74 changed), 39 NPC names, 11 quests seen, 8 quest
+    items, 3 trainers and 19 boss kills, which also reach the drop list on the website.
+
 ## [v2.115.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.115.0) (2026-11-28)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.114.0...v2.115.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

@@ -8,7 +8,7 @@ local _, ns = ...
 -- level less five); ST, N, IC as in GearData.lua (N and IC only for the items the client's table lacks).
 ns.LazyData("GEAR_NOSRC", [=[
 return {
-built="2026-11-27",
+built="2026-11-28",
 I={
 [2275]={"HEAD",4,3,15,3,2,20,0,0,0},
 [3068]={"HEAD",4,1,27,2,2,32,0,0,0},
@@ -1232,7 +1232,6 @@ I={
 [284257]={"2HWEAPON",2,1,54,3,1,59,0,0,0},
 [284261]={"LEGS",4,4,56,3,1,61,0,0,0},
 [284270]={"HEAD",4,4,51,3,1,56,0,0,0},
-[284272]={"LEGS",4,2,45,2,2,50,0,0,0},
 [284403]={"FEET",4,2,24,3,1,29,0,0,0},
 [284667]={"WEAPON",2,7,23,3,2,28,0,0,0},
 [284696]={"THROWN",2,16,24,2,2,29,0,0,0},
@@ -2500,7 +2499,6 @@ ST={
 [284257]="DAMAGE_PER_SECOND=50.555557250977;SPELL_POWER=13;STAMINA=18;STRENGTH=17",
 [284261]="DEFENSE_SKILL_RATING=6;RESISTANCE0_NAME=557;SPELL_POWER=16;STAMINA=27",
 [284270]="RESISTANCE0_NAME=585;STAMINA=16;STRENGTH=21",
-[284272]="RESISTANCE0_NAME=116",
 [284403]="AGILITY=8;ATTACK_POWER=16;RESISTANCE0_NAME=70",
 [284667]="DAMAGE_PER_SECOND=17.692308425903",
 [284696]="AGILITY=2;DAMAGE_PER_SECOND=13.684210777283;STRENGTH=2",
@@ -2824,7 +2822,6 @@ N={
 [284257]="Eisgeschworener Köpfer",
 [284261]="Magisch verstärkte Beinschützer",
 [284270]="Blick des uralten Riesen",
-[284272]="Chimärenfellbeinschutz",
 [284403]="Schreiter der gestaltwandelnden Wache",
 [284667]="Flammenversengtes Schwert",
 [284696]="Geschnitzter Furbolgzahn",
@@ -3142,7 +3139,6 @@ IC={
 [284257]=132456,
 [284261]=134588,
 [284270]=133078,
-[284272]=134586,
 [284403]=132551,
 [284667]=135312,
 [284696]=133723,
@@ -3182,4 +3178,4 @@ IC={
 [289302]=135271,
 },
 }
-]=], 1266)
+]=], 1265)
