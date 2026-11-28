@@ -7,7 +7,7 @@ local _, ns = ...
 
 ns.LazyData("WHATSNEW", [=[
 return {
-version="2.115.0",
+version="2.115.1",
 versions={
 {"2.115.0",{
 {"F-241","Hinweis, wenn eine Berufs-Abklingzeit bereit wird","An alert when a profession cooldown gets ready while you play","forever"},
