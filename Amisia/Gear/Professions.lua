@@ -1588,6 +1588,9 @@ ns.RegisterSettings{ key = "prof", label = L["Berufe"], order = 56, group = "pro
       tip = L["Eine graue Zeile an Materialien: für wie viele Rezepte sie gebraucht werden und wie viele davon die Gilde kann."] },
     { key = "prof.watchChat", type = "toggle", label = L["Chatzeile bei gesuchten Rezepten"], default = true,
       tip = L["Sagt einmal im Chat, wenn jemand aus der Gilde ein Rezept lernt, das du mit der Glocke gesucht hast."] },
+    -- the reagents bound when picked up (F-242, Gear/ProfBound.lua)
+    { key = "prof.bopShare", type = "toggle", label = L["Gebundene Materialien mit der Gilde teilen"], default = true,
+      tip = L["Sagt der Gilde, wie viele beim Aufheben gebundene Materialien (Dämonische Rune, Blut der Helden ...) deine Charaktere dieser Gilde haben. Ohne das sieht dich niemand unter \"Gebunden in der Gilde\"."] },
     -- the profession cooldowns (F-232, Gear/ProfCooldowns.lua)
     { key = "prof.cdLogin", type = "toggle", label = L["Bereite Abklingzeiten beim Einloggen"], default = true,
       tip = L["Sagt beim Einloggen einmal im Chat, welche deiner Charaktere eine Transmutation oder Mondstoff herstellen können."] },

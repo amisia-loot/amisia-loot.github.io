@@ -1488,6 +1488,17 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du mit der Maus auf ein Material gehst und die Tooltip-Zeile an ist, dann steht dort "Material für N Rezepte".
 - Notiz: Spec docs/specs/2026-11-23-gilde-berufe-uebersicht.md (freigegeben 2026-11-23).
 
+### F-242 Gebundene Materialien der Gilde
+- Version: 2.116.0
+- Status: gebaut
+- Braucht: Gilde
+- Prüfung: Wenn ein Gildenmitglied mit Amisia eine Dämonische Rune in Tasche oder Bank hat, dann steht sie binnen etwa 4 Minuten nach seinem Login in den Rezept-Details eines Rezepts, das sie braucht, unter "Gebunden in der Gilde".
+- Prüfung: Wenn du mit der Maus auf eine Dämonische Rune gehst und jemand in der Gilde welche hat, dann nennt der Tooltip "Gebunden in der Gilde: <Name> <Menge>".
+- Prüfung: Wenn das Mitglied seine Runen verbraucht (und danach die Bank öffnet, falls sie dort lagen), dann ist es binnen 5 Minuten aus der Zeile verschwunden.
+- Prüfung: Wenn deine Route ein gebundenes Material braucht und jemand in der Gilde es hat, dann steht in der Einkaufsliste "gebunden, in der Gilde: <Name> <Menge>".
+- Prüfung: Wenn du "Gebundene Materialien mit der Gilde teilen" ausschaltest, dann geht von dir keine Meldung mehr an die Gilde.
+- Notiz: Spec docs/specs/2026-11-28-gebundene-materialien.md (freigegeben 2026-11-28); DECISIONS D-177. Neue Datei: nach dem Release WoW ganz neu starten.
+
 ### F-244 Hersteller: abwesend
 - Version: 2.116.0
 - Status: gebaut

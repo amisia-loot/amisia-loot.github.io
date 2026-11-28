@@ -1315,4 +1315,11 @@ L["abwesend"] = "away"
 -- UI/ItemKit.lua: undress in the client's dressing room (F-245)
 L["Ausziehen"] = "Undress"
 L["Zieht das Modell der Anprobe ganz aus, damit du einzelne Teile ohne den Rest siehst. \"Zurücksetzen\" zieht es wieder an."] = "Takes everything off the dressing room's model, so you see single pieces without the rest. \"Reset\" dresses it again."
+
+-- Gear/ProfBound.lua, Gear/Professions.lua, UI/Pages/Professions.lua: bound reagents of the guild (F-242)
+L["Gebunden in der Gilde: %s"] = "Bound, held in the guild: %s"
+L["Gebunden in der Gilde, %s: %s"] = "Bound, held in the guild, %s: %s"
+L["gebunden, in der Gilde: %s"] = "bound, in the guild: %s"
+L["Gebundene Materialien mit der Gilde teilen"] = "Share bound materials with the guild"
+L["Sagt der Gilde, wie viele beim Aufheben gebundene Materialien (Dämonische Rune, Blut der Helden ...) deine Charaktere dieser Gilde haben. Ohne das sieht dich niemand unter \"Gebunden in der Gilde\"."] = "Tells the guild how many materials that bind when picked up (Demonic Rune, Blood of Heroes ...) your characters in this guild hold. Without it nobody sees you under \"Bound, held in the guild\"."
 end)

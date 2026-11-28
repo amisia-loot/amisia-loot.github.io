@@ -37,7 +37,7 @@ local OUTSIDER_FOR = 60     -- seconds the data parts of a sender outside the gu
 -- seconds between two handled messages per sender; a new keeper's gathering (RQ with "G") apart, and a guild
 -- queue state with a battleground that popped, was joined or declined (QW with a P, J or L entry: QWP, F-227) apart,
 -- and a guild bank pull by whisper (BQ L/C/LC: BQL, F-238) apart from the question to the guild (BQ ? / ?C)
-local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PVW = 60, PQ = 60, PH = 300, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, ZQ = 30, NV = 8, AC = 300, PC = 60, OQ = 300, EA = 10, EQ = 300, TQ = 30, QW = 10, QWP = 1, BQ = 10, BQL = 10 }
+local KIND_GAP = { VQ = 300, RQ = 20, RQG = 20, UQ = 5, NW = 10, DV = 60, CV = 60, LV = 8, LQ = 15, SV = 8, KV = 8, KQ = 15, PV = 60, PVW = 60, PQ = 60, PH = 300, GQ = 30, MQ = 30, WS = 1, AQ = 30, XQ = 10, XA = 10, IQ = 300, RO = 30, RX = 10, QR = 10, YQ = 10, YI = 10, ZQ = 30, NV = 8, AC = 300, PC = 60, PB = 300, OQ = 300, EA = 10, EQ = 300, TQ = 30, QW = 10, QWP = 1, BQ = 10, BQL = 10 }
 -- the same per first field: a drop question per week, a drop request per (first) bucket; a source
 -- question per kind, a source request per kind and bucket; a roll window answer per round; a raid
 -- sign-up per night; the raid IDs of a character; a soft-reserve question per list (its import epoch);
@@ -608,6 +608,23 @@ local VALID = {
         for i = 2, #f do
             local n, il = f[i]:match("^(.+):([^:]+)$")
             if not n or not charName(n) or not (il == "-" or isNum(il, 1, 999)) then return false end
+        end
+        return true
+    end,
+    -- the bound reagents held (Gear/ProfBound.lua, F-242, D-177): PB 1 [<name:item=count,...>]... (0 to 10
+    -- characters, 1 to 7 items each, counts 1-999; just "1": nothing held); whether an item binds the receiver
+    -- checks; a field out of its bounds drops the whole message
+    PB = function(f)
+        if #f < 1 or #f > 11 or f[1] ~= "1" then return false end
+        for i = 2, #f do
+            local n, rest = f[i]:match("^([^:]+):(.+)$")
+            if not n or not charName(n) then return false end
+            local k = 0
+            for part in (rest .. ","):gmatch("([^,]*),") do
+                local item, count = part:match("^(%d+)=(%d+)$")
+                k = k + 1
+                if not item or k > 7 or not isNum(item, 1, 99999999) or not isNum(count, 1, 999) then return false end
+            end
         end
         return true
     end,

@@ -5,6 +5,12 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(professions): see who in the guild holds materials that bind when picked up (F-242)
+
+    Demonic Runes, Blood of Heroes, Ogre Tannin and the other soulbound reagents cannot be bought or mailed. Each
+    member with Amisia now tells the guild how many of them their characters hold, and the recipe details, the
+    route's shopping list and the item tooltip show who has them. A setting under Professions turns sharing off.
+
 - feat(professions): the levelling route shows what the products fetch at a vendor (F-243)
 
     Each recipe step of the route now says what its products sell for at a vendor, and the route's head adds the

@@ -5301,3 +5301,23 @@ sachen aus punkt 3".
 **Folge:** Neue Datentabelle `SP`, ein neues Feld `away` im Roster, kein neuer Schlüssel, keine Nachricht.
 **Durchgesetzt durch:** `tests/test_prof_route.lua`, `tests/test_crafters_away.lua`, `tests/test_dressup_undress.lua`.
 
+## D-177 Gebundene Materialien der Gilde: nur beim Aufheben gebundene Reagenzien, jeder Absender ersetzt sein Wort
+
+**Datum:** 2026-11-28
+**Entscheidung:** F-242 (Spec `docs/specs/2026-11-28-gebundene-materialien.md`, `Amisia/Gear/ProfBound.lua`).
+Geteilt werden nur die Reagenzien der Berufsdaten, die das Spiel beim Aufheben bindet (`ItemSparse.Bonding = 1`,
+`ProfessionData` `BOP`, außerhalb der Lazy-Tabelle als `ns.PROF_BOP`), mit den Mengen der eigenen Charaktere dieser
+Gilde (der gespielte live, die anderen aus `prof.bags`; die Route zählt diese Items immer mit). Die Nachricht `PB`
+geht 60-180 s nach dem Login nur, wenn etwas da ist oder die letzte etwas nannte, und nach einer Änderung höchstens
+alle 5 Minuten und nur, wenn sie anders lautet; "1" allein heißt "nichts mehr". Jede Nachricht ersetzt, was derselbe
+Absender vorher sagte; den eigenen Bericht eines Charakters ersetzt kein anderer Absender. Vertrauen wie `PC`
+(D-163): nur GUILD, nur Mitglieder, nur Roster-Namen, nie eigene Charaktere, ein Feld außerhalb seiner Grenzen
+verwirft die ganze Nachricht. Angezeigt in den Rezept-Details ("Gebunden in der Gilde, <Item>: ..."), in der
+Einkaufsliste der Route (Spalte Quelle) und im Item-Tooltip; die Tooltipzeile hängt nicht an "Materialien im
+Item-Tooltip" (aus), sonst sähe sie fast niemand.
+**Grund:** Nutzer 2026-11-28 nach dem Vergleich mit einem fremden Änderungsprotokoll; zur Spec "Passt, bauen" (nur
+gebundene, Teilen an, eigene Twinks grau zuerst).
+**Folge:** Neue Nachrichtenart `PB`, neue Datei `Gear/ProfBound.lua` (TOC: ganz neu starten), neue Schlüssel
+`prof.bopHeard`, `prof.bopSent`, Einstellung `prof.bopShare`, Datentabelle `BOP`.
+**Durchgesetzt durch:** `tests/test_prof_bound.lua`.
+

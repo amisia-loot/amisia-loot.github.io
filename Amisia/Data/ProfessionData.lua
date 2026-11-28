@@ -28,6 +28,8 @@ local _, ns = ...
 -- L: [spell] = copper a trainer read in the game asks. TD: [npc] = the time of its reading the data holds.
 -- PROF_COOLDOWNS: CD again, read without building PROFESSIONS (Gear/ProfCooldowns.lua).
 ns.PROF_COOLDOWNS = {[11479]="0:1",[11480]="0:1",[17187]="310:47",[17559]="310:23",[17560]="310:23",[17561]="310:23",[17562]="310:23",[17563]="310:23",[17564]="310:23",[17565]="310:23",[17566]="310:23",[18560]="0:95",[22430]="310:2",[25146]="310:0",[1317279]="310:47"}
+-- PROF_BOP: the reagents bound when picked up (F-242), read without building PROFESSIONS (Gear/ProfBound.lua).
+ns.PROF_BOP = {[10543]=true,[12662]=true,[12735]=true,[12753]=true,[12938]=true,[13180]=true,[18240]=true}
 ns.LazyData("PROFESSIONS", [=[
 return {
 built="2026-11-28",client="1.60.1.71139",source="007a0073a4",

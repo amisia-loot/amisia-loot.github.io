@@ -1056,6 +1056,19 @@ function R.SaveBags()
         local other = trackedFromOthers(root, key)
         list = type(old.track) == "table" and (not other or #old.track >= #other) and old.track or other
     end
+    -- the bound reagents always with a list (F-242: who of the guild holds them), even beyond the list's cap
+    if type(list) == "table" and #list > 0 and type(ns.PROF_BOP) == "table" and next(ns.PROF_BOP) then
+        local have, extra = {}, {}
+        for _, item in ipairs(list) do have[item] = true end
+        for item in pairs(ns.PROF_BOP) do if not have[item] then extra[#extra + 1] = item end end
+        if #extra > 0 then
+            table.sort(extra)
+            local copy = {}
+            for i, item in ipairs(list) do copy[i] = item end
+            for _, item in ipairs(extra) do copy[#copy + 1] = item end
+            list = copy
+        end
+    end
     if type(list) ~= "table" or #list == 0 then return false end
     root = bagsRoot(true)
     local bank = type(old.bank) == "table" and old.bank or {}

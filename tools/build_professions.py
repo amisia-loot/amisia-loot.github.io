@@ -165,7 +165,9 @@ def read_client(*dirs, att=None):
                                            # BuyPrice is what VendorStackCount of it cost at a vendor
                                            'buy': _int(r.get('BuyPrice')), 'stack': _int(r.get('VendorStackCount'), 1),
                                            # what a vendor pays for one (the route's estimate, S)
-                                           'sell': _int(r.get('SellPrice'))})
+                                           'sell': _int(r.get('SellPrice')),
+                                           # 1: bound when picked up (F-242)
+                                           'bond': _int(r.get('Bonding'))})
     for r in _rows('SpellName', dirs):
         out['names'].setdefault(_int(r.get('ID')), r.get('Name_lang') or '')
     for r in _rows('Spell', dirs):
@@ -735,6 +737,8 @@ def combine(client, att, seen=None, cooldowns=None, trainers=None, known=None):
         sell = client['items'].get(item, {}).get('sell', 0)
         if sell > 0:
             S[item] = sell
+    # the reagents bound when picked up: who of the guild holds them (F-242)
+    BOP = sorted(i for i in reagents if client['items'].get(i, {}).get('bond') == 1)
     # what a vendor pays for one of a recipe's product (the route's sell value, F-243)
     SP = {}
     for item in sorted(made_items(R)):
@@ -786,7 +790,7 @@ def combine(client, att, seen=None, cooldowns=None, trainers=None, known=None):
             where = e['p']
         N[nid] = f'{name}|{where}|{fac}'
 
-    return {'P': P, 'R': R, 'I': I, 'G': G, 'V': V, 'RS': RS, 'S': S, 'SP': SP, 'CD': CD, 'N': N, 'Q': Q, 'TR': TR, 'CAMP': camp_objects(client),
+    return {'P': P, 'R': R, 'I': I, 'G': G, 'V': V, 'RS': RS, 'S': S, 'SP': SP, 'BOP': BOP, 'CD': CD, 'N': N, 'Q': Q, 'TR': TR, 'CAMP': camp_objects(client),
             'FAVOR': favor_info(client, att, R), 'L': L, 'TD': TD, 'client': client['client'],
             'source': (att.get('commit') or '')[:10], 'report': report}
 
@@ -858,7 +862,7 @@ def favor_info(client, att, R):
 
 
 def empty():
-    return {'P': [], 'R': {}, 'I': {}, 'G': {}, 'V': {}, 'RS': {}, 'S': {}, 'SP': {}, 'CD': {}, 'N': {}, 'Q': {}, 'TR': {}, 'CAMP': [],
+    return {'P': [], 'R': {}, 'I': {}, 'G': {}, 'V': {}, 'RS': {}, 'S': {}, 'SP': {}, 'BOP': [], 'CD': {}, 'N': {}, 'Q': {}, 'TR': {}, 'CAMP': [],
             'FAVOR': {'currency': FAVOR_CURRENCY, 'cert': {}, 'writ': {}, 'vendor': {'A': [], 'H': []}},
             'L': {}, 'TD': {}, 'client': '', 'source': '', 'report': {}}
 
@@ -931,6 +935,8 @@ def render(data, built):
            # checks and reads them at login and on every message without building the data (D-28)
            '-- PROF_COOLDOWNS: CD again, read without building PROFESSIONS (Gear/ProfCooldowns.lua).',
            'ns.PROF_COOLDOWNS = {' + ','.join(f'[{k}]={lua_str(v)}' for k, v in sorted(data['CD'].items())) + '}',
+           '-- PROF_BOP: the reagents bound when picked up (F-242), read without building PROFESSIONS (Gear/ProfBound.lua).',
+           'ns.PROF_BOP = {' + ','.join(f'[{k}]=true' for k in data.get('BOP') or []) + '}',
            'ns.PROFESSIONS = {',
            f'    built = {lua_str(built)}, client = {lua_str(data.get("client") or "")}, source = {lua_str(data.get("source") or "")},',
            '    P = { ' + ', '.join(f'{{ {s}, {lua_str(k)} }}' for s, k in data['P']) + ' },',

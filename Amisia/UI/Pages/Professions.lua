@@ -777,6 +777,11 @@ local function showRecipe(f, e)
     local offline = state().offline and true or false
     rd.offline:SetChecked(offline)
     local who, any = guildText(r.spell, offline)
+    -- F-242: who of the guild holds the recipe's reagents that bind when picked up
+    for _, b in ipairs(ns.ProfBound and ns.ProfBound.ForReagents(list) or {}) do
+        who = who .. "\n" .. L["Gebunden in der Gilde, %s: %s"]:format(itemName(b.item), b.text)
+        any = true
+    end
     rd.who:SetText(who)
     rd.guild.ground:SetColorTexture(unpack(any and P.RD_GUILD_BG or P.RD_BOX_BG))
     rd.askWho = Cr.AskWhom(r.spell)
@@ -1187,7 +1192,10 @@ local function fillShop(r, e)
     r.twinks:SetText(e.twinks > 0 and tostring(e.twinks) or (GREY .. "0|r"))
     r.miss:SetText(e.missing > 0 and (T.RED .. e.missing .. "|r") or (GREY .. "0|r"))
     r.price:SetText(e.price and money(e.price) or (GREY .. "-|r"))
-    r.src:SetText(sourceText(e))
+    -- F-242: a reagent bound when picked up: who of the guild holds it
+    local B = ns.ProfBound
+    local held = B and B.IsBound(e.item) and B.Text(e.item, 2, true)
+    r.src:SetText(held and L["gebunden, in der Gilde: %s"]:format(held) or sourceText(e))
 end
 
 local function shopTooltip(owner, e)

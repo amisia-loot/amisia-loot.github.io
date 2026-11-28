@@ -1,6 +1,6 @@
 # Spec: Wer in der Gilde seelengebundene Materialien hat
 
-Stand: 2026-11-28 · Status: Entwurf (wird "freigegeben", sobald der Nutzer "passt" sagt) ·
+Stand: 2026-11-28 · Status: freigegeben 2026-11-28 ·
 Feature: F-242
 
 ## Ziel
@@ -87,4 +87,7 @@ für denselben Charakter ersetzt ihn nur, wenn er der Charakter selbst ist.
 
 ## Entscheidungen
 
-Noch keine.
+- 2026-11-28: alle drei Fragen: "Passt, bauen" -> nur gebundene Materialien; Teilen standardmäßig an; eigene Twinks
+  grau zuerst.
+- Beim Bauen: die Tooltipzeile hängt nicht an "Materialien im Item-Tooltip" (standardmäßig aus), sie steht bei den
+  gebundenen Materialien immer. Ein Bankbestand gilt, bis die Bank wieder offen war (wie die Twinks-Spalte).
