@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.116.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.116.0) (2026-11-28)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.115.1...v2.116.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(professions): see who in the guild holds materials that bind when picked up (F-242)
 
     Demonic Runes, Blood of Heroes, Ogre Tannin and the other soulbound reagents cannot be bought or mailed. Each

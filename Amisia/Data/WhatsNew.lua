@@ -7,8 +7,14 @@ local _, ns = ...
 
 ns.LazyData("WHATSNEW", [=[
 return {
-version="2.115.1",
+version="2.116.0",
 versions={
+{"2.116.0",{
+{"F-242","Gebundene Materialien der Gilde","See who in the guild holds materials that bind when picked up","forever"},
+{"F-243","Berufsroute: Verkaufswert je Schritt","The levelling route shows what the products fetch at a vendor","forever"},
+{"F-244","Hersteller: abwesend","Crafters who are away or busy are marked","forever"},
+{"F-245","Anprobe: Ausziehen","An Undress button in the dressing room","gear"},
+}},
 {"2.115.0",{
 {"F-241","Hinweis, wenn eine Berufs-Abklingzeit bereit wird","An alert when a profession cooldown gets ready while you play","forever"},
 }},
@@ -23,9 +29,6 @@ versions={
 }},
 {"2.112.0",{
 {"F-238","Gildenbank-Protokoll und Zählung mit der Gilde abgleichen","The guild bank log and the last count reach everyone in the guild","all"},
-}},
-{"2.111.0",{
-{"F-237","Seite Amisia-Versionen: wer Amisia hat und welche Version","A page of its own shows who runs Amisia and which version","all"},
 }},
 },
 }
