@@ -4,7 +4,7 @@
 ## Notes: Amisia's gear module, WoW Forever only: the best gear per level range, the gear planner, sets and reputation, scores, enchants, goals and wishes. Needs Amisia.
 ## Notes-deDE: Ausrüstungs-Modul von Amisia, nur WoW Forever: die beste Ausrüstung pro Levelbereich, der Ausrüstungsplaner, Sets und Ruf, Wertung, Verzauberungen, Ziele und Wünsche. Braucht Amisia.
 ## Author: mrvulo
-## Version: 2.114.0
+## Version: 2.115.0
 ## Category: VuloUI
 ## IconTexture: Interface\AddOns\Amisia\Media\Icons\Amisia_Gear
 ## Dependencies: Amisia

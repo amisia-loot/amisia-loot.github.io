@@ -7,8 +7,11 @@ local _, ns = ...
 
 ns.LazyData("WHATSNEW", [=[
 return {
-version="2.114.0",
+version="2.115.0",
 versions={
+{"2.115.0",{
+{"F-241","Hinweis, wenn eine Berufs-Abklingzeit bereit wird","An alert when a profession cooldown gets ready while you play","forever"},
+}},
 {"2.114.0",{
 {"F-095","Suchfeld oben links im Hauptfenster","The search box finds bosses, dungeon quests and professions, ignores umlauts, and Enter opens the first hit","all"},
 }},
@@ -23,10 +26,6 @@ versions={
 }},
 {"2.111.0",{
 {"F-237","Seite Amisia-Versionen: wer Amisia hat und welche Version","A page of its own shows who runs Amisia and which version","all"},
-}},
-{"2.110.0",{
-{"F-235","Lauf-Fenster: Beutewert, Ruf, gelernte Rare","The run window counts loot value and reputation and learns rares","dungeons"},
-{"F-236","Neuigkeiten nach einem Update","A window shows what is new after an update","all"},
 }},
 },
 }

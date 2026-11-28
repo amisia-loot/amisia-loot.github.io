@@ -5,6 +5,10 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+## [v2.115.0](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.115.0) (2026-11-28)
+
+[Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.114.0...v2.115.0) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)
+
 - feat(professions): an alert when a profession cooldown gets ready while you play (F-241)
 
     When a transmute, Mooncloth or another long cooldown of your characters ends while you are logged in, the chat
