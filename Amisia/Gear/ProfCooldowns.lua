@@ -19,6 +19,9 @@
 --
 -- AmisiaDB.prof.cd = { [own character] = { realm, faction = "A"/"H", [spell] = ready-from epoch } }
 -- AmisiaDB.prof.cdHeard = { [name] = { by = sender, at = epoch heard, [spell] = ready-from epoch } } (7 days, 300 names)
+-- AmisiaDB.prof.cdMute = { ["<own character>|<line>"] = true }: lines whose alert and login line are off (F-241,
+-- D-175; 200 at most). An own line that gets ready while playing says so in the chat, the played character's
+-- with a banner and a sound (prof.cdAlert, prof.cdSound); nothing that got ready before the addon loaded.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -42,6 +45,7 @@ local LIM = {
     loginRead = 3, loginLine = 10,      -- seconds after entering the world: the first reading, the chat line
     gcd = 2,                            -- a cooldown this short is the global one: ready
     tipKeep = 10,
+    muteMax = 200,                      -- lines switched off (F-241)
 }
 PC.LIM = LIM
 
@@ -375,15 +379,124 @@ function PC.Own()
     return out
 end
 
--- The ready lines of the own characters: { { label, name } } (the login line and the chat's answer).
+-- The ready lines of the own characters: { { label, name, group } } (the login line and the chat's answer).
 function PC.OwnReady()
     local out = {}
     for _, c in ipairs(PC.Own()) do
         for _, l in ipairs(c.lines) do
-            if leftOf(l.at) <= 0 then out[#out + 1] = { label = l.label, name = c.name } end
+            if leftOf(l.at) <= 0 then out[#out + 1] = { label = l.label, name = c.name, group = l.group } end
         end
     end
     return out
+end
+
+---------------------------------------------------------------------------
+-- F-241 (D-175): a line switched off, the next line, the alert when a line gets ready
+---------------------------------------------------------------------------
+local function muteStore(create)
+    local p = profRoot(create)
+    if not p then return nil end
+    if type(p.cdMute) ~= "table" then
+        if not create then return nil end
+        p.cdMute = {}
+    end
+    return p.cdMute
+end
+local function muteKey(name, group) return tostring(name) .. "|" .. tostring(group) end
+
+-- Whether the alert (and the login line) of one own line is switched off.
+function PC.Muted(name, group)
+    local m = muteStore(false)
+    return m ~= nil and m[muteKey(name, group)] == true
+end
+
+function PC.SetMuted(name, group, off)
+    if not validName(name) or type(group) ~= "string" or not group:match("^[cs]%d+$") then return false end
+    local m = muteStore(off)
+    if not m then return true end
+    m[muteKey(name, group)] = off and true or nil
+    changed()
+    return true
+end
+
+-- The own line with the shortest time left that is not ready yet (switched-off lines left out):
+-- { label, name, group, at }, nil when none runs.
+function PC.Next()
+    local best
+    for _, c in ipairs(PC.Own()) do
+        for _, l in ipairs(c.lines) do
+            if leftOf(l.at) > 0 and not PC.Muted(c.name, l.group) and (not best or l.at < best.at) then
+                best = { label = l.label, name = c.name, group = l.group, at = l.at }
+            end
+        end
+    end
+    return best
+end
+
+-- "Als Nächstes: Mondstoff (Kim) in 3 Std. 12 Min.", nil when none runs.
+function PC.NextText()
+    local n = PC.Next()
+    return n and L["Als Nächstes: %s (%s) %s"]:format(n.label, n.name, PC.TimeText(n.at)) or nil
+end
+
+-- Only what gets ready after the addon loaded is announced (the login line says the rest); each ready-from
+-- once (in memory only). In a fight, a boss encounter or the chat lockdown it waits.
+local loadedAt = now()
+local alerted = {}
+local function busy()
+    if type(InCombatLockdown) == "function" and InCombatLockdown() then return true end
+    if type(UnitAffectingCombat) == "function" and ns.Plain(UnitAffectingCombat("player")) == true then return true end
+    local ce = _G.C_InstanceEncounter
+    if type(ce) == "table" and type(ce.IsEncounterInProgress) == "function" and ns.Plain(call(ce.IsEncounterInProgress)) == true then
+        return true
+    end
+    return ns.ChatLocked and ns.ChatLocked() or false
+end
+
+local function sound()
+    if not ns.Get("prof.cdSound") or type(PlaySound) ~= "function" or type(SOUNDKIT) ~= "table" then return end
+    local kit = SOUNDKIT.ALARM_CLOCK_WARNING_3 or SOUNDKIT.RAID_WARNING
+    if kit then pcall(PlaySound, kit) end
+end
+PC._sound = sound
+
+local function banner(text)
+    local add, frame = _G.RaidNotice_AddMessage, _G.RaidWarningFrame
+    if type(add) ~= "function" or frame == nil then return end
+    local info = type(_G.ChatTypeInfo) == "table" and _G.ChatTypeInfo.RAID_WARNING or { r = 1, g = 0.82, b = 0 }
+    pcall(add, frame, text, info)
+end
+
+-- Every tick: the own lines whose ready-from has passed since the last look. The played character gets the chat
+-- line, a banner and the sound; another own character the chat line only.
+function PC.CheckAlerts()
+    local t, due = now(), {}
+    for _, c in ipairs(PC.Own()) do
+        for _, l in ipairs(c.lines) do
+            local k = muteKey(c.name, l.group)
+            if whole(l.at) and l.at > loadedAt and l.at <= t and alerted[k] ~= l.at then
+                due[#due + 1] = { key = k, line = l, char = c }
+            end
+        end
+    end
+    if #due == 0 then return 0 end
+    local on = ns.Get("prof.cdAlert")
+    if on and busy() then return 0 end
+    local mine, n = {}, 0
+    for _, d in ipairs(due) do
+        alerted[d.key] = d.line.at
+        if on and not PC.Muted(d.char.name, d.line.group) then
+            n = n + 1
+            ns.msg("|cff4fbf7a" .. L["%s ist bereit (%s)."]:format(d.line.label, d.char.name) .. "|r")
+            if d.char.current then mine[#mine + 1] = d.line.label end
+        end
+    end
+    if #mine > 0 then
+        banner(#mine == 1 and L["%s ist bereit."]:format(mine[1]) or L["Bereit: %s"]:format(table.concat(mine, ", ")))
+        sound()
+    end
+    if n > 0 then changed() end
+    return n
 end
 
 local function isOwn(name)
@@ -716,10 +829,11 @@ ns.Listen("PROF_CHANGED", function() readSoon() end)
 
 -- The chat line of the login: the own ready lines, once per session.
 function PC.LoginLine()
-    local ready = PC.OwnReady()
-    if #ready == 0 then return nil end
     local parts = {}
-    for _, r in ipairs(ready) do parts[#parts + 1] = ("%s (%s)"):format(r.label, r.name) end
+    for _, r in ipairs(PC.OwnReady()) do
+        if not PC.Muted(r.name, r.group) then parts[#parts + 1] = ("%s (%s)"):format(r.label, r.name) end
+    end
+    if #parts == 0 then return nil end
     return L["bereit: %s."]:format(table.concat(parts, ", "))
 end
 
@@ -733,7 +847,10 @@ ns.OnEvent("PLAYER_ENTERING_WORLD", function(_, isReload)
     C_Timer.After(LIM.loginLine, function()
         if not ns.Get("prof.cdLogin") then return end
         local line = PC.LoginLine()
-        if line then ns.msg(line) end
+        if line then
+            ns.msg(line)
+            if ns.Get("prof.cdAlert") then sound() end
+        end
     end)
 end)
 ns.OnEvent("PLAYER_ENTERING_WORLD", function()
@@ -742,7 +859,11 @@ ns.OnEvent("PLAYER_ENTERING_WORLD", function()
 end)
 
 -- the first PC and every one after a change go from here, once they may (PC.CanTalk)
-C_Timer.NewTicker(LIM.tick, ns.Perf.Wrap("Ticker ProfCooldowns", function() trySend() end))
+-- and the alerts of F-241
+C_Timer.NewTicker(LIM.tick, ns.Perf.Wrap("Ticker ProfCooldowns", function()
+    trySend()
+    PC.CheckAlerts()
+end))
 
 -- /amisia abklingzeiten: the tab Abklingzeiten; without the page the own lines in the chat.
 function PC.PrintOwn()
@@ -756,6 +877,8 @@ function PC.PrintOwn()
         for _, l in ipairs(c.lines) do parts[#parts + 1] = ("%s %s"):format(l.label, PC.TimeText(l.at)) end
         ns.msg(("%s: %s"):format(c.name, table.concat(parts, ", ")))
     end
+    local nxt = PC.NextText()
+    if nxt then ns.msg(nxt) end
 end
 
 ns.RegisterSlash("abklingzeiten", { en = "cooldowns", aliases = { "abklingzeit", "cd" }, desc = L["Berufs-Abklingzeiten deiner Charaktere und der Gilde"],
@@ -804,6 +927,23 @@ function ns.ProfCooldownsLoaded(root)
             if #keep > LIM.ownMax then
                 table.sort(keep)
                 for i = LIM.ownMax + 1, #keep do p.cd[keep[i]] = nil end
+            end
+        end
+    end
+    if p.cdMute ~= nil then
+        if type(p.cdMute) ~= "table" then p.cdMute = nil else
+            local keep = {}
+            for k, v in pairs(p.cdMute) do
+                local name = type(k) == "string" and k:match("^(.+)|[cs]%d+$")
+                if name and v == true and validName(name) and type(p.cd) == "table" and p.cd[name] ~= nil then
+                    keep[#keep + 1] = k
+                else
+                    p.cdMute[k] = nil
+                end
+            end
+            if #keep > LIM.muteMax then
+                table.sort(keep)
+                for i = LIM.muteMax + 1, #keep do p.cdMute[keep[i]] = nil end
             end
         end
     end

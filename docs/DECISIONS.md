@@ -5263,3 +5263,20 @@ Hersteller (wer nie gleichzeitig online ist, bleibt unsichtbar). Auf "was ist di
 Schritten; zur Spec "Passt, bauen" (jedes Mitglied gibt weiter, 14 Tage, höchstens einmal am Tag fragen).
 **Folge:** Ein Mitglied könnte einem anderen falsche Rezepte zuschreiben; es bleibt sichtbar ("laut X"), altert mit
 dem echten Tag und weicht dem eigenen Eintrag des Herstellers. Alte Clients verwerfen `PH` und das Format `R`.
+
+## D-175 Abklingzeit-Hinweise: nur eigene Charaktere, Banner und Ton nur beim gespielten
+
+**Datum:** 2026-11-28
+**Entscheidung:** F-241 (Spec `docs/specs/2026-11-28-abklingzeit-hinweise.md`, `Amisia/Gear/ProfCooldowns.lua`).
+Wird eine eigene Abklingzeit (`PC.Own`: dieser Realm, diese Fraktion) während des Spiels bereit, sagt es der Chat;
+beim gespielten Charakter kommen ein Banner (`RaidNotice_AddMessage` am `RaidWarningFrame`, nichts geht an den
+Schlachtzug) und ein Ton dazu, bei einem Twink nur die Chatzeile. Gemeldet wird nur, was nach dem Laden des Addons
+bereit wird (offline Bereitgewordenes sagt die Login-Zeile), je "bereit ab" einmal, nur im Speicher der Sitzung.
+Im Kampf, in einem Bosskampf und in der Kampfsperre wartet der Hinweis. Mit dem Hinweis aus wird nichts gemeldet,
+und was in der Zeit bereit wird, bleibt auch beim Wiedereinschalten still. Eine Zeile lässt sich je Charakter
+ausschalten (`prof.cdMute`); sie fehlt dann auch in der Login-Zeile und bei "Als Nächstes". Kein Hinweis für
+Gildenmitglieder, keine neue Nachricht.
+**Grund:** Nutzer 2026-11-28 nach dem Vergleich mit einem fremden Änderungsprotokoll: "Abklingzeit-Hinweise als
+Nächstes"; zur Spec "Passt, bauen" (Banner und Ton nur beim gespielten Charakter, beides an, kein Gildenhinweis).
+**Folge:** Neue Einstellungen `prof.cdAlert`, `prof.cdSound` (beide an), neuer gespeicherter Schlüssel `prof.cdMute`.
+**Durchgesetzt durch:** `tests/test_prof_cooldowns_alert.lua`, `tests/test_prof_cooldowns_page.lua`.

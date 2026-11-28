@@ -2078,12 +2078,15 @@ local function cooldownEntries()
     local PCd = ns.ProfCooldowns
     local out = {}
     if not PCd then return out, 0, 0 end
+    -- F-241: the own line that gets ready next, above the own block
+    local nxt = PCd.NextText and PCd.NextText()
+    if nxt then out[#out + 1] = { next = nxt } end
     out[#out + 1] = { head = L["Deine Charaktere"] }
     local own = PCd.Own()
     for _, c in ipairs(own) do
         for _, l in ipairs(c.lines) do
             out[#out + 1] = { name = c.name, class = ownClass(c.name), own = true, current = c.current, label = l.label,
-                spell = l.spell, at = l.at }
+                spell = l.spell, at = l.at, group = l.group }
         end
     end
     if #own == 0 then out[#out + 1] = { note = L["Noch keine. Öffne einmal das Berufsfenster eines Charakters mit Transmutation oder Mondstoff."] } end
@@ -2105,15 +2108,18 @@ end
 
 local function fillCooldown(r, e)
     local PCd = ns.ProfCooldowns
-    if e.head or e.note then
-        r.name:SetText(e.head and (T.LABEL .. e.head .. "|r") or (GREY .. e.note .. "|r"))
-        r.name:SetWidth(e.note and (P.CD_COLS[#P.CD_COLS][2] + P.CD_COLS[#P.CD_COLS][3]) or P.CD_COLS[1][3])
+    r.bell:SetShown(e.own == true)
+    if e.head or e.note or e.next then
+        r.name:SetText(e.head and (T.LABEL .. e.head .. "|r") or e.next or (GREY .. e.note .. "|r"))
+        r.name:SetWidth((e.note or e.next) and (P.CD_COLS[#P.CD_COLS][2] + P.CD_COLS[#P.CD_COLS][3]) or P.CD_COLS[1][3])
         r.what:SetText("")
         r.state:SetText("")
         r.recipe:SetText("")
         return
     end
-    r.name:SetWidth(P.CD_COLS[1][3])
+    -- F-241: the bell of an own line, dim while its alert is off
+    if e.own then r.bell.icon:SetAlpha(PCd and PCd.Muted(e.name, e.group) and P.STAR_OFF or 1) end
+    r.name:SetWidth(P.CD_COLS[1][3] - (e.own and (P.STAR + P.BELL_GAP) or 0))
     local name = ns.ClassColored(e.name, e.class)
     if e.current then name = name .. " " .. GREY .. L["(du)"] .. "|r" end
     if not e.own and not e.online then name = name .. " " .. GREY .. L["(offline)"] .. "|r" end
@@ -2124,18 +2130,32 @@ local function fillCooldown(r, e)
 end
 
 local function cooldownTooltip(owner, e)
-    if not e or e.head or e.note or not GameTooltip then return end
+    if not e or e.head or e.note or e.next or not GameTooltip then return end
     GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
     GameTooltip:SetText(e.name)
     GameTooltip:AddLine(("%s: %s"):format(e.label, ns.ProfCooldowns.TimeText(e.at)), 1, 1, 1)
     GameTooltip:AddLine(L["Zuletzt: %s"]:format(ns.ProfCooldowns.SpellName(e.spell)), 1, 1, 1)
     if not e.own then GameTooltip:AddLine(L["Klick: Flüstern oder Einladen"], 0.6, 0.6, 0.6, true) end
+    if e.own then
+        GameTooltip:AddLine(ns.ProfCooldowns.Muted(e.name, e.group) and L["Hinweis aus. Glocke: wieder melden, wenn es bereit wird."]
+            or L["Glocke: nicht mehr melden, wenn es bereit wird."], 0.6, 0.6, 0.6, true)
+    end
     GameTooltip:Show()
+end
+
+-- F-241: the bell of an own line switches its alert (and the login line) off and on
+local function cooldownBell(row)
+    local e = row and row.item
+    if not e or not e.own or not ns.ProfCooldowns then return end
+    local PCd = ns.ProfCooldowns
+    PCd.SetMuted(e.name, e.group, not PCd.Muted(e.name, e.group))
+    ns.Refresh()
 end
 
 local function cooldownClick(row)
     local e = row and row.item
-    if not e or e.head or e.note or e.own or not ns.MembersMenuEntries then return end
+    if e and e.own then return cooldownBell(row) end
+    if not e or e.head or e.note or e.next or e.own or not ns.MembersMenuEntries then return end
     local entries = ns.MembersMenuEntries({ name = e.name, online = e.online })
     if #entries > 0 then W.Menu(row, entries) end
 end
@@ -2158,6 +2178,15 @@ local function buildCooldowns(f)
     h.recipe:SetText(L["Zuletzt hergestellt"])
     f.cdList = cv:List(P.CD_ROWS, P.CD_H, function(r)
         W.Cells(r, P.CD_COLS)
+        r.bell = W.IconButton(r, P.STAR, { file = P.BELL_ICON }, function() cooldownBell(r) end, "!")
+        r.bell:SetPoint("LEFT", r, "LEFT", P.CD_COLS[1][2] + P.CD_COLS[1][3] - P.STAR, 0)
+        W.Tooltip(r.bell, L["Melden, wenn es bereit wird"], function()
+            local e = r.item
+            return e and ns.ProfCooldowns and ns.ProfCooldowns.Muted(e.name, e.group)
+                and L["Aus: kein Hinweis und keine Login-Zeile für diese Abklingzeit. Klick: wieder an."]
+                or L["An: Chat, Banner und Ton, sobald es bereit wird. Klick: aus."]
+        end)
+        r.bell:Hide()
         r:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         r:SetScript("OnClick", function(self) cooldownClick(self) end)
         r:SetScript("OnEnter", function(self) cooldownTooltip(self, self.item) end)

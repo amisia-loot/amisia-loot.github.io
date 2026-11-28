@@ -1591,6 +1591,10 @@ ns.RegisterSettings{ key = "prof", label = L["Berufe"], order = 56, group = "pro
     -- the profession cooldowns (F-232, Gear/ProfCooldowns.lua)
     { key = "prof.cdLogin", type = "toggle", label = L["Bereite Abklingzeiten beim Einloggen"], default = true,
       tip = L["Sagt beim Einloggen einmal im Chat, welche deiner Charaktere eine Transmutation oder Mondstoff herstellen können."] },
+    { key = "prof.cdAlert", type = "toggle", label = L["Hinweis, wenn eine Abklingzeit bereit wird"], default = true,
+      tip = L["Wird eine Abklingzeit deiner Charaktere bereit, während du spielst, sagt es der Chat; beim gespielten Charakter auch ein Banner in der Mitte. Im Kampf wartet der Hinweis. Einzelne Zeilen schaltest du unter Berufe > Abklingzeiten mit der Glocke aus."] },
+    { key = "prof.cdSound", type = "toggle", label = L["Abklingzeit bereit: mit Ton"], default = true,
+      tip = L["Ein Ton zum Banner und zur Login-Zeile (nur mit dem Hinweis an)."] },
     { key = "prof.cdShare", type = "toggle", label = L["Abklingzeiten mit der Gilde teilen"], default = true,
       tip = L["Sagt der Gilde, wann deine Charaktere dieser Gilde ihre Abklingzeiten wieder nutzen können. Ohne das sieht dich niemand unter Berufe > Abklingzeiten."] },
     { key = "prof.cdTooltip", type = "toggle", label = L["Abklingzeiten im Item-Tooltip"], default = true,

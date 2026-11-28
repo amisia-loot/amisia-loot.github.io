@@ -1286,4 +1286,19 @@ L["vor %d Tagen"] = "%d days ago"
 -- UI/Pages/Professions.lua: the card Schriftrollen under Weiteres (D-167)
 L["Schriftrollen der Magier und wo du sie findest"] = "The mages' scrolls and where to find them"
 L["Klick: die Schriftrollen der Magier, was sie geben und wo du sie findest."] = "Click: the mages' scrolls, what they give and where you find them."
+
+-- Gear/ProfCooldowns.lua, Gear/Professions.lua, UI/Pages/Professions.lua: cooldown alerts (F-241)
+L["Als Nächstes: %s (%s) %s"] = "Next: %s (%s) %s"
+L["%s ist bereit (%s)."] = "%s is ready (%s)."
+L["%s ist bereit."] = "%s is ready."
+L["Bereit: %s"] = "Ready: %s"
+L["Hinweis, wenn eine Abklingzeit bereit wird"] = "Alert when a cooldown gets ready"
+L["Wird eine Abklingzeit deiner Charaktere bereit, während du spielst, sagt es der Chat; beim gespielten Charakter auch ein Banner in der Mitte. Im Kampf wartet der Hinweis. Einzelne Zeilen schaltest du unter Berufe > Abklingzeiten mit der Glocke aus."] = "When a cooldown of your characters gets ready while you play, the chat says so; for the character you play also a banner in the middle. In combat the alert waits. Switch single lines off under Professions > Cooldowns with the bell."
+L["Abklingzeit bereit: mit Ton"] = "Cooldown ready: with sound"
+L["Ein Ton zum Banner und zur Login-Zeile (nur mit dem Hinweis an)."] = "A sound with the banner and the login line (only with the alert on)."
+L["Hinweis aus. Glocke: wieder melden, wenn es bereit wird."] = "Alert off. Bell: tell me again when it gets ready."
+L["Glocke: nicht mehr melden, wenn es bereit wird."] = "Bell: stop telling me when it gets ready."
+L["Melden, wenn es bereit wird"] = "Tell me when it is ready"
+L["Aus: kein Hinweis und keine Login-Zeile für diese Abklingzeit. Klick: wieder an."] = "Off: no alert and no login line for this cooldown. Click: on again."
+L["An: Chat, Banner und Ton, sobald es bereit wird. Klick: aus."] = "On: chat, banner and sound as soon as it gets ready. Click: off."
 end)

@@ -1488,6 +1488,16 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du mit der Maus auf ein Material gehst und die Tooltip-Zeile an ist, dann steht dort "Material für N Rezepte".
 - Notiz: Spec docs/specs/2026-11-23-gilde-berufe-uebersicht.md (freigegeben 2026-11-23).
 
+### F-241 Hinweis, wenn eine Berufs-Abklingzeit bereit wird
+- Version: 2.115.0
+- Status: gebaut
+- Prüfung: Wenn eine Abklingzeit des gespielten Charakters während des Spiels bereit wird, dann steht binnen 5 Sekunden "<Abklingzeit> ist bereit (<Name>)." im Chat, ein Banner in der Mitte, und ein Ton spielt.
+- Prüfung: Wenn das im Kampf geschieht, dann kommt der Hinweis erst, wenn der Kampf vorbei ist, und nur einmal.
+- Prüfung: Wenn du auf Berufe > Abklingzeiten die Glocke einer eigenen Zeile ausschaltest, dann kommt für sie kein Hinweis, und die Login-Zeile nennt sie nicht.
+- Prüfung: Wenn eine eigene Abklingzeit läuft, dann steht über "Deine Charaktere" "Als Nächstes: <Abklingzeit> (<Name>) in ..." mit der kürzesten Restzeit.
+- Prüfung: Wenn du unter Einstellungen > Berufe "Abklingzeit bereit: mit Ton" ausschaltest, dann kommen Chatzeile und Banner ohne Ton.
+- Notiz: Spec docs/specs/2026-11-28-abklingzeit-hinweise.md (freigegeben 2026-11-28); DECISIONS D-175. Ein Twink bekommt nur die Chatzeile; was offline bereit wurde, sagt weiter nur die Login-Zeile.
+
 ### F-232 Berufs-Abklingzeiten (eigene Charaktere und Gilde)
 - Version: 2.107.0
 - Status: gebaut

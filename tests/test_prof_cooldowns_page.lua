@@ -23,26 +23,35 @@ assert(f and f:IsShown(), "the page opened")
 assert(f.cdView:IsShown() and f.tabCd.on and not f.tabRoute.on, "the tab Abklingzeiten")
 assert(not f.list:IsShown() and not f.headBlock:IsShown(), "nothing of a profession's view")
 local items = f.cdList.items
-local function text(e) return e.head or e.note or (e.name .. "|" .. e.label) end
+local function text(e) return e.head or e.note or e.next or (e.name .. "|" .. e.label) end
 local got = {}
 for i, e in ipairs(items) do got[i] = text(e) end
-local want = { "Deine Charaktere", "Vulo Sturmwind|Schwacher Heiltrank", "Vulo Sturmwind|Transmutation",
+local want = { "Als Nächstes: Transmutation (Vulo Sturmwind) in 14 Std. 20 Min.", "Deine Charaktere", "Vulo Sturmwind|Schwacher Heiltrank", "Vulo Sturmwind|Transmutation",
     "Gilde: Transmutation", "Bob Hammer|Transmutation", "Anna Amboss|Transmutation" }
 assert(table.concat(got, ", ") == table.concat(want, ", "), table.concat(got, ", "))
 local rows = f.cdList.rows
-assert(has(rows[2].state:GetText(), "bereit") and has(rows[3].state:GetText(), "in 14 Std. 20 Min."), rows[3].state:GetText())
-assert(has(rows[2].name:GetText(), "(du)"))
-assert(has(rows[5].state:GetText(), "bereit") and has(rows[5].name:GetText(), "(offline)"), "Bob ready first, though offline")
-assert(has(rows[6].state:GetText(), "in 2 Std."))
+assert(has(rows[3].state:GetText(), "bereit") and has(rows[4].state:GetText(), "in 14 Std. 20 Min."), rows[4].state:GetText())
+assert(has(rows[3].name:GetText(), "(du)"))
+assert(rows[3].bell:IsShown() and not rows[6].bell:IsShown() and not rows[1].bell:IsShown(), "the bell on own rows only")
+assert(has(rows[6].state:GetText(), "bereit") and has(rows[6].name:GetText(), "(offline)"), "Bob ready first, though offline")
+assert(has(rows[7].state:GetText(), "in 2 Std."))
 -- a click on a guild member: the menu with Flüstern; an own row: nothing
 local opened = 0
 local menu = NS.W.Menu
 NS.W.Menu = function(owner, entries) opened = opened + 1; assert(entries[1][1] == "Flüstern") end
-rows[6]:Click()
+rows[7]:Click()
 assert(opened == 1, "Anna's menu")
 rows[2]:Click()
 rows[1]:Click()
-assert(opened == 1, "no menu on an own row or a head")
+assert(opened == 1, "no menu on the next line or a head")
+-- F-241: an own row's click (or its bell) switches its alert off and on, no menu
+rows[4]:Click()
+assert(opened == 1 and NS.ProfCooldowns.Muted("Vulo Sturmwind", "c310"), "the transmute switched off")
+assert(f.cdList.items[1].head == "Deine Charaktere", "a switched-off line is not next")
+f.cdList.rows[2].bell:Click()
+assert(NS.ProfCooldowns.Muted("Vulo Sturmwind", "s2330"))
+NS.ProfCooldowns.SetMuted("Vulo Sturmwind", "c310", false)
+NS.ProfCooldowns.SetMuted("Vulo Sturmwind", "s2330", false)
 NS.W.Menu = menu
 -- another tab leaves it
 f.tabAll:Click()
