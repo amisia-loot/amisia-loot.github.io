@@ -5,7 +5,7 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
-- feat(search): the search box finds bosses, dungeon quests and professions, ignores umlauts, and Enter opens the first hit (F-095)
+- feat(ui): the search box finds bosses, dungeon quests and professions, ignores umlauts, and Enter opens the first hit (F-095)
 
     Typing a boss name ("vancleef") opens the dungeon at that boss, a quest title opens its path on the Dungeons page,
     and a profession name ("schmied") opens it on the Berufe page. Umlauts and case no longer matter ("ausrustung"
