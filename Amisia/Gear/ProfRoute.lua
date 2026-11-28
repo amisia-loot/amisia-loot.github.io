@@ -1162,12 +1162,30 @@ end)
 -- The shopping list
 ---------------------------------------------------------------------------
 -- The materials of the steps not done: { { item, need, have, twinks, missing, price, kind, from
--- (skill line of "craft"), vendors, enough } } by need.
+-- (skill line of "craft"), vendors, enough } } by need. A step lists the base reagents of its intermediate (the
+-- linen of a bolt); intermediates already held (own bags and bank, twinks) are used first: their base reagents
+-- leave the list, and the intermediate stands in it with the pieces used (enough).
 function R.Shopping(route)
-    local need = {}
+    local need, inter = {}, {}
     for _, s in ipairs(route and route.steps or {}) do
         if s.kind == "recipe" and not s.done then
             for item, n in pairs(s.reagents) do need[item] = (need[item] or 0) + n end
+            local pe = s.preEntry
+            local item = pe and pe.r and tonumber(pe.r.item)
+            if item and item > 0 and (s.preCrafts or 0) > 0 then
+                local per = math.max(1, tonumber(pe.r.count) or 1)
+                local x = inter[item] or { pieces = 0, base = {} }
+                x.pieces = x.pieces + s.preCrafts * per
+                for _, q in ipairs(pe.parts or {}) do x.base[q.item] = q.n / per end
+                inter[item] = x
+            end
+        end
+    end
+    for item, x in pairs(inter) do
+        local used = math.min(R.Have(item) + R.Twinks(item), math.floor(x.pieces + 1e-6))
+        if used > 0 then
+            for b, per in pairs(x.base) do need[b] = math.max(0, (need[b] or 0) - used * per) end
+            need[item] = (need[item] or 0) + used
         end
     end
     return R.ShoppingFor(need, route and route.skill)

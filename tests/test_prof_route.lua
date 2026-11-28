@@ -173,6 +173,19 @@ for i = 1, thread.need do STUB.bags[1][i] = 2320 end
 local again = {}
 for _, e in ipairs(R.Shopping(g4)) do again[e.item] = e end
 assert(again[2320].enough and again[2320].missing == 0, "enough")
+-- bolts already held: their linen leaves the list, the bolts stand in it as used (enough)
+local function shopOf(rt)
+    local by = {}
+    for _, e in ipairs(R.Shopping(rt)) do by[e.item] = e end
+    return by
+end
+local before = shopOf(route)
+assert(before[2589] and not before[2996], "no bolt row without bolts")
+STUB.bags[2] = { 2996, 2996, 2996 }
+local after = shopOf(route)
+assert(after[2589].need == before[2589].need - 6, ("three bolts: six linen less (%d -> %d)"):format(before[2589].need, after[2589].need))
+assert(after[2996] and after[2996].need == 3 and after[2996].have == 3 and after[2996].enough, "the bolts used")
+STUB.bags[2] = nil
 assert(R.Source(2770, 197) == "mine" and R.Source(2840, 197) == "smelt", "ore and bars from mining")
 assert(R.Source(2996, 197) == "craft" and select(2, R.Source(2996, 197)) == 197, "the bolt: made by the own profession")
 
