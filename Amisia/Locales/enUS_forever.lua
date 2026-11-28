@@ -1301,4 +1301,18 @@ L["Glocke: nicht mehr melden, wenn es bereit wird."] = "Bell: stop telling me wh
 L["Melden, wenn es bereit wird"] = "Tell me when it is ready"
 L["Aus: kein Hinweis und keine Login-Zeile für diese Abklingzeit. Klick: wieder an."] = "Off: no alert and no login line for this cooldown. Click: on again."
 L["An: Chat, Banner und Ton, sobald es bereit wird. Klick: aus."] = "On: chat, banner and sound as soon as it gets ready. Click: off."
+
+-- Gear/ProfRoute.lua, UI/Pages/Professions.lua: the route's sell value (F-243)
+L["Verkauf %s"] = "sells for %s"
+L["Verkauf etwa %s"] = "sells for about %s"
+L["Verkauf beim Händler: etwa %s (%d Stück)"] = "At a vendor: about %s (%d pieces)"
+L["Gewinn: etwa %s"] = "Profit: about %s"
+L["Verlust: etwa %s"] = "Loss: about %s"
+
+-- Gear/Crafters.lua: a crafter who is away or busy (F-244)
+L["abwesend"] = "away"
+
+-- UI/ItemKit.lua: undress in the client's dressing room (F-245)
+L["Ausziehen"] = "Undress"
+L["Zieht das Modell der Anprobe ganz aus, damit du einzelne Teile ohne den Rest siehst. \"Zurücksetzen\" zieht es wieder an."] = "Takes everything off the dressing room's model, so you see single pieces without the rest. \"Reset\" dresses it again."
 end)

@@ -735,6 +735,12 @@ def combine(client, att, seen=None, cooldowns=None, trainers=None, known=None):
         sell = client['items'].get(item, {}).get('sell', 0)
         if sell > 0:
             S[item] = sell
+    # what a vendor pays for one of a recipe's product (the route's sell value, F-243)
+    SP = {}
+    for item in sorted(made_items(R)):
+        sell = client['items'].get(item, {}).get('sell', 0)
+        if sell > 0:
+            SP[item] = sell
     # the recipes with a cooldown: the client's table, else the hand-kept list; each with its category
     # and length (F-232)
     listed = {int(l.split(':')[0]) for lst in R.values() for l in lst}
@@ -780,7 +786,7 @@ def combine(client, att, seen=None, cooldowns=None, trainers=None, known=None):
             where = e['p']
         N[nid] = f'{name}|{where}|{fac}'
 
-    return {'P': P, 'R': R, 'I': I, 'G': G, 'V': V, 'RS': RS, 'S': S, 'CD': CD, 'N': N, 'Q': Q, 'TR': TR, 'CAMP': camp_objects(client),
+    return {'P': P, 'R': R, 'I': I, 'G': G, 'V': V, 'RS': RS, 'S': S, 'SP': SP, 'CD': CD, 'N': N, 'Q': Q, 'TR': TR, 'CAMP': camp_objects(client),
             'FAVOR': favor_info(client, att, R), 'L': L, 'TD': TD, 'client': client['client'],
             'source': (att.get('commit') or '')[:10], 'report': report}
 
@@ -852,7 +858,7 @@ def favor_info(client, att, R):
 
 
 def empty():
-    return {'P': [], 'R': {}, 'I': {}, 'G': {}, 'V': {}, 'RS': {}, 'S': {}, 'CD': {}, 'N': {}, 'Q': {}, 'TR': {}, 'CAMP': [],
+    return {'P': [], 'R': {}, 'I': {}, 'G': {}, 'V': {}, 'RS': {}, 'S': {}, 'SP': {}, 'CD': {}, 'N': {}, 'Q': {}, 'TR': {}, 'CAMP': [],
             'FAVOR': {'currency': FAVOR_CURRENCY, 'cert': {}, 'writ': {}, 'vendor': {'A': [], 'H': []}},
             'L': {}, 'TD': {}, 'client': '', 'source': '', 'report': {}}
 
@@ -912,6 +918,7 @@ def render(data, built):
            '-- (herbalism, mining, skinning, fishing; the zones), D<npc> drop (in N), Z<uiMapID> zone drop, W world drop,',
            '-- Q<quest> quest reward.',
            '-- S: [item] = copper a vendor pays for one (SellPrice) of a reagent not in V (the route\'s estimate).',
+           '-- SP: [item] = copper a vendor pays for one (SellPrice) of a recipe\'s product (the route\'s sell value, F-243).',
            '-- CD: [spell] = "category:hours" a recipe with a cooldown (SpellCooldowns, SpellCategories, else',
            '-- tools/prof_cooldowns.json): no route step; the cooldown tab groups by category (0 none) from 20 hours on.',
            '-- N: [npc] = "Name|uiMapID:x:y|A/H/" (English).',
@@ -936,6 +943,7 @@ def render(data, built):
     out.append('    V = ' + _str_map(data['V']) + ',')
     out.append('    RS = ' + _str_map(data.get('RS') or {}) + ',')
     out.append('    S = ' + _num_map(data['S'], per_line=10) + ',')
+    out.append('    SP = ' + _num_map(data.get('SP') or {}, per_line=10) + ',')
     out.append('    CD = ' + _str_map(data['CD'], per_line=6) + ',')
     out.append('    N = ' + _str_map(data['N'], 3) + ',')
     out.append('    Q = ' + _str_map(data['Q'], 3) + ',')

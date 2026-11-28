@@ -1084,6 +1084,8 @@ local function stepLines(s)
         head[#head + 1] = pre
     end
     if not s.known then head[#head + 1] = s.learnCost > 0 and L["lernen: %s"]:format(money(s.learnCost)) or L["noch lernen"] end
+    -- F-243: what the products fetch at a vendor
+    if s.sell and s.sell > 0 then head[#head + 1] = L["Verkauf %s"]:format(money(s.sell)) end
     local short = table.concat(head, " · ")
     return line1, short .. " · " .. L["je Stück: %s"]:format(perPiece(s.recipe)), short
 end
@@ -1128,6 +1130,14 @@ local function stepTooltip(owner, s)
             GameTooltip:AddLine(L["Noch nicht bekannt: beim Lehrer oder Händler lernen."], 1, 1, 1, true)
         end
         if s.unpriced > 0 then GameTooltip:AddLine(L["Materialien ohne Händlerpreis zählen nicht zu den Kosten."], 0.6, 0.6, 0.6, true) end
+        -- F-243: the vendor's price for the products, and the balance when every material has a price
+        if s.sell and s.sell > 0 then
+            GameTooltip:AddLine(L["Verkauf beim Händler: etwa %s (%d Stück)"]:format(money(s.sell), times(s.made)), 1, 1, 1, true)
+            if s.unpriced <= 0 then
+                local diff = s.sell - s.cost
+                GameTooltip:AddLine(diff >= 0 and L["Gewinn: etwa %s"]:format(money(diff)) or L["Verlust: etwa %s"]:format(money(-diff)), 1, 1, 1)
+            end
+        end
         GameTooltip:AddLine(L["Klick: die Rezept-Details."], 0.6, 0.6, 0.6)
     elseif s.kind == "trainer" then
         GameTooltip:SetText(L["Zum Lehrer"])
@@ -1215,6 +1225,8 @@ local function refreshRoute(f, v)
         for _, st in ipairs(route.steps) do if not st.done then open = open + 1 end end
         -- without a single price (no vendor sells the materials) the cost is unknown, not 0
         local cost = route.total > 0 and L["etwa %s"]:format(money(route.total)) or L["Kosten unbekannt"]
+        -- F-243: what the products fetch at a vendor, all steps together
+        if route.sell and route.sell > 0 then cost = cost .. " · " .. L["Verkauf etwa %s"]:format(money(route.sell)) end
         if route.learned then
             f.routeHead:SetText(L["Rang %d bis %d · %s · %d Schritte"]:format(route.start, route.top, cost, open))
         else

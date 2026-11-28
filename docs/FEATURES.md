@@ -1488,6 +1488,21 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du mit der Maus auf ein Material gehst und die Tooltip-Zeile an ist, dann steht dort "Material für N Rezepte".
 - Notiz: Spec docs/specs/2026-11-23-gilde-berufe-uebersicht.md (freigegeben 2026-11-23).
 
+### F-244 Hersteller: abwesend
+- Version: 2.116.0
+- Status: gebaut
+- Braucht: Gilde
+- Prüfung: Wenn ein Gildenmitglied, das ein Rezept kann, im Spiel auf abwesend (/afk) oder beschäftigt (/dnd) steht, dann steht es binnen etwa 10 Sekunden in den Rezept-Details orange mit "abwesend" hinter den anderen, die online sind.
+- Prüfung: Wenn du bei so einem Rezept "Fragen" klickst und jemand anderes online und nicht abwesend ist, dann geht das Flüstern an ihn.
+- Notiz: DECISIONS D-176.
+
+### F-243 Berufsroute: Verkaufswert je Schritt
+- Version: 2.116.0
+- Status: gebaut
+- Prüfung: Wenn du auf Berufe die Route öffnest, dann steht in der zweiten Zeile eines Schritts "Verkauf <Betrag>", was die Produkte beim Händler bringen, und oben neben den Kosten "Verkauf etwa <Betrag>" für die ganze Route.
+- Prüfung: Wenn du mit der Maus auf einen Schritt gehst, dessen Materialien alle einen Händlerpreis haben, dann nennt der Tooltip "Verkauf beim Händler" mit der Stückzahl und "Gewinn" oder "Verlust".
+- Notiz: DECISIONS D-176. Nur Händlerpreise, kein Auktionshaus.
+
 ### F-241 Hinweis, wenn eine Berufs-Abklingzeit bereit wird
 - Version: 2.115.0
 - Status: gebaut
@@ -1702,6 +1717,12 @@ Prüfungen der neuen Version. `tools/tests/test_features.py` prüft das Format.
 - Prüfung: Wenn du in der Ansicht Klassen "Nach Spezialisierung" einschaltest, dann steht jede Klasse je Spezialisierung in einer eigenen Zeile (z. B. "1. Jäger · Treffsicherheit") und unten "… Spezialisierungen bekannt".
 
 ## Addon: Ausrüstung und Welt
+
+### F-245 Anprobe: Ausziehen
+- Version: 2.116.0
+- Status: gebaut
+- Prüfung: Wenn du ein Item mit Strg-Klick anprobierst, dann steht in der Anprobe über "Zurücksetzen" ein Knopf "Ausziehen", und ein Klick zieht das Modell ganz aus; "Zurücksetzen" zieht es wieder an.
+- Notiz: DECISIONS D-176.
 
 ### F-193 Questgegenstände: eigener Abschnitt in den Einstellungen
 - Version: 2.83.0

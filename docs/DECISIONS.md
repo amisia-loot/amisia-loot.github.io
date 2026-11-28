@@ -5280,3 +5280,24 @@ Gildenmitglieder, keine neue Nachricht.
 Nächstes"; zur Spec "Passt, bauen" (Banner und Ton nur beim gespielten Charakter, beides an, kein Gildenhinweis).
 **Folge:** Neue Einstellungen `prof.cdAlert`, `prof.cdSound` (beide an), neuer gespeicherter Schlüssel `prof.cdMute`.
 **Durchgesetzt durch:** `tests/test_prof_cooldowns_alert.lua`, `tests/test_prof_cooldowns_page.lua`.
+
+## D-176 Kleine Übernahmen: Verkaufswert der Route, "abwesend" bei Herstellern, Ausziehen in der Anprobe
+
+**Datum:** 2026-11-28
+**Entscheidung:**
+- **Verkaufswert (F-243):** je Schritt der Berufsroute, was die Produkte beim Händler bringen: erwartete
+  Herstellungen mal Stück je Herstellung mal `ItemSparse.SellPrice` (`ProfessionData` `SP`, nur Zahlen). Ein
+  Zwischenprodukt wird verbraucht, nicht verkauft. Nur Händlerpreise, kein Auktionshaus (Amisia hat keine
+  Preisquelle dafür). Gewinn oder Verlust nennt der Tooltip nur, wenn jedes Material einen Händlerpreis hat.
+  Die Größengrenze der Berufsdaten steigt dafür von 300 auf 330 KB.
+- **Abwesend (F-244):** der Roster liest "abwesend" und "beschäftigt" aus C_Club (Präsenz 4, 5), sonst aus dem
+  Status der klassischen Rosterfunktion. In der Herstellerliste stehen solche Hersteller orange mit "abwesend" nach
+  den anderen online und vor den offline; "Fragen" nimmt zuerst jemanden, der nicht abwesend ist.
+- **Ausziehen (F-245):** ein Knopf "Ausziehen" in der Anprobe des Spiels (`DressUpFrame`, auf Forever die neue mit
+  `ModelScene`), über "Zurücksetzen", weil er in der Knopfzeile den Link-Knopf des schmalen Fensters verdecken
+  würde. Sonst wird an der Anprobe nichts verändert.
+**Grund:** Nutzer 2026-11-28 nach dem Vergleich mit einem fremden Änderungsprotokoll: "mach punkt 1 und dann alle
+sachen aus punkt 3".
+**Folge:** Neue Datentabelle `SP`, ein neues Feld `away` im Roster, kein neuer Schlüssel, keine Nachricht.
+**Durchgesetzt durch:** `tests/test_prof_route.lua`, `tests/test_crafters_away.lua`, `tests/test_dressup_undress.lua`.
+

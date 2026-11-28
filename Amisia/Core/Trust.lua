@@ -92,7 +92,8 @@ local function clubMembers()
                 local online = presence == 1 or presence == 4 or presence == 5
                 local class, className = classFile(ns.Plain(info.classID))
                 out[#out + 1] = { name = name, rank = rank, guid = ns.Plain(info.guid),
-                                  online = online, self = ns.Plain(info.isSelf) == true,
+                                  online = online, away = (presence == 4 or presence == 5) or nil,   -- F-244
+                                  self = ns.Plain(info.isSelf) == true,
                                   class = class, level = tonumber(ns.Plain(info.level)),
                                   className = className, rankName = text(info.guildRank), zone = text(info.zone),
                                   note = text(info.memberNote), officerNote = officerNotes and text(info.officerNote) or nil,
@@ -115,7 +116,7 @@ local function rosterMembers()
     local officerNotes = canViewOfficerNote()
     local lastOf = _G.GetGuildRosterLastOnline
     for i = 1, n do
-        local okRow, name, rankName, rankIndex, level, className, zone, note, officerNote, online, _, class = pcall(GetGuildRosterInfo, i)
+        local okRow, name, rankName, rankIndex, level, className, zone, note, officerNote, online, status, class = pcall(GetGuildRosterInfo, i)
         if okRow then
             -- the classic roster writes "Name-Realm": the own realm's ending away (ns.StripOwnRealm)
             name = ns.Plain(name)
@@ -126,6 +127,11 @@ local function rosterMembers()
                             class = type(class) == "string" and class or "", level = tonumber(ns.Plain(level)),
                             className = text(className), rankName = text(rankName), zone = text(zone), note = text(note),
                             officerNote = officerNotes and text(officerNote) or nil }
+                -- away or busy (F-244): the client says 1 (AFK) or 2 (DND), an older one "<AFK>"/"<DND>"
+                status = ns.Plain(status)
+                if e.online and (status == 1 or status == 2 or (type(status) == "string" and status ~= "" and status ~= "0")) then
+                    e.away = true
+                end
                 if not e.online and type(lastOf) == "function" then
                     local okLast, y, mo, d, h = pcall(lastOf, i)
                     if okLast then e.last = lastOnline(y, mo, d, h) end

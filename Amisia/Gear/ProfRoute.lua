@@ -30,6 +30,9 @@
 -- BAG_UPDATE_DELAYED. track is the list of reagents worth counting, refreshed whenever the profession
 -- data is built anyway (the page, the route): the events count only that list and never build the
 -- data (D-28). Nothing is sent.
+--
+-- F-243 (D-176): a recipe step's sell value: its expected crafts times the products per craft times what a vendor
+-- pays for one (PROFESSIONS.SP); out.sell the route's sum. Vendor prices only, no auction house.
 local ADDON, ns = ...
 ns.Load(function()
 local L = ns.L
@@ -163,6 +166,13 @@ local function makersOf(skill)
     end
     makerIndex[skill] = m
     return m
+end
+
+-- What a vendor pays for one of a recipe's products (PROFESSIONS.SP, F-243), nil when unknown.
+function R.SellPrice(item)
+    local d = data()
+    local v = d and d.SP and tonumber(d.SP[tonumber(item) or 0])
+    return v and v > 0 and v or nil
 end
 
 -- The sell-price estimate of one piece (nil without a sell price in S).
@@ -563,9 +573,17 @@ function R.Compute(skill, o)
         end
         rank = rank + 1
     end
+    out.sell = 0
     for _, s in ipairs(steps) do
         if s.kind == "recipe" then
             s.points = s.to - s.from
+            -- F-243: what the products of the step fetch at a vendor (an intermediate is used up, not sold)
+            local sp = s.recipe.item and s.recipe.item > 0 and R.SellPrice(s.recipe.item)
+            if sp then
+                s.made = s.crafts * math.max(1, s.recipe.count or 1)
+                s.sell = math.floor(s.made * sp + 0.5)
+                out.sell = out.sell + s.sell
+            end
             s.colorFrom = Pr.Difficulty(s.recipe, s.from, true)
             s.colorTo = Pr.Difficulty(s.recipe, s.to - 1, true)
             out.total = out.total + s.cost

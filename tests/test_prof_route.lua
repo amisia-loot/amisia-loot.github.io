@@ -54,6 +54,14 @@ assert(first.recipe.spell == 2393 and first.pre and first.pre.spell == 2963, "sh
 assert(first.preCrafts > 0 and first.reagents[2589] and first.reagents[2320] and not first.reagents[2996],
     "the base reagents: linen and thread, not the bolt")
 assert(first.crafts < first.points, "the bolt's points count: fewer shirts than points")
+-- F-243: the sell value: the shirts made times 6 copper; the bolts are used up, never sold; the bag's 25 copper
+assert(R.SellPrice(2576) == 6 and R.SellPrice(9999) == nil)
+assert(first.made == first.crafts and first.sell == math.floor(first.crafts * 6 + 0.5), "the shirts' worth only")
+assert(recipeAt(route, 50).sell == math.floor(recipeAt(route, 50).crafts * 25 + 0.5))
+local sum = 0
+for _, s in ipairs(steps(route, "recipe")) do sum = sum + (s.sell or 0) end
+assert(route.sell == sum and sum > 0, "the route's sum")
+assert(recipeAt(route, 280).sell == nil, "no price: no sell value")
 -- the cheaper recipe: one linen (3914) beats the shirt (two linen and thread) once it can be learned
 local mid = recipeAt(route, 50)
 assert(mid.recipe.spell == 3914 and mid.learnCost == 100 and not mid.known, "the cheaper trainer recipe, with its learning cost")

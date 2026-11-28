@@ -5,6 +5,22 @@ heading "Unreleased" with the change itself; `build.py release` turns them into 
 
 ## Unreleased
 
+- feat(professions): the levelling route shows what the products fetch at a vendor (F-243)
+
+    Each recipe step of the route now says what its products sell for at a vendor, and the route's head adds the
+    sum. Hovering a step whose materials all have a vendor price also shows the profit or loss. Intermediates such
+    as bolts are used up, so they never count as sold. Auction house prices are not part of it.
+
+- feat(professions): crafters who are away or busy are marked (F-244)
+
+    In the recipe details, guild crafters who are online but away or busy are listed in orange with "away" after
+    the others who are online, and "Ask" whispers someone who is not away first.
+
+- feat(gear): an Undress button in the dressing room (F-245)
+
+    The game's dressing room gets an "Undress" button above "Reset" that takes everything off the model, so single
+    pieces can be looked at on their own.
+
 ## [v2.115.1](https://github.com/amisia-loot/amisia-loot.github.io/releases/tag/v2.115.1) (2026-11-28)
 
 [Full Changelog](https://github.com/amisia-loot/amisia-loot.github.io/compare/v2.115.0...v2.115.1) [Previous Releases](https://github.com/amisia-loot/amisia-loot.github.io/releases)

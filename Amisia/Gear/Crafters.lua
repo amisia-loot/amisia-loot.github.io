@@ -1413,7 +1413,7 @@ local function build()
     return index
 end
 
--- The crafters of entries { [name] = { rank, own, via, age } } as a sorted list { { name, rank, own, online, via, age } }
+-- The crafters of entries { [name] = { rank, own, via, age } } as a sorted list { { name, rank, own, online, away, via, age } }
 -- (via: passed on by that member, F-240):
 -- online first (when the roster says so), then the higher rank, then the name; a heard crafter that
 -- left the guild (the roster can be read and lacks it) is left out.
@@ -1423,11 +1423,14 @@ local function sorted(entries)
     for name, e in pairs(entries or {}) do
         local m = r and r[name:lower()]
         if e.own or not r or m then
-            out[#out + 1] = { name = name, rank = e.rank, own = e.own or false, online = m and m.online or false, via = e.via, age = e.age }
+            out[#out + 1] = { name = name, rank = e.rank, own = e.own or false, online = m and m.online or false,
+                away = m and m.online and m.away or false, via = e.via, age = e.age }
         end
     end
+    -- online first, the away ones (F-244) after the others online, then offline
+    local function state(c) return c.online and (c.away and 1 or 2) or 0 end
     table.sort(out, function(a, b)
-        if a.online ~= b.online then return a.online end
+        if state(a) ~= state(b) then return state(a) > state(b) end
         if a.rank ~= b.rank then return a.rank > b.rank end
         return a.name < b.name
     end)
@@ -1499,7 +1502,11 @@ function Cr.Text(list, max, color)
             break
         end
         local text = ("%s (%d)"):format(c.name, c.rank)
-        if color and c.online then text = ns.Theme.GREEN .. text .. "|r" end
+        -- away or busy (F-244): orange with the word, else online green
+        if c.online and c.away then
+            text = ("%s (%d, %s)"):format(c.name, c.rank, L["abwesend"])
+            if color then text = ns.Theme.ORANGE .. text .. "|r" end
+        elseif color and c.online then text = ns.Theme.GREEN .. text .. "|r" end
         parts[#parts + 1] = text
     end
     return table.concat(parts, ", ")
@@ -1551,14 +1558,15 @@ end)
 -- The crafter to ask first for a recipe: an online one that is not an own character, else any one
 -- that is not; nil when there is none.
 function Cr.AskWhom(spell)
-    local first
+    local first, afk
     for _, c in ipairs(Cr.ForSpell(spell)) do
         if not c.own then
-            if c.online then return c end
+            if c.online and not c.away then return c end
+            if c.online then afk = afk or c end
             first = first or c
         end
     end
-    return first
+    return afk or first
 end
 
 -- Opens a whisper to name with a prefilled question for what (a link or a name); false when the

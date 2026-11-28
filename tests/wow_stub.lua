@@ -610,7 +610,7 @@ function STUB.dump(v, seen)
 end
 
 -- The guild roster: STUB.guild = { { name, class (token), online, rank, level, zone, note, onote (officer
--- note), last = { years, months, days, hours } offline } } (rank: rank order, 1 = guild master, default
+-- note), status (0, 1 AFK, 2 DND), last = { years, months, days, hours } offline } } (rank: rank order, 1 = guild master, default
 -- 3; zone "Shattrath" by default); requests are counted.
 STUB.guild, STUB.guildRequests = {}, 0
 C_GuildInfo.GuildRoster = function() STUB.guildRequests = STUB.guildRequests + 1 end
@@ -646,7 +646,7 @@ _G.C_Club = {
         if not m then return nil end
         local last = m.online == false and m.last or nil
         return { isSelf = m.name == STUB.player, memberId = id, name = m.name, guildRankOrder = m.rank or 3,
-                 guid = "Player-1-" .. id, presence = m.online == false and 3 or 1, classID = STUB.classIDs[m.class],
+                 guid = "Player-1-" .. id, presence = m.online == false and 3 or (m.status == 2 and 5) or ((m.status == 1 or type(m.status) == "string") and 4) or 1, classID = STUB.classIDs[m.class],
                  level = m.level or 70, guildRank = STUB.rankNames[m.rank or 3], zone = m.zone or "Shattrath",
                  memberNote = m.note or "", officerNote = m.onote or "",
                  lastOnlineYear = last and last[1], lastOnlineMonth = last and last[2], lastOnlineDay = last and last[3],
@@ -676,7 +676,7 @@ _G.GetGuildRosterInfo = function(i)
     if not m then return nil end
     local rank = m.rank or 3
     return m.name, STUB.rankNames[rank] or "Mitglied", rank - 1, m.level or 70, m.class, m.zone or "Shattrath", m.note or "",
-        m.onote or "", m.online ~= false, 0, m.class
+        m.onote or "", m.online ~= false, m.status or 0, m.class
 end
 -- Offline since: m.last = { years, months, days, hours } of an offline member; nothing while online.
 _G.GetGuildRosterLastOnline = function(i)

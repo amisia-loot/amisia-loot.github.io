@@ -166,4 +166,45 @@ ns.OnEvent("GET_ITEM_INFO_RECEIVED", function()
         ns.Refresh()
     end)
 end)
+
+---------------------------------------------------------------------------
+-- F-245 (D-176): "Ausziehen" in the client's dressing room (DressUpFrame, Forever's mainline one: the
+-- player actor of its ModelScene; an older client's DressUpModel). The button sits above "Zurücksetzen" (in
+-- the row it would cover the link button of the narrow window); a click undresses the try-on model, the
+-- client's own "Zurücksetzen" dresses it again. Nothing else of the frame is touched.
+---------------------------------------------------------------------------
+local function undressModel()
+    local f = _G.DressUpFrame
+    local scene = f and f.ModelScene
+    local actor = scene and type(scene.GetPlayerActor) == "function" and scene:GetPlayerActor() or nil
+    if actor and type(actor.Undress) == "function" then
+        pcall(actor.Undress, actor)
+        return true
+    end
+    local model = _G.DressUpModelFrame or _G.DressUpModel
+    if model and type(model.Undress) == "function" then
+        pcall(model.Undress, model)
+        return true
+    end
+    return false
+end
+K.UndressModel = undressModel
+
+function K.DressUpButton()
+    local f = _G.DressUpFrame
+    if type(f) ~= "table" or type(f.CreateFontString) ~= "function" or K.undressButton then return K.undressButton end
+    local reset = f.ResetButton or _G.DressUpFrameResetButton
+    if not reset then return nil end
+    local ok, b = pcall(CreateFrame, "Button", nil, f, "UIPanelButtonTemplate")
+    if not ok or not b then return nil end
+    b:SetSize(reset:GetWidth() and reset:GetWidth() > 0 and reset:GetWidth() or 80, 22)
+    b:SetPoint("BOTTOM", reset, "TOP", 0, 2)
+    b:SetText(L["Ausziehen"])
+    b:SetScript("OnClick", function() undressModel() end)
+    W.Tooltip(b, L["Ausziehen"], L["Zieht das Modell der Anprobe ganz aus, damit du einzelne Teile ohne den Rest siehst. \"Zurücksetzen\" zieht es wieder an."])
+    K.undressButton = b
+    return b
+end
+ns.OnEvent("PLAYER_LOGIN", function() K.DressUpButton() end)
+K.DressUpButton()
 end)
